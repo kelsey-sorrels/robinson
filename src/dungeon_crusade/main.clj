@@ -43,44 +43,51 @@
   (let [current-place (-> state :world :current-place)]
     (-> state :world :places current-place)))
 
-(defn with-xy [f place]
+(defn with-xy [place]
+  (mapcat concat (map-indexed (fn [y line] (map-indexed (fn [x cell] [cell x y]) line)) place)))
+
+(defn map-with-xy [f place]
   (dorun 
-    (map (fn [e] (apply f e)) 
-         (mapcat concat (map-indexed (fn [y line] (map-indexed (fn [x cell] [cell x y]) line)) place)))))
+    (map (fn [e] (apply f e)) (with-xy place))))
 
 (defn get-xy [x y place]
-  (when-first [cell (filter (fn [cell cx cy] (and (= x cx) (= y cy))) (with-xy concat place))]
+  (when-first [cell (filter (fn [[cell cx cy]] (and (= x cx) (= y cy))) (with-xy place))]
     cell))
 
 (defn collide? [x y place]
-  (if-let [cell (get-xy x y place)]
-    (= (cell :type) :wall)
-    false))
+  (let [cellxy (get-xy x y place)]
+    (if-let [cell (first cellxy)]
+      (= (cell :type) :wall)
+      false)))
 
 (defn move-left [state]
   (let [x (-> state :world :player :pos :x)
         y (-> state :world :player :pos :y)]
-    (when-not (collide? (- x 1) y (current-place state))
-      (assoc-in state [:world :player :pos :x] (- x 1)))))
+    (if-not (collide? (- x 1) y (current-place state))
+      (assoc-in state [:world :player :pos :x] (- x 1))
+      state)))
   
 (defn move-right [state]
   (let [x (-> state :world :player :pos :x)
         y (-> state :world :player :pos :y)]
-    (when-not (collide? (+ x 1) y (current-place state))
-      (assoc-in state [:world :player :pos :x] (+ x 1)))))
+    (if-not (collide? (+ x 1) y (current-place state))
+      (assoc-in state [:world :player :pos :x] (+ x 1))
+      state)))
   
 (defn move-up [state]
   (let [x (-> state :world :player :pos :x)
         y (-> state :world :player :pos :y)]
-    (when-not (collide? x (- y 1) (current-place state))
-      (assoc-in state [:world :player :pos :y] (- y 1)))))
+    (if-not (collide? x (- y 1) (current-place state))
+      (assoc-in state [:world :player :pos :y] (- y 1))
+      state)))
   
 (defn move-down [state]
   (let [x (-> state :world :player :pos :x)
         y (-> state :world :player :pos :y)]
     (println "move-down")
-    (when-not (collide? x (+ y 1) (current-place state))
-      (assoc-in state [:world :player :pos :y] (+ y 1)))))
+    (if-not (collide? x (+ y 1) (current-place state))
+      (assoc-in state [:world :player :pos :y] (+ y 1))
+      state)))
   
 (defn update-state [state keyin]
   (case keyin
@@ -94,7 +101,7 @@
   (do
     (s/clear (state :screen))
     ;; draw map
-    (with-xy
+    (map-with-xy
       (fn [cell x y]
         (when cell
           (let [outchar (case (cell :type)

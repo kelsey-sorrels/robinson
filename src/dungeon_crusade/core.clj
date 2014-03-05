@@ -25,6 +25,7 @@
     (doseq [ns (map symbol (filter #(not (or (.startsWith % "clojure")
                                              (.startsWith % "complete")
                                              (.startsWith % "reply")
+                                             (.startsWith % "lanterna")
                                              (.startsWith % "user")))
                                    (map str (all-ns))))]
       (use ns))
@@ -40,7 +41,7 @@
           ; start with initial state from setup-fn
           (loop [state ((get-setup-fn))]
             ; setup function changed? stop ticking
-            (when (identical? (var-get (get-setup-fn)) setup-fn-var)
+            (when (= (:souce (meta (var-get (get-setup-fn)))) (:source (meta setup-fn-var)))
               ; tick the old state through the tick-fn to get the new state
               (recur ((get-tick-fn) state)))))
           ; setup function changed, start outer loop over again

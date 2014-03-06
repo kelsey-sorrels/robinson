@@ -43,6 +43,6 @@
             ; setup function changed? stop ticking
             (when (= (:souce (meta (var-get (get-setup-fn)))) (:source (meta setup-fn-var)))
               ; tick the old state through the tick-fn to get the new state
-              (recur ((get-tick-fn) state)))))
+              (recur (try ((get-tick-fn) state) (catch Exception e state))))))
           ; setup function changed, start outer loop over again
         (recur (get-setup-fn))))))

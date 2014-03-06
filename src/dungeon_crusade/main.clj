@@ -16,36 +16,36 @@
       \| {:type :vertical-wall}
       \- {:type :horizontal-wall}
       \. {:type :floor}
-      \+ {:type :door}
+      \+ {:type :door-closed}
       \# {:type :corridor}
       nil))]
-    (map (fn [line] (map char-to-cell line)) ascii)))
+    (vec (map (fn [line] (vec (map char-to-cell line))) ascii))))
 
 (defn init-place-0 []
   (ascii-to-place
-    ["-------------          ----------"
-     "|...........|          |........|"
-     "|...........|          |........|"
-     "|...........|          |........|"
-     "|...........|          |........|"
-     "|...........|          |........|"
-     "|...........+######    |........|"
-     "|...........|     #    |........|"
-     "|...........|     #####+........|"
-     "|...........|          |........|"
-     "|...........|          |........|"
-     "-------------          ----------"]))
+    ["----   ----"
+     "|..+## |..|"
+     "|..| ##+..|"
+     "----   ----"]))
 
 (defn init-world []
   {:places {:0 (init-place-0)}
    :current-place :0
+   :last-command nil
    :player {:hp 10
             :sym "@"
-            :pos {:x 5 :y 5}}})
+            :pos {:x 2 :y 1}}})
 
 (defn current-place [state]
   (let [current-place (-> state :world :current-place)]
     (-> state :world :places current-place)))
+
+(defn set-last-command [state command]
+  (println "setting last-command " command)
+  (assoc-in state [:last-command] command))
+
+(defn get-last-command [state]
+  (state :last-command))
 
 (defn with-xy [place]
   (mapcat concat (map-indexed (fn [y line] (map-indexed (fn [x cell] [cell x y]) line)) place)))
@@ -60,31 +60,39 @@
 
 (defn collide? [x y place]
   (let [cellxy (get-xy x y place)]
-    (println "check cell " cellxy)
+    (println "collide? " cellxy)
     (let [cell (first cellxy)]
       (if (-> cell nil? not)
-        (some (fn [collision-type] (= (cell :type) collision-type)) [:vertical-wall :horizontal-wall])
+        (some (fn [collision-type] (= (cell :type) collision-type)) [:vertical-wall
+                                                                     :horizontal-wall
+                                                                     :door-closed])
         true))))
 
 (defn move-left [state]
   (let [x (-> state :world :player :pos :x)
         y (-> state :world :player :pos :y)]
     (if-not (collide? (- x 1) y (current-place state))
-      (assoc-in state [:world :player :pos :x] (- x 1))
+      (-> state
+        (assoc-in [:world :player :pos :x] (- x 1))
+        (assoc-in [:world :last-command] :move-left))
       state)))
   
 (defn move-right [state]
   (let [x (-> state :world :player :pos :x)
         y (-> state :world :player :pos :y)]
     (if-not (collide? (+ x 1) y (current-place state))
-      (assoc-in state [:world :player :pos :x] (+ x 1))
+      (-> state
+        (assoc-in [:world :player :pos :x] (+ x 1))
+        (assoc-in [:world :last-command] :move-right))
       state)))
   
 (defn move-up [state]
   (let [x (-> state :world :player :pos :x)
         y (-> state :world :player :pos :y)]
     (if-not (collide? x (- y 1) (current-place state))
-      (assoc-in state [:world :player :pos :y] (- y 1))
+      (-> state
+        (assoc-in [:world :player :pos :y] (- y 1))
+        (assoc-in [:world :last-command] :move-up))
       state)))
   
 (defn move-down [state]
@@ -92,16 +100,80 @@
         y (-> state :world :player :pos :y)]
     (println "move-down")
     (if-not (collide? x (+ y 1) (current-place state))
-      (assoc-in state [:world :player :pos :y] (+ y 1))
+      (-> state
+        (assoc-in [:world :player :pos :y] (+ y 1))
+        (assoc-in [:world :last-command] :move-down))
       state)))
+
+(defn open-door [state direction]
+  (let [player-x (-> state :world :player :pos :x)
+        player-y (-> state :world :player :pos :y)
+        target-x (+ player-x (case direction
+                               :left -1
+                               :right 1
+                               0))
+        target-y (+ player-y (case direction
+                               :up  -1
+                               :down 1
+                               0))]
+    (println "open-door")
+    (let [target-cellxy (get-xy target-x target-y (current-place state))
+          target-cell   (first target-cellxy)]
+      (println "target-cellxy" target-cellxy)
+      (println "target-cell" target-cell)
+      (if (and (not (nil? target-cell)) (= (target-cell :type) :door-closed))
+        (let [place (-> state :world :current-place)]
+          (println "opening door")
+          (assoc-in state [:world :places place target-y target-x :type] :door-open))
+        state))))
+
+(defn close-door [state direction]
+  (let [player-x (-> state :world :player :pos :x)
+        player-y (-> state :world :player :pos :y)
+        target-x (+ player-x (case direction
+                               :left -1
+                               :right 1
+                               0))
+        target-y (+ player-y (case direction
+                               :up  -1
+                               :down 1
+                               0))]
+    (println "close-door")
+    (let [target-cellxy (get-xy target-x target-y (current-place state))
+          target-cell   (first target-cellxy)]
+      (println "target-cellxy" target-cellxy)
+      (println "target-cell" target-cell)
+      (if (and (not (nil? target-cell)) (= (target-cell :type) :door-open))
+        (let [place (-> state :world :current-place)]
+          (println "opening door")
+          (assoc-in state [:world :places place target-y target-x :type] :door-closed))
+        state))))
+
+  
   
 (defn update-state [state keyin]
-  (case keyin
-    \h (move-left state)
-    \j (move-down state)
-    \k (move-up state)
-    \l (move-right state)
-    state))
+  (println "last-command " (get-last-command state))
+  (case (get-last-command state)
+    :open (let [state-with-command (set-last-command state nil)]
+            (open-door state-with-command (case keyin
+                                            \h :left
+                                            \j :down
+                                            \k :up
+                                            \l :right)))
+    :close (let [state-with-command (set-last-command state nil)]
+             (close-door state-with-command (case keyin
+                                              \h :left
+                                              \j :down
+                                              \k :up
+                                              \l :right)))
+    (case keyin
+      \h (move-left state)
+      \j (move-down state)
+      \k (move-up state)
+      \l (move-right state)
+      \o (set-last-command state :open)
+      \c (set-last-command state :close)
+      state)))
 
 (defn render [state]
   (do
@@ -111,13 +183,14 @@
       (fn [cell x y]
         (when cell
           (let [outchar (case (cell :type)
-            :vertical-wall   "|"
-            :horizontal-wall "-"
-            :floor           "."
-            :door            "+"
-            :corridor        "#"
-            "?")]
-            (s/put-string (state :screen) x y outchar))))
+            :vertical-wall   ["|"]
+            :horizontal-wall ["-"]
+            :floor           ["."]
+            :door-open       ["+" {:fg :red :styles #{:bold}}]
+            :door-closed     ["+" {:fg :black :bg :red :styles #{:bold}}]
+            :corridor        ["#"]
+            ["?"])]
+            (apply s/put-string (state :screen) x y outchar))))
       (current-place state))
     ;; draw character
     (println (-> state :world :player))

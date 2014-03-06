@@ -13,24 +13,28 @@
 (defn ascii-to-place [ascii]
   (let [char-to-cell (fn [c]
     (case c
-      \x {:type :wall}
+      \| {:type :vertical-wall}
+      \- {:type :horizontal-wall}
+      \. {:type :floor}
+      \+ {:type :door}
+      \# {:type :corridor}
       nil))]
     (map (fn [line] (map char-to-cell line)) ascii)))
 
 (defn init-place-0 []
   (ascii-to-place
-    ["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-     "x                               x"
-     "x                               x"
-     "x                               x"
-     "x                               x"
-     "x                               x"
-     "x                               x"
-     "x                               x"
-     "x                               x"
-     "x                               x"
-     "x                               x"
-     "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"]))
+    ["-------------          ----------"
+     "|...........|          |........|"
+     "|...........|          |........|"
+     "|...........|          |........|"
+     "|...........|          |........|"
+     "|...........|          |........|"
+     "|...........+######    |........|"
+     "|...........|     #    |........|"
+     "|...........|     #####+........|"
+     "|...........|          |........|"
+     "|...........|          |........|"
+     "-------------          ----------"]))
 
 (defn init-world []
   {:places {:0 (init-place-0)}
@@ -56,9 +60,11 @@
 
 (defn collide? [x y place]
   (let [cellxy (get-xy x y place)]
-    (if-let [cell (first cellxy)]
-      (= (cell :type) :wall)
-      false)))
+    (println "check cell " cellxy)
+    (let [cell (first cellxy)]
+      (if (-> cell nil? not)
+        (some (fn [collision-type] (= (cell :type) collision-type)) [:vertical-wall :horizontal-wall])
+        true))))
 
 (defn move-left [state]
   (let [x (-> state :world :player :pos :x)
@@ -105,7 +111,11 @@
       (fn [cell x y]
         (when cell
           (let [outchar (case (cell :type)
-            :wall "x"
+            :vertical-wall   "|"
+            :horizontal-wall "-"
+            :floor           "."
+            :door            "+"
+            :corridor        "#"
             "?")]
             (s/put-string (state :screen) x y outchar))))
       (current-place state))
@@ -117,6 +127,10 @@
       (-> state :world :player :pos :y)
       (-> state :world :player :sym)
       {:fg :green})
+    ;; draw status bar
+    (s/put-string (state :screen) 0  23
+      (format " %s $%d HP:%d(%d) Pw:%d Amr:%d XP:%d/%d T%d                             "
+        "location-detail" 0 10 0 0 0 0 100 0) {:fg :black :bg :white})
     (s/redraw (state :screen))))
 
 ;; Example setup and tick fns

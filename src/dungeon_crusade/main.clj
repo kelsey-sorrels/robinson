@@ -31,10 +31,16 @@
 (defn init-world []
   {:places {:0 (init-place-0)}
    :current-place :0
+   :show-inventory? false
    :last-command nil
    :player {:hp 10
+            :max-hp 10
+            :$ 0
+            :xp 0
+            :level 0
             :sym "@"
-            :pos {:x 2 :y 1}}})
+            :pos {:x 2 :y 1}
+            :inventory []}})
 
 (defn current-place [state]
   (let [current-place (-> state :world :current-place)]
@@ -149,6 +155,9 @@
           (assoc-in state [:world :places place target-y target-x :type] :door-closed))
         state))))
 
+(defn toggle-inventory [state]
+  (println "toggle-inventory" (not (-> state :world :show-inventory?)))
+  (assoc-in state [:world :show-inventory?] (not (-> state :world :show-inventory?))))
   
   
 (defn update-state [state keyin]
@@ -171,6 +180,7 @@
       \j (move-down state)
       \k (move-up state)
       \l (move-right state)
+      \i (toggle-inventory state)
       \o (set-last-command state :open)
       \c (set-last-command state :close)
       state)))
@@ -200,22 +210,35 @@
       (-> state :world :player :pos :y)
       (-> state :world :player :sym)
       {:fg :green})
+    ;; maybe draw inventory
+    (when (-> state :world :show-inventory?)
+        (dorun (map (fn [y] (s/put-string (state :screen) 40 y "                                        " {:bg :white})) (range 23)))
+        (s/put-string (state :screen) 40 0 "  Inventory                             " {:fg :black :bg :white :styles #{:underline}}))
     ;; draw status bar
     (s/put-string (state :screen) 0  23
       (format " %s $%d HP:%d(%d) Pw:%d Amr:%d XP:%d/%d T%d                             "
-        "location-detail" 0 10 0 0 0 0 100 0) {:fg :black :bg :white})
+        "location-detail"
+        (-> state :world :player :$)
+        (-> state :world :player :hp)
+        (-> state :world :player :max-hp)
+        0 0
+        (-> state :world :player :xp)
+        100
+        (-> state :time))
+        {:fg :black :bg :white})
     (s/redraw (state :screen))))
 
 ;; Example setup and tick fns
 (defsource setup []
   (let [screen (s/get-screen :swing)]
     (s/start screen)
-    {:world (init-world) :screen screen}))
+    {:world (init-world) :screen screen :time 0}))
 
 (defn tick [state]
   (let [keyin  (s/get-key-blocking (state :screen))]
     (println "got " keyin " type " (type keyin))
-    (let [newstate (update-state state keyin)]
-      (render newstate)
-      newstate)))
+    (let [newstate (update-state state keyin)
+          state-with-tick (update-in newstate [:time] (fn [t] (inc t)))]
+      (render state-with-tick)
+      state-with-tick)))
 

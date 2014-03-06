@@ -1,4 +1,4 @@
 dungeon-crusade
 ===============
 
-Clojure hackem'
+Clojure rogue-like focused on immutability.

@@ -10,23 +10,36 @@
        (alter-meta! (var ~fn-name) assoc :source (quote ~&form))
        (var ~fn-name)))
 
-(defn ascii-to-place [ascii]
-  (let [char-to-cell (fn [c]
-    (case c
-      \| {:type :vertical-wall}
-      \- {:type :horizontal-wall}
-      \. {:type :floor}
-      \+ {:type :door-closed}
-      \# {:type :corridor}
-      nil))]
-    (vec (map (fn [line] (vec (map char-to-cell line))) ascii))))
+(defn ascii-to-place [ascii extras]
+  "ascii: an ascii representatin of the place
+   extra: a list of [[k & ks] v] where the first element is a list of keys
+          to assoc-in the place, and the second is the value to associate"
+  (let [
+    char-to-cell (fn [c]
+      (case c
+        \| {:type :vertical-wall}
+        \- {:type :horizontal-wall}
+        \. {:type :floor}
+        \+ {:type :door-closed}
+        \# {:type :corridor}
+        nil))
+    ;; convert ascii to place
+    setting (vec (map (fn [line] (vec (map char-to-cell line))) ascii))
+    ;; add in extras like items, monsters, etc.
+    ;; create a list of functions that can be applied to assoc extras, then create a composition of
+    ;; so that setting can pass through each fn in turn.
+    place ((apply comp (map (fn [e] (partial (fn [e s] (apply assoc-in s e)) e)) extras)) setting)]
+    (println "setting" setting)
+    (println "place" place)
+    place))
 
 (defn init-place-0 []
   (ascii-to-place
     ["----   ----"
      "|..+## |..|"
      "|..| ##+..|"
-     "----   ----"]))
+     "----   ----"]
+    [[[1 9 :items] [{:type :ring :name "Ring of Power"}]]]))
 
 (defn init-world []
   {:places {:0 (init-place-0)}
@@ -57,7 +70,7 @@
   (mapcat concat (map-indexed (fn [y line] (map-indexed (fn [x cell] [cell x y]) line)) place)))
 
 (defn map-with-xy [f place]
-  (dorun 
+  (doall 
     (map (fn [e] (apply f e)) (with-xy place))))
 
 (defn get-xy [x y place]
@@ -187,20 +200,39 @@
 
 (defn render [state]
   (do
+    (println "render")
     (s/clear (state :screen))
     ;; draw map
+    (println "map-with-xy")
     (map-with-xy
       (fn [cell x y]
-        (when cell
-          (let [outchar (case (cell :type)
-            :vertical-wall   ["|"]
-            :horizontal-wall ["-"]
-            :floor           ["."]
-            :door-open       ["+" {:fg :red :styles #{:bold}}]
-            :door-closed     ["+" {:fg :black :bg :red :styles #{:bold}}]
-            :corridor        ["#"]
-            ["?"])]
-            (apply s/put-string (state :screen) x y outchar))))
+        (println cell x y)
+        (when (not (nil? cell))
+          (let [cell-items (cell :items)
+                out-char (if (not (nil? cell-items))
+                           (case :ring 
+                             :ring           ["="]
+                             :food           ["%"]
+                             :bow            [")"]
+                             :sword          [")"]
+                             :armor          ["["]
+                             :shoes          ["!"]
+                             :wand           ["/"]
+                             :spellbook      ["+"]
+                             :scroll         ["?"]
+                             :coins          ["$" {:fg :yellow :styles #{:bold}}]
+                             :amulet         ["\"" {:fg :blue :styles #{:bold}}]
+                             ["?"])
+                           (case (cell :type)
+                            :vertical-wall   ["|"]
+                            :horizontal-wall ["-"]
+                            :floor           ["."]
+                            :door-open       ["+" {:fg :red :styles #{:bold}}]
+                            :door-closed     ["+" {:fg :black :bg :red :styles #{:bold}}]
+                            :corridor        ["#"]
+                            ["?"]))]
+            (apply s/put-string (state :screen) x y out-char))))
+        
       (current-place state))
     ;; draw character
     (println (-> state :world :player))

@@ -177,23 +177,29 @@
         state))))
 
 (defn pick-up [state keyin]
-  (let [place (current-place state)
+  (let [place (-> state :world :current-place)
         [player-cell x y] (player-cellxy state)
-        items (player-cellxy :items)
-        item-index (.indexOf (state :world :remaining-hotkeys) keyin)]
-    (-> state
-      ;; dup the item into inventory with hotkey
-      (update-in [:world :player :inventory]
-        (fn [prev-inventory]
-          (conj prev-inventory (nth items item-index))))
-      ;; remove the item from cell
-      (update-in [:world :places place y x :items]
-        (fn [prev-items] (vec (concat (subvec prev-items 0 (dec item-index))
-                                      (subvec prev-items item-index (count prev-items))))))
-      ;; hotkey is no longer available
-      (update-in [:world :remaining-hotkeys]
-        (fn [prev-keys] (vec (concat (subvec prev-keys 0 (dec item-index))
-                                     (subvec prev-keys item-index (count prev-keys)))))))))
+        items (player-cell :items)
+        remaining-hotkeys (-> state :world :remaining-hotkeys)
+        item-index (.indexOf remaining-hotkeys keyin)
+        item (nth items item-index)
+        new-state (-> state
+          ;; dup the item into inventory with hotkey
+          (update-in [:world :player :inventory]
+            (fn [prev-inventory]
+              (conj prev-inventory (nth items item-index))))
+          ;; remove the item from cell
+          (assoc-in [:world :places place y x :items]
+           (vec (concat (subvec items 0 item-index)
+                        (subvec items (inc item-index) (count items)))))
+          ;;;; hotkey is no longer available
+          (assoc-in [:world :remaining-hotkeys]
+            (vec (concat (subvec remaining-hotkeys 0 item-index)
+                         (subvec remaining-hotkeys (inc item-index) (count remaining-hotkeys))))))]
+    (println "picking up at:" x y "item with index" item-index "item" item)
+    (println "new-state" new-state)
+    (println "cell-items (-> state :world :places" place y x ":items)")
+    new-state))
 
 (defn toggle-inventory [state]
   (println "toggle-inventory" (not (-> state :world :show-inventory?)))
@@ -205,32 +211,39 @@
   
   
 (defn update-state [state keyin]
-  (println "last-command " (get-last-command state))
-  (case (get-last-command state)
-    :open (let [state-with-command (set-last-command state nil)]
-            (open-door state-with-command (case keyin
-                                            \h :left
-                                            \j :down
-                                            \k :up
-                                            \l :right)))
-    :close (let [state-with-command (set-last-command state nil)]
-             (close-door state-with-command (case keyin
-                                              \h :left
-                                              \j :down
-                                              \k :up
-                                              \l :right)))
-    :pick-up (let [state-with-command(set-last-command state nil)]
-               (pick-up state-with-command keyin))
-    (case keyin
-      \h (move-left state)
-      \j (move-down state)
-      \k (move-up state)
-      \l (move-right state)
-      \i (toggle-inventory state)
-      \, (toggle-pick-up state)
-      \o (set-last-command state :open)
-      \c (set-last-command state :close)
-      state)))
+  (if (-> state :world :show-pick-up?)
+    ;; handle pickup
+    (let [state-with-command(set-last-command state nil)]
+      (println "picking up")
+      (case keyin
+        \, (toggle-pick-up state-with-command)
+        (pick-up state-with-command keyin)))
+    ;; handle main game commands
+    (do
+      (println "last-command " (get-last-command state))
+      (case (get-last-command state)
+        :open (let [state-with-command (set-last-command state nil)]
+                (open-door state-with-command (case keyin
+                                                \h :left
+                                                \j :down
+                                                \k :up
+                                                \l :right)))
+        :close (let [state-with-command (set-last-command state nil)]
+                 (close-door state-with-command (case keyin
+                                                  \h :left
+                                                  \j :down
+                                                  \k :up
+                                                  \l :right)))
+        (case keyin
+          \h (move-left state)
+          \j (move-down state)
+          \k (move-up state)
+          \l (move-right state)
+          \i (toggle-inventory state)
+          \, (toggle-pick-up state)
+          \o (set-last-command state :open)
+          \c (set-last-command state :close)
+          (do (println "command not found") state))))))
 
 (defn render-pick-up [state]
   ;; maybe draw pick up menu
@@ -245,22 +258,26 @@
                                                                 (%2 :name))
                                             cell-items)
                                (repeat (apply str (repeat 40 " ")))))]
-    (println "player-x" player-x "player-y" player-y)
-    (println "cell" cell)
-    (println "cell-items" cell-items)
-    (println "type-contents" (type contents))
-    (println "contents" contents)
+    ;(println "player-x" player-x "player-y" player-y)
+    ;(println "cell" cell)
+    ;(println "cell-items" cell-items)
+    ;(println "type-contents" (type contents))
+    ;(println "contents" contents)
     (doall (map-indexed (fn [y line] (do
-                                       (println "y" y "line" line "type" (type line))
+    ;                                   (println "y" y "line" line "type" (type line))
                                        (s/put-string (state :screen) 40 (inc y) line {:fg :black :bg :white :styles #{:bold}}))) contents))
     (println "header")
     (s/put-string (state :screen) 40 0 "  Pick up                               " {:fg :black :bg :white :styles #{:underline :bold}}))))
 
 (defn render-inventory [state]
-    (when (-> state :world :show-inventory?)
-        (println "render-inventory")
-        (dorun (map (fn [y] (s/put-string (state :screen) 40 y "                                        " {:bg :white})) (range 23)))
-        (s/put-string (state :screen) 40 0 "  Inventory                             " {:fg :black :bg :white :styles #{:underline}})))
+  (when (-> state :world :show-inventory?)
+    (let [contents (take 22
+                     (concat (map #(format "%-40s"  (% :name)) (-> state :world :player :inventory))
+                             (repeat (apply str (repeat 40 " ")))))]
+      (println "render-inventory")
+      (println "contents" contents)
+      (dorun (map-indexed (fn [y line] (s/put-string (state :screen) 40 (inc y) line {:fg :black :bg :white :styles #{:bold}})) contents))
+      (s/put-string (state :screen) 40 0 "  Inventory                             " {:fg :black :bg :white :styles #{:underline}}))))
 
 (defn render [state]
   (do
@@ -272,7 +289,7 @@
         ;;(println cell x y)
         (when (not (nil? cell))
           (let [cell-items (cell :items)
-                out-char (if (not (nil? cell-items))
+                out-char (if (and cell-items (not (empty? cell-items)))
                            (case :ring 
                              :ring           ["="]
                              :food           ["%"]
@@ -330,10 +347,11 @@
     {:world (init-world) :screen screen :time 0}))
 
 (defn tick [state]
-  (let [keyin  (s/get-key-blocking (state :screen))]
-    (println "got " keyin " type " (type keyin))
-    (let [newstate (update-state state keyin)
-          state-with-tick (update-in newstate [:time] (fn [t] (inc t)))]
-      (render state-with-tick)
-      state-with-tick)))
+  (do
+    (render state)
+    (let [keyin  (s/get-key-blocking (state :screen))]
+      (println "got " keyin " type " (type keyin))
+      (let [newstate (update-state state keyin)
+            state-with-tick (update-in newstate [:time] (fn [t] (inc t)))]
+        state-with-tick))))
 

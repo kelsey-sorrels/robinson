@@ -45,7 +45,9 @@
   {:places {:0 (init-place-0)}
    :current-place :0
    :show-inventory? false
+   :show-pick-up? false
    :last-command nil
+   :remaining-hotkeys (seq "abcdefghijklmnopqrstuvwxyzABCdEFGHIJKLMNOPQRSTUVWQYZ")
    :player {:hp 10
             :max-hp 10
             :$ 0
@@ -86,6 +88,12 @@
                                                                      :horizontal-wall
                                                                      :door-closed])
         true))))
+
+(defn player-cellxy [state]
+  (let [x (-> state :world :player :pos :x)
+        y (-> state :world :player :pos :y)]
+    (get-xy x y (current-place state))))
+ 
 
 (defn move-left [state]
   (let [x (-> state :world :player :pos :x)
@@ -168,9 +176,32 @@
           (assoc-in state [:world :places place target-y target-x :type] :door-closed))
         state))))
 
+(defn pick-up [state keyin]
+  (let [place (current-place state)
+        [player-cell x y] (player-cellxy state)
+        items (player-cellxy :items)
+        item-index (.indexOf (state :world :remaining-hotkeys) keyin)]
+    (-> state
+      ;; dup the item into inventory with hotkey
+      (update-in [:world :player :inventory]
+        (fn [prev-inventory]
+          (conj prev-inventory (nth items item-index))))
+      ;; remove the item from cell
+      (update-in [:world :places place y x :items]
+        (fn [prev-items] (vec (concat (subvec prev-items 0 (dec item-index))
+                                      (subvec prev-items item-index (count prev-items))))))
+      ;; hotkey is no longer available
+      (update-in [:world :remaining-hotkeys]
+        (fn [prev-keys] (vec (concat (subvec prev-keys 0 (dec item-index))
+                                     (subvec prev-keys item-index (count prev-keys)))))))))
+
 (defn toggle-inventory [state]
   (println "toggle-inventory" (not (-> state :world :show-inventory?)))
   (assoc-in state [:world :show-inventory?] (not (-> state :world :show-inventory?))))
+
+(defn toggle-pick-up [state]
+  (println "toggle-pick-up" (not (-> state :world :show-pick-up?)))
+  (assoc-in state [:world :show-pick-up?] (not (-> state :world :show-pick-up?))))
   
   
 (defn update-state [state keyin]
@@ -188,25 +219,57 @@
                                               \j :down
                                               \k :up
                                               \l :right)))
+    :pick-up (let [state-with-command(set-last-command state nil)]
+               (pick-up state-with-command keyin))
     (case keyin
       \h (move-left state)
       \j (move-down state)
       \k (move-up state)
       \l (move-right state)
       \i (toggle-inventory state)
+      \, (toggle-pick-up state)
       \o (set-last-command state :open)
       \c (set-last-command state :close)
       state)))
+
+(defn render-pick-up [state]
+  ;; maybe draw pick up menu
+  (when (-> state :world :show-pick-up?)
+    (println "render-pick-up")
+    (let [player-x   (-> state :world :player :pos :x)
+          player-y   (-> state :world :player :pos :y)
+          cell       (first (get-xy player-x player-y (current-place state)))
+          cell-items (or (cell :items) [])
+          contents   (take 22
+                       (concat (map-indexed #(format "%c %-38s" (nth (-> state :world :remaining-hotkeys) %1)
+                                                                (%2 :name))
+                                            cell-items)
+                               (repeat (apply str (repeat 40 " ")))))]
+    (println "player-x" player-x "player-y" player-y)
+    (println "cell" cell)
+    (println "cell-items" cell-items)
+    (println "type-contents" (type contents))
+    (println "contents" contents)
+    (doall (map-indexed (fn [y line] (do
+                                       (println "y" y "line" line "type" (type line))
+                                       (s/put-string (state :screen) 40 (inc y) line {:fg :black :bg :white :styles #{:bold}}))) contents))
+    (println "header")
+    (s/put-string (state :screen) 40 0 "  Pick up                               " {:fg :black :bg :white :styles #{:underline :bold}}))))
+
+(defn render-inventory [state]
+    (when (-> state :world :show-inventory?)
+        (println "render-inventory")
+        (dorun (map (fn [y] (s/put-string (state :screen) 40 y "                                        " {:bg :white})) (range 23)))
+        (s/put-string (state :screen) 40 0 "  Inventory                             " {:fg :black :bg :white :styles #{:underline}})))
 
 (defn render [state]
   (do
     (println "render")
     (s/clear (state :screen))
     ;; draw map
-    (println "map-with-xy")
     (map-with-xy
       (fn [cell x y]
-        (println cell x y)
+        ;;(println cell x y)
         (when (not (nil? cell))
           (let [cell-items (cell :items)
                 out-char (if (not (nil? cell-items))
@@ -242,18 +305,18 @@
       (-> state :world :player :pos :y)
       (-> state :world :player :sym)
       {:fg :green})
+    ;; maybe draw pick up menu
+    (render-pick-up state)
     ;; maybe draw inventory
-    (when (-> state :world :show-inventory?)
-        (dorun (map (fn [y] (s/put-string (state :screen) 40 y "                                        " {:bg :white})) (range 23)))
-        (s/put-string (state :screen) 40 0 "  Inventory                             " {:fg :black :bg :white :styles #{:underline}}))
+    (render-inventory state)
     ;; draw status bar
     (s/put-string (state :screen) 0  23
-      (format " %s $%d HP:%d(%d) Pw:%d Amr:%d XP:%d/%d T%d                             "
+      (format " %s $%d HP:%d(%d) Pw:%d(%d) Amr:%d XP:%d/%d T%d                         "
         "location-detail"
         (-> state :world :player :$)
         (-> state :world :player :hp)
         (-> state :world :player :max-hp)
-        0 0
+        0 0 10
         (-> state :world :player :xp)
         100
         (-> state :time))

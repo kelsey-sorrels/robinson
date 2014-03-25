@@ -240,7 +240,9 @@
         (println "dropping")
         (case keyin
           \d (toggle-drop state-with-command)
-          (drop-item state-with-command keyin)))
+          (-> state-with-command
+              (drop-item keyin)
+              (assoc-in [:world :show-drop?] false))))
     ;; handle main game commands
     :else
       (do

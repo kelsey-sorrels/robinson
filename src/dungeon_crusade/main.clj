@@ -10,6 +10,25 @@
        (alter-meta! (var ~fn-name) assoc :source (quote ~&form))
        (var ~fn-name)))
 
+(defn fill-missing [pred f vcoll coll]
+  "For each item in coll that (pred item) returns true, replace that element with the result
+   of (f item vcoll-item) where vcoll-item starts with (first vcoll) and proceeds to the next
+   element each time (pred item) is true.
+   Ex: user=> (fill-missing #(not (contains? % :val))
+                            #(assoc %1 :val %2)
+                            [1 2 3]
+                            [{:val \\a} {} {:val \\b} {:val \\c} {} {} {}])
+   ({:val \\a} {:val 1} {:val \\b} {:val \\c} {:val 2} {:val 3} {:val nil})"
+  (if (empty? coll)
+    coll
+    (let [x  (first coll)
+          xs (rest coll)
+          y  (first vcoll)
+          ys (rest vcoll)]
+      (if (pred x)
+        (cons (f x y) (if (empty? xs) [] (fill-missing pred f ys xs)))
+        (cons x (if (empty? xs) [] (fill-missing pred f vcoll xs)))))))
+
 (defn ascii-to-place [ascii extras]
   "ascii: an ascii representatin of the place
    extra: a list of [[k & ks] v] where the first element is a list of keys
@@ -39,15 +58,17 @@
      "|..+## |..|"
      "|..| ##+..|"
      "----   ----"]
-    [[[1 9 :items] [{:type :ring :name "Ring of Power"}]]]))
+    [[[1 9 :items] [{:type :ring   :name "Ring of Power"}]]
+     [[1 1 :items] [{:type :scroll :name "Scroll of Power"}]]]))
 
 (defn init-world []
   {:places {:0 (init-place-0)}
    :current-place :0
    :show-inventory? false
    :show-pick-up? false
+   :show-drop? false
    :last-command nil
-   :remaining-hotkeys (seq "abcdefghijklmnopqrstuvwxyzABCdEFGHIJKLMNOPQRSTUVWQYZ")
+   :remaining-hotkeys (vec (seq "abcdefghijklmnopqrstuvwxyzABCdEFGHIJKLMNOPQRSTUVWQYZ"))
    :player {:hp 10
             :max-hp 10
             :$ 0
@@ -55,7 +76,10 @@
             :level 0
             :sym "@"
             :pos {:x 2 :y 1}
-            :inventory []}})
+            :inventory []
+            :status #{}}
+    :npcs {:0 [{:x 8 :y 1 :type :rat :hp 9 :attacks #{:bite :claw}}
+               {:x 9 :y 1 :type :rat :hp 9 :attacks #{:bite :claw}}]}})
 
 (defn current-place [state]
   (let [current-place (-> state :world :current-place)]
@@ -79,58 +103,126 @@
   (when-first [cell (filter (fn [[cell cx cy]] (and (= x cx) (= y cy))) (with-xy place))]
     cell))
 
-(defn collide? [x y place]
-  (let [cellxy (get-xy x y place)]
+(defn npc-at-xy [x y state]
+  (let [current-place-id (-> state :world :current-place)
+        npcs             (-> state :world :npcs current-place-id)]
+    (some (fn [npc] (when (and (= x (npc :x)) (= y (npc :y))) npc)) npcs)))
+
+(defn collide? [x y state]
+  (let [cellxy (get-xy x y (current-place state))]
     (println "collide? " cellxy)
     (let [cell (first cellxy)]
-      (if (-> cell nil? not)
+      ;; check the cell to see if it is a wall or closed door
+      (or
+        (-> cell nil?)
         (some (fn [collision-type] (= (cell :type) collision-type)) [:vertical-wall
                                                                      :horizontal-wall
                                                                      :door-closed])
-        true))))
+        ;; not a wall or closed door, check for npcs
+        (npc-at-xy x y state)))))
 
 (defn player-cellxy [state]
   (let [x (-> state :world :player :pos :x)
         y (-> state :world :player :pos :y)]
     (get-xy x y (current-place state))))
+
+(defn player-dead? [state]
+  (contains? (-> state :world :player :status) :dead))
  
+(defn do-combat [x y state]
+  (let [npc (npc-at-xy x y state)
+        player (-> state :world :player)
+        current-place-id (-> state :world :current-place)
+        npc-idx (.indexOf (-> state :world :npcs current-place-id) npc)
+        player-hp (player :hp)
+        npc-hp    (npc :hp)
+        npc-dmg 1
+        player-dmg 1]
+    (println "fighting npc" npc "with idx" npc-idx)
+    (cond
+      ;; npc and player still alive?
+      (and (pos? (- player-hp player-dmg))
+           (pos? (- npc-hp npc-dmg)))
+        (-> state
+          ;; modify player hp
+          (update-in [:world :player :hp]
+            (fn [hp] (- hp player-dmg)))
+          ;; modify npc hp
+          (update-in [:world :npcs current-place-id npc-idx :hp]
+          (fn [hp] (- hp npc-dmg))))
+      ;; npc dead?
+      (not (pos? (- npc-hp npc-dmg)))
+        (-> state
+          ;; modify player hp
+          (update-in [:world :player :hp]
+            (fn [hp] (- hp player-dmg)))
+          ;; remove npc
+          (update-in [:world :npcs current-place-id]
+            (fn [npcs]
+              (vec (concat (subvec npcs 0 npc-idx)
+                           (subvec npcs (inc npc-idx) (count npcs))))))
+          ;; TODO add corpse
+          )
+      ;; player dead?
+      (not (pos? (- player-hp player-dmg)))
+        ;; add dead status
+        (-> state
+          (update-in [:world :player :status]
+            (fn [status] (conj status :dead)))))))
 
 (defn move-left [state]
   (let [x (-> state :world :player :pos :x)
         y (-> state :world :player :pos :y)]
-    (if-not (collide? (- x 1) y (current-place state))
+    (if-not (collide? (- x 1) y state)
       (-> state
         (assoc-in [:world :player :pos :x] (- x 1))
         (assoc-in [:world :last-command] :move-left))
-      state)))
+      (if (npc-at-xy (- x 1) y state)
+        ;; collided with npc. Engage in combat.
+        (do-combat (- x 1) y state)
+        ;; collided with a wall or door, nothing to be done.
+        state))))
   
 (defn move-right [state]
   (let [x (-> state :world :player :pos :x)
         y (-> state :world :player :pos :y)]
-    (if-not (collide? (+ x 1) y (current-place state))
+    (if-not (collide? (+ x 1) y state)
       (-> state
         (assoc-in [:world :player :pos :x] (+ x 1))
         (assoc-in [:world :last-command] :move-right))
-      state)))
+      (if (npc-at-xy (+ x 1) y state)
+        ;; collided with npc. Engage in combat.
+        (do-combat (+ x 1) y state)
+        ;; collided with a wall or door, nothing to be done.
+        state))))
   
 (defn move-up [state]
   (let [x (-> state :world :player :pos :x)
         y (-> state :world :player :pos :y)]
-    (if-not (collide? x (- y 1) (current-place state))
+    (if-not (collide? x (- y 1) state)
+      ;; no collision. move up
       (-> state
         (assoc-in [:world :player :pos :y] (- y 1))
         (assoc-in [:world :last-command] :move-up))
-      state)))
+      (if (npc-at-xy x (- y 1) state)
+        ;; collided with npc. Engage in combat.
+        (do-combat x (- y 1) state)
+        ;; collided with a wall or door, nothing to be done.
+        state))))
   
 (defn move-down [state]
   (let [x (-> state :world :player :pos :x)
         y (-> state :world :player :pos :y)]
     (println "move-down")
-    (if-not (collide? x (+ y 1) (current-place state))
+    (if-not (collide? x (+ y 1) state)
       (-> state
         (assoc-in [:world :player :pos :y] (+ y 1))
         (assoc-in [:world :last-command] :move-down))
-      state)))
+      (if (npc-at-xy x (+ y 1) state)
+        ;; collided with npc. Engage in combat.
+        (do-combat x (+ y 1) state)
+        ;; collided with a wall or door, nothing to be done.
+        state))))
 
 (defn open-door [state direction]
   (let [player-x (-> state :world :player :pos :x)
@@ -179,27 +271,65 @@
 (defn pick-up [state keyin]
   (let [place (-> state :world :current-place)
         [player-cell x y] (player-cellxy state)
-        items (player-cell :items)
+        items (into [] (player-cell :items))
         remaining-hotkeys (-> state :world :remaining-hotkeys)
-        item-index (.indexOf remaining-hotkeys keyin)
-        item (nth items item-index)
-        new-state (-> state
-          ;; dup the item into inventory with hotkey
-          (update-in [:world :player :inventory]
-            (fn [prev-inventory]
-              (conj prev-inventory (nth items item-index))))
-          ;; remove the item from cell
-          (assoc-in [:world :places place y x :items]
-           (vec (concat (subvec items 0 item-index)
-                        (subvec items (inc item-index) (count items)))))
-          ;;;; hotkey is no longer available
-          (assoc-in [:world :remaining-hotkeys]
+        item-index (.indexOf (fill-missing #(not %)
+                                           (fn [_ hotkey] hotkey)
+                                           remaining-hotkeys
+                                           (map :hotkey items))
+                              keyin)]
+    (println "item-index" item-index)
+    (if (and (>= item-index 0) (< item-index (count items)))
+      (let [item (nth items item-index)
+            item-with-hotkey (if (item :hotkey) item (assoc item :hotkey keyin))
+            hotkey (item :hotkey)
+            new-state (-> state
+        ;; dup the item into inventory with hotkey
+        (update-in [:world :player :inventory]
+          (fn [prev-inventory]
+            (conj prev-inventory item-with-hotkey)))
+        ;; remove the item from cell
+        (assoc-in [:world :places place y x :items]
+         (vec (concat (subvec items 0 item-index)
+                      (subvec items (inc item-index) (count items)))))
+        ;;;; hotkey is no longer available
+        (assoc-in [:world :remaining-hotkeys]
+          (if (some #(= keyin %) remaining-hotkeys)
             (vec (concat (subvec remaining-hotkeys 0 item-index)
-                         (subvec remaining-hotkeys (inc item-index) (count remaining-hotkeys))))))]
+                         (subvec remaining-hotkeys (inc item-index) (count remaining-hotkeys))))
+            remaining-hotkeys)))]
     (println "picking up at:" x y "item with index" item-index "item" item)
     (println "new-state" new-state)
     (println "cell-items (-> state :world :places" place y x ":items)")
-    new-state))
+    new-state)
+    state)))
+
+(defn drop-item [state keyin]
+  (let [place (-> state :world :current-place)
+        [player-cell x y] (player-cellxy state)
+        items (-> state :world :player :inventory)
+        inventory-hotkeys (map #(% :hotkey) items)
+        item-index (.indexOf inventory-hotkeys keyin)]
+    (if (and (>= item-index 0) (< item-index (count items)))
+      (let [item (nth items item-index)
+            new-state (-> state
+              ;; dup the item into cell
+              (update-in [:world :places place y x :items]
+                (fn [prev-items]
+                  (conj prev-items (assoc item :hotkey keyin))))
+              ;; remove the item from cell
+              (assoc-in [:world :player :inventory]
+               (vec (concat (subvec items 0 item-index)
+                            (subvec items (inc item-index) (count items))))))]
+              ;;;; hotkey is now  available
+              ;(assoc-in [:world :remaining-hotkeys]
+              ;  (vec (concat (subvec remaining-hotkeys 0 item-index)
+              ;               (subvec remaining-hotkeys (inc item-index) (count remaining-hotkeys))))))]
+        (println "dropping at:" x y "item with index" item-index "item" item)
+        (println "new-state" new-state)
+        (println "cell-items (-> state :world :places" place y x ":items)")
+        new-state)
+        state)))
 
 (defn toggle-inventory [state]
   (println "toggle-inventory" (not (-> state :world :show-inventory?)))
@@ -209,41 +339,63 @@
   (println "toggle-pick-up" (not (-> state :world :show-pick-up?)))
   (assoc-in state [:world :show-pick-up?] (not (-> state :world :show-pick-up?))))
   
+(defn toggle-drop [state]
+  (println "toggle-drop" (not (-> state :world :show-drop?)))
+  (assoc-in state [:world :show-drop?] (not (-> state :world :show-drop?))))
+  
   
 (defn update-state [state keyin]
-  (if (-> state :world :show-pick-up?)
-    ;; handle pickup
-    (let [state-with-command(set-last-command state nil)]
-      (println "picking up")
+  (cond
+    ;; handle game over
+    (player-dead? state)
       (case keyin
-        \, (toggle-pick-up state-with-command)
-        (pick-up state-with-command keyin)))
+        \y (-> state (assoc :world (init-world))
+                     (assoc :time 0))
+        \n nil ;TODO: exit game
+        state
+    )
+    ;; handle pickup
+    (-> state :world :show-pick-up?)
+      (let [state-with-command(set-last-command state nil)]
+        (println "picking up")
+        (case keyin
+          \, (toggle-pick-up state-with-command)
+          (pick-up state-with-command keyin)))
+    ;; handle drop
+    (-> state :world :show-drop?)
+      (let [state-with-command(set-last-command state nil)]
+        (println "dropping")
+        (case keyin
+          \d (toggle-drop state-with-command)
+          (drop-item state-with-command keyin)))
     ;; handle main game commands
-    (do
-      (println "last-command " (get-last-command state))
-      (case (get-last-command state)
-        :open (let [state-with-command (set-last-command state nil)]
-                (open-door state-with-command (case keyin
-                                                \h :left
-                                                \j :down
-                                                \k :up
-                                                \l :right)))
-        :close (let [state-with-command (set-last-command state nil)]
-                 (close-door state-with-command (case keyin
+    :else
+      (do
+        (println "last-command " (get-last-command state))
+        (case (get-last-command state)
+          :open (let [state-with-command (set-last-command state nil)]
+                  (open-door state-with-command (case keyin
                                                   \h :left
                                                   \j :down
                                                   \k :up
                                                   \l :right)))
-        (case keyin
-          \h (move-left state)
-          \j (move-down state)
-          \k (move-up state)
-          \l (move-right state)
-          \i (toggle-inventory state)
-          \, (toggle-pick-up state)
-          \o (set-last-command state :open)
-          \c (set-last-command state :close)
-          (do (println "command not found") state))))))
+          :close (let [state-with-command (set-last-command state nil)]
+                   (close-door state-with-command (case keyin
+                                                    \h :left
+                                                    \j :down
+                                                    \k :up
+                                                    \l :right)))
+          (case keyin
+            \h (move-left state)
+            \j (move-down state)
+            \k (move-up state)
+            \l (move-right state)
+            \i (toggle-inventory state)
+            \, (toggle-pick-up state)
+            \d (toggle-drop state)
+            \o (set-last-command state :open)
+            \c (set-last-command state :close)
+            (do (println "command not found") state))))))
 
 (defn render-pick-up [state]
   ;; maybe draw pick up menu
@@ -253,19 +405,22 @@
           player-y   (-> state :world :player :pos :y)
           cell       (first (get-xy player-x player-y (current-place state)))
           cell-items (or (cell :items) [])
+          hotkeys    (-> state :world :remaining-hotkeys)
           contents   (take 22
-                       (concat (map-indexed #(format "%c %-38s" (nth (-> state :world :remaining-hotkeys) %1)
-                                                                (%2 :name))
-                                            cell-items)
+                       (concat (map #(format "%c %-38s" (% :hotkey) (% :name))
+                                    (fill-missing #(not (contains? % :hotkey))
+                                                  #(assoc %1 :hotkey %2)
+                                                  hotkeys
+                                                  cell-items))
                                (repeat (apply str (repeat 40 " ")))))]
-    ;(println "player-x" player-x "player-y" player-y)
-    ;(println "cell" cell)
-    ;(println "cell-items" cell-items)
-    ;(println "type-contents" (type contents))
-    ;(println "contents" contents)
-    (doall (map-indexed (fn [y line] (do
-    ;                                   (println "y" y "line" line "type" (type line))
-                                       (s/put-string (state :screen) 40 (inc y) line {:fg :black :bg :white :styles #{:bold}}))) contents))
+    (println "player-x" player-x "player-y" player-y)
+    (println "cell" cell)
+    (println "cell-items" cell-items)
+    (println "type-contents" (type contents))
+    (println "contents" contents)
+    (doall (map-indexed (fn [y line]
+      (do
+        (s/put-string (state :screen) 40 (inc y) line {:fg :black :bg :white :styles #{:bold}}))) contents))
     (println "header")
     (s/put-string (state :screen) 40 0 "  Pick up                               " {:fg :black :bg :white :styles #{:underline :bold}}))))
 
@@ -279,9 +434,21 @@
       (dorun (map-indexed (fn [y line] (s/put-string (state :screen) 40 (inc y) line {:fg :black :bg :white :styles #{:bold}})) contents))
       (s/put-string (state :screen) 40 0 "  Inventory                             " {:fg :black :bg :white :styles #{:underline}}))))
 
-(defn render [state]
+(defn render-drop [state]
+  (when (-> state :world :show-drop?)
+    (let [contents (take 22
+                     (concat (map #(format "%c %-40s"  (% :hotkey) (% :name))
+                                  (-> state :world :player :inventory))
+                             (repeat (apply str (repeat 40 " ")))))]
+      (println "render-inventory")
+      (println "contents" contents)
+      (dorun (map-indexed (fn [y line] (s/put-string (state :screen) 40 (inc y) line {:fg :black :bg :white :styles #{:bold}})) contents))
+      (s/put-string (state :screen) 40 0 "  Drop Inventory                        " {:fg :black :bg :white :styles #{:underline}}))))
+
+
+(defn render-map [state]
   (do
-    (println "render")
+    (println "begin-render")
     (s/clear (state :screen))
     ;; draw map
     (map-with-xy
@@ -312,7 +479,6 @@
                             :corridor        ["#"]
                             ["?"]))]
             (apply s/put-string (state :screen) x y out-char))))
-        
       (current-place state))
     ;; draw character
     (println (-> state :world :player))
@@ -322,10 +488,23 @@
       (-> state :world :player :pos :y)
       (-> state :world :player :sym)
       {:fg :green})
+    ;; draw npcs
+    (let [current-place-id (-> state :world :current-place)
+          place-npcs       (-> state :world :npcs current-place-id)]
+      (doall (map (fn [npc]
+                    (s/put-string (state :screen)
+                                  (npc :x)
+                                  (npc :y)
+                                  (case (npc :type)
+                                    :rat "r"
+                                    "?")))
+                   place-npcs)))
     ;; maybe draw pick up menu
     (render-pick-up state)
     ;; maybe draw inventory
     (render-inventory state)
+    ;; maybe draw drop menu
+    (render-drop state)
     ;; draw status bar
     (s/put-string (state :screen) 0  23
       (format " %s $%d HP:%d(%d) Pw:%d(%d) Amr:%d XP:%d/%d T%d                         "
@@ -338,7 +517,28 @@
         100
         (-> state :time))
         {:fg :black :bg :white})
+    (s/redraw (state :screen))
+    (println "end-render")))
+
+(defn render-game-over [state]
+  (let [points 0]
+    (s/clear (state :screen))
+    ;; Title
+    (s/put-string (state :screen) 10 1 "You died")
+    (s/put-string (state :screen) 10 3 "Inventory:")
+    (doall (map-indexed
+      (fn [idx item] (s/put-string (state :screen) 10 (+ idx 5) (item :name)))
+      (-> state :world :player :inventory)))
+    (s/put-string (state :screen) 10 22 "Play again? [yn]")
     (s/redraw (state :screen))))
+
+(defn render [state]
+  (cond
+    ;; Is player dead?
+    (player-dead? state)
+      (render-game-over state)
+      ;; Render game over
+    :else (render-map state)))
 
 ;; Example setup and tick fns
 (defsource setup []
@@ -346,12 +546,20 @@
     (s/start screen)
     {:world (init-world) :screen screen :time 0}))
 
+
+(def render-count (atom 0))
 (defn tick [state]
   (do
+    (println "before-render")
+    (swap! render-count inc)
+    (when (> @render-count 1) (throw nil))
     (render state)
+    (println "after-render")
+    (swap! render-count dec)
     (let [keyin  (s/get-key-blocking (state :screen))]
       (println "got " keyin " type " (type keyin))
-      (let [newstate (update-state state keyin)
-            state-with-tick (update-in newstate [:time] (fn [t] (inc t)))]
-        state-with-tick))))
+      (let [newstate (update-state state keyin)]
+        (if-not (nil? newstate)
+          (update-in newstate [:time] (fn [t] (inc t)))
+          nil)))))
 

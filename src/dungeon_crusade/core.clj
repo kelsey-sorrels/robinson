@@ -1,5 +1,6 @@
 (ns dungeon-crusade.core
-  (:use ns-tracker.core)
+  (:use ns-tracker.core
+        clojure.stacktrace)
   (:require dungeon-crusade.main))
 
 (defn check-namespace-changes [track]
@@ -42,7 +43,12 @@
           (loop [state ((get-setup-fn))]
             ; setup function changed? stop ticking
             (when (= (:souce (meta (var-get (get-setup-fn)))) (:source (meta setup-fn-var)))
+              (if (nil? state)
+                (System/exit 0)
               ; tick the old state through the tick-fn to get the new state
-              (recur (try ((get-tick-fn) state) (catch Exception e state))))))
+              (recur (try ((get-tick-fn) state)
+                       (catch Exception ex
+                         (do (print-stack-trace ex)
+                             (throw ex)))))))))
           ; setup function changed, start outer loop over again
         (recur (get-setup-fn))))))

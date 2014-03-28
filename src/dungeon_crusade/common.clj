@@ -69,6 +69,7 @@
    :show-pick-up? false
    :show-drop? false
    :last-command nil
+   :selected-hotkeys #{}
    :remaining-hotkeys (vec (seq "abcdefghijklmnopqrstuvwxyzABCdEFGHIJKLMNOPQRSTUVWQYZ"))
    :player {:hp 10
             :max-hp 10

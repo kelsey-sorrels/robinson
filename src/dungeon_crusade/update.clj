@@ -1,5 +1,5 @@
 (ns dungeon-crusade.update
-  (use     dungeon-crusade.common))
+  (:use     dungeon-crusade.common))
 
 
 (defn do-combat [x y state]
@@ -142,40 +142,51 @@
         state))))
 
 (defn pick-up [state keyin]
-  (let [place (-> state :world :current-place)
-        [player-cell x y] (player-cellxy state)
-        items (into [] (player-cell :items))
-        remaining-hotkeys (-> state :world :remaining-hotkeys)
-        item-index (.indexOf (fill-missing #(not %)
-                                           (fn [_ hotkey] hotkey)
-                                           remaining-hotkeys
-                                           (map :hotkey items))
-                              keyin)]
-    (println "item-index" item-index)
-    (if (and (>= item-index 0) (< item-index (count items)))
-      (let [item (nth items item-index)
-            item-with-hotkey (if (item :hotkey) item (assoc item :hotkey keyin))
-            hotkey (item :hotkey)
-            new-state (-> state
-        ;; dup the item into inventory with hotkey
-        (update-in [:world :player :inventory]
-          (fn [prev-inventory]
-            (conj prev-inventory item-with-hotkey)))
-        ;; remove the item from cell
-        (assoc-in [:world :places place y x :items]
-         (vec (concat (subvec items 0 item-index)
-                      (subvec items (inc item-index) (count items)))))
-        ;;;; hotkey is no longer available
-        (assoc-in [:world :remaining-hotkeys]
-          (if (some #(= keyin %) remaining-hotkeys)
-            (vec (concat (subvec remaining-hotkeys 0 item-index)
-                         (subvec remaining-hotkeys (inc item-index) (count remaining-hotkeys))))
-            remaining-hotkeys)))]
-    (println "picking up at:" x y "item with index" item-index "item" item)
-    (println "new-state" new-state)
-    (println "cell-items (-> state :world :places" place y x ":items)")
-    new-state)
-    state)))
+  (case keyin
+    ;; find all the items in the current cell
+    ;; divide them into selected and not-selected piles using the selected-hotkeys
+    ;; add the selected pile to the player's inventory
+    ;; return the non-selcted pile to the cell
+    ;; remove selected-hotkeys from remaining-hotkeys
+    ;; clear selected-hotkeys
+    :enter (let [place              (-> state :world :current-place)
+                 [player-cell x y]  (player-cellxy state)
+                 items              (into [] (player-cell :items))
+                 remaining-hotkeys  (-> state :world :remaining-hotkeys)
+                 divided-items      (group-by (fn [item] (if (contains? (-> state :world :selected-hotkeys) (item :hotkey))
+                                                             :selected
+                                                             :not-selected))
+                                              (map #(assoc %1 :hotkey %2)
+                                                   items
+                                                   (fill-missing #(not %)
+                                                            (fn [_ hotkey] hotkey)
+                                                            remaining-hotkeys
+                                                            (map :hotkey items))))
+                 selected-items     (vec (divided-items :selected))
+                 not-selected-items (vec (map #(dissoc (divided-items :false) :hotkey) (divided-items :not-selected)))
+                 remaining-hotkeys  (vec (remove #(some (partial = %) (map :hotkey selected-items)) remaining-hotkeys))]
+             (println "divided-items" divided-items)
+             (println "selected-items" selected-items)
+             (println "not-selected-items" not-selected-items)
+               (let [new-state (-> state
+                 ;; dup the item into inventory with hotkey
+                 (update-in [:world :player :inventory]
+                   (fn [prev-inventory]
+                     (vec (concat prev-inventory selected-items))))
+                 ;; remove the item from cell
+                 (assoc-in [:world :places place y x :items]
+                           not-selected-items)
+                 ;;;; hotkey is no longer available
+                 (assoc-in [:world :remaining-hotkeys]
+                     remaining-hotkeys)
+                 ;; reset selected-hotkeys
+                 (assoc-in [:world :selected-hotkeys] #{}))]
+             (println "cell-items (-> state :world :places" place y x ":items)")
+             new-state))
+    (update-in state [:world :selected-hotkeys]
+               (fn [hotkeys] (if (contains? hotkeys keyin)
+                               (disj hotkeys keyin)
+                               (conj hotkeys keyin))))))
 
 (defn drop-item [state keyin]
   (let [place (-> state :world :current-place)
@@ -204,6 +215,14 @@
         new-state)
         state)))
 
+
+(defn do-rest [state]
+  (-> state
+      (update-in [:world :player]
+                 (fn [player] (if (< (int (player :hp)) (player :max-hp))
+                                (assoc-in player [:hp] (+ (player :hp) 0.1))
+                                player)))))
+
 (defn toggle-inventory [state]
   (println "toggle-inventory" (not (-> state :world :show-inventory?)))
   (assoc-in state [:world :show-inventory?] (not (-> state :world :show-inventory?))))
@@ -224,7 +243,7 @@
       (case keyin
         \y (-> state (assoc :world (init-world))
                      (assoc :time 0))
-        \n nil ;TODO: exit game
+        \n nil ;exit game
         state
     )
     ;; handle pickup
@@ -233,7 +252,9 @@
         (println "picking up")
         (case keyin
           \, (toggle-pick-up state-with-command)
-          (pick-up state-with-command keyin)))
+          (-> state-with-command
+              (pick-up keyin)
+              (assoc-in [:world :show-pick-up?] (not= keyin :enter)))))
     ;; handle drop
     (-> state :world :show-drop?)
       (let [state-with-command(set-last-command state nil)]
@@ -270,5 +291,6 @@
             \d (toggle-drop state)
             \o (set-last-command state :open)
             \c (set-last-command state :close)
+            \. (do-rest state)
             (do (println "command not found") state))))))
 

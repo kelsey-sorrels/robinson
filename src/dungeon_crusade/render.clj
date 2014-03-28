@@ -1,7 +1,16 @@
 (ns dungeon-crusade.render
-  (use     dungeon-crusade.common)
-  (require [lanterna.screen :as s]))
+  (:use     dungeon-crusade.common
+            [clojure.pprint :only [print-table]])
+  (:require [lanterna.screen :as s]
+            [lanterna.terminal :as t]
+            [lanterna.constants :as c]
+            [clojure.reflect :as r]))
 
+(def rgb-color {
+ :brown [139 69 19]
+ :black [0 0 0]})
+
+(set! *warn-on-reflection* true)
 
 (defn render-pick-up [state]
   ;; maybe draw pick up menu
@@ -13,7 +22,11 @@
           cell-items (or (cell :items) [])
           hotkeys    (-> state :world :remaining-hotkeys)
           contents   (take 22
-                       (concat (map #(format "%c %-38s" (% :hotkey) (% :name))
+                       (concat (map #(format "%c%c%-38s" (% :hotkey)
+                                                         (if (contains? (-> state :world :selected-hotkeys) (% :hotkey))
+                                                           \+
+                                                           \-)
+                                                         (% :name))
                                     (fill-missing #(not (contains? % :hotkey))
                                                   #(assoc %1 :hotkey %2)
                                                   hotkeys
@@ -80,11 +93,11 @@
                             :vertical-wall   ["|"]
                             :horizontal-wall ["-"]
                             :floor           ["."]
-                            :door-open       ["+" {:fg :red :styles #{:bold}}]
-                            :door-closed     ["+" {:fg :black :bg :red :styles #{:bold}}]
+                            :door-open       ["-" {:fg (rgb-color :brown) :bg (rgb-color :black) :styles #{:bold}}]
+                            :door-closed     ["+" {:fg (rgb-color :brown) :bg (rgb-color :black) :styles #{:bold}}]
                             :corridor        ["#"]
                             ["?"]))]
-            (apply s/put-string (state :screen) x y out-char))))
+              (apply s/put-string (state :screen) x y out-char))))
       (current-place state))
     ;; draw character
     (println (-> state :world :player))
@@ -116,13 +129,14 @@
       (format " %s $%d HP:%d(%d) Pw:%d(%d) Amr:%d XP:%d/%d T%d                         "
         "location-detail"
         (-> state :world :player :$)
-        (-> state :world :player :hp)
+        (int (-> state :world :player :hp))
         (-> state :world :player :max-hp)
         0 0 10
         (-> state :world :player :xp)
         100
         (-> state :time))
         {:fg :black :bg :white})
+    (s/redraw (state :screen))
     (s/redraw (state :screen))
     (println "end-render")))
 

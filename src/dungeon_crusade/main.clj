@@ -6,9 +6,10 @@
 
 ;; Example setup and tick fns
 (defsource setup []
-  (let [screen (s/get-screen :swing)]
+  (let [screen (s/get-screen :swing)
+        terminal (.getTerminal screen)]
     (s/start screen)
-    {:world (init-world) :screen screen :time 0}))
+    {:world (init-world) :screen screen :terminal terminal :time 0}))
 
 (def render-count (atom 0))
 (defn tick [state]

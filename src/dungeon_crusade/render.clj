@@ -76,7 +76,7 @@
         (when (not (nil? cell))
           (let [cell-items (cell :items)
                 out-char (if (and cell-items (not (empty? cell-items)))
-                           (case :ring 
+                           (case (-> cell-items first :type)
                              :ring           ["="]
                              :food           ["%"]
                              :bow            [")"]

@@ -34,8 +34,12 @@
             (fn [npcs]
               (vec (concat (subvec npcs 0 npc-idx)
                            (subvec npcs (inc npc-idx) (count npcs))))))
-          ;; TODO add corpse
-          )
+          ;; maybe add corpse
+          (update-in [:world :places current-place-id y x :items]
+                     (fn [items]
+                       (if (= (rand-int 3) 0)
+                         (conj items {:type :food :name (format "%s corpse" (name (npc :type))) :hunger 10})
+                         items))))
       ;; player dead?
       (not (pos? (- player-hp player-dmg)))
         ;; add dead status

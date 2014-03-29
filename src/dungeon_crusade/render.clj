@@ -126,7 +126,7 @@
     (render-drop state)
     ;; draw status bar
     (s/put-string (state :screen) 0  23
-      (format " %s $%d HP:%d(%d) Pw:%d(%d) Amr:%d XP:%d/%d T%d                         "
+      (format " %s $%d HP:%d(%d) Pw:%d(%d) Amr:%d XP:%d/%d T%d %s                      "
         "location-detail"
         (-> state :world :player :$)
         (int (-> state :world :player :hp))
@@ -134,7 +134,8 @@
         0 0 10
         (-> state :world :player :xp)
         100
-        (-> state :time))
+        (-> state :world :time)
+        (apply str (interpose " " (-> state :world :player :status))))
         {:fg :black :bg :white})
     (s/redraw (state :screen))
     (s/redraw (state :screen))

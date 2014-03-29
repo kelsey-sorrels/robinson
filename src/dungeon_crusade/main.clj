@@ -9,7 +9,7 @@
   (let [screen (s/get-screen :swing)
         terminal (.getTerminal screen)]
     (s/start screen)
-    {:world (init-world) :screen screen :terminal terminal :time 0}))
+    {:world (init-world) :screen screen :terminal terminal}))
 
 (def render-count (atom 0))
 (defn tick [state]
@@ -23,7 +23,5 @@
     (let [keyin  (s/get-key-blocking (state :screen))]
       (println "got " keyin " type " (type keyin))
       (let [newstate (update-state state keyin)]
-        (if-not (nil? newstate)
-          (update-in newstate [:time] (fn [t] (inc t)))
-          nil)))))
+        newstate))))
 

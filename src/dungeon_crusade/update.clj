@@ -299,7 +299,7 @@
     (expander-fn table)))
 
 
-(defn update-state2 [state keyin]
+(defn update-state [state keyin]
   (let [current-state (-> state :world :current-state)
         table         (-> state-transition-table current-state)]
     (println "current-state" current-state)

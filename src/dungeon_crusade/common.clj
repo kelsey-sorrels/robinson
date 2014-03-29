@@ -78,10 +78,6 @@
    :current-place :0
    :time 0
    :current-state :normal
-   ;:show-inventory? false
-   ;:show-pick-up? false
-   ;:show-drop? false
-   ;:last-command nil
    :selected-hotkeys #{}
    :remaining-hotkeys remaining-hotkeys
    :player {:hp 10

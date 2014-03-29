@@ -65,6 +65,7 @@
 (defn init-world []
   {:places {:0 (init-place-0)}
    :current-place :0
+   :time 0
    :show-inventory? false
    :show-pick-up? false
    :show-drop? false
@@ -77,6 +78,7 @@
             :xp 0
             :level 0
             :sym "@"
+            :hunger 0
             :pos {:x 2 :y 1}
             :inventory []
             :status #{}}

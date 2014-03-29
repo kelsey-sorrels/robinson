@@ -237,60 +237,75 @@
   
   
 (defn update-state [state keyin]
-  (cond
-    ;; handle game over
-    (player-dead? state)
-      (case keyin
-        \y (-> state (assoc :world (init-world))
-                     (assoc :time 0))
-        \n nil ;exit game
-        state
-    )
-    ;; handle pickup
-    (-> state :world :show-pick-up?)
-      (let [state-with-command(set-last-command state nil)]
-        (println "picking up")
-        (case keyin
-          \, (toggle-pick-up state-with-command)
-          (-> state-with-command
-              (pick-up keyin)
-              (assoc-in [:world :show-pick-up?] (not= keyin :enter)))))
-    ;; handle drop
-    (-> state :world :show-drop?)
-      (let [state-with-command(set-last-command state nil)]
-        (println "dropping")
-        (case keyin
-          \d (toggle-drop state-with-command)
-          (-> state-with-command
-              (drop-item keyin)
-              (assoc-in [:world :show-drop?] false))))
-    ;; handle main game commands
-    :else
-      (do
-        (println "last-command " (get-last-command state))
-        (case (get-last-command state)
-          :open (let [state-with-command (set-last-command state nil)]
-                  (open-door state-with-command (case keyin
-                                                  \h :left
-                                                  \j :down
-                                                  \k :up
-                                                  \l :right)))
-          :close (let [state-with-command (set-last-command state nil)]
-                   (close-door state-with-command (case keyin
-                                                    \h :left
-                                                    \j :down
-                                                    \k :up
-                                                    \l :right)))
-          (case keyin
-            \h (move-left state)
-            \j (move-down state)
-            \k (move-up state)
-            \l (move-right state)
-            \i (toggle-inventory state)
-            \, (toggle-pick-up state)
-            \d (toggle-drop state)
-            \o (set-last-command state :open)
-            \c (set-last-command state :close)
-            \. (do-rest state)
-            (do (println "command not found") state))))))
+  (some->> state
+     ;; do updates that deal with keyin
+     ((fn [state]
+       (cond
+         ;; handle game over
+         (player-dead? state)
+           (case keyin
+             \y (-> state (assoc :world (init-world)))
+             \n nil ;exit game
+             state
+         )
+         ;; handle pickup
+         (-> state :world :show-pick-up?)
+           (let [state-with-command(set-last-command state nil)]
+             (println "picking up")
+             (case keyin
+               \, (toggle-pick-up state-with-command)
+               (-> state-with-command
+                   (pick-up keyin)
+                   (assoc-in [:world :show-pick-up?] (not= keyin :enter)))))
+         ;; handle drop
+         (-> state :world :show-drop?)
+           (let [state-with-command(set-last-command state nil)]
+             (println "dropping")
+             (case keyin
+               \d (toggle-drop state-with-command)
+               (-> state-with-command
+                   (drop-item keyin)
+                   (assoc-in [:world :show-drop?] false))))
+         ;; handle main game commands
+         :else
+           (do
+             (println "last-command " (get-last-command state))
+             (case (get-last-command state)
+               :open (let [state-with-command (set-last-command state nil)]
+                       (open-door state-with-command (case keyin
+                                                       \h :left
+                                                       \j :down
+                                                       \k :up
+                                                       \l :right)))
+               :close (let [state-with-command (set-last-command state nil)]
+                        (close-door state-with-command (case keyin
+                                                         \h :left
+                                                         \j :down
+                                                         \k :up
+                                                         \l :right)))
+               (case keyin
+                 \h (move-left state)
+                 \j (move-down state)
+                 \k (move-up state)
+                 \l (move-right state)
+                 \i (toggle-inventory state)
+                 \, (toggle-pick-up state)
+                 \d (toggle-drop state)
+                 \o (set-last-command state :open)
+                 \c (set-last-command state :close)
+                 \. (do-rest state)
+                 (do (println "command not found") state)))))))
+     ;; do updates that don't deal with keyin
+     ;; Get hungrier
+     ((fn [state] (update-in state [:world :player :hunger] inc)))
+     ((fn [state] (assoc-in state [:world :player :status]
+                           (set (remove nil?
+                                  (apply conj #{} [(condp <= (-> state :world :player :hunger)
+                                                    40 :dead
+                                                    30 :dying
+                                                    20 :starving
+                                                    10 :hungry
+                                                    nil)
+                                                  ]))))))
+     ((fn [state] (update-in state [:world :time] inc)))))
 

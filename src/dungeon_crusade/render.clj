@@ -12,58 +12,48 @@
 
 (set! *warn-on-reflection* true)
 
-(defn render-pick-up [state]
-  ;; maybe draw pick up menu
-  (when (-> state :world :show-pick-up?)
-    (println "render-pick-up")
-    (let [player-x   (-> state :world :player :pos :x)
-          player-y   (-> state :world :player :pos :y)
-          cell       (first (get-xy player-x player-y (current-place state)))
-          cell-items (or (cell :items) [])
-          hotkeys    (-> state :world :remaining-hotkeys)
-          contents   (take 22
-                       (concat (map #(format "%c%c%-38s" (% :hotkey)
-                                                         (if (contains? (-> state :world :selected-hotkeys) (% :hotkey))
-                                                           \+
-                                                           \-)
-                                                         (% :name))
-                                    (fill-missing #(not (contains? % :hotkey))
-                                                  #(assoc %1 :hotkey %2)
-                                                  hotkeys
-                                                  cell-items))
-                               (repeat (apply str (repeat 40 " ")))))]
-    (println "player-x" player-x "player-y" player-y)
-    (println "cell" cell)
-    (println "cell-items" cell-items)
-    (println "type-contents" (type contents))
+(defn render-multi-select [screen title selected-hotkeys items]
+  (let [contents (take 22
+                       (concat (map #(format "%c%c%-38s"
+                                             (% :hotkey)
+                                             (if (contains? selected-hotkeys (% :hotkey))
+                                               \+
+                                               \-)
+                                             (% :name))
+                                    items)
+                              (repeat (apply str (repeat 40 " ")))))] 
     (println "contents" contents)
     (doall (map-indexed (fn [y line]
       (do
-        (s/put-string (state :screen) 40 (inc y) line {:fg :black :bg :white :styles #{:bold}}))) contents))
+        (s/put-string screen 40 (inc y) line {:fg :black :bg :white :styles #{:bold}}))) contents))
     (println "header")
-    (s/put-string (state :screen) 40 0 "  Pick up                               " {:fg :black :bg :white :styles #{:underline :bold}}))))
+    (s/put-string screen 40 0 (format "  %s                               " title) {:fg :black :bg :white :styles #{:underline :bold}})))
+
+(defn render-pick-up [state]
+  ;; maybe draw pick up menu
+  (when (-> state :world :show-pick-up?)
+    (let [player-x         (-> state :world :player :pos :x)
+          player-y         (-> state :world :player :pos :y)
+          cell             (first (get-xy player-x player-y (current-place state)))
+          cell-items       (or (cell :items) [])
+          hotkeys          (-> state :world :remaining-hotkeys)
+          selected-hotkeys (-> state :world :selected-hotkeys)
+          items            (fill-missing #(not (contains? % :hotkey))
+                                              #(assoc %1 :hotkey %2)
+                                              hotkeys
+                                              cell-items)]
+    (println "player-x" player-x "player-y" player-y)
+    (println "cell" cell)
+    (println "cell-items" cell-items)
+    (render-multi-select (state :screen) "Pick up" selected-hotkeys items))))
 
 (defn render-inventory [state]
   (when (-> state :world :show-inventory?)
-    (let [contents (take 22
-                     (concat (map #(format "%-40s"  (% :name)) (-> state :world :player :inventory))
-                             (repeat (apply str (repeat 40 " ")))))]
-      (println "render-inventory")
-      (println "contents" contents)
-      (dorun (map-indexed (fn [y line] (s/put-string (state :screen) 40 (inc y) line {:fg :black :bg :white :styles #{:bold}})) contents))
-      (s/put-string (state :screen) 40 0 "  Inventory                             " {:fg :black :bg :white :styles #{:underline}}))))
+    (render-multi-select (state :screen) "Inventory" [] (-> state :world :player :inventory))))
 
 (defn render-drop [state]
   (when (-> state :world :show-drop?)
-    (let [contents (take 22
-                     (concat (map #(format "%c %-40s"  (% :hotkey) (% :name))
-                                  (-> state :world :player :inventory))
-                             (repeat (apply str (repeat 40 " ")))))]
-      (println "render-inventory")
-      (println "contents" contents)
-      (dorun (map-indexed (fn [y line] (s/put-string (state :screen) 40 (inc y) line {:fg :black :bg :white :styles #{:bold}})) contents))
-      (s/put-string (state :screen) 40 0 "  Drop Inventory                        " {:fg :black :bg :white :styles #{:underline}}))))
-
+    (render-multi-select (state :screen) "Drop Inventory" [] (-> state :world :player :inventory))))
 
 (defn render-map [state]
   (do
@@ -137,7 +127,6 @@
         (-> state :world :time)
         (apply str (interpose " " (-> state :world :player :status))))
         {:fg :black :bg :white})
-    (s/redraw (state :screen))
     (s/redraw (state :screen))
     (println "end-render")))
 

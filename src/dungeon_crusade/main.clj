@@ -22,6 +22,6 @@
     (swap! render-count dec)
     (let [keyin  (s/get-key-blocking (state :screen))]
       (println "got " keyin " type " (type keyin))
-      (let [newstate (update-state state keyin)]
+      (let [newstate (update-state2 state keyin)]
         newstate))))
 

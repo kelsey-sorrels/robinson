@@ -62,7 +62,18 @@
     [[[1 9 :items] [{:type :ring   :name "Ring of Power"}]]
      [[1 1 :items] [{:type :scroll :name "Scroll of Power"}]]]))
 
+(defn test-inventory []
+  [{:type :food :name "Ration"          :hunger 10}
+   {:type :food :name "Rotten Eyeballs" :hunger 1}])
+
 (defn init-world []
+  ;; Assign hotkeys to inventory and remove from remaining hotkeys
+  (let [inventory (test-inventory)
+        remaining-hotkeys (vec (seq "abcdefghijklmnopqrstuvwxyzABCdEFGHIJKLMNOPQRSTUVWQYZ"))
+        hotkey-groups (split-at (count inventory) remaining-hotkeys)
+        inventory-with-hotkeys (vec (map #(assoc %1 :hotkey %2) inventory (first hotkey-groups)))
+        remaining-hotkeys (vec (apply str (second hotkey-groups)))]
+
   {:places {:0 (init-place-0)}
    :current-place :0
    :time 0
@@ -71,7 +82,7 @@
    :show-drop? false
    :last-command nil
    :selected-hotkeys #{}
-   :remaining-hotkeys (vec (seq "abcdefghijklmnopqrstuvwxyzABCdEFGHIJKLMNOPQRSTUVWQYZ"))
+   :remaining-hotkeys remaining-hotkeys
    :player {:hp 10
             :max-hp 10
             :$ 0
@@ -80,10 +91,10 @@
             :sym "@"
             :hunger 0
             :pos {:x 2 :y 1}
-            :inventory []
+            :inventory inventory-with-hotkeys
             :status #{}}
     :npcs {:0 [{:x 8 :y 1 :type :rat :hp 9 :attacks #{:bite :claw}}
-               {:x 9 :y 1 :type :rat :hp 9 :attacks #{:bite :claw}}]}})
+               {:x 9 :y 1 :type :rat :hp 9 :attacks #{:bite :claw}}]}}))
 
 (defn current-place [state]
   (let [current-place (-> state :world :current-place)]

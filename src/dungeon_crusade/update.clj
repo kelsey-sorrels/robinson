@@ -119,6 +119,18 @@
           (assoc-in state [:world :places place target-y target-x :type] :door-open))
         state))))
 
+(defn open-left [state]
+  (open-door state :left))
+
+(defn open-right [state]
+  (open-door state :right))
+
+(defn open-up [state]
+  (open-door state :up))
+
+(defn open-down [state]
+  (open-door state :down))
+
 (defn close-door [state direction]
   (let [player-x (-> state :world :player :pos :x)
         player-y (-> state :world :player :pos :y)
@@ -141,52 +153,59 @@
           (assoc-in state [:world :places place target-y target-x :type] :door-closed))
         state))))
 
-(defn pick-up [state keyin]
-  (case keyin
+(defn close-left [state]
+  (close-door state :left))
+
+(defn close-right [state]
+  (close-door state :right))
+
+(defn close-up [state]
+  (close-door state :up))
+
+(defn close-down [state]
+  (close-door state :down))
+
+(defn pick-up [state]
     ;; find all the items in the current cell
     ;; divide them into selected and not-selected piles using the selected-hotkeys
     ;; add the selected pile to the player's inventory
     ;; return the non-selcted pile to the cell
     ;; remove selected-hotkeys from remaining-hotkeys
     ;; clear selected-hotkeys
-    :enter (let [place              (-> state :world :current-place)
-                 [player-cell x y]  (player-cellxy state)
-                 items              (into [] (player-cell :items))
-                 remaining-hotkeys  (-> state :world :remaining-hotkeys)
-                 divided-items      (group-by (fn [item] (if (contains? (-> state :world :selected-hotkeys) (item :hotkey))
-                                                             :selected
-                                                             :not-selected))
-                                              (map #(assoc %1 :hotkey %2)
-                                                   items
-                                                   (fill-missing #(not %)
-                                                            (fn [_ hotkey] hotkey)
-                                                            remaining-hotkeys
-                                                            (map :hotkey items))))
-                 selected-items     (vec (divided-items :selected))
-                 not-selected-items (vec (map #(dissoc (divided-items :false) :hotkey) (divided-items :not-selected)))
-                 remaining-hotkeys  (vec (remove #(some (partial = %) (map :hotkey selected-items)) remaining-hotkeys))]
-             (println "divided-items" divided-items)
-             (println "selected-items" selected-items)
-             (println "not-selected-items" not-selected-items)
-               (let [new-state (-> state
-                 ;; dup the item into inventory with hotkey
-                 (update-in [:world :player :inventory]
-                   (fn [prev-inventory]
-                     (vec (concat prev-inventory selected-items))))
-                 ;; remove the item from cell
-                 (assoc-in [:world :places place y x :items]
-                           not-selected-items)
-                 ;;;; hotkey is no longer available
-                 (assoc-in [:world :remaining-hotkeys]
-                     remaining-hotkeys)
-                 ;; reset selected-hotkeys
-                 (assoc-in [:world :selected-hotkeys] #{}))]
-             (println "cell-items (-> state :world :places" place y x ":items)")
-             new-state))
-    (update-in state [:world :selected-hotkeys]
-               (fn [hotkeys] (if (contains? hotkeys keyin)
-                               (disj hotkeys keyin)
-                               (conj hotkeys keyin))))))
+    (let [place              (-> state :world :current-place)
+          [player-cell x y]  (player-cellxy state)
+          items              (into [] (player-cell :items))
+          remaining-hotkeys  (-> state :world :remaining-hotkeys)
+          divided-items      (group-by (fn [item] (if (contains? (-> state :world :selected-hotkeys) (item :hotkey))
+                                                      :selected
+                                                      :not-selected))
+                                       (map #(assoc %1 :hotkey %2)
+                                            items
+                                            (fill-missing #(not %)
+                                                     (fn [_ hotkey] hotkey)
+                                                     remaining-hotkeys
+                                                     (map :hotkey items))))
+          selected-items     (vec (divided-items :selected))
+          not-selected-items (vec (divided-items :not-selected))
+          remaining-hotkeys  (vec (remove #(some (partial = %) (map :hotkey selected-items)) remaining-hotkeys))]
+      (println "divided-items" divided-items)
+      (println "selected-items" selected-items)
+      (println "not-selected-items" not-selected-items)
+        (let [new-state (-> state
+          ;; dup the item into inventory with hotkey
+          (update-in [:world :player :inventory]
+            (fn [prev-inventory]
+              (vec (concat prev-inventory selected-items))))
+          ;; remove the item from cell
+          (assoc-in [:world :places place y x :items]
+                    not-selected-items)
+          ;;;; hotkey is no longer available
+          (assoc-in [:world :remaining-hotkeys]
+              remaining-hotkeys)
+          ;; reset selected-hotkeys
+          (assoc-in [:world :selected-hotkeys] #{}))]
+      (println "cell-items (-> state :world :places" place y x ":items)")
+      new-state)))
 
 (defn drop-item [state keyin]
   (let [place (-> state :world :current-place)
@@ -223,6 +242,13 @@
                                 (assoc-in player [:hp] (+ (player :hp) 0.1))
                                 player)))))
 
+(defn toggle-hotkey [state keyin]
+  (println "toggle-inventory" (not (-> state :world :show-inventory?)))
+  (update-in state [:world :selected-hotkeys]
+             (fn [hotkeys] (if (contains? hotkeys keyin)
+                             (disj hotkeys keyin)
+                             (conj hotkeys keyin)))))
+
 (defn toggle-inventory [state]
   (println "toggle-inventory" (not (-> state :world :show-inventory?)))
   (assoc-in state [:world :show-inventory?] (not (-> state :world :show-inventory?))))
@@ -234,78 +260,77 @@
 (defn toggle-drop [state]
   (println "toggle-drop" (not (-> state :world :show-drop?)))
   (assoc-in state [:world :show-drop?] (not (-> state :world :show-drop?))))
-  
-  
-(defn update-state [state keyin]
-  (some->> state
-     ;; do updates that deal with keyin
-     ((fn [state]
-       (cond
-         ;; handle game over
-         (player-dead? state)
-           (case keyin
-             \y (-> state (assoc :world (init-world)))
-             \n nil ;exit game
-             state
-         )
-         ;; handle pickup
-         (-> state :world :show-pick-up?)
-           (let [state-with-command(set-last-command state nil)]
-             (println "picking up")
-             (case keyin
-               \, (toggle-pick-up state-with-command)
-               (-> state-with-command
-                   (pick-up keyin)
-                   (assoc-in [:world :show-pick-up?] (not= keyin :enter)))))
-         ;; handle drop
-         (-> state :world :show-drop?)
-           (let [state-with-command(set-last-command state nil)]
-             (println "dropping")
-             (case keyin
-               \d (toggle-drop state-with-command)
-               (-> state-with-command
-                   (drop-item keyin)
-                   (assoc-in [:world :show-drop?] false))))
-         ;; handle main game commands
-         :else
-           (do
-             (println "last-command " (get-last-command state))
-             (case (get-last-command state)
-               :open (let [state-with-command (set-last-command state nil)]
-                       (open-door state-with-command (case keyin
-                                                       \h :left
-                                                       \j :down
-                                                       \k :up
-                                                       \l :right)))
-               :close (let [state-with-command (set-last-command state nil)]
-                        (close-door state-with-command (case keyin
-                                                         \h :left
-                                                         \j :down
-                                                         \k :up
-                                                         \l :right)))
-               (case keyin
-                 \h (move-left state)
-                 \j (move-down state)
-                 \k (move-up state)
-                 \l (move-right state)
-                 \i (toggle-inventory state)
-                 \, (toggle-pick-up state)
-                 \d (toggle-drop state)
-                 \o (set-last-command state :open)
-                 \c (set-last-command state :close)
-                 \. (do-rest state)
-                 (do (println "command not found") state)))))))
-     ;; do updates that don't deal with keyin
-     ;; Get hungrier
-     ((fn [state] (update-in state [:world :player :hunger] inc)))
-     ((fn [state] (assoc-in state [:world :player :status]
-                           (set (remove nil?
-                                  (apply conj #{} [(condp <= (-> state :world :player :hunger)
-                                                    40 :dead
-                                                    30 :dying
-                                                    20 :starving
-                                                    10 :hungry
-                                                    nil)
-                                                  ]))))))
-     ((fn [state] (update-in state [:world :time] inc)))))
+
+(defn reinit-world [state]
+  (assoc state :world (init-world)))
+
+(def state-transition-table
+  ;;         starting      transition transition       new
+  ;;         state         symbol     fn               state
+  (let [table {:normal    {\i        [identity         :inventory]
+                           \d        [identity         :drop]
+                           \,        [identity         :pickup]
+                           \e        [identity         :eat]
+                           \o        [identity         :open]
+                           \c        [identity         :close]
+                           \.        [do-rest          :normal]
+                           \h        [move-left        :normal]
+                           \j        [move-down        :normal]
+                           \k        [move-up          :normal]
+                           \l        [move-right       :normal]}
+               :inventory {:escape   [identity         :normal]}
+               :drop      {:escape   [identity         :normal]
+                           :else     [drop-item        :normal]}
+               :pickup    {:escape   [identity         :normal]
+                           :else     [toggle-hotkey    :pickup]
+                           :enter    [pick-up          :normal]}
+               :eat       {:escape   [identity         :normal]}
+               :open      {\h        [open-left        :normal]
+                           \j        [open-down        :normal]
+                           \k        [open-up          :normal]
+                           \l        [open-right       :normal]}
+               :close     {\h        [close-left       :normal]
+                           \j        [close-down       :normal]
+                           \k        [close-up         :normal]
+                           \l        [close-right      :normal]}
+               :dead      {\y        [reinit-world     :normal]
+                           \n        [(constantly nil) :normal]}}
+        expander-fn (fn [table] table)]
+    (expander-fn table)))
+
+
+(defn update-state2 [state keyin]
+  (let [current-state (-> state :world :current-state)
+        table         (-> state-transition-table current-state)]
+    (println "current-state" current-state)
+    (if (or (contains? table keyin) (contains? table :else))
+      (let [[transition-fn new-state] (if (contains? table keyin) (table keyin) (table :else))
+            ;; if the table contains keyin, then pass through transition-fn assuming arity-1 [state]
+            ;; else the transition-fn takes [state keyin]. Bind keying so that it becomes arity-1 [state]
+            transition-fn             (if (contains? table keyin)
+                                        transition-fn
+                                        (fn [state]
+                                          (transition-fn state keyin)))]
+        (some-> state
+            transition-fn
+            (assoc-in [:world :current-state] new-state)
+            ;; do updates that don't deal with keyin
+            ;; Get hungrier
+            ((fn [state] (update-in state [:world :player :hunger] inc)))
+            ((fn [state] (assoc-in state [:world :player :status]
+                                  (set (remove nil?
+                                         (apply conj #{} [(condp <= (-> state :world :player :hunger)
+                                                           40 :dead
+                                                           30 :dying
+                                                           20 :starving
+                                                           10 :hungry
+                                                           nil)
+                                                         ]))))))
+            ((fn [state] (update-in state [:world :current-state]
+                                    (fn [current-state]
+                                      (if (contains? (-> state :world :player :status) :dead)
+                                        :dead
+                                        current-state)))))
+            ((fn [state] (update-in state [:world :time] inc)))))
+      state)))
 

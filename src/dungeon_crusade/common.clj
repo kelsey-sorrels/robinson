@@ -77,10 +77,11 @@
   {:places {:0 (init-place-0)}
    :current-place :0
    :time 0
-   :show-inventory? false
-   :show-pick-up? false
-   :show-drop? false
-   :last-command nil
+   :current-state :normal
+   ;:show-inventory? false
+   ;:show-pick-up? false
+   ;:show-drop? false
+   ;:last-command nil
    :selected-hotkeys #{}
    :remaining-hotkeys remaining-hotkeys
    :player {:hp 10

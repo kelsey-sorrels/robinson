@@ -31,7 +31,7 @@
 
 (defn render-pick-up [state]
   ;; maybe draw pick up menu
-  (when (-> state :world :show-pick-up?)
+  (when (= (-> state :world :current-state) :pickup)
     (let [player-x         (-> state :world :player :pos :x)
           player-y         (-> state :world :player :pos :y)
           cell             (first (get-xy player-x player-y (current-place state)))
@@ -48,11 +48,11 @@
     (render-multi-select (state :screen) "Pick up" selected-hotkeys items))))
 
 (defn render-inventory [state]
-  (when (-> state :world :show-inventory?)
+  (when (= (-> state :world :current-state) :inventory)
     (render-multi-select (state :screen) "Inventory" [] (-> state :world :player :inventory))))
 
 (defn render-drop [state]
-  (when (-> state :world :show-drop?)
+  (when (= (-> state :world :current-state) :drop)
     (render-multi-select (state :screen) "Drop Inventory" [] (-> state :world :player :inventory))))
 
 (defn render-map [state]

@@ -55,6 +55,10 @@
   (when (= (-> state :world :current-state) :drop)
     (render-multi-select (state :screen) "Drop Inventory" [] (-> state :world :player :inventory))))
 
+(defn render-eat [state]
+  (when (= (-> state :world :current-state) :eat)
+    (render-multi-select (state :screen) "Eat Inventory" [] (filter #(= (% :type) :food) (-> state :world :player :inventory)))))
+
 (defn render-map [state]
   (do
     (println "begin-render")
@@ -114,6 +118,8 @@
     (render-inventory state)
     ;; maybe draw drop menu
     (render-drop state)
+    ;; maybe draw eat menu
+    (render-eat state)
     ;; draw status bar
     (s/put-string (state :screen) 0  23
       (format " %s $%d HP:%d(%d) Pw:%d(%d) Amr:%d XP:%d/%d T%d %s                      "

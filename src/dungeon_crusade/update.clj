@@ -243,26 +243,39 @@
                                 player)))))
 
 (defn toggle-hotkey [state keyin]
-  (println "toggle-inventory" (not (-> state :world :show-inventory?)))
+  (println "toggle-hotkey" keyin)
   (update-in state [:world :selected-hotkeys]
              (fn [hotkeys] (if (contains? hotkeys keyin)
                              (disj hotkeys keyin)
                              (conj hotkeys keyin)))))
 
-(defn toggle-inventory [state]
-  (println "toggle-inventory" (not (-> state :world :show-inventory?)))
-  (assoc-in state [:world :show-inventory?] (not (-> state :world :show-inventory?))))
-
-(defn toggle-pick-up [state]
-  (println "toggle-pick-up" (not (-> state :world :show-pick-up?)))
-  (assoc-in state [:world :show-pick-up?] (not (-> state :world :show-pick-up?))))
-  
-(defn toggle-drop [state]
-  (println "toggle-drop" (not (-> state :world :show-drop?)))
-  (assoc-in state [:world :show-drop?] (not (-> state :world :show-drop?))))
-
 (defn reinit-world [state]
   (assoc state :world (init-world)))
+
+(defn eat [state keyin]
+  (let [items (-> state :world :player :inventory)
+        inventory-hotkeys (map #(% :hotkey) items)
+        item-index (.indexOf inventory-hotkeys keyin)]
+    (if (and (>= item-index 0) (< item-index (count items)))
+      (let [item (nth items item-index)
+            new-state (-> state
+              ;; reduce hunger
+              (update-in [:world :player :hunger]
+                (fn [hunger]
+                  (let [new-hunger (- hunger (item :hunger))]
+                    (max 0 new-hunger))))
+              ;; remove the item from inventory
+              (assoc-in [:world :player :inventory]
+               (vec (concat (subvec items 0 item-index)
+                            (subvec items (inc item-index) (count items))))))]
+              ;;;; hotkey is now  available
+              ;(assoc-in [:world :remaining-hotkeys]
+              ;  (vec (concat (subvec remaining-hotkeys 0 item-index)
+              ;               (subvec remaining-hotkeys (inc item-index) (count remaining-hotkeys))))))]
+        (println "new-state" new-state)
+        new-state)
+        state)))
+
 
 (def state-transition-table
   ;;         starting      transition transition       new
@@ -284,7 +297,8 @@
                :pickup    {:escape   [identity         :normal]
                            :else     [toggle-hotkey    :pickup]
                            :enter    [pick-up          :normal]}
-               :eat       {:escape   [identity         :normal]}
+               :eat       {:escape   [identity         :normal]
+                           :else     [eat              :normal]}
                :open      {\h        [open-left        :normal]
                            \j        [open-down        :normal]
                            \k        [open-up          :normal]

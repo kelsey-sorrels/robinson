@@ -7,9 +7,12 @@
 ;; Example setup and tick fns
 (defsource setup []
   (let [screen (s/get-screen :swing)
-        terminal (.getTerminal screen)]
+        terminal (.getTerminal screen)
+        world (if (.exists (clojure.java.io/file "world.save"))
+                (read-string (slurp "world.save"))
+                (init-world))]
     (s/start screen)
-    {:world (init-world) :screen screen :terminal terminal}))
+    {:world world :screen screen :terminal terminal}))
 
 (def render-count (atom 0))
 (defn tick [state]
@@ -23,5 +26,6 @@
     (let [keyin  (s/get-key-blocking (state :screen))]
       (println "got " keyin " type " (type keyin))
       (let [newstate (update-state state keyin)]
+        (spit "world.save" (state :world))
         newstate))))
 

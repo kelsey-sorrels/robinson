@@ -52,8 +52,7 @@
         y (-> state :world :player :pos :y)]
     (if-not (collide? (- x 1) y state)
       (-> state
-        (assoc-in [:world :player :pos :x] (- x 1))
-        (assoc-in [:world :last-command] :move-left))
+        (assoc-in [:world :player :pos :x] (- x 1)))
       (if (npc-at-xy (- x 1) y state)
         ;; collided with npc. Engage in combat.
         (do-combat (- x 1) y state)
@@ -65,8 +64,7 @@
         y (-> state :world :player :pos :y)]
     (if-not (collide? (+ x 1) y state)
       (-> state
-        (assoc-in [:world :player :pos :x] (+ x 1))
-        (assoc-in [:world :last-command] :move-right))
+        (assoc-in [:world :player :pos :x] (+ x 1)))
       (if (npc-at-xy (+ x 1) y state)
         ;; collided with npc. Engage in combat.
         (do-combat (+ x 1) y state)
@@ -79,8 +77,7 @@
     (if-not (collide? x (- y 1) state)
       ;; no collision. move up
       (-> state
-        (assoc-in [:world :player :pos :y] (- y 1))
-        (assoc-in [:world :last-command] :move-up))
+        (assoc-in [:world :player :pos :y] (- y 1)))
       (if (npc-at-xy x (- y 1) state)
         ;; collided with npc. Engage in combat.
         (do-combat x (- y 1) state)
@@ -93,8 +90,7 @@
     (println "move-down")
     (if-not (collide? x (+ y 1) state)
       (-> state
-        (assoc-in [:world :player :pos :y] (+ y 1))
-        (assoc-in [:world :last-command] :move-down))
+        (assoc-in [:world :player :pos :y] (+ y 1)))
       (if (npc-at-xy x (+ y 1) state)
         ;; collided with npc. Engage in combat.
         (do-combat x (+ y 1) state)

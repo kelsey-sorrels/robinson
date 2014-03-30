@@ -59,6 +59,10 @@
   (when (= (-> state :world :current-state) :eat)
     (render-multi-select (state :screen) "Eat Inventory" [] (filter #(= (% :type) :food) (-> state :world :player :inventory)))))
 
+(defn render-quit? [state]
+  (when (= (-> state :world :current-state) :quit?)
+    (s/put-string (state :screen) 1 0 "quit? [yn]")))
+
 (defn render-map [state]
   (do
     (println "begin-render")
@@ -133,6 +137,9 @@
         (-> state :world :time)
         (apply str (interpose " " (-> state :world :player :status))))
         {:fg :black :bg :white})
+
+    ;; draw quit prompt
+    (render-quit? state)
     (s/redraw (state :screen))
     (println "end-render")))
 

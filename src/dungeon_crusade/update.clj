@@ -276,6 +276,28 @@
         new-state)
         state)))
 
+(defn use-stairs [state]
+  (let [[player-cell x y] (player-cellxy state)
+        orig-place-id     (-> state :world :current-place)
+        dest-place-id     (player-cell :dest-place)
+        dest-place        (-> state :world :places dest-place-id)
+        ;; find the location in the destination place that points to the original place
+        dest-cellxy       (some #(when (and (not (nil? (first %)))
+                                             (contains? #{:stairs-up :stairs-down} ((first %) :type))
+                                             (= ((first %) :dest-place) orig-place-id))
+                                       %)
+                                (with-xy dest-place))
+        dest-x             (second dest-cellxy)
+        dest-y             (last dest-cellxy)]
+    (println "dest-x" dest-x "dest-y" dest-y)
+    (if (some #(= (player-cell :type) %) [:stairs-up :stairs-down])
+      (-> state
+          ;; change the place
+          (assoc-in [:world :current-place] (player-cell :dest-place))
+          ;; move player to cell where stairs go back to original place
+          (assoc-in [:world :player :pos] {:x dest-x :y dest-y}))
+      state)))
+
 
 (def state-transition-table
   ;;         starting      transition transition       new
@@ -291,6 +313,8 @@
                            \j        [move-down        :normal]
                            \k        [move-up          :normal]
                            \l        [move-right       :normal]
+                           \>        [use-stairs       :normal]
+                           \<        [use-stairs       :normal]
                            :escape   [identity         :quit?]}
                :inventory {:escape   [identity         :normal]}
                :drop      {:escape   [identity         :normal]

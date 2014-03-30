@@ -94,6 +94,8 @@
                             :door-open       ["-" {:fg (rgb-color :brown) :bg (rgb-color :black) :styles #{:bold}}]
                             :door-closed     ["+" {:fg (rgb-color :brown) :bg (rgb-color :black) :styles #{:bold}}]
                             :corridor        ["#"]
+                            :stairs-down     [">"]
+                            :stairs-up       ["<"]
                             ["?"]))]
               (apply s/put-string (state :screen) x y out-char))))
       (current-place state))

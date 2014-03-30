@@ -60,7 +60,24 @@
      "|..| ##+..|"
      "----   ----"]
     [[[1 9 :items] [{:type :ring   :name "Ring of Power"}]]
-     [[1 1 :items] [{:type :scroll :name "Scroll of Power"}]]]))
+     [[1 1 :items] [{:type :scroll :name "Scroll of Power"}]]
+     [[2 9]        {:type :stairs-down :dest-place :1}]]))
+
+(defn init-place-1 []
+  (ascii-to-place
+    ["-----------            "
+     "|.........|            "
+     "|.........|            "
+     "--------+--            "
+     "        #              "
+     "        ##   --------  "
+     "         #   |......|  "
+     "         ####.......|  "
+     "             --------  "
+     "                       "]
+    [[[6 15  :items] [{:type :ring   :name "Ring of Power"}]]
+     [[6 14  :items] [{:type :scroll :name "Scroll of Power"}]]
+     [[7 19]         {:type :stairs-up :dest-place :0}]]))
 
 (defn test-inventory []
   [{:type :food :name "Ration"          :hunger 10}
@@ -74,7 +91,8 @@
         inventory-with-hotkeys (vec (map #(assoc %1 :hotkey %2) inventory (first hotkey-groups)))
         remaining-hotkeys (vec (apply str (second hotkey-groups)))]
 
-  {:places {:0 (init-place-0)}
+  {:places {:0 (init-place-0)
+            :1 (init-place-1)}
    :current-place :0
    :time 0
    :current-state :normal

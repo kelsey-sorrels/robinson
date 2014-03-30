@@ -290,7 +290,8 @@
                            \h        [move-left        :normal]
                            \j        [move-down        :normal]
                            \k        [move-up          :normal]
-                           \l        [move-right       :normal]}
+                           \l        [move-right       :normal]
+                           :escape   [identity         :quit?]}
                :inventory {:escape   [identity         :normal]}
                :drop      {:escape   [identity         :normal]
                            :else     [drop-item        :normal]}
@@ -308,7 +309,9 @@
                            \k        [close-up         :normal]
                            \l        [close-right      :normal]}
                :dead      {\y        [reinit-world     :normal]
-                           \n        [(constantly nil) :normal]}}
+                           \n        [(constantly nil) :normal]}
+               :quit?     {\y        [(constantly nil) :normal]
+                           :else     [(fn [s _] s)     :normal]}}
         expander-fn (fn [table] table)]
     (expander-fn table)))
 

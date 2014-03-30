@@ -343,7 +343,9 @@
             ((fn [state] (update-in state [:world :current-state]
                                     (fn [current-state]
                                       (if (contains? (-> state :world :player :status) :dead)
-                                        :dead
+                                        ;; delete the save game on player death
+                                        (do (.delete (clojure.java.io/file "world.save"))
+                                            :dead)
                                         current-state)))))
             ((fn [state] (update-in state [:world :time] inc)))))
       state)))

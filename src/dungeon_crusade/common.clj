@@ -97,14 +97,6 @@
   (let [current-place (-> state :world :current-place)]
     (-> state :world :places current-place)))
 
-
-(defn set-last-command [state command]
-  (println "setting last-command " command)
-  (assoc-in state [:last-command] command))
-
-(defn get-last-command [state]
-  (state :last-command))
-
 (defn with-xy [place]
   (mapcat concat (map-indexed (fn [y line] (map-indexed (fn [x cell] [cell x y]) line)) place)))
 

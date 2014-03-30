@@ -17,11 +17,9 @@
 (def render-count (atom 0))
 (defn tick [state]
   (do
-    (println "before-render")
     (swap! render-count inc)
     (when (> @render-count 1) (throw nil))
     (render state)
-    (println "after-render")
     (swap! render-count dec)
     (let [keyin  (s/get-key-blocking (state :screen))]
       (println "got " keyin " type " (type keyin))

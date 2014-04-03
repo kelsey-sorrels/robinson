@@ -113,7 +113,7 @@
         _ (println "former place id" (keyword (str (dec level))))
         up-stairs   (assoc-in (place :up-stairs) [1 :dest-place] (keyword (str (dec level))))
         _ (println "up-stairs" up-stairs)
-        down-stairs (assoc-in (place :down-stairs) [1 :dest-place] (keyword (str level)))
+        down-stairs (assoc-in (place :down-stairs) [1 :dest-place] (keyword (str (inc level))))
         place       (place :place)
         _ (println "place" place)]
     (add-extras place [down-stairs up-stairs])))

@@ -5,7 +5,7 @@
   (require [lanterna.screen :as s]))
 
 ;; Example setup and tick fns
-(defsource setup []
+(defn setup []
   (let [screen (s/get-screen :swing)
         terminal (.getTerminal screen)
         world (if (.exists (clojure.java.io/file "world.save"))

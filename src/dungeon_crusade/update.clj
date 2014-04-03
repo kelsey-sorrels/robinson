@@ -113,10 +113,10 @@
           target-cell   (first target-cellxy)]
       (println "target-cellxy" target-cellxy)
       (println "target-cell" target-cell)
-      (if (and (not (nil? target-cell)) (= (target-cell :type) :door-closed))
+      (if (and (not (nil? target-cell)) (= (target-cell :type) :close-door))
         (let [place (-> state :world :current-place)]
           (println "opening door")
-          (assoc-in state [:world :places place target-y target-x :type] :door-open))
+          (assoc-in state [:world :places place target-y target-x :type] :open-door))
         state))))
 
 (defn open-left [state]
@@ -147,10 +147,10 @@
           target-cell   (first target-cellxy)]
       (println "target-cellxy" target-cellxy)
       (println "target-cell" target-cell)
-      (if (and (not (nil? target-cell)) (= (target-cell :type) :door-open))
+      (if (and (not (nil? target-cell)) (= (target-cell :type) :open-door))
         (let [place (-> state :world :current-place)]
           (println "opening door")
-          (assoc-in state [:world :places place target-y target-x :type] :door-closed))
+          (assoc-in state [:world :places place target-y target-x :type] :close-door))
         state))))
 
 (defn close-left [state]
@@ -280,17 +280,26 @@
   (let [[player-cell x y] (player-cellxy state)
         orig-place-id     (-> state :world :current-place)
         dest-place-id     (player-cell :dest-place)
+        ;; manipulate state so that if there isn't a destination place, create one
+        _ (println "dest-place-id" dest-place-id)
+        _ (println "name" (name dest-place-id))
+        _ (println "int" (read-string (name dest-place-id)))
+        state             (if (contains? (-> state :world :places) dest-place-id)
+                            state
+                            (assoc-in state [:world :places dest-place-id] (init-random-n (read-string (name dest-place-id)))))
+ 
         dest-place        (-> state :world :places dest-place-id)
+
         ;; find the location in the destination place that points to the original place
-        dest-cellxy       (some #(when (and (not (nil? (first %)))
-                                             (contains? #{:stairs-up :stairs-down} ((first %) :type))
+        dest-cellxy       (first (filter #(and (not (nil? (first %)))
+                                             (contains? #{:up-stairs :down-stairs} ((first %) :type))
                                              (= ((first %) :dest-place) orig-place-id))
-                                       %)
-                                (with-xy dest-place))
+                                (with-xy dest-place)))
+        _ (println "dest-cellxy" dest-cellxy)
         dest-x             (second dest-cellxy)
         dest-y             (last dest-cellxy)]
     (println "dest-x" dest-x "dest-y" dest-y)
-    (if (some #(= (player-cell :type) %) [:stairs-up :stairs-down])
+    (if (some #(= (player-cell :type) %) [:up-stairs :down-stairs])
       (-> state
           ;; change the place
           (assoc-in [:world :current-place] (player-cell :dest-place))

@@ -179,9 +179,12 @@
                             (points-to-corridor
                               (edge-to-points x1 y1 x2 y2 (< (rand-int 2) 1))))
                           (rooms-to-edges room-centers))
-        upstairs     [[[(conj (first room-centers) {:type :up-stairs})]]]
-        downstairs   [[[(conj (last room-centers) {:type :down-stairs})]]]]
-    (apply merge-with-canvas (canvas width height) (concat corridors rooms upstairs downstairs))))
+        upstairs     (conj [(first room-centers)] {:type :up-stairs})
+        downstairs   (conj [(last room-centers)] {:type :down-stairs})]
+    {:place (apply merge-with-canvas (canvas width height)
+                   (concat corridors rooms))
+     :up-stairs upstairs
+     :down-stairs downstairs}))
 
 (defn place-to-ascii [place]
   (let [contents (map (fn [line] (apply str
@@ -202,5 +205,5 @@
 
 (defn -main [& args]
   (println "generating...")
-  (doall (map println (place-to-ascii (random-place 55 20)))))
+  (doall (map println (place-to-ascii ((random-place 55 20) :place)))))
 

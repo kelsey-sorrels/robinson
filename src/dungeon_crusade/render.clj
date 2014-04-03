@@ -10,8 +10,6 @@
  :brown [139 69 19]
  :black [0 0 0]})
 
-(set! *warn-on-reflection* true)
-
 (defn render-multi-select [screen title selected-hotkeys items]
   (let [contents (take 22
                        (concat (map #(format "%c%c%-38s"
@@ -67,10 +65,11 @@
   (do
     (println "begin-render")
     (s/clear (state :screen))
+    (println "rendering place" (current-place state))
     ;; draw map
     (map-with-xy
       (fn [cell x y]
-        ;;(println cell x y)
+        (println "render-cell" cell x y)
         (when (not (nil? cell))
           (let [cell-items (cell :items)
                 out-char (if (and cell-items (not (empty? cell-items)))
@@ -91,11 +90,11 @@
                             :vertical-wall   ["|"]
                             :horizontal-wall ["-"]
                             :floor           ["."]
-                            :door-open       ["-" {:fg (rgb-color :brown) :bg (rgb-color :black) :styles #{:bold}}]
-                            :door-closed     ["+" {:fg (rgb-color :brown) :bg (rgb-color :black) :styles #{:bold}}]
+                            :open-door       ["-" {:fg (rgb-color :brown) :bg (rgb-color :black) :styles #{:bold}}]
+                            :close-door     ["+" {:fg (rgb-color :brown) :bg (rgb-color :black) :styles #{:bold}}]
                             :corridor        ["#"]
-                            :stairs-down     [">"]
-                            :stairs-up       ["<"]
+                            :down-stairs     [">"]
+                            :up-stairs       ["<"]
                             ["?"]))]
               (apply s/put-string (state :screen) x y out-char))))
       (current-place state))

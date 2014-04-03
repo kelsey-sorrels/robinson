@@ -1,4 +1,5 @@
-(ns dungeon-crusade.common)
+(ns dungeon-crusade.common
+  (:use [dungeon-crusade.mapgen :exclude [-main]]))
 
 (defmacro defsource
     "Similar to clojure.core/defn, but saves the function's definition in the var's
@@ -29,8 +30,10 @@
                             (cons (f x y) (if (empty? xs) [] (fill-missing pred f ys xs)))
                             (cons x (if (empty? xs) [] (fill-missing pred f vcoll xs)))))))
 
+(defn with-xy [place]
+  (mapcat concat (map-indexed (fn [y line] (map-indexed (fn [x cell] [cell x y]) line)) place)))
 
-(defn ascii-to-place [ascii extras]
+(defn ascii-to-place [ascii]
   "ascii: an ascii representatin of the place
    extra: a list of [[k & ks] v] where the first element is a list of keys
           to assoc-in the place, and the second is the value to associate"
@@ -40,31 +43,38 @@
         \| {:type :vertical-wall}
         \- {:type :horizontal-wall}
         \. {:type :floor}
-        \+ {:type :door-closed}
+        \+ {:type :closed-door}
         \# {:type :corridor}
-        nil))
+        \< {:type :up-stairs}
+        \> {:type :down-stairs}
+        nil))]
     ;; convert ascii to place
-    setting (vec (map (fn [line] (vec (map char-to-cell line))) ascii))
-    ;; add in extras like items, monsters, etc.
-    ;; create a list of functions that can be applied to assoc extras, then create a composition of
-    ;; so that setting can pass through each fn in turn.
-    place ((apply comp (map (fn [e] (partial (fn [e s] (apply assoc-in s e)) e)) extras)) setting)]
-    (println "setting" setting)
-    (println "place" place)
-    place))
+    (vec (map (fn [line] (vec (map char-to-cell line))) ascii))))
+
+(defn add-extras [place extras]
+  "Adds extras to a place like items, and special cell types"
+  "extras are in the format of [[[x y] object] [[x y] object] &]"
+  "objects are cells with a type and maybe items {:type :floor :items []}"
+  ;; create a list of functions that can be applied to assoc extras, then create a composition of
+  ;; so that setting can pass through each fn in turn.
+  (do (println "extras" extras)
+  (reduce (fn [place [[x y] & r]]
+           (let [args (concat [[y x]] r)
+                _ (println "assoc-in place" args)]
+                 (apply assoc-in place args))) place extras)))
 
 (defn init-place-0 []
-  (ascii-to-place
+  (add-extras (ascii-to-place
     ["----   ----"
      "|..+## |..|"
      "|..| ##+..|"
-     "----   ----"]
+     "----   ----"])
     [[[1 9 :items] [{:type :ring   :name "Ring of Power"}]]
      [[1 1 :items] [{:type :scroll :name "Scroll of Power"}]]
-     [[2 9]        {:type :stairs-down :dest-place :1}]]))
+     [[2 9]        {:type :down-stairs :dest-place :1}]]))
 
 (defn init-place-1 []
-  (ascii-to-place
+  (add-extras (ascii-to-place
     ["-----------            "
      "|.........|            "
      "|.........|            "
@@ -74,10 +84,39 @@
      "         #   |......|  "
      "         ####.......|  "
      "             --------  "
-     "                       "]
+     "                       "])
     [[[6 15  :items] [{:type :ring   :name "Ring of Power"}]]
      [[6 14  :items] [{:type :scroll :name "Scroll of Power"}]]
-     [[7 19]         {:type :stairs-up :dest-place :0}]]))
+     [[7 19]         {:type :up-stairs :dest-place :0}]]))
+
+
+(defn init-random-0 []
+  (let [place       (random-place 30 20)
+        _ (println "place" place)
+        _ (println "(place :up-stairs)" (place :up-stairs))
+        _ (println "(place :down-stairs)" (place :down-stairs))
+        down-stairs (assoc-in (place :down-stairs) [1 :dest-place] :1)
+        starting-location [[(-> place :up-stairs first first)
+                            (-> place :up-stairs first second)]
+                           {:type :floor :starting-location true}]
+        _ (println "starting-location" starting-location)
+        place       (place :place)
+        _ (println "place" place)]
+    (add-extras place [down-stairs starting-location])))
+
+(defn init-random-n [level]
+  (let [place       (random-place 30 20)
+        _ (println "place" place)
+        _ (println "(place :up-stairs)" (place :up-stairs))
+        _ (println "(place :down-stairs)" (place :down-stairs))
+        _ (println "level" level)
+        _ (println "former place id" (keyword (str (dec level))))
+        up-stairs   (assoc-in (place :up-stairs) [1 :dest-place] (keyword (str (dec level))))
+        _ (println "up-stairs" up-stairs)
+        down-stairs (assoc-in (place :down-stairs) [1 :dest-place] (keyword (str level)))
+        place       (place :place)
+        _ (println "place" place)]
+    (add-extras place [down-stairs up-stairs])))
 
 (defn test-inventory []
   [{:type :food :name "Ration"          :hunger 10}
@@ -85,14 +124,20 @@
 
 (defn init-world []
   ;; Assign hotkeys to inventory and remove from remaining hotkeys
-  (let [inventory (test-inventory)
-        remaining-hotkeys (vec (seq "abcdefghijklmnopqrstuvwxyzABCdEFGHIJKLMNOPQRSTUVWQYZ"))
-        hotkey-groups (split-at (count inventory) remaining-hotkeys)
+  (let [inventory              (test-inventory)
+        remaining-hotkeys      (vec (seq "abcdefghijklmnopqrstuvwxyzABCdEFGHIJKLMNOPQRSTUVWQYZ"))
+        hotkey-groups          (split-at (count inventory) remaining-hotkeys)
         inventory-with-hotkeys (vec (map #(assoc %1 :hotkey %2) inventory (first hotkey-groups)))
-        remaining-hotkeys (vec (apply str (second hotkey-groups)))]
+        remaining-hotkeys      (vec (apply str (second hotkey-groups)))
+        place-0                (init-random-0)
+        [_ starting-x
+           starting-y]         (first (filter (fn [[cell x y]] (contains? cell :starting-location))
+                                              (with-xy place-0)))
+        starting-pos           {:x starting-x :y starting-y}
+        _ (println "starting-pos" starting-pos)]
 
-  {:places {:0 (init-place-0)
-            :1 (init-place-1)}
+  {:places {:0 place-0}
+            ;:1 (init-place-1)}
    :current-place :0
    :time 0
    :current-state :normal
@@ -105,7 +150,7 @@
             :level 0
             :sym "@"
             :hunger 0
-            :pos {:x 2 :y 1}
+            :pos starting-pos
             :inventory inventory-with-hotkeys
             :status #{}}
     :npcs {:0 [{:x 8 :y 1 :type :rat :hp 9 :attacks #{:bite :claw}}
@@ -114,9 +159,6 @@
 (defn current-place [state]
   (let [current-place (-> state :world :current-place)]
     (-> state :world :places current-place)))
-
-(defn with-xy [place]
-  (mapcat concat (map-indexed (fn [y line] (map-indexed (fn [x cell] [cell x y]) line)) place)))
 
 (defn map-with-xy [f place]
   (doall 
@@ -140,7 +182,7 @@
         (-> cell nil?)
         (some (fn [collision-type] (= (cell :type) collision-type)) [:vertical-wall
                                                                      :horizontal-wall
-                                                                     :door-closed])
+                                                                     :close-door])
         ;; not a wall or closed door, check for npcs
         (npc-at-xy x y state)))))
 

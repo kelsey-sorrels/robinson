@@ -12,7 +12,8 @@
                 (read-string (slurp "world.save"))
                 (init-world))]
     (s/start screen)
-    {:world world :screen screen :terminal terminal}))
+    ;; tick once using the rest (.) command to update visibility
+    (update-state {:world world :screen screen :terminal terminal} \.)))
 
 (def render-count (atom 0))
 (defn tick [state]

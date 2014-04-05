@@ -30,6 +30,9 @@
                             (cons (f x y) (if (empty? xs) [] (fill-missing pred f ys xs)))
                             (cons x (if (empty? xs) [] (fill-missing pred f vcoll xs)))))))
 
+(defn with-xygrid [place]
+  (map-indexed (fn [y line] (map-indexed (fn [x cell] [cell x y]) line)) place))
+
 (defn with-xy [place]
   (mapcat concat (map-indexed (fn [y line] (map-indexed (fn [x cell] [cell x y]) line)) place)))
 

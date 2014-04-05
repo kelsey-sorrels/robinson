@@ -1,5 +1,8 @@
 (ns dungeon-crusade.update
-  (:use     dungeon-crusade.common))
+  (:require clojure.pprint)
+  (:use     
+    dungeon-crusade.common
+    dungeon-crusade.lineofsight))
 
 
 (defn do-combat [x y state]
@@ -116,6 +119,7 @@
       (if (and (not (nil? target-cell)) (= (target-cell :type) :close-door))
         (let [place (-> state :world :current-place)]
           (println "opening door")
+          (println (get-in state [:world :places place target-y target-x]))
           (assoc-in state [:world :places place target-y target-x :type] :open-door))
         state))))
 
@@ -383,6 +387,23 @@
                                         (do (.delete (clojure.java.io/file "world.save"))
                                             :dead)
                                         current-state)))))
+            ((fn [state] (update-in state [:world :places (-> state :world :current-place)]
+                                    (fn [place]
+                                     (let [visibility (map-visibility (let [pos (-> state :world :player :pos)]
+                                                                             [(pos :x) (pos :y)])
+                                                                           cell-blocking?
+                                                                           place)]
+                                       ;(println "visibility")
+                                       ;(clojure.pprint/pprint visibility)
+                                       ;(println "place")
+                                       ;(clojure.pprint/pprint place)
+                                       (vec (map (fn [place-line visibility-line]
+                                                       (vec (map (fn [cell visible?]
+                                                              (if visible?
+                                                                (assoc cell :discovered :true)
+                                                                cell))
+                                                            place-line visibility-line)))
+                                                     place visibility)))))))
             ((fn [state] (update-in state [:world :time] inc)))))
       state)))
 

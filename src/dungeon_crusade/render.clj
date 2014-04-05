@@ -41,8 +41,8 @@
                                               hotkeys
                                               cell-items)]
     (println "player-x" player-x "player-y" player-y)
-    (println "cell" cell)
-    (println "cell-items" cell-items)
+    ;(println "cell" cell)
+    ;(println "cell-items" cell-items)
     (render-multi-select (state :screen) "Pick up" selected-hotkeys items))))
 
 (defn render-inventory [state]
@@ -65,12 +65,13 @@
   (do
     (println "begin-render")
     (s/clear (state :screen))
-    (println "rendering place" (current-place state))
+    ;(println "rendering place" (current-place state))
     ;; draw map
     (map-with-xy
       (fn [cell x y]
-        (println "render-cell" cell x y)
-        (when (not (nil? cell))
+        ;(println "render-cell" cell x y)
+        (when (and (not (nil? cell))
+                   (cell :discovered))
           (let [cell-items (cell :items)
                 out-char (if (and cell-items (not (empty? cell-items)))
                            (case (-> cell-items first :type)

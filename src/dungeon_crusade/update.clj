@@ -399,7 +399,7 @@
                                        ;(clojure.pprint/pprint place)
                                        (vec (map (fn [place-line visibility-line]
                                                        (vec (map (fn [cell visible?]
-                                                              (if visible?
+                                                              (if (and (not (nil? cell)) visible?)
                                                                 (assoc cell :discovered :true)
                                                                 cell))
                                                             place-line visibility-line)))

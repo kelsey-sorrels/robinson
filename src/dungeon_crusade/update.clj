@@ -282,33 +282,33 @@
 
 (defn use-stairs [state]
   (let [[player-cell x y] (player-cellxy state)
-        orig-place-id     (-> state :world :current-place)
-        dest-place-id     (player-cell :dest-place)
-        ;; manipulate state so that if there isn't a destination place, create one
-        _ (println "dest-place-id" dest-place-id)
-        _ (println "name" (name dest-place-id))
-        _ (println "int" (read-string (name dest-place-id)))
-        state             (if (contains? (-> state :world :places) dest-place-id)
-                            state
-                            (assoc-in state [:world :places dest-place-id] (init-random-n (read-string (name dest-place-id)))))
+        orig-place-id     (-> state :world :current-place)]
+    (if (contains? #{:down-stairs :up-stairs} (player-cell :type))
+      (let [dest-place-id     (player-cell :dest-place)
+            ;; manipulate state so that if there isn't a destination place, create one
+            _ (println "dest-place-id" dest-place-id)
+            _ (println "name" (name dest-place-id))
+            _ (println "int" (read-string (name dest-place-id)))
+            state             (if (contains? (-> state :world :places) dest-place-id)
+                                state
+                                (assoc-in state [:world :places dest-place-id] (init-random-n (read-string (name dest-place-id)))))
  
-        dest-place        (-> state :world :places dest-place-id)
+            dest-place        (-> state :world :places dest-place-id)
 
-        ;; find the location in the destination place that points to the original place
-        dest-cellxy       (first (filter #(and (not (nil? (first %)))
-                                             (contains? #{:up-stairs :down-stairs} ((first %) :type))
-                                             (= ((first %) :dest-place) orig-place-id))
-                                (with-xy dest-place)))
-        _ (println "dest-cellxy" dest-cellxy)
-        dest-x             (second dest-cellxy)
-        dest-y             (last dest-cellxy)]
-    (println "dest-x" dest-x "dest-y" dest-y)
-    (if (some #(= (player-cell :type) %) [:up-stairs :down-stairs])
-      (-> state
+            ;; find the location in the destination place that points to the original place
+            dest-cellxy       (first (filter #(and (not (nil? (first %)))
+                                                 (contains? #{:up-stairs :down-stairs} ((first %) :type))
+                                                 (= ((first %) :dest-place) orig-place-id))
+                                    (with-xy dest-place)))
+            _ (println "dest-cellxy" dest-cellxy)
+            dest-x             (second dest-cellxy)
+            dest-y             (last dest-cellxy)]
+        (println "dest-x" dest-x "dest-y" dest-y)
+        (-> state
           ;; change the place
           (assoc-in [:world :current-place] (player-cell :dest-place))
           ;; move player to cell where stairs go back to original place
-          (assoc-in [:world :player :pos] {:x dest-x :y dest-y}))
+          (assoc-in [:world :player :pos] {:x dest-x :y dest-y})))
       state)))
 
 

@@ -156,7 +156,7 @@
             :pos starting-pos
             :inventory inventory-with-hotkeys
             :status #{}}
-    :npcs {:0 [{:x 8 :y 1 :type :rat :hp 9 :attacks #{:bite :claw}}
+    :npcs {:0 [{:x (+ starting-x 3) :y (+ starting-y 3) :type :rat :hp 9 :attacks #{:bite :claw}}
                {:x 9 :y 1 :type :rat :hp 9 :attacks #{:bite :claw}}]}}))
 
 (defn current-place [state]

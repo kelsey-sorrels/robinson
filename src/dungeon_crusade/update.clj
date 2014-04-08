@@ -1,5 +1,6 @@
 (ns dungeon-crusade.update
-  (:require clojure.pprint)
+  (:require clojure.pprint
+            clj-tiny-astar.path)
   (:use     
     dungeon-crusade.common
     dungeon-crusade.lineofsight))
@@ -311,6 +312,37 @@
           (assoc-in [:world :player :pos] {:x dest-x :y dest-y})))
       state)))
 
+(defn move-npc [state result npc]
+  (let [npcs (-> state :world :npcs ((-> state :world :current-place)))
+        _ (println "npc" npc)
+        _ (println "result" result)
+        npc-pos [(npc :x) (npc :y)]
+        player  (-> state :world :player)
+        player-pos [(-> player :pos :x) (-> player :pos :y)]
+        traversable? (fn [[x y]]
+                       (let [place (current-place state)]
+                         (and (< 0 x (count (first place)))
+                              (< 0 y (count place))
+                              (contains? #{:floor
+                                           :open-door
+                                           :corridor}
+                                         (get-in place [y x :type])))))
+        path (clj-tiny-astar.path/a* traversable? npc-pos player-pos)
+        _ (println "path to player" path)
+        new-pos (if (and (not (nil? path))
+                         (> (count path) 1)
+                         (not (= (first (second path)) (first player-pos)))
+                         (not (= (second (second path)) (second player-pos))))
+                  (second path)
+                  npc-pos)
+        new-npc (-> npc
+                    (assoc :x (first new-pos))
+                    (assoc :y (second new-pos)))
+        _ (println "new-npc" new-npc)]
+    (conj result new-npc)))
+ 
+(defn move-npcs [state]
+  (update-in state [:world :npcs (-> state :world :current-place)]  (fn [npcs] (reduce (partial move-npc state) [] npcs))))
 
 (def state-transition-table
   ;;         starting      transition transition       new
@@ -374,12 +406,13 @@
             ((fn [state] (assoc-in state [:world :player :status]
                                   (set (remove nil?
                                          (apply conj #{} [(condp <= (-> state :world :player :hunger)
-                                                           40 :dead
-                                                           30 :dying
-                                                           20 :starving
-                                                           10 :hungry
+                                                           400 :dead
+                                                           300 :dying
+                                                           200 :starving
+                                                           100 :hungry
                                                            nil)
                                                          ]))))))
+            (move-npcs)
             ((fn [state] (update-in state [:world :current-state]
                                     (fn [current-state]
                                       (if (contains? (-> state :world :player :status) :dead)

@@ -1,14 +1,6 @@
 (ns dungeon-crusade.common
-  (:use [dungeon-crusade.mapgen :exclude [-main]]))
-
-(defmacro defsource
-    "Similar to clojure.core/defn, but saves the function's definition in the var's
-       :source meta-data."
-    {:arglists (:arglists (meta (var defn)))}
-    [fn-name & defn-stuff]
-    `(do (defn ~fn-name ~@defn-stuff)
-                (alter-meta! (var ~fn-name) assoc :source (quote ~&form))
-                (var ~fn-name)))
+  (:use [dungeon-crusade.mapgen :exclude [-main]]
+        [dungeon-crusade.itemgen :exclude [-main]]))
 
 
 (defn fill-missing [pred f vcoll coll]
@@ -122,8 +114,7 @@
     (add-extras place [down-stairs up-stairs])))
 
 (defn test-inventory []
-  [{:type :food :name "Ration"          :hunger 10}
-   {:type :food :name "Rotten Eyeballs" :hunger 1}])
+  (gen-items 5))
 
 (defn init-world []
   ;; Assign hotkeys to inventory and remove from remaining hotkeys

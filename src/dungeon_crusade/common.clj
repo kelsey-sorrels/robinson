@@ -110,8 +110,15 @@
         _ (println "up-stairs" up-stairs)
         down-stairs (assoc-in (place :down-stairs) [1 :dest-place] (keyword (str (inc level))))
         place       (place :place)
+        drops       (map (fn [pos]
+                           [pos {:type :floor :items [(gen-item)]}])
+                           (take 5 (shuffle
+                              (map (fn [[_ x y]] [x y]) (filter (fn [[cell x y]] (and (not (nil? cell))
+                                                                                      (= (cell :type) :floor)))
+                                                                (with-xy place))))))
+        _ (println "drops" drops)
         _ (println "place" place)]
-    (add-extras place [down-stairs up-stairs])))
+    (add-extras place (concat [down-stairs up-stairs] drops))))
 
 (defn test-inventory []
   (gen-items 5))
@@ -147,8 +154,8 @@
             :pos starting-pos
             :inventory inventory-with-hotkeys
             :status #{}}
-    :npcs {:0 [{:x (+ starting-x 3) :y (+ starting-y 3) :type :rat :hp 9 :attacks #{:bite :claw}}
-               {:x 9 :y 1 :type :rat :hp 9 :attacks #{:bite :claw}}]}}))
+    :npcs {:0 []}}));{:x (+ starting-x 3) :y (+ starting-y 3) :type :rat :hp 9 :attacks #{:bite :claw}}
+               ;{:x 9 :y 1 :type :rat :hp 9 :attacks #{:bite :claw}}]}}))
 
 (defn current-place [state]
   (let [current-place (-> state :world :current-place)]

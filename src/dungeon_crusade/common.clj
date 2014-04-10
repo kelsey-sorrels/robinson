@@ -172,7 +172,7 @@
 (defn npc-at-xy [x y state]
   (let [current-place-id (-> state :world :current-place)
         npcs             (-> state :world :npcs current-place-id)]
-    (some (fn [npc] (when (and (= x (npc :x)) (= y (npc :y))) npc)) npcs)))
+    (some (fn [npc] (when (and (= x (-> npc :pos :x)) (= y (-> npc :pos :y))) npc)) npcs)))
 
 (defn collide? [x y state]
   (let [cellxy (get-xy x y (current-place state))]

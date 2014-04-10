@@ -1,6 +1,7 @@
 (ns dungeon-crusade.mapgen
   (:require [clojure.math.combinatorics :as combo]
-            [algotools.algos.graph :as graph]))
+            [algotools.algos.graph :as graph]
+            clojure.set))
 
 (defn canvas [width height]
   (vec (repeat height (vec (repeat width nil)))))
@@ -160,17 +161,46 @@
         []))
 
 (defn random-place [width height]
-  (let [num-rooms 9
+  (let [num-rooms 6
         min-width 3
         min-height 3
         max-width 10
-        max-height 4
-        room-bounds  (map (fn [i] (let [x1 (rand-int (- width max-width))
-                                        y1 (rand-int (- height max-height))
-                                        x2 (+ x1 min-width (rand-int (- max-width min-width)))
-                                        y2 (+ y1 min-height (rand-int (- max-height min-height)))]
-                                    [x1 y1 x2 y2]))
-                          (range num-rooms))
+        max-height 8
+        room-bounds  (loop [xl (shuffle (range width))
+                            yl (shuffle (range height))
+                            result []]
+                       (let [x1 (first (filter (partial > (- width max-width)) xl))
+                             y1 (first (filter (partial > (- height max-height)) yl))
+                             _ (println "xl" xl)
+                             _ (println "yl" yl)
+                             x2-potential (map (partial + x1) (shuffle (range min-width max-width)))
+                             x2 (first (filter #(and (contains? (set xl) %)
+                                                     (contains? (set xl) (int (/ (+ x1 %) 2))))
+                                               x2-potential))
+                             y2-potential (map (partial + y1) (shuffle (range min-height max-height)))
+                             y2 (first (filter #(and (contains? (set yl) %)
+                                                     (contains? (set yl) (int (/ (+ y1 %) 2))))
+                                               y2-potential))
+                             _ (println "x2-potential" x2-potential)
+                             _ (println "y2-potential" y2-potential)
+                             _ (println "x1" x1 "y1" y1 "x2" x2 "y2" y2)
+                             xc (int (/ (+ x1 x2) 2))
+                             yc (int (/ (+ y1 y2) 2))
+                             _ (println "xc" xc "yc" yc)
+                             result (conj result [x1 y1 x2 y2])]
+                       (if (>= (count result) num-rooms)
+                         result
+                         (recur (clojure.set/difference (set xl) #{x1 xc x2})
+                                (clojure.set/difference (set yl) #{y1 yc y2})
+                                result))))
+
+                     ;(map (fn [i] (let [
+                     ;                   x1 (rand-int (- width max-width))
+                     ;                   y1 (rand-int (- height max-height))
+                     ;                   x2 (+ x1 min-width (rand-int (- max-width min-width)))
+                     ;                   y2 (+ y1 min-height (rand-int (- max-height min-height)))]
+                     ;               [x1 y1 x2 y2]))
+                     ;     (range num-rooms))
         rooms        (map #(apply room-to-cellsxy %) room-bounds)
         room-centers (map (fn [[x1 y1 x2 y2]] [(int (/ (+ x1 x2) 2))
                                                (int (/ (+ y1 y2) 2))])

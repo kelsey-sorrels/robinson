@@ -86,7 +86,7 @@
 
 
 (defn init-random-0 []
-  (let [place       (random-place 30 20)
+  (let [place       (random-place 50 27)
         _ (println "place" place)
         _ (println "(place :up-stairs)" (place :up-stairs))
         _ (println "(place :down-stairs)" (place :down-stairs))
@@ -100,7 +100,7 @@
     (add-extras place [down-stairs starting-location])))
 
 (defn init-random-n [level]
-  (let [place       (random-place 30 20)
+  (let [place       (random-place 50 27)
         _ (println "place" place)
         _ (println "(place :up-stairs)" (place :up-stairs))
         _ (println "(place :down-stairs)" (place :down-stairs))

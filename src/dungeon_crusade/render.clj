@@ -112,8 +112,8 @@
           place-npcs       (-> state :world :npcs current-place-id)]
       (doall (map (fn [npc]
                     (s/put-string (state :screen)
-                                  (npc :x)
-                                  (npc :y)
+                                  (-> npc :pos :x)
+                                  (-> npc :pos :y)
                                   (case (npc :type)
                                     :rat "r"
                                     "?")))

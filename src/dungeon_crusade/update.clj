@@ -316,7 +316,7 @@
   (let [npcs (-> state :world :npcs ((-> state :world :current-place)))
         _ (println "npc" npc)
         _ (println "result" result)
-        npc-pos [(npc :x) (npc :y)]
+        npc-pos [(-> npc :pos :x) (-> npc :pos :y)]
         player  (-> state :world :player)
         player-pos [(-> player :pos :x) (-> player :pos :y)]
         traversable? (fn [[x y]]
@@ -336,8 +336,8 @@
                   (second path)
                   npc-pos)
         new-npc (-> npc
-                    (assoc :x (first new-pos))
-                    (assoc :y (second new-pos)))
+                    (assoc-in [:pos :x] (first new-pos))
+                    (assoc-in [:pos :y] (second new-pos)))
         _ (println "new-npc" new-npc)]
     (conj result new-npc)))
  

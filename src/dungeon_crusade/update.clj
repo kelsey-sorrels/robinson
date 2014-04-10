@@ -323,6 +323,9 @@
                        (let [place (current-place state)]
                          (and (< 0 x (count (first place)))
                               (< 0 y (count place))
+                              (not-any? (fn [npc] (and (= (-> npc :pos :x) x)
+                                                       (= (-> npc :pos :y) y)))
+                                        npcs)
                               (contains? #{:floor
                                            :open-door
                                            :corridor}

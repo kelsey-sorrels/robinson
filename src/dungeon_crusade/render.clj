@@ -54,6 +54,10 @@
   (when (= (-> state :world :current-state) :drop)
     (render-multi-select (state :screen) "Drop Inventory" [] (-> state :world :player :inventory))))
 
+(defn render-describe-inventory [state]
+  (when (= (-> state :world :current-state) :describe-inventory)
+    (render-multi-select (state :screen) "Describe" [] (-> state :world :player :inventory))))
+
 (defn render-eat [state]
   (when (= (-> state :world :current-state) :eat)
     (render-multi-select (state :screen) "Eat Inventory" [] (filter #(= (% :type) :food) (-> state :world :player :inventory)))))
@@ -133,6 +137,8 @@
     (render-inventory state)
     ;; maybe draw drop menu
     (render-drop state)
+    ;; maybe draw describe menu
+    (render-describe-inventory state)
     ;; maybe draw eat menu
     (render-eat state)
     ;; draw status bar

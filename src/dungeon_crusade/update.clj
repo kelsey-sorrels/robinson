@@ -362,7 +362,19 @@
         (free-cursor))))
 
 (defn describe-inventory [state keyin]
-  state)
+  (let [items (-> state :world :player :inventory)
+        inventory-hotkeys (map #(% :hotkey) items)
+        item-index (.indexOf inventory-hotkeys keyin)]
+    (if (and (>= item-index 0) (< item-index (count items)))
+      (let [item (nth items item-index)
+            new-state (append-log state
+                                  (case (item :type)
+                                    :ring "It's round. A ring."
+                                    :scroll "A scroll with some writing."
+                                    :food "Something to eat."
+                                    "It's like a thing or something."))]
+        new-state)
+        state)))
 
 (defn move-npc [state result npc]
   (let [npcs (-> state :world :npcs ((-> state :world :current-place)))

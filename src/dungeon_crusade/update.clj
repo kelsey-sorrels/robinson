@@ -1,5 +1,6 @@
 (ns dungeon-crusade.update
   (:require clojure.pprint
+            clojure.contrib.core
             clj-tiny-astar.path)
   (:use     
     dungeon-crusade.common
@@ -312,6 +313,57 @@
           (assoc-in [:world :player :pos] {:x dest-x :y dest-y})))
       state)))
 
+(defn init-cursor [state]
+  (let [player-pos (get-in state [:world :player :pos])]
+    (assoc-in state [:world :cursor] player-pos)))
+
+(defn free-cursor [state]
+  (clojure.contrib.core/dissoc-in state [:world :cursor]))
+
+(defn move-cursor-left [state]
+  (let [cursor-pos (get-in state [:world :cursor])
+        cursor-pos (assoc cursor-pos :x (max 0 (dec (cursor-pos :x))))]
+    (assoc-in state [:world :cursor] cursor-pos)))
+
+(defn move-cursor-right [state]
+  (let [cursor-pos (get-in state [:world :cursor])
+        cursor-pos (assoc cursor-pos :x (min (count (first (current-place state))) (inc (cursor-pos :x))))]
+    (assoc-in state [:world :cursor] cursor-pos)))
+
+(defn move-cursor-up [state]
+  (let [cursor-pos (get-in state [:world :cursor])
+        cursor-pos (assoc cursor-pos :y (max 0 (dec (cursor-pos :y))))]
+    (assoc-in state [:world :cursor] cursor-pos)))
+
+(defn move-cursor-down [state]
+  (let [cursor-pos (get-in state [:world :cursor])
+        cursor-pos (assoc cursor-pos :y (min (count (current-place state)) (dec (cursor-pos :y))))]
+    (assoc-in state [:world :cursor] cursor-pos)))
+
+(defn describe-at-cursor [state]
+  (let [cursor-pos (get-in state [:world :cursor])
+        cell       (or (get-in (current-place state) [(cursor-pos :y) (cursor-pos :x)])
+                       {:type :nil})
+        npc        (first (filter (fn [npc] (and (= (cursor-pos :x)
+                                                    (-> npc :pos :x))
+                                                 (= (cursor-pos :y)
+                                                    (-> npc :pos :y))))
+                                  (get-in state [:world :npcs (-> state :world :current-place)])))
+        message   (case (cell :type)
+                    :floor "There is a floor here. You could put things on it if you wanted."
+                    :vertical-wall "There is a wall here."
+                    :horizontal-wall "There is a wall here."
+                    :close-door "There is a closed door here."
+                    :open-door "There is an open-door here."
+                    :corridor "There is a passageway here."
+                    "There is nothing here. Nothing I can tell you anyway.")]
+    (-> state
+        (append-log message)
+        (free-cursor))))
+
+(defn describe-inventory [state keyin]
+  state)
+
 (defn move-npc [state result npc]
   (let [npcs (-> state :world :npcs ((-> state :world :current-place)))
         _ (println "npc" npc)
@@ -363,42 +415,53 @@
     state))
 
 (def state-transition-table
-  ;;         starting      transition transition       new
-  ;;         state         symbol     fn               state
-  (let [table {:normal    {\i        [identity         :inventory]
-                           \d        [identity         :drop]
-                           \,        [identity         :pickup]
-                           \e        [identity         :eat]
-                           \o        [identity         :open]
-                           \c        [identity         :close]
-                           \.        [do-rest          :normal]
-                           \h        [move-left        :normal]
-                           \j        [move-down        :normal]
-                           \k        [move-up          :normal]
-                           \l        [move-right       :normal]
-                           \>        [use-stairs       :normal]
-                           \<        [use-stairs       :normal]
-                           :escape   [identity         :quit?]}
-               :inventory {:escape   [identity         :normal]}
-               :drop      {:escape   [identity         :normal]
-                           :else     [drop-item        :normal]}
-               :pickup    {:escape   [identity         :normal]
-                           :else     [toggle-hotkey    :pickup]
-                           :enter    [pick-up          :normal]}
-               :eat       {:escape   [identity         :normal]
-                           :else     [eat              :normal]}
-               :open      {\h        [open-left        :normal]
-                           \j        [open-down        :normal]
-                           \k        [open-up          :normal]
-                           \l        [open-right       :normal]}
-               :close     {\h        [close-left       :normal]
-                           \j        [close-down       :normal]
-                           \k        [close-up         :normal]
-                           \l        [close-right      :normal]}
-               :dead      {\y        [reinit-world     :normal]
-                           \n        [(constantly nil) :normal]}
-               :quit?     {\y        [(constantly nil) :normal]
-                           :else     [(fn [s _] s)     :normal]}}
+  ;;         starting      transition transition         new
+  ;;         state         symbol     fn                 state
+  (let [table {:normal    {\i        [identity           :inventory]
+                           \d        [identity           :drop]
+                           \,        [identity           :pickup]
+                           \e        [identity           :eat]
+                           \o        [identity           :open]
+                           \c        [identity           :close]
+                           \.        [do-rest            :normal]
+                           \h        [move-left          :normal]
+                           \j        [move-down          :normal]
+                           \k        [move-up            :normal]
+                           \l        [move-right         :normal]
+                           \>        [use-stairs         :normal]
+                           \<        [use-stairs         :normal]
+                           \;        [init-cursor        :describe]
+                           :escape   [identity           :quit?]}
+               :inventory {:escape   [identity           :normal]}
+               :describe  {:escape   [free-cursor        :normal]
+                           \i        [free-cursor        :describe-inventory]
+                           \h        [move-cursor-left   :describe]
+                           \j        [move-cursor-down   :describe]
+                           \k        [move-cursor-up     :describe]
+                           \l        [move-cursor-right  :describe]
+                           :enter    [describe-at-cursor :normal]}
+               :describe-inventory
+                          {:escape   [identity           :normal]
+                           :else     [describe-inventory :normal]}
+               :drop      {:escape   [identity           :normal]
+                           :else     [drop-item          :normal]}
+               :pickup    {:escape   [identity           :normal]
+                           :else     [toggle-hotkey      :pickup]
+                           :enter    [pick-up            :normal]}
+               :eat       {:escape   [identity           :normal]
+                           :else     [eat                :normal]}
+               :open      {\h        [open-left          :normal]
+                           \j        [open-down          :normal]
+                           \k        [open-up            :normal]
+                           \l        [open-right         :normal]}
+               :close     {\h        [close-left         :normal]
+                           \j        [close-down         :normal]
+                           \k        [close-up           :normal]
+                           \l        [close-right        :normal]}
+               :dead      {\y        [reinit-world       :normal]
+                           \n        [(constantly nil)   :normal]}
+               :quit?     {\y        [(constantly nil)   :normal]
+                           :else     [(fn [s _] s)       :normal]}}
         expander-fn (fn [table] table)]
     (expander-fn table)))
 

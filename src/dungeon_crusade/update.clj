@@ -330,7 +330,12 @@
                                            :open-door
                                            :corridor}
                                          (get-in place [y x :type])))))
-        path (clj-tiny-astar.path/a* traversable? npc-pos player-pos)
+        path (try
+               (clj-tiny-astar.path/a* traversable? npc-pos player-pos)
+               (catch Exception e
+                 nil))
+                 ;(println "(clj-tiny-astar.path/a* traversable?" npc-pos player-pos ")")
+                 ;(println (map (fn [y] (map (fn [x] (traversable? [x y])) (range (count (first (current-place state)))))) (range (count (current-place state)))))))
         _ (println "path to player" path)
         new-pos (if (and (not (nil? path))
                          (> (count path) 1)
@@ -346,6 +351,16 @@
  
 (defn move-npcs [state]
   (update-in state [:world :npcs (-> state :world :current-place)]  (fn [npcs] (reduce (partial move-npc state) [] npcs))))
+
+(defn add-npcs [state]
+  (if (< (rand-int 10) 4)
+    (let [[_ x y] (first (shuffle (filter (fn [[cell _ _]] (and (not (nil? cell))
+                                                                (= (cell :type) :floor)))
+                                          (with-xy (current-place state)))))]
+      (update-in state [:world :npcs (-> state :world :current-place)]
+                 (fn [npcs]
+                   (conj npcs {:pos {:x x :y y} :type :rat :hp 9 :attacks #{:bite :claw}}))))
+    state))
 
 (def state-transition-table
   ;;         starting      transition transition       new
@@ -416,6 +431,7 @@
                                                            nil)
                                                          ]))))))
             (move-npcs)
+            (add-npcs)
             ((fn [state] (update-in state [:world :current-state]
                                     (fn [current-state]
                                       (if (contains? (-> state :world :player :status) :dead)

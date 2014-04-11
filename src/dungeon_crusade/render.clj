@@ -1,5 +1,6 @@
 (ns dungeon-crusade.render
   (:use     dungeon-crusade.common
+            dungeon-crusade.lineofsight
             [clojure.pprint :only [print-table]])
   (:require [lanterna.screen :as s]
             [lanterna.terminal :as t]
@@ -109,14 +110,22 @@
       {:fg :green})
     ;; draw npcs
     (let [current-place-id (-> state :world :current-place)
-          place-npcs       (-> state :world :npcs current-place-id)]
+          place-npcs       (-> state :world :npcs current-place-id)
+          visibility (map-visibility (let [pos (-> state :world :player :pos)]
+                                          [(pos :x) (pos :y)])
+                                     cell-blocking?
+                                     (current-place state))]
       (doall (map (fn [npc]
-                    (s/put-string (state :screen)
-                                  (-> npc :pos :x)
-                                  (-> npc :pos :y)
-                                  (case (npc :type)
-                                    :rat "r"
-                                    "?")))
+                    (let [x       (-> npc :pos :x)
+                          y       (-> npc :pos :y)
+                          visible (get-in visibility [y x])]
+                      (when visible
+                        (s/put-string (state :screen)
+                                      (-> npc :pos :x)
+                                      (-> npc :pos :y)
+                                      (case (npc :type)
+                                        :rat "r"
+                                        "?")))))
                    place-npcs)))
     ;; maybe draw pick up menu
     (render-pick-up state)

@@ -10,10 +10,21 @@
         terminal (.getTerminal screen)
         world (if (.exists (clojure.java.io/file "world.save"))
                 (read-string (slurp "world.save"))
-                (init-world))]
+                (init-world))
+         ;; load quests
+         _ (doall (map #(load-file (.getPath %))
+                     (.listFiles (clojure.java.io/file "src/dungeon_crusade/quests"))))
+
+         ;; get a list of all the quests that have been loaded
+         quests (map deref (flatten (map #(-> % ns-publics vals)
+                                         (filter #(.contains (-> % ns-name str)
+                                                             "dungeon-crusade.quests")
+                                                 (all-ns)))))
+        _ (doall (map #(println "Loaded quest" (% :name)) quests))]
+
     (s/start screen)
     ;; tick once using the rest (.) command to update visibility
-    (update-state {:world world :screen screen :terminal terminal} \.)))
+    (update-state {:world world :screen screen :terminal terminal :quests quests} \.)))
 
 (def render-count (atom 0))
 (defn tick [state]

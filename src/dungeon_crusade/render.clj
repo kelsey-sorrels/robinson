@@ -148,7 +148,15 @@
         (-> state :world :time)
         (apply str (interpose " " (-> state :world :player :status))))
         {:fg :black :bg :white})
-
+    ;; draw log
+    (when-let [message (-> state :world :log last)]
+      (println "message" message)
+      (when (< (- (-> state :world :time) (message :time)) 5)
+        (s/put-string (state :screen) 0 0 (message :text))))
+    ;; draw cursor
+    (if-let [cursor-pos (-> state :world :cursor)]
+      (s/move-cursor (state :screen) (cursor-pos :x) (cursor-pos :y))
+      (s/move-cursor (state :screen) 0 0))
     ;; draw quit prompt
     (render-quit? state)
     (s/redraw (state :screen))

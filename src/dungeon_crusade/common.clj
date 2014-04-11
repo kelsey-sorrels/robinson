@@ -144,6 +144,7 @@
    :current-state :normal
    :selected-hotkeys #{}
    :remaining-hotkeys remaining-hotkeys
+   :log []
    :player {:hp 10
             :max-hp 10
             :$ 0
@@ -195,3 +196,6 @@
 (defn player-dead? [state]
   (contains? (-> state :world :player :status) :dead))
  
+(defn append-log [state message]
+  (assoc-in state [:world :log] (vec (take 5 (conj (-> state :world :log) {:text message :time (-> state :world :time)})))))
+

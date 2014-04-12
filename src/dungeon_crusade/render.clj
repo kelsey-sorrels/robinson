@@ -14,7 +14,8 @@
 (defn render-multi-select [screen title selected-hotkeys items]
   (let [contents (take 22
                        (concat (map #(format "%c%c%-38s"
-                                             (% :hotkey)
+                                             (or (% :hotkey)
+                                                 \ )
                                              (if (contains? selected-hotkeys (% :hotkey))
                                                \+
                                                \-)
@@ -61,6 +62,10 @@
 (defn render-eat [state]
   (when (= (-> state :world :current-state) :eat)
     (render-multi-select (state :screen) "Eat Inventory" [] (filter #(= (% :type) :food) (-> state :world :player :inventory)))))
+
+(defn render-quests [state]
+  (when (= (-> state :world :current-state) :quests)
+    (render-multi-select (state :screen) "Quests" [] (-> state :quests))))
 
 (defn render-quit? [state]
   (when (= (-> state :world :current-state) :quit?)
@@ -141,6 +146,8 @@
     (render-describe-inventory state)
     ;; maybe draw eat menu
     (render-eat state)
+    ;; maybe draw quests menu
+    (render-quests state)
     ;; draw status bar
     (s/put-string (state :screen) 0  23
       (format " %s $%d HP:%d(%d) Pw:%d(%d) Amr:%d XP:%d/%d T%d %s                      "

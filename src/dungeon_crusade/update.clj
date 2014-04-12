@@ -426,6 +426,23 @@
                    (conj npcs {:pos {:x x :y y} :type :rat :hp 9 :attacks #{:bite :claw}}))))
     state))
 
+(defn update-quests [state]
+  (reduce (fn [state quest]
+            (let [stage-id (get-in state [:world :quests (quest :id) :stage] :0)]
+              (if (nil? stage-id)
+                ;; current stage of quest is nil. Ie: it is completed.
+                state
+                (let [stage    (-> quest :stages stage-id)]
+                  (println "exec quest" quest)
+                  (println "stage-id" stage-id)
+                  (println "exec stage" stage)
+                  (if ((stage :pred) state)
+                    (-> state
+                        ((stage :update))
+                        ((fn [state] (assoc-in state [:world :quests :stage] ((stage :nextstagefn) stage)))))
+                    state)))))
+            state (state :quests)))
+
 (def state-transition-table
   ;;         starting      transition transition         new
   ;;         state         symbol     fn                 state
@@ -443,6 +460,7 @@
                            \>        [use-stairs         :normal]
                            \<        [use-stairs         :normal]
                            \;        [init-cursor        :describe]
+                           \Q        [identity           :quests]
                            :escape   [identity           :quit?]}
                :inventory {:escape   [identity           :normal]}
                :describe  {:escape   [free-cursor        :normal]
@@ -452,6 +470,7 @@
                            \k        [move-cursor-up     :describe]
                            \l        [move-cursor-right  :describe]
                            :enter    [describe-at-cursor :normal]}
+               :quests    {:escape   [identity           :normal]}
                :describe-inventory
                           {:escape   [identity           :normal]
                            :else     [describe-inventory :normal]}
@@ -507,6 +526,7 @@
                                                          ]))))))
             (move-npcs)
             (add-npcs)
+            (update-quests)
             ((fn [state] (update-in state [:world :current-state]
                                     (fn [current-state]
                                       (if (contains? (-> state :world :player :status) :dead)

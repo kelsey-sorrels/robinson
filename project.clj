@@ -1,5 +1,6 @@
 (defproject dungeon-crusade "0.0.1-SNAPSHOT"
   :description "dungeon-crusade"
+  :plugins      [[lein-marginalia "0.7.1"]]
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [ns-tracker "0.2.2"]
                  [org.clojure/math.combinatorics "0.0.7"]

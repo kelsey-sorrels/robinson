@@ -13,7 +13,8 @@
                 (init-world))
          ;; load quests
          _ (doall (map #(load-file (.getPath %))
-                     (.listFiles (clojure.java.io/file "src/dungeon_crusade/quests"))))
+                     (filter (fn [file] (.endsWith (.getPath file) ".clj"))
+                             (.listFiles (clojure.java.io/file "src/dungeon_crusade/quests")))))
 
          ;; get a list of all the quests that have been loaded
          quests (map deref (flatten (map #(-> % ns-publics vals)

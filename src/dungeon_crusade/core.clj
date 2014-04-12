@@ -1,10 +1,17 @@
+;; ## A roguelike focused on immutability.##
+;;
 (ns dungeon-crusade.core
   (:use dungeon-crusade.main
-        clojure.stacktrace)
-  (:require
-        dungeon-crusade.lineofsight))
+        clojure.stacktrace))
 
-(defn -main []
+(defn -main
+  "Entry default point to application.
+
+   Uses setup and tick function from dungeon-crusade.main.
+   Setup returns the initial state of the application.
+   Tick takes the current state of the application and returns
+   the next state after one iteration."
+  []
   (do
     ; start with initial state from setup-fn
     (loop [state (setup)]

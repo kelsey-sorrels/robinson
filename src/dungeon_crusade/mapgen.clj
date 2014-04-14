@@ -1,22 +1,33 @@
+;; Functions for randomly generating maps.
 (ns dungeon-crusade.mapgen
   (:require [clojure.math.combinatorics :as combo]
             [algotools.algos.graph :as graph]
             clojure.set))
 
-(defn canvas [width height]
+(defn canvas
+  "Create a blank grid using `nil` for cell values."
+  [width height]
   (vec (repeat height (vec (repeat width nil)))))
 
-(defn draw-ascii-place [ascii]
-  (doall (map println ascii)))
+(defn make-room
+  "A room is a map with
 
-(defn make-room [min-x min-y max-x max-y room-idx]
+  * an id
+
+  * x and y values for the upper-left corner
+
+  * a width a height"
+  [min-x min-y max-x max-y room-idx]
   {:id     (keyword (str room-idx))
    :x      (+ min-x (rand-int max-x))
    :y      (+ min-y (rand-int max-y))
    :width  (+ 2 (rand-int 5))
    :height (+ 2 (rand-int 5))})
 
-(defn rooms-to-edges [nodes]
+(defn rooms-to-edges
+  "Generate a random set of edges between rooms such that each room
+   is traversable from every other room."
+  [nodes]
   (let [;_ (println "all nodes" nodes)
         minimum-edges (map #(vector %1 %2) nodes (rest nodes))
         all-edges (combo/combinations nodes 2)
@@ -27,7 +38,12 @@
     ;(println "union-edges" union-edges)
     union-edges))
 
-(defn edge-to-points [start-x start-y end-x end-y orientation]
+(defn edge-to-points
+  "Generate a grid of points (inclusive) that connect the start point with the end point.
+
+   If `orientation` is `true`, the path travels first horizontally then vertically
+   from start to end and vice versa if `false`."
+  [start-x start-y end-x end-y orientation]
   (let [min-x (min start-x end-x)
         max-x (max start-x end-x)
         min-y (min start-y end-y)
@@ -44,10 +60,14 @@
             points (distinct (concat vert horz))]
        points))))
 
-(defn points-to-corridor [points]
+(defn points-to-corridor
+  "Convert a grid of points `[x y]` into `[x y {:type :corridor}]`."
+  [points]
   (map (fn [line] (map (fn [[x y]] [x y {:type :corridor}]) line)) points))
 
-(defn room-to-cellsxy  [min-x min-y max-x max-y]
+(defn room-to-cellsxy
+  "Convert the bounds of a room into a grid of points that represent the room."
+  [min-x min-y max-x max-y]
   (let [top    [(map (fn [x] [x min-y {:type :horizontal-wall}]) (range min-x (inc max-x)))]
         bottom [(map (fn [x] [x max-y {:type :horizontal-wall}]) (range min-x (inc max-x)))]
         middle-line (concat [[min-x {:type :vertical-wall}]]
@@ -57,13 +77,16 @@
         lines (concat top middle-lines bottom)]
     lines))
 
-(defn cellsxy-to-place [cells-xy]
+(defn cellsxy-to-place
+  "Convert a grid of `[x y cell]` to cell."
+  [cells-xy]
   (let [lines-xy (map (fn [[_ v]] (first v)) (group-by second cells-xy))
         lines    (map (fn [line] (map last (group-by first line))) lines-xy)]
     lines))
 
 
 (defn cellsxy-to-ascii [cells-xy]
+  "Convert a grid of cells into a list of string that can be rendered."
   (let [contents (map (fn [line] (apply str
                                       (map (fn [[x y cell]]
                                         (if (nil? cell)
@@ -76,13 +99,10 @@
                                        line))) cells-xy)]
     contents))
 
-(def cell-type-order
-  {:floor 0
-   :horizontal-wall 1
-   :vertical-wall 2
-   :corridor 3
-   :nil 4})
-(defn merge-cells [cell1 cell2]
+(defn merge-cells
+  "When merging cells, given their types, determine
+   the type of the resulting cell."
+  [cell1 cell2]
   (do ;(println "cell1" cell1 "cell2" cell2)
   (case (cell1 :type)
     :floor (case (cell2 :type)
@@ -146,7 +166,10 @@
              :nil :down-stairs)
     :nil (cell2 :type))))
 
-(defn merge-with-canvas [canvas & cells-xy]
+(defn merge-with-canvas
+  "Merge a grid of `[x y cell]` into an existing grid. The result is a merged grid
+   following the rules of `merge-cells`."
+  [canvas & cells-xy]
   (let [f (apply comp (map (fn [[x y cell]]
                              (fn [c] (update-in c [y x]
                                (fn [canvas-cell]
@@ -155,12 +178,10 @@
                            (apply concat (apply concat cells-xy))))]
    (f canvas)))
 
-(defn graph-to-map [graph]
-  (let [rooms  (graph :rooms)
-        edges  (graph :edges)]
-        []))
-
-(defn random-place [width height]
+(defn random-place
+  "Create a grid of random rooms with corridors connecting them and doors
+   where corridors connect to rooms."
+  [width height]
   (let [num-rooms 9
         min-width 3
         min-height 3
@@ -218,7 +239,9 @@
      :up-stairs upstairs
      :down-stairs downstairs}))
 
-(defn place-to-ascii [place]
+(defn place-to-ascii
+  "Convert a grid of cells into a list of strings so that it can be rendered."
+  [place]
   (let [contents (map (fn [line] (apply str
                                       (map (fn [cell]
                                         (if (nil? cell)
@@ -235,7 +258,9 @@
                                        line))) place)]
     contents))
 
-(defn -main [& args]
+(defn -main
+  "Generate a random grid and print it out."
+  [& args]
   (println "generating...")
   (doall (map println (place-to-ascii ((random-place 55 20) :place)))))
 

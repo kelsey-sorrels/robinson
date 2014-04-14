@@ -5,9 +5,18 @@
   (require [lanterna.screen :as s]))
 
 ;; Example setup and tick fns
-(defn setup []
+(defn setup
+  "Create the intial `state` value.
+
+   `state` contains
+    
+   * a `:world` that contains places, npcs, a player
+
+   * a `:screen` to render the world
+
+   * `quests` that are loaded dynamically on startup."
+  []
   (let [screen (s/get-screen :swing)
-        terminal (.getTerminal screen)
         world (if (.exists (clojure.java.io/file "world.save"))
                 (read-string (slurp "world.save"))
                 (init-world))
@@ -25,10 +34,20 @@
 
     (s/start screen)
     ;; tick once using the rest (.) command to update visibility
-    (update-state {:world world :screen screen :terminal terminal :quests quests} \.)))
+    (update-state {:world world :screen screen :quests quests} \.)))
 
+;; Sometimes rendering can loop and freeze the game. Keep track of how many times
+;; `render` has been called in each tick and throw if render-coutn > 1.
 (def render-count (atom 0))
-(defn tick [state]
+
+(defn tick
+  "The game loop.
+
+   Take the current state, render it, wait for player input, then update
+   the state using the player's input and return the new state. Save the
+   world too, in case the  game is interrupted. Then we can load it next
+   time we start up."
+  [state]
   (do
     (swap! render-count inc)
     (when (> @render-count 1) (throw nil))

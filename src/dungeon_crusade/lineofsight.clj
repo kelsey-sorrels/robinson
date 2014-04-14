@@ -4,12 +4,18 @@
   (:require [clojure.contrib.math :as math]
             clojure.pprint))
 
+;; The functions here can severely slow down the game if 
+;; implemented poorly. Reflection can slow down evaluation,
+;; so warn if it is occurring.
 (set! *warn-on-reflection* true)
 
+;; Memoized function that returns the points between
+;; `[x1 y1]` and `[x2 y2]`
 (def line-segment (memoize
-  (fn [start end]
+  (fn
     "(line-segment [1 1] [5 4])"
-    (if (= start end)
+   [start end]
+   (if (= start end)
       []
       (let [[x1 y1] start
             [x2 y2] end
@@ -21,6 +27,10 @@
         (map (fn [i] [(math/round (double (+ x1 (* i dx)))) (math/round (double (+ y1 (* i dy))))])
             (range (inc maxdiff))))))))
 
+;; A fast version of `line-segment`. Internally, shift the values so that
+;; `[x1 y1]` equals `[0 0]`, call `line-segment` and then shift everything back.
+;; It's fast because `(line-segment-fast [0 0] [5 5])` is effectively the same
+;; as `(line-segment [2 2] [7 7])` which plays nicely with memoization.
 (def line-segment-fast (memoize
   (fn [start end]
     "(line-segment-fast [1 1] [5 4])"
@@ -29,12 +39,18 @@
       (map (fn [[x y]] [(+ ox x) (+ oy y)])
           (line-segment [0 0] [(- dx ox) (- dy oy)]))))))
  
-(defn map-visibility [origin blocking? place]
-  "(map-visibility [x y] blocking? (0,0) ------ x
+(defn map-visibility [origin blocking? grid]
+  "Determine the visibility of a `grid` as a viewer at `origin`.
+
+   `blocking?` is a predicate called like this `(blocking? cell)`
+   for each cell in the grid.` It should return `true` if the cell
+   block visibility. Eg: a wall, or closed door and `false` otherwise.
+
+   (map-visibility [x y] blocking? (0,0) ------ x
                                      |  [[false false false]
                                      |   [false true  false]
                                      y   [false true  false]])
-  (clojure.pprint/pprint (map-visibility [0 4] identity
+   (clojure.pprint/pprint (map-visibility [0 4] identity
                                   [[false false false false]
                                    [false false true  false]
                                    [false false true  false]
@@ -43,24 +59,26 @@
   "
                                     
   (let [[ox oy] origin
-        width  (-> place first count)
-        height (count place)
+        width  (-> grid first count)
+        height (count grid)
         bounds-xy (filter (fn [[x y e]]
                             (or (= x 0)
                                 (= x (dec width))
                                 (= y 0)
                                 (= y (dec height))))
-                          (with-xy place))
-        get-cell (fn [place ks] (memoize (get-in place ks)))
+                          (with-xy grid))
+        get-cell (fn [grid ks] (memoize (get-in grid ks)))
         visible? (fn [x1 y1 x2 y2]
                    (not-any? #(blocking? %)
-                     ;(map (fn [[x y]] (get-cell place [y x]))
-                     (map (fn [[x y]] (get-in place [y x]))
+                     ;(map (fn [[x y]] (get-cell grid [y x]))
+                     (map (fn [[x y]] (get-in grid [y x]))
                        (rest (butlast (line-segment-fast [x1 y1] [x2 y2]))))))]
-    ;(println (with-xygrid place))
-    (vec (pmap (fn [line] (vec (map (fn [[_ x y]] (visible? ox oy x y)) line))) (with-xygrid place)))))
+    ;(println (with-xygrid grid))
+    (vec (pmap (fn [line] (vec (map (fn [[_ x y]] (visible? ox oy x y)) line))) (with-xygrid grid)))))
 
-(defn cell-blocking? [cell]
+(defn cell-blocking?
+  "Walls, closed doors, and `nil` cells block visibility."
+  [cell]
   (if (nil? cell)
     true
     (contains? #{:vertical-wall
@@ -68,7 +86,9 @@
                  :close-door} (cell :type))))
 
 
-(defn -main [& args]
+(defn -main
+  "Run speed tests for `map-visibility`."
+  [& args]
   ;(println "generating...")
   ;(println (time (line-segment [0 0] [22 40])))
   ;(println (time (line-segment [0 0] [22 40])))

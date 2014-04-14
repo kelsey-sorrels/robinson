@@ -1,3 +1,4 @@
+;; Functions that manipulate state to do what the user commands.
 (ns dungeon-crusade.update
   (:require clojure.pprint
             clojure.contrib.core
@@ -7,7 +8,10 @@
     dungeon-crusade.lineofsight))
 
 
-(defn do-combat [x y state]
+(defn do-combat
+  "Perform combat between the player and the npc at `[x y]` and return
+   the state reflecting this."
+  [x y state]
   (let [npc (npc-at-xy x y state)
         player (-> state :world :player)
         current-place-id (-> state :world :current-place)
@@ -52,7 +56,9 @@
           (update-in [:world :player :status]
             (fn [status] (conj status :dead)))))))
 
-(defn move-left [state]
+(defn move-left
+  "Moves the player one space to the left provided he/she is able."
+  [state]
   (let [x (-> state :world :player :pos :x)
         y (-> state :world :player :pos :y)]
     (if-not (collide? (- x 1) y state)
@@ -64,7 +70,9 @@
         ;; collided with a wall or door, nothing to be done.
         state))))
   
-(defn move-right [state]
+(defn move-right
+  "Moves the player one space to the right provided he/she is able."
+  [state]
   (let [x (-> state :world :player :pos :x)
         y (-> state :world :player :pos :y)]
     (if-not (collide? (+ x 1) y state)
@@ -76,7 +84,9 @@
         ;; collided with a wall or door, nothing to be done.
         state))))
   
-(defn move-up [state]
+(defn move-up
+  "Moves the player one space up provided he/she is able."
+  [state]
   (let [x (-> state :world :player :pos :x)
         y (-> state :world :player :pos :y)]
     (if-not (collide? x (- y 1) state)
@@ -89,7 +99,9 @@
         ;; collided with a wall or door, nothing to be done.
         state))))
   
-(defn move-down [state]
+(defn move-down
+  "Moves the player one space down provided he/she is able."
+  [state]
   (let [x (-> state :world :player :pos :x)
         y (-> state :world :player :pos :y)]
     (println "move-down")
@@ -102,7 +114,11 @@
         ;; collided with a wall or door, nothing to be done.
         state))))
 
-(defn open-door [state direction]
+(defn open-door
+  "Open the door one space in the direction relative to the player's position.
+
+   Valid directions are `:left` `:right` `:up` `:down`."
+  [state direction]
   (let [player-x (-> state :world :player :pos :x)
         player-y (-> state :world :player :pos :y)
         target-x (+ player-x (case direction
@@ -125,19 +141,31 @@
           (assoc-in state [:world :places place target-y target-x :type] :open-door))
         state))))
 
-(defn open-left [state]
+(defn open-left
+  "Helper function for open-door."
+  [state]
   (open-door state :left))
 
-(defn open-right [state]
+(defn open-right
+  "Helper function for open-door."
+  [state]
   (open-door state :right))
 
-(defn open-up [state]
+(defn open-up
+  "Helper function for open-door."
+  [state]
   (open-door state :up))
 
-(defn open-down [state]
+(defn open-down
+  "Helper function for open-door."
+  [state]
   (open-door state :down))
 
-(defn close-door [state direction]
+(defn close-door
+  "Close the door one space in the direction relative to the player's position.
+
+   Valid directions are `:left` `:right` `:up` `:down`."
+  [state direction]
   (let [player-x (-> state :world :player :pos :x)
         player-y (-> state :world :player :pos :y)
         target-x (+ player-x (case direction
@@ -159,19 +187,32 @@
           (assoc-in state [:world :places place target-y target-x :type] :close-door))
         state))))
 
-(defn close-left [state]
+(defn close-left
+  "Helper function for close-door"
+  [state]
   (close-door state :left))
 
-(defn close-right [state]
+(defn close-right
+  "Helper function for close-door"
+  [state]
   (close-door state :right))
 
-(defn close-up [state]
+(defn close-up
+  "Helper function for close-door"
+  [state]
   (close-door state :up))
 
-(defn close-down [state]
+(defn close-down
+  "Helper function for close-door"
+  [state]
   (close-door state :down))
 
-(defn pick-up [state]
+(defn pick-up
+  "Move the items identified by `:selected-hotkeys`,
+   remove them from the player's cell and put them in
+   the player's inventory. Add to them the hotkeys with
+   which they were selected."
+  [state]
     ;; find all the items in the current cell
     ;; divide them into selected and not-selected piles using the selected-hotkeys
     ;; add the selected pile to the player's inventory
@@ -213,7 +254,10 @@
       (println "cell-items (-> state :world :places" place y x ":items)")
       new-state)))
 
-(defn drop-item [state keyin]
+(defn drop-item
+  "Drop the item from the player's inventory whose hotkey matches `keyin`.
+   Put the item in the player's current cell."
+  [state keyin]
   (let [place (-> state :world :current-place)
         [player-cell x y] (player-cellxy state)
         items (-> state :world :player :inventory)
@@ -241,24 +285,34 @@
         state)))
 
 
-(defn do-rest [state]
+(defn do-rest
+  "NOP action. Player's hp increases a little."
+  [state]
   (-> state
       (update-in [:world :player]
                  (fn [player] (if (< (int (player :hp)) (player :max-hp))
                                 (assoc-in player [:hp] (+ (player :hp) 0.1))
                                 player)))))
 
-(defn toggle-hotkey [state keyin]
+(defn toggle-hotkey
+  "Toggle mark `keyin` as a selected hotkey, or not if it already is."
+  [state keyin]
   (println "toggle-hotkey" keyin)
   (update-in state [:world :selected-hotkeys]
              (fn [hotkeys] (if (contains? hotkeys keyin)
                              (disj hotkeys keyin)
                              (conj hotkeys keyin)))))
 
-(defn reinit-world [state]
+(defn reinit-world
+  "Re-initialize the value of `:world` within `state`. Used when the player
+   dies and a new game is started."
+  [state]
   (assoc state :world (init-world)))
 
-(defn eat [state keyin]
+(defn eat
+  "Remove the item whose `:hotkey` equals `keyin` and subtract from the player's
+   hunger the item's `:hunger` value."
+  [state keyin]
   (let [items (-> state :world :player :inventory)
         inventory-hotkeys (map #(% :hotkey) items)
         item-index (.indexOf inventory-hotkeys keyin)]
@@ -282,7 +336,10 @@
         new-state)
         state)))
 
-(defn use-stairs [state]
+(defn use-stairs
+  "If there are stairs in the player's cell, change the world's `:current-place`
+   to the cell's `:dest-place` value."
+  [state]
   (let [[player-cell x y] (player-cellxy state)
         orig-place-id     (-> state :world :current-place)]
     (if (contains? #{:down-stairs :up-stairs} (player-cell :type))
@@ -313,34 +370,49 @@
           (assoc-in [:world :player :pos] {:x dest-x :y dest-y})))
       state)))
 
-(defn init-cursor [state]
+(defn init-cursor
+  "Initialize the selection cursor at the player's current location."
+  [state]
   (let [player-pos (get-in state [:world :player :pos])]
     (assoc-in state [:world :cursor] player-pos)))
 
-(defn free-cursor [state]
+(defn free-cursor
+  "Dissassociate the cursor from the world."
+  [state]
   (clojure.contrib.core/dissoc-in state [:world :cursor]))
 
-(defn move-cursor-left [state]
+(defn move-cursor-left
+  "Move the cursor pos one space to the left keeping in mind the bounds of the current place."
+  [state]
   (let [cursor-pos (get-in state [:world :cursor])
         cursor-pos (assoc cursor-pos :x (max 0 (dec (cursor-pos :x))))]
     (assoc-in state [:world :cursor] cursor-pos)))
 
-(defn move-cursor-right [state]
+(defn move-cursor-right
+  "Move the cursor pos one space to the right keeping in mind the bounds of the current place."
+  [state]
   (let [cursor-pos (get-in state [:world :cursor])
         cursor-pos (assoc cursor-pos :x (min (count (first (current-place state))) (inc (cursor-pos :x))))]
     (assoc-in state [:world :cursor] cursor-pos)))
 
-(defn move-cursor-up [state]
+(defn move-cursor-up
+  "Move the cursor pos one space up keeping in mind the bounds of the current place."
+  [state]
   (let [cursor-pos (get-in state [:world :cursor])
         cursor-pos (assoc cursor-pos :y (max 0 (dec (cursor-pos :y))))]
     (assoc-in state [:world :cursor] cursor-pos)))
 
-(defn move-cursor-down [state]
+(defn move-cursor-down
+  "Move the cursor pos one space down keeping in mind the bounds of the current place."
+  [state]
   (let [cursor-pos (get-in state [:world :cursor])
         cursor-pos (assoc cursor-pos :y (min (count (current-place state)) (dec (cursor-pos :y))))]
     (assoc-in state [:world :cursor] cursor-pos)))
 
-(defn describe-at-cursor [state]
+(defn describe-at-cursor
+  "Add to the log, a message describing the scene at the cell indicated by the
+   cursor's position."
+  [state]
   (let [cursor-pos (get-in state [:world :cursor])
         cell       (or (get-in (current-place state) [(cursor-pos :y) (cursor-pos :x)])
                        {:type :nil})
@@ -361,7 +433,10 @@
         (append-log message)
         (free-cursor))))
 
-(defn describe-inventory [state keyin]
+(defn describe-inventory
+  "Add to the log, a message describing the item with the `:hotkey` value
+   matching `keyin`."
+  [state keyin]
   (let [items (-> state :world :player :inventory)
         inventory-hotkeys (map #(% :hotkey) items)
         item-index (.indexOf inventory-hotkeys keyin)]
@@ -376,7 +451,10 @@
         new-state)
         state)))
 
-(defn move-npc [state result npc]
+(defn move-npc
+  "Move `npc` one space closer to the player's position if there is a path
+   from the npc to the player."
+  [state result npc]
   (let [npcs (-> state :world :npcs ((-> state :world :current-place)))
         _ (println "npc" npc)
         _ (println "result" result)
@@ -413,10 +491,14 @@
         _ (println "new-npc" new-npc)]
     (conj result new-npc)))
  
-(defn move-npcs [state]
+(defn move-npcs
+  "Move all npcs in the current place using `move-npc`."
+  [state]
   (update-in state [:world :npcs (-> state :world :current-place)]  (fn [npcs] (reduce (partial move-npc state) [] npcs))))
 
-(defn add-npcs [state]
+(defn add-npcs
+  "Randomly add rats to the current place's in floor cells."
+  [state]
   (if (< (rand-int 10) 4)
     (let [[_ x y] (first (shuffle (filter (fn [[cell _ _]] (and (not (nil? cell))
                                                                 (= (cell :type) :floor)))
@@ -426,7 +508,12 @@
                    (conj npcs {:pos {:x x :y y} :type :rat :hp 9 :attacks #{:bite :claw}}))))
     state))
 
-(defn update-quests [state]
+(defn update-quests
+  "Execute the `pred` function for the current stage of each quest. If 
+  `(pred state)` returns `true` then execute the quest's update fn as
+  `(update state) an use the result as the new state. Then set the quests new
+  stage to the result of `(nextstagefn state)`."
+  [state]
   (reduce (fn [state quest]
             (let [stage-id (get-in state [:world :quests (quest :id) :stage] :0)]
               (if (nil? stage-id)
@@ -443,6 +530,12 @@
                     state)))))
             state (state :quests)))
 
+;; A finite state machine definition for the game state. 
+;; For each starting state, define a transition symbol, a function
+;; to call `(transitionfn state)` to use as the new state, and a
+;; final state. It's an unfortunate naming collision between the
+;; transtion table's states and the application state variable, but
+;; they are indeed two different things.
 (def state-transition-table
   ;;         starting      transition transition         new
   ;;         state         symbol     fn                 state
@@ -497,7 +590,25 @@
     (expander-fn table)))
 
 
-(defn update-state [state keyin]
+(defn update-state
+  "Use the stage transtion table defined above to call the appropriate
+   transition function and assign the appropriate final state value.
+   After this, apply some common per-tick transformations:
+  
+   * Apply hunger
+  
+   * Move NPCs
+  
+   * Add new NPCs
+  
+   * Update quests
+  
+   * Manage the save file, deleting it upon player death
+  
+   * Update place's discovered cells with new visibility calculations
+  
+   * Increment the current time"
+  [state keyin]
   (let [current-state (-> state :world :current-state)
         table         (-> state-transition-table current-state)]
     (println "current-state" current-state)

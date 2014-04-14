@@ -1,3 +1,4 @@
+;; Functions for rendering state to screen
 (ns dungeon-crusade.render
   (:use     dungeon-crusade.common
             dungeon-crusade.lineofsight
@@ -7,11 +8,31 @@
             [lanterna.constants :as c]
             [clojure.reflect :as r]))
 
+;; RBG color definitions. 
+;; It's easier to use names than numbers.
 (def rgb-color {
  :brown [139 69 19]
  :black [0 0 0]})
 
-(defn render-multi-select [screen title selected-hotkeys items]
+(defn render-multi-select
+  "Render a menu on the right side of the screen. It has a title, and selected items
+   can be identitifed by hotkeys. If elements in `items` have a key whose value
+   equals an element in `hotkeys` then the item will be displayed with a `+` rather
+   than a `-`. Each element in `items` must contains a key `:name`, the value of which
+   will be printed in the menu.
+  
+       (render-multi-select
+         screen
+         \"Select\"
+         [:a :c]
+         [{:name \"Item 1\"
+           :hotkey :a}
+          {:name \"Item 2\"
+           :hotkey :b}
+          {:name \"Item 3\"
+           :hotkey :c})
+  "
+  [screen title selected-hotkeys items]
   (let [contents (take 22
                        (concat (map #(format "%c%c%-38s"
                                              (or (% :hotkey)
@@ -29,7 +50,9 @@
     (println "header")
     (s/put-string screen 40 0 (format "  %s                               " title) {:fg :black :bg :white :styles #{:underline :bold}})))
 
-(defn render-pick-up [state]
+(defn render-pick-up
+  "Render the pickup item menu if the world state is `:pickup`."
+  [state]
   ;; maybe draw pick up menu
   (when (= (-> state :world :current-state) :pickup)
     (let [player-x         (-> state :world :player :pos :x)
@@ -47,31 +70,47 @@
     ;(println "cell-items" cell-items)
     (render-multi-select (state :screen) "Pick up" selected-hotkeys items))))
 
-(defn render-inventory [state]
+(defn render-inventory
+  "Render the pickup item menu if the world state is `:pickup`."
+  [state]
   (when (= (-> state :world :current-state) :inventory)
     (render-multi-select (state :screen) "Inventory" [] (-> state :world :player :inventory))))
 
-(defn render-drop [state]
+(defn render-drop
+  "Render the pickup item menu if the world state is `:pickup`."
+  [state]
   (when (= (-> state :world :current-state) :drop)
     (render-multi-select (state :screen) "Drop Inventory" [] (-> state :world :player :inventory))))
 
-(defn render-describe-inventory [state]
+(defn render-describe-inventory
+  "Render the pickup item menu if the world state is `:pickup`."
+  [state]
   (when (= (-> state :world :current-state) :describe-inventory)
     (render-multi-select (state :screen) "Describe" [] (-> state :world :player :inventory))))
 
-(defn render-eat [state]
+(defn render-eat
+  "Render the pickup item menu if the world state is `:pickup`."
+  [state]
   (when (= (-> state :world :current-state) :eat)
     (render-multi-select (state :screen) "Eat Inventory" [] (filter #(= (% :type) :food) (-> state :world :player :inventory)))))
 
-(defn render-quests [state]
+(defn render-quests
+  "Render the pickup item menu if the world state is `:pickup`."
+  [state]
   (when (= (-> state :world :current-state) :quests)
     (render-multi-select (state :screen) "Quests" [] (-> state :quests))))
 
-(defn render-quit? [state]
+(defn render-quit?
+  "Render the pickup item menu if the world state is `:pickup`."
+  [state]
   (when (= (-> state :world :current-state) :quit?)
     (s/put-string (state :screen) 1 0 "quit? [yn]")))
 
-(defn render-map [state]
+(defn render-map
+  "The big render function used during the normal game.
+   This renders everything - the map, the menus, the log,
+   the status bar. Everything."
+  [state]
   (do
     (println "begin-render")
     (s/clear (state :screen))
@@ -175,7 +214,9 @@
     (s/redraw (state :screen))
     (println "end-render")))
 
-(defn render-game-over [state]
+(defn render-game-over
+  "Render the game over screen."
+  [state]
   (let [points 0]
     (s/clear (state :screen))
     ;; Title
@@ -187,7 +228,11 @@
     (s/put-string (state :screen) 10 22 "Play again? [yn]")
     (s/redraw (state :screen))))
 
-(defn render [state]
+(defn render
+  "Pick between the normal render function and the
+   game over render function based on the dead state
+   of the player."
+  [state]
   (cond
     ;; Is player dead?
     (player-dead? state)

@@ -7,9 +7,11 @@
 (defn -main
   "Entry default point to application.
 
-   Uses setup and tick function from dungeon-crusade.main.
-   Setup returns the initial state of the application.
-   Tick takes the current state of the application and returns
+   Uses `setup` and `tick` function from `dungeon-crusade.main`.
+
+   `setup` returns the initial state of the application.
+  
+   `tick` takes the current state of the application and returns
    the next state after one iteration."
   []
   (do

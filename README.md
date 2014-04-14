@@ -11,7 +11,9 @@ To create a random dungeon
 
     lein run -m dungeon-crusade.mapgen
 
-![Documentation](http://aaron-santos.github.io/dungeon-crusade/)
+Documentation http://aaron-santos.github.io/dungeon-crusade/
+
+Screenshots:
 
 ![alt tag](https://raw.github.com/aaron-santos/dungeon-crusade/master/images/screenshot-0.png)
 

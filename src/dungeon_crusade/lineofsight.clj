@@ -13,7 +13,6 @@
 ;; `[x1 y1]` and `[x2 y2]`
 (def line-segment (memoize
   (fn
-    "(line-segment [1 1] [5 4])"
    [start end]
    (if (= start end)
       []

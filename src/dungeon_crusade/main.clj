@@ -1,5 +1,6 @@
 (ns dungeon-crusade.main
-  (use     dungeon-crusade.common
+  (use     ;dungeon-crusade.common
+           dungeon-crusade.worldgen
            dungeon-crusade.update
            dungeon-crusade.render)
   (require [lanterna.screen :as s]))

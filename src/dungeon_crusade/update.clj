@@ -5,6 +5,7 @@
             clj-tiny-astar.path)
   (:use     
     dungeon-crusade.common
+    dungeon-crusade.worldgen
     dungeon-crusade.lineofsight))
 
 

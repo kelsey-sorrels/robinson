@@ -161,7 +161,8 @@
    at `[x y]` return `nil`."
   [x y state]
   (let [current-place-id (-> state :world :current-place)
-        npcs             (-> state :world :npcs current-place-id)]
+        npcs             (filter #(= current-place-id (% :place))
+                                 (-> state :world :npcs current-place-id))]
     (some (fn [npc] (when (and (= x (-> npc :pos :x)) (= y (-> npc :pos :y))) npc)) npcs)))
 
 (defn collide?
@@ -196,4 +197,28 @@
   "Append a message to the in-game log. The last five log messages are retained."
   [state message]
   (assoc-in state [:world :log] (vec (take 5 (conj (-> state :world :log) {:text message :time (-> state :world :time)})))))
+
+(defn npcs-at-current-place
+  "Seq of npcs at the current place."
+  [state]
+  (let [place-id (-> state :world :current-place)]
+    (filter #(= place-id (% :place)) (-> state :world :npcs))))
+
+(defn add-npc
+  "Add an npc to the specified place and position."
+  [state npc place-id x y]
+  (let [npc-with-xy    (assoc npc :pos {:x x :y y})
+        npc-with-place (assoc npc-with-xy :place place-id)]
+    (update-in state [:world :npcs] (fn [npcs] (conj npcs npc-with-xy)))))
+
+(defn transfer-items-from-npc-to-player
+  "Remove items from npc's inventory and add them to the player's inventory."
+  [state npc-id item-pred]
+  (let [player-inventory-grouped (group-by item-pred (get-in state [:world :player :inventory]))
+        new-player-inventory     (get player-inventory-grouped false)
+        items                    (get player-inventory-grouped true)]
+    (-> state
+      (update-in [:world :npcs npc-id :inventory]
+                 (fn [inventory] (concat inventory items)))
+      (assoc-in [:world :player :inventory] new-player-inventory))))
 

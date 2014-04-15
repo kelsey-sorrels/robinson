@@ -157,8 +157,7 @@
       (-> state :world :player :sym)
       {:fg :green})
     ;; draw npcs
-    (let [current-place-id (-> state :world :current-place)
-          place-npcs       (-> state :world :npcs current-place-id)
+    (let [place-npcs (npcs-at-current-place state)
           visibility (map-visibility (let [pos (-> state :world :player :pos)]
                                           [(pos :x) (pos :y)])
                                      cell-blocking?

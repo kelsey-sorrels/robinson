@@ -16,7 +16,7 @@
   (let [npc (npc-at-xy x y state)
         player (-> state :world :player)
         current-place-id (-> state :world :current-place)
-        npc-idx (.indexOf (-> state :world :npcs current-place-id) npc)
+        npc-idx (.indexOf (-> state :world :npcs) npc)
         player-hp (player :hp)
         npc-hp    (npc :hp)
         npc-dmg 1
@@ -31,7 +31,7 @@
           (update-in [:world :player :hp]
             (fn [hp] (- hp player-dmg)))
           ;; modify npc hp
-          (update-in [:world :npcs current-place-id npc-idx :hp]
+          (update-in [:world :npcs npc-idx :hp]
           (fn [hp] (- hp npc-dmg))))
       ;; npc dead?
       (not (pos? (- npc-hp npc-dmg)))
@@ -40,10 +40,9 @@
           (update-in [:world :player :hp]
             (fn [hp] (- hp player-dmg)))
           ;; remove npc
-          (update-in [:world :npcs current-place-id]
+          (update-in [:world :npcs]
             (fn [npcs]
-              (vec (concat (subvec npcs 0 npc-idx)
-                           (subvec npcs (inc npc-idx) (count npcs))))))
+              (vec (remove #(= npc %) npcs))))
           ;; maybe add corpse
           (update-in [:world :places current-place-id y x :items]
                      (fn [items]
@@ -421,7 +420,7 @@
                                                     (-> npc :pos :x))
                                                  (= (cursor-pos :y)
                                                     (-> npc :pos :y))))
-                                  (get-in state [:world :npcs (-> state :world :current-place)])))
+                                  (npcs-at-current-place state)))
         message   (case (cell :type)
                     :floor "There is a floor here. You could put things on it if you wanted."
                     :vertical-wall "There is a wall here."
@@ -456,7 +455,7 @@
   "Move `npc` one space closer to the player's position if there is a path
    from the npc to the player."
   [state result npc]
-  (let [npcs (-> state :world :npcs ((-> state :world :current-place)))
+  (let [npcs (npcs-at-current-place state)
         _ (println "npc" npc)
         _ (println "result" result)
         npc-pos [(-> npc :pos :x) (-> npc :pos :y)]
@@ -495,7 +494,13 @@
 (defn move-npcs
   "Move all npcs in the current place using `move-npc`."
   [state]
-  (update-in state [:world :npcs (-> state :world :current-place)]  (fn [npcs] (reduce (partial move-npc state) [] npcs))))
+  (update-in state [:world :npcs]  (fn [npcs] (reduce (fn [result npc]
+                                                       (if (= (npc :place)
+                                                              (-> state :world :current-place))
+                                                         (move-npc state)
+                                                         (conj result npc)))
+                                                      []
+                                                      npcs))))
 
 (defn add-npcs
   "Randomly add rats to the current place's in floor cells."
@@ -504,9 +509,7 @@
     (let [[_ x y] (first (shuffle (filter (fn [[cell _ _]] (and (not (nil? cell))
                                                                 (= (cell :type) :floor)))
                                           (with-xy (current-place state)))))]
-      (update-in state [:world :npcs (-> state :world :current-place)]
-                 (fn [npcs]
-                   (conj npcs {:pos {:x x :y y} :type :rat :hp 9 :attacks #{:bite :claw}}))))
+      (add-npc state (-> state :word :current-place) {:type :rat :hp 9 :attacks #{:bite :claw}} x y))
     state))
 
 (defn update-quests

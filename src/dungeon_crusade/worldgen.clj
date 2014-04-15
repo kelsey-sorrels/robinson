@@ -105,7 +105,7 @@
   
    * available hotkeys (a-zA-Z)
   
-   * npcs indexed by place id
+   * npcs
   
    * quests (indexed by quest id)
 
@@ -144,6 +144,6 @@
             :inventory inventory-with-hotkeys
             :status #{}}
    :quests {}
-   :npcs {:0 []}}))
+   :npcs []}))
 
 

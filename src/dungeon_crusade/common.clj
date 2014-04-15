@@ -39,6 +39,33 @@
                             (cons (f x y) (if (empty? xs) [] (fill-missing pred f ys xs)))
                             (cons x (if (empty? xs) [] (fill-missing pred f vcoll xs)))))))
 
+(defn fn-in
+  "Applies a function to a value in a nested associative structure and an input value.
+   ks sequence of keys and v is the second arguement to f. The nested value will be
+   updated to (f o v) where o is the value that would be returned by (get-in m ks)."
+  [f m ks v]
+  (update-in m ks (fn [coll] (f coll v))))
+
+(defn concat-in
+  [m ks v]
+  (fn-in concat m ks v))
+
+(defn conj-in
+  [m ks v]
+  (fn-in conj m ks v))
+
+(defn map-in
+  [m ks f]
+  (fn-in (fn [coll _] (map f coll)) m ks nil))
+
+(defn filter-in
+  [m ks f]
+  (fn-in (fn [coll _] (filter f coll)) m ks nil))
+
+(defn remove-in
+  [m ks f]
+  (fn-in (fn [coll _] (remove f coll)) m ks nil))
+
 (defn with-xygrid
   "Inclue x y values alongside elements in a grid and preserve the structure
    of the grid.
@@ -137,11 +164,15 @@
                 _ (println "assoc-in place" args)]
                  (apply assoc-in place args))) place extras)))
 
+(defn current-place-id
+  "Retrieve the current place id."
+  [state]
+  (-> state :world :current-place))
+
 (defn current-place
   "Retrieve the current place."
   [state]
-  (let [current-place (-> state :world :current-place)]
-    (-> state :world :places current-place)))
+  (get-in state [:world :places (current-place-id state)]))
 
 (defn map-with-xy
   "Non-lazily call `(f cell x y)` for each cell in the grid."
@@ -204,6 +235,11 @@
   (let [place-id (-> state :world :current-place)]
     (filter #(= place-id (% :place)) (-> state :world :npcs))))
 
+(defn npcs-at-current-place
+  "Seq of npcs at the current place."
+  [state]
+  (filter-in state [:world :npcs] (fn [npc] (= (npc :place) (current-place-id state)))))
+
 (defn add-npc
   "Add an npc to the specified place and position."
   [state npc place-id x y]
@@ -221,4 +257,17 @@
       (update-in [:world :npcs npc-id :inventory]
                  (fn [inventory] (concat inventory items)))
       (assoc-in [:world :player :inventory] new-player-inventory))))
+
+(defn conj-in-cell-items
+  "Adds an item to [x y] in the current place. Simple, right?"
+  [state item x y]
+  (conj-in state [:world :places (-> state :world :current-place) y x :items] item))
+
+(defn conj-in-current-cell-items
+  "Adds an item to the player's cell's items."
+  [state item]
+  (let [x (-> state :world :player :pos :x)
+        y (-> state :world :player :pos :y)]
+    (conj-in-cell-items state item x y)))
+
 

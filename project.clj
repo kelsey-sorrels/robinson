@@ -7,6 +7,7 @@
                  [org.clojure/clojure-contrib "1.2.0"]
                  [org.clojars.vishk/algotools "0.1.0"]
                  [clj-tiny-astar "0.1.0-SNAPSHOT"]
+                 [dorothy "0.0.3"]
                  [org.clojars.folcon/clojure-lanterna "0.9.5-SNAPSHOT"]]
   :main dungeon-crusade.core
   :repl-init dungeon-crusade.main)

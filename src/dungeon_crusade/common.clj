@@ -227,19 +227,19 @@
 (defn append-log
   "Append a message to the in-game log. The last five log messages are retained."
   [state message]
-  (assoc-in state [:world :log] (vec (take 5 (conj (-> state :world :log) {:text message :time (-> state :world :time)})))))
-
-(defn npcs-at-current-place
-  "Seq of npcs at the current place."
-  [state]
-  (let [place-id (-> state :world :current-place)]
-    (filter #(= place-id (% :place)) (-> state :world :npcs))))
+  (assoc-in state [:world :log] (vec (take-last 5 (conj (-> state :world :log) {:text message :time (-> state :world :time)})))))
 
 (defn npcs-at-current-place
   "Seq of npcs at the current place."
   [state]
   (filter-in state [:world :npcs] (fn [npc] (= (npc :place) (current-place-id state)))))
 
+(defn npc-at-xy
+  "Seq of npcs at [x y] of the current place."
+  [state x y]
+  (first (filter-in state [:world :npcs] (fn [npc] (and (= (npc :place) (current-place-id state))
+                                                        (= (-> npc :pos :x) x)
+                                                        (= (-> npc :pos :y) y))))))
 (defn add-npc
   "Add an npc to the specified place and position."
   [state npc place-id x y]
@@ -270,4 +270,26 @@
         y (-> state :world :player :pos :y)]
     (conj-in-cell-items state item x y)))
 
+(defn talking-npcs
+  "A seq of npcs with which the player is talking."
+  [state]
+  (filter-in state [:world :npcs] (fn [npc] (contains? :talking npc))))
 
+(defn update-npc-at-xy
+  "Transform the npc at `[x y]` with the function f. (f npc)."
+  [state x y f]
+  (update-in state [:world :npcs] (fn [npcs] (map (fn [npc] (if (and (= (-> npc :pos :x) x)
+                                                                     (= (-> npc :pos :y) y))
+                                                              (f npc)
+                                                              npc))
+                                                  npcs))))
+
+(defn quest-data [state quest-id]
+  (-> state :world :quests quest-id))
+
+;(defmacro defquest [quest id]
+;  (walk (fn [e] (if (and (list? e)
+;                         (= (first e) quest-fn))
+;                  (let [f (first e)]
+;                    (fn [state] (f state (quest-data state id))))
+;                  e))))

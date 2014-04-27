@@ -1,0 +1,14 @@
+# IntelliJ
+.idea
+.*.iml
+
+# Lein
+.lein*
+lib
+target
+
+# Vim
+.*.swp
+
+# Project runtime files
+world.save

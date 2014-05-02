@@ -2,6 +2,8 @@
 (ns dungeon-crusade.render
   (:use     dungeon-crusade.common
             dungeon-crusade.lineofsight
+            [dungeon-crusade.dialog :exclude [-main]]
+            dungeon-crusade.npc
             [clojure.pprint :only [print-table]])
   (:require [lanterna.screen :as s]
             [lanterna.terminal :as t]
@@ -106,6 +108,27 @@
   (when (= (-> state :world :current-state) :quit?)
     (s/put-string (state :screen) 1 0 "quit? [yn]")))
 
+(defn render-dialog
+  "Render the dialog menu if the world state is `:talking`."
+  [state]
+  (when (= (get-in state [:world :current-state]) :talking)
+    (let [npc (first (talking-npcs state))
+          _ (println "world state" (get-in state [:world :current-state]))
+          ;_ (println "state :dialog" (state :dialog))
+          ;_ (println "npcid" (npc :id))
+          fsm (get-in state [:dialog (npc :id)])
+          ;_ (println "fsm" fsm)
+          valid-input (get-valid-input fsm)
+          _ (println "render: valid-input:" valid-input)
+          _ (println "render: current-state:" (fsm-current-state fsm))
+          options (take (count valid-input)
+                        (map (fn [k v]
+                               {:hotkey k
+                                :name v})
+                             [\a \b \c \d \e \f]
+                             valid-input))]
+    (render-multi-select (state :screen) "Say:" [] options))))
+
 (defn render-map
   "The big render function used during the normal game.
    This renders everything - the map, the menus, the log,
@@ -158,21 +181,24 @@
       {:fg :green})
     ;; draw npcs
     (let [place-npcs (npcs-at-current-place state)
+          _ (println "place-npcs" place-npcs)
           visibility (map-visibility (let [pos (-> state :world :player :pos)]
                                           [(pos :x) (pos :y)])
                                      cell-blocking?
                                      (current-place state))]
+      ;(println "visibility" visibility)
       (doall (map (fn [npc]
                     (let [x       (-> npc :pos :x)
                           y       (-> npc :pos :y)
                           visible (get-in visibility [y x])]
+                      (println "npc@" x y "visible?" visible)
                       (when visible
                         (s/put-string (state :screen)
                                       (-> npc :pos :x)
                                       (-> npc :pos :y)
                                       (case (npc :type)
                                         :rat "r"
-                                        "?")))))
+                                        "@")))))
                    place-npcs)))
     ;; maybe draw pick up menu
     (render-pick-up state)
@@ -203,13 +229,15 @@
     (when-let [message (-> state :world :log last)]
       (println "message" message)
       (when (< (- (-> state :world :time) (message :time)) 5)
-        (s/put-string (state :screen) 0 0 (message :text))))
+        (s/put-string (state :screen) 0 0 (or (message :text) ""))))
     ;; draw cursor
     (if-let [cursor-pos (-> state :world :cursor)]
       (s/move-cursor (state :screen) (cursor-pos :x) (cursor-pos :y))
       (s/move-cursor (state :screen) 0 0))
     ;; draw quit prompt
     (render-quit? state)
+    ;; draw dialog menu
+    (render-dialog state)
     (s/redraw (state :screen))
     (println "end-render")))
 

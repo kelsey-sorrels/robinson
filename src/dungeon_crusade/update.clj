@@ -5,9 +5,26 @@
             clj-tiny-astar.path)
   (:use     
     dungeon-crusade.common
+    [dungeon-crusade.dialog :exclude [-main]]
+    dungeon-crusade.npc
     dungeon-crusade.worldgen
     dungeon-crusade.lineofsight))
 
+(defn collide?
+  "Return `true` if the cell at `[x y]` is non-traverable. Ie: a wall, closed door or simply does
+   not exist."
+  [x y state]
+  (let [cellxy (get-xy x y (current-place state))]
+    (println "collide? " cellxy)
+    (let [cell (first cellxy)]
+      ;; check the cell to see if it is a wall or closed door
+      (or
+        (-> cell nil?)
+        (some (fn [collision-type] (= (cell :type) collision-type)) [:vertical-wall
+                                                                     :horizontal-wall
+                                                                     :close-door])
+        ;; not a wall or closed door, check for npcs
+        (npc-at-xy x y state)))))
 
 (defn do-combat
   "Perform combat between the player and the npc at `[x y]` and return
@@ -433,6 +450,59 @@
         (append-log message)
         (free-cursor))))
 
+(defn start-talking
+  "Open the door one space in the direction relative to the player's position.
+
+   Valid directions are `:left` `:right` `:up` `:down`."
+  [state direction]
+  (let [player-x (-> state :world :player :pos :x)
+        player-y (-> state :world :player :pos :y)
+        target-x (+ player-x (case direction
+                               :left -1
+                               :right 1
+                               0))
+        target-y (+ player-y (case direction
+                               :up  -1
+                               :down 1
+                               0))]
+    (println "start-talking")
+    (if-let [target-npc (npc-at-xy state target-x target-y)]
+      (-> state
+          (update-npc-at-xy target-x target-y #(assoc % :talking true))
+          (assoc-in [:world :current-state] :talking))
+      (assoc-in state [:world :current-state] :normal))))
+
+(defn talk-left [state]
+  (start-talking state :left))
+
+(defn talk-right [state]
+  (start-talking state :right))
+
+(defn talk-up [state]
+  (start-talking state :up))
+
+(defn talk-down [state]
+  (start-talking state :down))
+
+(defn talk [state keyin]
+  (let [npc (first (talking-npcs state))
+        fsm (get-in state [:dialog (npc :id)])
+        valid-input (get-valid-input fsm)
+        options (zipmap (take (count valid-input) [\a \b \c \d \e \f]) valid-input)
+        input (get options keyin)
+        _ (println "Stepping fsm. valid-input:" valid-input)
+        _ (println "Stepping fsm. options:" options)
+        _ (println "Stepping fsm. input:" input)]
+    (step-fsm state fsm input)))
+
+(defn stop-talking
+  "Remove :talking key from all npcs."
+  [state]
+  (println "stop-talking")
+  (-> state
+      (map-in [:world :npcs] (fn [npc] (dissoc npc :talking)))
+      (assoc-in [:world :current-state] :normal)))
+
 (defn describe-inventory
   "Add to the log, a message describing the item with the `:hotkey` value
    matching `keyin`."
@@ -495,10 +565,10 @@
   "Move all npcs in the current place using `move-npc`."
   [state]
   (update-in state [:world :npcs]  (fn [npcs] (reduce (fn [result npc]
-                                                       (if (= (npc :place)
-                                                              (-> state :world :current-place))
-                                                         (move-npc state)
-                                                         (conj result npc)))
+                                                        (if (= (npc :place)
+                                                               (-> state :world :current-place))
+                                                          (move-npc state result npc)
+                                                          (conj result npc)))
                                                       []
                                                       npcs))))
 
@@ -523,14 +593,17 @@
               (if (nil? stage-id)
                 ;; current stage of quest is nil. Ie: it is completed.
                 state
-                (let [stage    (-> quest :stages stage-id)]
-                  (println "exec quest" quest)
-                  (println "stage-id" stage-id)
-                  (println "exec stage" stage)
+                (let [stage    (get-in quest [:stages stage-id])]
+                  ;(println "exec quest" quest)
+                  ;(println "quest-id" (quest :id))
+                  ;(println "stage-id" stage-id)
+                  ;(println "exec stage" stage)
                   (if ((stage :pred) state)
                     (-> state
                         ((stage :update))
-                        ((fn [state] (assoc-in state [:world :quests :stage] ((stage :nextstagefn) stage)))))
+                        ((fn [state] (assoc-in state
+                                               [:world :quests (quest :id) :stage]
+                                               ((stage :nextstagefn) stage)))))
                     state)))))
             state (state :quests)))
 
@@ -541,55 +614,62 @@
 ;; transtion table's states and the application state variable, but
 ;; they are indeed two different things.
 (def state-transition-table
-  ;;         starting      transition transition         new
-  ;;         state         symbol     fn                 state
-  (let [table {:normal    {\i        [identity           :inventory]
-                           \d        [identity           :drop]
-                           \,        [identity           :pickup]
-                           \e        [identity           :eat]
-                           \o        [identity           :open]
-                           \c        [identity           :close]
-                           \.        [do-rest            :normal]
-                           \h        [move-left          :normal]
-                           \j        [move-down          :normal]
-                           \k        [move-up            :normal]
-                           \l        [move-right         :normal]
-                           \>        [use-stairs         :normal]
-                           \<        [use-stairs         :normal]
-                           \;        [init-cursor        :describe]
-                           \Q        [identity           :quests]
-                           :escape   [identity           :quit?]}
-               :inventory {:escape   [identity           :normal]}
-               :describe  {:escape   [free-cursor        :normal]
-                           \i        [free-cursor        :describe-inventory]
-                           \h        [move-cursor-left   :describe]
-                           \j        [move-cursor-down   :describe]
-                           \k        [move-cursor-up     :describe]
-                           \l        [move-cursor-right  :describe]
-                           :enter    [describe-at-cursor :normal]}
-               :quests    {:escape   [identity           :normal]}
+  ;;         starting      transition transition             new
+  ;;         state         symbol     fn                     state
+  (let [table {:normal    {\i        [identity               :inventory]
+                           \d        [identity               :drop]
+                           \,        [identity               :pickup]
+                           \e        [identity               :eat]
+                           \o        [identity               :open]
+                           \c        [identity               :close]
+                           \.        [do-rest                :normal]
+                           \h        [move-left              :normal]
+                           \j        [move-down              :normal]
+                           \k        [move-up                :normal]
+                           \l        [move-right             :normal]
+                           \>        [use-stairs             :normal]
+                           \<        [use-stairs             :normal]
+                           \;        [init-cursor            :describe]
+                           \Q        [identity               :quests]
+                           \T        [identity               :talk]
+                           :escape   [identity               :quit?]}
+               :inventory {:escape   [identity               :normal]}
+               :describe  {:escape   [free-cursor            :normal]
+                           \i        [free-cursor            :describe-inventory]
+                           \h        [move-cursor-left       :describe]
+                           \j        [move-cursor-down       :describe]
+                           \k        [move-cursor-up         :describe]
+                           \l        [move-cursor-right      :describe]
+                           :enter    [describe-at-cursor     :normal]}
+               :quests    {:escape   [identity               :normal]}
                :describe-inventory
-                          {:escape   [identity           :normal]
-                           :else     [describe-inventory :normal]}
-               :drop      {:escape   [identity           :normal]
-                           :else     [drop-item          :normal]}
-               :pickup    {:escape   [identity           :normal]
-                           :else     [toggle-hotkey      :pickup]
-                           :enter    [pick-up            :normal]}
-               :eat       {:escape   [identity           :normal]
-                           :else     [eat                :normal]}
-               :open      {\h        [open-left          :normal]
-                           \j        [open-down          :normal]
-                           \k        [open-up            :normal]
-                           \l        [open-right         :normal]}
-               :close     {\h        [close-left         :normal]
-                           \j        [close-down         :normal]
-                           \k        [close-up           :normal]
-                           \l        [close-right        :normal]}
-               :dead      {\y        [reinit-world       :normal]
-                           \n        [(constantly nil)   :normal]}
-               :quit?     {\y        [(constantly nil)   :normal]
-                           :else     [(fn [s _] s)       :normal]}}
+                          {:escape   [identity               :normal]
+                           :else     [describe-inventory     :normal]}
+               :drop      {:escape   [identity               :normal]
+                           :else     [drop-item              :normal]}
+               :pickup    {:escape   [identity               :normal]
+                           :else     [toggle-hotkey          :pickup]
+                           :enter    [pick-up                :normal]}
+               :eat       {:escape   [identity               :normal]
+                           :else     [eat                    :normal]}
+               :open      {\h        [open-left              :normal]
+                           \j        [open-down              :normal]
+                           \k        [open-up                :normal]
+                           \l        [open-right             :normal]}
+               :talk      {\h        [talk-left              identity]
+                           \j        [talk-down              identity]
+                           \k        [talk-up                identity]
+                           \l        [talk-right             identity]}
+               :talking   {:escape   [stop-talking           :normal]
+                           :else     [talk                   identity]}
+               :close     {\h        [close-left             :normal]
+                           \j        [close-down             :normal]
+                           \k        [close-up               :normal]
+                           \l        [close-right            :normal]}
+               :dead      {\y        [reinit-world           :normal]
+                           \n        [(constantly nil)       :normal]}
+               :quit?     {\y        [(constantly nil)       :normal]
+                           :else     [(fn [s _] s)           :normal]}}
         expander-fn (fn [table] table)]
     (expander-fn table)))
 
@@ -615,7 +695,7 @@
   [state keyin]
   (let [current-state (-> state :world :current-state)
         table         (-> state-transition-table current-state)]
-    (println "current-state" current-state)
+    ;(println "current-state" current-state)
     (if (or (contains? table keyin) (contains? table :else))
       (let [[transition-fn new-state] (if (contains? table keyin) (table keyin) (table :else))
             ;; if the table contains keyin, then pass through transition-fn assuming arity-1 [state]
@@ -623,9 +703,14 @@
             transition-fn             (if (contains? table keyin)
                                         transition-fn
                                         (fn [state]
-                                          (transition-fn state keyin)))]
+                                          (transition-fn state keyin)))
+            state                     (transition-fn state)
+            _ (println "new-state" new-state)
+            new-state (if (keyword? new-state)
+                        new-state
+                        (new-state (get-in state [:world :current-state])))
+            _ (println "new-state" new-state)]
         (some-> state
-            transition-fn
             (assoc-in [:world :current-state] new-state)
             ;; do updates that don't deal with keyin
             ;; Get hungrier

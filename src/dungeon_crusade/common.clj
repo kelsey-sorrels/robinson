@@ -187,31 +187,6 @@
   (when-first [cell (filter (fn [[cell cx cy]] (and (= x cx) (= y cy))) (with-xy grid))]
     cell))
 
-(defn npc-at-xy
-  "Retrieve the first npc in the current place at the position `[x y]`. If not npc exists
-   at `[x y]` return `nil`."
-  [x y state]
-  (let [current-place-id (-> state :world :current-place)
-        npcs             (filter #(= current-place-id (% :place))
-                                 (-> state :world :npcs current-place-id))]
-    (some (fn [npc] (when (and (= x (-> npc :pos :x)) (= y (-> npc :pos :y))) npc)) npcs)))
-
-(defn collide?
-  "Return `true` if the cell at `[x y]` is non-traverable. Ie: a wall, closed door or simply does
-   not exist."
-  [x y state]
-  (let [cellxy (get-xy x y (current-place state))]
-    (println "collide? " cellxy)
-    (let [cell (first cellxy)]
-      ;; check the cell to see if it is a wall or closed door
-      (or
-        (-> cell nil?)
-        (some (fn [collision-type] (= (cell :type) collision-type)) [:vertical-wall
-                                                                     :horizontal-wall
-                                                                     :close-door])
-        ;; not a wall or closed door, check for npcs
-        (npc-at-xy x y state)))))
-
 (defn player-cellxy
   "Retrieve the cell at which the player is located."
   [state]
@@ -229,35 +204,6 @@
   [state message]
   (assoc-in state [:world :log] (vec (take-last 5 (conj (-> state :world :log) {:text message :time (-> state :world :time)})))))
 
-(defn npcs-at-current-place
-  "Seq of npcs at the current place."
-  [state]
-  (filter-in state [:world :npcs] (fn [npc] (= (npc :place) (current-place-id state)))))
-
-(defn npc-at-xy
-  "Seq of npcs at [x y] of the current place."
-  [state x y]
-  (first (filter-in state [:world :npcs] (fn [npc] (and (= (npc :place) (current-place-id state))
-                                                        (= (-> npc :pos :x) x)
-                                                        (= (-> npc :pos :y) y))))))
-(defn add-npc
-  "Add an npc to the specified place and position."
-  [state npc place-id x y]
-  (let [npc-with-xy    (assoc npc :pos {:x x :y y})
-        npc-with-place (assoc npc-with-xy :place place-id)]
-    (update-in state [:world :npcs] (fn [npcs] (conj npcs npc-with-xy)))))
-
-(defn transfer-items-from-npc-to-player
-  "Remove items from npc's inventory and add them to the player's inventory."
-  [state npc-id item-pred]
-  (let [player-inventory-grouped (group-by item-pred (get-in state [:world :player :inventory]))
-        new-player-inventory     (get player-inventory-grouped false)
-        items                    (get player-inventory-grouped true)]
-    (-> state
-      (update-in [:world :npcs npc-id :inventory]
-                 (fn [inventory] (concat inventory items)))
-      (assoc-in [:world :player :inventory] new-player-inventory))))
-
 (defn conj-in-cell-items
   "Adds an item to [x y] in the current place. Simple, right?"
   [state item x y]
@@ -270,26 +216,3 @@
         y (-> state :world :player :pos :y)]
     (conj-in-cell-items state item x y)))
 
-(defn talking-npcs
-  "A seq of npcs with which the player is talking."
-  [state]
-  (filter-in state [:world :npcs] (fn [npc] (contains? :talking npc))))
-
-(defn update-npc-at-xy
-  "Transform the npc at `[x y]` with the function f. (f npc)."
-  [state x y f]
-  (update-in state [:world :npcs] (fn [npcs] (map (fn [npc] (if (and (= (-> npc :pos :x) x)
-                                                                     (= (-> npc :pos :y) y))
-                                                              (f npc)
-                                                              npc))
-                                                  npcs))))
-
-(defn quest-data [state quest-id]
-  (-> state :world :quests quest-id))
-
-;(defmacro defquest [quest id]
-;  (walk (fn [e] (if (and (list? e)
-;                         (= (first e) quest-fn))
-;                  (let [f (first e)]
-;                    (fn [state] (f state (quest-data state id))))
-;                  e))))

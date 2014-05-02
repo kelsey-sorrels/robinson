@@ -1,9 +1,9 @@
 (ns dungeon-crusade.main
-  (use     ;dungeon-crusade.common
-           dungeon-crusade.worldgen
+  (:use    dungeon-crusade.worldgen
+           dungeon-crusade.dialog
            dungeon-crusade.update
            dungeon-crusade.render)
-  (require [lanterna.screen :as s]))
+  (:require [lanterna.screen :as s]))
 
 ;; Example setup and tick fns
 (defn setup
@@ -23,19 +23,23 @@
                 (init-world))
          ;; load quests
          _ (doall (map #(load-file (.getPath %))
-                     (filter (fn [file] (.endsWith (.getPath file) ".clj"))
-                             (.listFiles (clojure.java.io/file "src/dungeon_crusade/quests")))))
+                        (filter (fn [file] (.endsWith (.getPath file) ".clj"))
+                                (.listFiles (clojure.java.io/file "src/dungeon_crusade/quests")))))
 
          ;; get a list of all the quests that have been loaded
          quests (map deref (flatten (map #(-> % ns-publics vals)
-                                         (filter #(.contains (-> % ns-name str)
-                                                             "dungeon-crusade.quests")
-                                                 (all-ns)))))
-        _ (doall (map #(println "Loaded quest" (% :name)) quests))]
+                                          (filter #(.contains (-> % ns-name str)
+                                                              "dungeon-crusade.quests")
+                                                   (all-ns)))))
+        _ (doall (map #(println "Loaded quest" (% :name)) quests))
+        _ (println "dialogs" (apply merge (map :dialog quests)))
+        dialog (apply merge (map (fn [[k v]]
+                                   {k (dialog->fsm v)})
+                                 (apply merge (map :dialog quests))))]
 
     (s/start screen)
     ;; tick once using the rest (.) command to update visibility
-    (update-state {:world world :screen screen :quests quests} \.)))
+    (update-state {:world world :screen screen :quests quests :dialog dialog} \.)))
 
 ;; Sometimes rendering can loop and freeze the game. Keep track of how many times
 ;; `render` has been called in each tick and throw if render-coutn > 1.

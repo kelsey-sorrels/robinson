@@ -262,5 +262,5 @@
   "Generate a random grid and print it out."
   [& args]
   (println "generating...")
-  (doall (map println (place-to-ascii ((random-place 55 20) :place)))))
+  (doall (map println (place-to-ascii ((random-place 55 30) :place)))))
 

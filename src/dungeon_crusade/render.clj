@@ -159,7 +159,7 @@
                              valid-input))]
       (s/put-string (state :screen) 0 16 (format "Talking to %-69s" (npc :name)) {:fg :black :bg :white :styles #{:bold}})
       (render-multi-select (state :screen) "Say:" [] options 12 17 68 5)
-      (render-img state "./images/npc-0.png" 0 17))))
+      (render-img state (npc :image-path) 0 17))))
 
 (defn render-map
   "The big render function used during the normal game.

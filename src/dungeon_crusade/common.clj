@@ -201,8 +201,14 @@
  
 (defn append-log
   "Append a message to the in-game log. The last five log messages are retained."
-  [state message]
-  (assoc-in state [:world :log] (vec (take-last 5 (conj (-> state :world :log) {:text message :time (-> state :world :time)})))))
+  ([state message]
+   (append-log state :log message))
+  ([state log message]
+   (assoc-in state
+             [:world log]
+             (vec (take-last 5 (conj (-> state :world :log)
+                                     {:text message
+                                      :time (-> state :world :time)}))))))
 
 (defn conj-in-cell-items
   "Adds an item to [x y] in the current place. Simple, right?"

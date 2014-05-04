@@ -142,22 +142,27 @@
   "Render the dialog menu if the world state is `:talking`."
   [state]
   (when (= (get-in state [:world :current-state]) :talking)
-    (let [npc (first (talking-npcs state))
-          _ (println "world state" (get-in state [:world :current-state]))
+    (let [npc           (first (talking-npcs state))
+          ;_ (println "world state" (get-in state [:world :current-state]))
           ;_ (println "state :dialog" (state :dialog))
           ;_ (println "npcid" (npc :id))
-          fsm (get-in state [:dialog (npc :id)])
+          fsm           (get-in state [:dialog (npc :id)])
           ;_ (println "fsm" fsm)
-          valid-input (get-valid-input fsm)
-          _ (println "render: valid-input:" valid-input)
-          _ (println "render: current-state:" (fsm-current-state fsm))
-          options (take (count valid-input)
-                        (map (fn [k v]
-                               {:hotkey k
-                                :name v})
-                             [\a \b \c \d \e \f]
-                             valid-input))]
-      (s/put-string (state :screen) 0 16 (format "Talking to %-69s" (npc :name)) {:fg :black :bg :white :styles #{:bold}})
+          valid-input   (get-valid-input fsm)
+          ;_ (println "render: valid-input:" valid-input)
+          ;_ (println "render: current-state:" (fsm-current-state fsm))
+          options       (take (count valid-input)
+                              (map (fn [k v]
+                                     {:hotkey k
+                                      :name v})
+                                   [\a \b \c \d \e \f]
+                               valid-input))
+          last-response (-> state :world :dialog-log last)]
+      (s/put-string (state :screen) 0 16
+                    (if last-response
+                      (format "Talking to %s: %-69s" (npc :name) (last-response :text))
+                      (format "Talking to %s %-69s" (npc :name)  ""))
+                    {:fg :black :bg :white :styles #{:bold}})
       (render-multi-select (state :screen) "Say:" [] options 12 17 68 5)
       (render-img state (npc :image-path) 0 17))))
 

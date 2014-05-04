@@ -467,9 +467,18 @@
                                0))]
     (println "start-talking")
     (if-let [target-npc (npc-at-xy state target-x target-y)]
-      (-> state
-          (update-npc-at-xy target-x target-y #(assoc % :talking true))
-          (assoc-in [:world :current-state] :talking))
+      ;; store update the npc and world state with talking
+      (let [state (-> state
+                      (update-npc-at-xy target-x target-y #(assoc % :talking true))
+                      (assoc-in [:world :current-state] :talking))
+            fsm (get-in state [:dialog (target-npc :id)])
+            ;; get the dialog input options for the npc
+            valid-input (get-valid-input fsm)]
+        ;; if the first option is `nil` then advance the fsm one step.
+        ;; this auto step can be used to have the npc speak first when approached.
+        (if (= (first valid-input) nil)
+          (step-fsm state fsm nil)
+          state))
       (assoc-in state [:world :current-state] :normal))))
 
 (defn talk-left [state]

@@ -133,6 +133,7 @@
    :selected-hotkeys #{}
    :remaining-hotkeys remaining-hotkeys
    :log []
+   :dialog-log []
    :player {:hp 10
             :max-hp 10
             :$ 0

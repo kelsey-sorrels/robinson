@@ -76,7 +76,7 @@
                             [k (map (fn [[q r f t]]
                                       [q (fn [state]
                                            (-> state
-                                               (append-log r)
+                                               (append-log :dialog-log r)
                                                (f)))
                                        t])
                                     v)])
@@ -97,11 +97,11 @@
   (let [fsm (dialog->fsm dialog)
         screen (s/get-screen :swing)]
     (s/in-screen screen
-      (loop [state {:log []}]
+      (loop [state {:dialog-log []}]
         (let [valid-input (get-valid-input fsm)
               options (zipmap (take (count valid-input) [\a \b \c \d \e \f \g \h \i]) valid-input)
               _ (s/clear screen)
-              _ (s/put-string screen 0 0 (or (some-> state :world :log last :text) ""))
+              _ (s/put-string screen 0 0 (or (some-> state :world :dialog-log last :text) ""))
               _ (doall (map-indexed (fn [i [k v]] (s/put-string screen 0 (+ i 5) (format "%c - %s" k (if (nil? v) "nil" v)))) options))
               _ (s/redraw screen)
               key-in (s/get-key-blocking screen)

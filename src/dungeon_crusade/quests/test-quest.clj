@@ -58,7 +58,7 @@
                   identity
                   :salutation-not-given]]}}
            :tq0-friend-dude
-           {:initial-state :start-not-given
+           {:initial-state :start
             :m {:start
                 [[nil
                   "Hi. You have the MacGuffing?"
@@ -69,18 +69,27 @@
                   "Thanks. I'll take it!"
                   (fn [state]
                     (-> state
-                        (transfer-items-from-npc-to-player
+                        (transfer-items-from-player-to-npc
                           :tq0-friend-dude
-                          (fn [item] (= (item :id) :tq0-macguffin)))
-                        stop-talking))
-                    :given]
+                          (fn [item] (= (item :id) :tq0-macguffin)))))
+                    :bye-given]
                  ["No"
                   "Maybe you will give it to me later..."
+                  identity
+                  :bye]]
+                :bye
+                [["Bye"
+                  nil
                   stop-talking
                   :start]]
                 :given
                 [[nil
                   "Thanks for that item. I love it!"
+                  identity
+                  :bye-given]]
+                :bye-given
+                [["Bye"
+                  nil
                   stop-talking
                   :given]]}}}
   :stages {

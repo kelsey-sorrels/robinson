@@ -59,6 +59,28 @@
       (throw (IllegalArgumentException.
                (println-str "Could not find npc with id [" npc-id "]. Valid ids:" (map :id npcs)))))))
 
+(defn transfer-items-from-player-to-npc
+  "Remove items from player's inventory and add them to the npc's inventory."
+  [state npc-id item-pred]
+  (let [npcs (get-in state [:world :npcs])
+        npc  (first (filter #(= (% :id) npc-id) npcs))]
+    (if npc
+      (let [player-inventory-grouped (group-by item-pred (get-in state [:world :player :inventory]))
+            new-player-inventory     (vec (get player-inventory-grouped false))
+            new-npc-inventory        (vec (concat (get player-inventory-grouped true)
+                                                  (get npc :inventory)))]
+        (println "player-inventory-grouped" player-inventory-grouped)
+        (-> state
+          (map-in [:world :npcs]
+                  (fn [npc]
+                    (if (= (npc :id)
+                           npc-id)
+                      (assoc npc :inventory new-npc-inventory)
+                      npc)))
+          (assoc-in [:world :player :inventory] new-player-inventory)))
+      (throw (IllegalArgumentException.
+               (println-str "Could not find npc with id [" npc-id "]. Valid ids:" (map :id npcs)))))))
+
 (defn talking-npcs
   "A seq of npcs with which the player is talking."
   [state]

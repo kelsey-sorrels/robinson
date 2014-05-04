@@ -1,5 +1,8 @@
 ;; Functions for rendering state to screen
 (ns dungeon-crusade.render
+  (:import  (java.awt Color)
+            (java.awt.image BufferedImage)
+            (javax.swing ImageIcon))
   (:use     dungeon-crusade.common
             dungeon-crusade.lineofsight
             [dungeon-crusade.dialog :exclude [-main]]
@@ -34,23 +37,50 @@
           {:name \"Item 3\"
            :hotkey :c})
   "
-  [screen title selected-hotkeys items]
-  (let [contents (take 22
-                       (concat (map #(format "%c%c%-38s"
-                                             (or (% :hotkey)
-                                                 \ )
-                                             (if (contains? selected-hotkeys (% :hotkey))
-                                               \+
-                                               \-)
-                                             (% :name))
-                                    items)
-                              (repeat (apply str (repeat 40 " ")))))] 
-    (println "contents" contents)
-    (doall (map-indexed (fn [y line]
-      (do
-        (s/put-string screen 40 (inc y) line {:fg :black :bg :white :styles #{:bold}}))) contents))
-    (println "header")
-    (s/put-string screen 40 0 (format "  %s                               " title) {:fg :black :bg :white :styles #{:underline :bold}})))
+  ([screen title selected-hotkeys items]
+   (render-multi-select screen title selected-hotkeys items 40 0 40 22))
+  ([screen title selected-hotkeys items x y width height]
+   (let [contents (take height
+                        (concat (map #(format (clojure.string/join ["%c%c%-" (- width 2)  "s"])
+                                              (or (% :hotkey)
+                                                  \ )
+                                              (if (contains? selected-hotkeys (% :hotkey))
+                                                \+
+                                                \-)
+                                              (% :name))
+                                     items)
+                               (repeat (apply str (repeat width " ")))))] 
+     (println "contents" contents)
+     (doall (map-indexed (fn [idx line]
+       (do
+         (s/put-string screen x (+ y idx 1) line {:fg :black :bg :white :styles #{:bold}}))) contents))
+     (println "header")
+     (s/put-string screen x y (apply str (repeat width " ")) {:fg :black :bg :white})
+     (s/put-string screen (+ x 2) y title {:fg :black :bg :white :styles #{:underline :bold}}))))
+
+(defn render-img
+  "Render an image using block element U+2584."
+  [state path x y]
+  (let [image          (-> (ImageIcon. path) .getImage)
+        width          (.getWidth image)
+        height         (.getHeight image)
+        buffered-image (BufferedImage. width height BufferedImage/TYPE_INT_RGB)
+        gfx2d          (doto (.createGraphics buffered-image)
+                         (.drawImage image 0 0 width height nil)
+                         (.dispose))]
+   (doall
+     (for [py (filter even? (range height))
+           px (range width)]
+       (let [color1 (Color. (.getRGB buffered-image px py))
+             color2 (Color. (.getRGB buffered-image px (inc py)))
+             rgb1 ((juxt #(.getRed %) #(.getGreen %) #(.getBlue %)) color1)
+             rgb2 ((juxt #(.getRed %) #(.getGreen %) #(.getBlue %)) color2)]
+         (s/put-string (state :screen)
+                       (+ x px)
+                       (int (+ y (/ py 2)))
+                       "\u2584"
+                       {:fg rgb2 :bg rgb1 :styles #{:underline}}))))))
+
 
 (defn render-pick-up
   "Render the pickup item menu if the world state is `:pickup`."
@@ -127,7 +157,9 @@
                                 :name v})
                              [\a \b \c \d \e \f]
                              valid-input))]
-    (render-multi-select (state :screen) "Say:" [] options))))
+      (s/put-string (state :screen) 0 16 (format "Talking to %-69s" (npc :name)) {:fg :black :bg :white :styles #{:bold}})
+      (render-multi-select (state :screen) "Say:" [] options 12 17 68 5)
+      (render-img state "./images/npc-0.png" 0 17))))
 
 (defn render-map
   "The big render function used during the normal game.

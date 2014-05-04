@@ -56,7 +56,33 @@
                 [[nil
                   "Hey."
                   identity
-                  :salutation-not-given]]}}}
+                  :salutation-not-given]]}}
+           :tq0-friend-dude
+           {:initial-state :start-not-given
+            :m {:start
+                [[nil
+                  "Hi. You have the MacGuffing?"
+                  identity
+                  :asked]]
+                :asked
+                [["Yes"
+                  "Thanks. I'll take it!"
+                  (fn [state]
+                    (-> state
+                        (transfer-items-from-npc-to-player
+                          :tq0-friend-dude
+                          (fn [item] (= (item :id) :tq0-macguffin)))
+                        stop-talking))
+                    :given]
+                 ["No"
+                  "Maybe you will give it to me later..."
+                  stop-talking
+                  :start]]
+                :given
+                [[nil
+                  "Thanks for that item. I love it!"
+                  stop-talking
+                  :given]]}}}
   :stages {
     :0 {
       :name "Start"
@@ -72,10 +98,22 @@
                           :type :human
                           :movement-policy :constant
                           :inventory [{:type :ring
+                                       :id :tq0-macguffin
                                        :name "MacGuffin"}]} x y)))
       :nextstagefn (fn [state] :10)}
     :10 {
-      :pred (fn [state] false)
-      :update (fn [state] state)
+      :pred (fn [state] (and (> (count (filter #(= (% :id) :tq0-macguffin) (get-in state [:world :player :inventory]))) 0)
+                             (contains? (get-in state [:world :places]) :1)))
+      :update (fn [state] 
+                (let [[_ x y] (first
+                                (shuffle
+                                  (filter #(= (-> % first :type) :floor)
+                                          (with-xy (current-place state)))))]
+                (add-npc state :1
+                         {:id :tq0-friend-dude
+                          :name "Some guy"
+                          :type :human
+                          :movement-policy :constant
+                          :inventory []} x y)))
       :nextstagefn (fn [state] nil)}}}))
 

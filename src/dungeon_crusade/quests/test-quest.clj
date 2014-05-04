@@ -95,6 +95,7 @@
                 (add-npc state :0
                          {:id :tq0-the-dude
                           :name "The Dude"
+                          :image-path "./images/npc-0.png"
                           :type :human
                           :movement-policy :constant
                           :inventory [{:type :ring
@@ -112,6 +113,7 @@
                 (add-npc state :1
                          {:id :tq0-friend-dude
                           :name "Some guy"
+                          :image-path "./images/npc-1.png"
                           :type :human
                           :movement-policy :constant
                           :inventory []} x y)))

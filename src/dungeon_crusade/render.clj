@@ -301,6 +301,16 @@
     (s/put-string (state :screen) 10 22 "Play again? [yn]")
     (s/redraw (state :screen))))
 
+(defn render-help
+  "Render the help screen."
+  [state]
+  (let [help-contents (read-string (slurp "data/help"))]
+    (s/clear (state :screen))
+    (doall (map-indexed (fn [idx line]
+                          (s/put-string (state :screen) 0 idx line))
+                        help-contents))
+    (s/redraw (state :screen))))
+
 (defn render
   "Pick between the normal render function and the
    game over render function based on the dead state
@@ -309,8 +319,10 @@
   (cond
     ;; Is player dead?
     (player-dead? state)
-      (render-game-over state)
       ;; Render game over
+      (render-game-over state)
+    (= (get-in state [:world :current-state]) :help)
+      (render-help state)
     :else (render-map state)))
 
 

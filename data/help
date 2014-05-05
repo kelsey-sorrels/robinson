@@ -1,0 +1,13 @@
+["Help                                                              " 
+ "Movement:      Movement Commands:                                 "
+ "  k    < up    o<dir>: open door in the specified direction       "
+ "  |    > down  c<dir>: close door in the specified direction      "
+ "h---l  . rest  T<dir>: talk to an npc in the specified direction  "
+ "  |                                                               "
+ "  j            Commands:                 Description Mode:        "
+ "               i: view inventory         ;: enter description mode"
+ "               d: drop item              hjkl: move cursor        "
+ "               e: eat item               enter: describe at cursor"
+ "               Q: show active quests     or                       "
+ "               ?: show help              i: describe inventory    "
+ "               esc: exit menu                                     "]

@@ -641,6 +641,7 @@
                            \;        [init-cursor            :describe]
                            \Q        [identity               :quests]
                            \T        [identity               :talk]
+                           \?        [identity               :help]
                            :escape   [identity               :quit?]}
                :inventory {:escape   [identity               :normal]}
                :describe  {:escape   [free-cursor            :normal]
@@ -671,6 +672,7 @@
                            \l        [talk-right             identity]}
                :talking   {:escape   [stop-talking           :normal]
                            :else     [talk                   identity]}
+               :help      {:else     [(fn [s _] s)           :normal]}
                :close     {\h        [close-left             :normal]
                            \j        [close-down             :normal]
                            \k        [close-up               :normal]

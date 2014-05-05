@@ -600,7 +600,7 @@
   (reduce (fn [state quest]
             (let [stage-id (get-in state [:world :quests (quest :id) :stage] :0)]
               (if (nil? stage-id)
-                ;; current stage of quest is nil. Ie: it is completed.
+                ;; Skip quest if current stage of quest is nil. Ie: it is completed.
                 state
                 (let [stage    (get-in quest [:stages stage-id])]
                   ;(println "exec quest" quest)

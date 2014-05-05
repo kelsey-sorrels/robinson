@@ -124,13 +124,22 @@
   "Render the pickup item menu if the world state is `:pickup`."
   [state]
   (when (= (-> state :world :current-state) :eat)
-    (render-multi-select (state :screen) "Eat Inventory" [] (filter #(= (% :type) :food) (-> state :world :player :inventory)))))
+    (render-multi-select (state :screen)
+                         "Eat Inventory"
+                         []
+                         (filter #(= (% :type) :food)
+                                 (-> state :world :player :inventory)))))
 
 (defn render-quests
   "Render the pickup item menu if the world state is `:pickup`."
   [state]
   (when (= (-> state :world :current-state) :quests)
-    (render-multi-select (state :screen) "Quests" [] (-> state :quests))))
+    (render-multi-select (state :screen)
+                         "Quests"
+                         []
+                         (filter (fn [quest]
+                                   (not (nil? (get-in state [:world  :quests (quest :id) :stage] nil))))
+                                 (-> state :quests)))))
 
 (defn render-quit?
   "Render the pickup item menu if the world state is `:pickup`."

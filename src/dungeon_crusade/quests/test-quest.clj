@@ -103,7 +103,7 @@
                                           (with-xy (current-place state)))))]
                 (add-npc state :0
                          {:id :tq0-the-dude
-                          :name "The Dude"
+                          :name "Kyle the cat enchanter"
                           :image-path "./images/npc-0.png"
                           :type :human
                           :movement-policy :constant

@@ -166,13 +166,18 @@
                                       :name v})
                                    [\a \b \c \d \e \f]
                                valid-input))
-          last-response (-> state :world :dialog-log last)]
-      (s/put-string (state :screen) 0 16
-                    (if last-response
-                      (format "Talking to %s: %-69s" (npc :name) (last-response :text))
-                      (format "Talking to %s %-69s" (npc :name)  ""))
-                    {:fg :black :bg :white :styles #{:bold}})
-      (render-multi-select (state :screen) "Say:" [] options 12 17 68 5)
+          last-response ((or (last (get-in state [:world :dialog-log])) {:text ""}) :text)
+          _ (println "last-response" last-response)
+          response-wrapped (clojure.string/join "\n" (wrap-line (- 30 17) last-response))
+          _ (println "response-wrapped" response-wrapped)
+          style {:fg :black :bg :white :styles #{:bold}}]
+      (s/put-string (state :screen) 0 16 (format "Talking to %-69s" (npc :name)) style)
+      (doall (map (fn [y] (s/put-string (state :screen) 12 y "                    " style))
+                  (range 17 (+ 17 6))))
+      (s/put-string (state :screen) 13 17
+                    response-wrapped
+                    style)
+      (render-multi-select (state :screen) "Respond:" [] options 32 17 68 5)
       (render-img state (npc :image-path) 0 17))))
 
 (defn render-map
@@ -260,8 +265,8 @@
     (render-quests state)
     ;; draw status bar
     (s/put-string (state :screen) 0  23
-      (format " %s $%d HP:%d(%d) Pw:%d(%d) Amr:%d XP:%d/%d T%d %s                      "
-        "location-detail"
+      (format "Dgnlvl %s $%d HP:%d(%d) Pw:%d(%d) Amr:%d XP:%d/%d T%d %s                             "
+        (name (-> state :world :current-place))
         (-> state :world :player :$)
         (int (-> state :world :player :hp))
         (-> state :world :player :max-hp)
@@ -276,14 +281,15 @@
       (println "message" message)
       (when (< (- (-> state :world :time) (message :time)) 5)
         (s/put-string (state :screen) 0 0 (or (message :text) ""))))
-    ;; draw cursor
-    (if-let [cursor-pos (-> state :world :cursor)]
-      (s/move-cursor (state :screen) (cursor-pos :x) (cursor-pos :y))
-      (s/move-cursor (state :screen) 0 0))
     ;; draw quit prompt
     (render-quit? state)
     ;; draw dialog menu
     (render-dialog state)
+    ;; draw cursor
+    (if-let [cursor-pos (-> state :world :cursor)]
+      (s/move-cursor (state :screen) (cursor-pos :x) (cursor-pos :y))
+      (let [[x y] (s/get-size (state :screen))]
+        (s/move-cursor (state :screen) (dec x) (dec y))))
     (s/redraw (state :screen))
     (println "end-render")))
 

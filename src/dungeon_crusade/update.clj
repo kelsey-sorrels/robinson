@@ -19,7 +19,7 @@
     (let [cell (first cellxy)]
       ;; check the cell to see if it is a wall or closed door
       (or
-        (-> cell nil?)
+        (nil? cell)
         (some (fn [collision-type] (= (cell :type) collision-type)) [:vertical-wall
                                                                      :horizontal-wall
                                                                      :close-door])
@@ -63,27 +63,25 @@
           ;; maybe add corpse
           (update-in [:world :places current-place-id y x :items]
                      (fn [items]
-                       (if (= (rand-int 3) 0)
+                       (if (zero? (rand-int 3))
                          (conj items {:type :food :name (format "%s corpse" (name (npc :type))) :hunger 10})
                          items))))
       ;; player dead?
       (not (pos? (- player-hp player-dmg)))
         ;; add dead status
-        (-> state
-          (update-in [:world :player :status]
-            (fn [status] (conj status :dead)))))))
+        (update-in state [:world :player :status]
+          (fn [status] (conj status :dead))))))
 
 (defn move-left
   "Moves the player one space to the left provided he/she is able."
   [state]
   (let [x (-> state :world :player :pos :x)
         y (-> state :world :player :pos :y)]
-    (if-not (collide? (- x 1) y state)
-      (-> state
-        (assoc-in [:world :player :pos :x] (- x 1)))
-      (if (npc-at-xy (- x 1) y state)
+    (if-not (collide? (dec x) y state)
+      (assoc-in state [:world :player :pos :x] (dec x))
+      (if (npc-at-xy (dec x) y state)
         ;; collided with npc. Engage in combat.
-        (do-combat (- x 1) y state)
+        (do-combat (dec x) y state)
         ;; collided with a wall or door, nothing to be done.
         state))))
   
@@ -92,12 +90,11 @@
   [state]
   (let [x (-> state :world :player :pos :x)
         y (-> state :world :player :pos :y)]
-    (if-not (collide? (+ x 1) y state)
-      (-> state
-        (assoc-in [:world :player :pos :x] (+ x 1)))
-      (if (npc-at-xy (+ x 1) y state)
+    (if-not (collide? (inc x) y state)
+      (assoc-in state [:world :player :pos :x] (inc x))
+      (if (npc-at-xy (inc x) y state)
         ;; collided with npc. Engage in combat.
-        (do-combat (+ x 1) y state)
+        (do-combat (inc x) y state)
         ;; collided with a wall or door, nothing to be done.
         state))))
   
@@ -106,13 +103,12 @@
   [state]
   (let [x (-> state :world :player :pos :x)
         y (-> state :world :player :pos :y)]
-    (if-not (collide? x (- y 1) state)
+    (if-not (collide? x (dec y) state)
       ;; no collision. move up
-      (-> state
-        (assoc-in [:world :player :pos :y] (- y 1)))
-      (if (npc-at-xy x (- y 1) state)
+      (assoc-in state [:world :player :pos :y] (dec y))
+      (if (npc-at-xy x (dec y) state)
         ;; collided with npc. Engage in combat.
-        (do-combat x (- y 1) state)
+        (do-combat x (dec y) state)
         ;; collided with a wall or door, nothing to be done.
         state))))
   
@@ -122,12 +118,11 @@
   (let [x (-> state :world :player :pos :x)
         y (-> state :world :player :pos :y)]
     (println "move-down")
-    (if-not (collide? x (+ y 1) state)
-      (-> state
-        (assoc-in [:world :player :pos :y] (+ y 1)))
-      (if (npc-at-xy x (+ y 1) state)
+    (if-not (collide? x (inc y) state)
+      (assoc-in state [:world :player :pos :y] (inc y))
+      (if (npc-at-xy x (inc y) state)
         ;; collided with npc. Engage in combat.
-        (do-combat x (+ y 1) state)
+        (do-combat x (inc y) state)
         ;; collided with a wall or door, nothing to be done.
         state))))
 
@@ -238,14 +233,14 @@
     ;; clear selected-hotkeys
     (let [place              (-> state :world :current-place)
           [player-cell x y]  (player-cellxy state)
-          items              (into [] (player-cell :items))
+          items              (vec (player-cell :items))
           remaining-hotkeys  (-> state :world :remaining-hotkeys)
           divided-items      (group-by (fn [item] (if (contains? (-> state :world :selected-hotkeys) (item :hotkey))
                                                       :selected
                                                       :not-selected))
                                        (map #(assoc %1 :hotkey %2)
                                             items
-                                            (fill-missing #(not %)
+                                            (fill-missing not
                                                      (fn [_ hotkey] hotkey)
                                                      remaining-hotkeys
                                                      (map :hotkey items))))
@@ -305,11 +300,10 @@
 (defn do-rest
   "NOP action. Player's hp increases a little."
   [state]
-  (-> state
-      (update-in [:world :player]
-                 (fn [player] (if (< (int (player :hp)) (player :max-hp))
-                                (assoc-in player [:hp] (+ (player :hp) 0.1))
-                                player)))))
+  (update-in state [:world :player]
+             (fn [player] (if (< (int (player :hp)) (player :max-hp))
+                            (assoc-in player [:hp] (+ (player :hp) 0.1))
+                            player))))
 
 (defn toggle-hotkey
   "Toggle mark `keyin` as a selected hotkey, or not if it already is."
@@ -476,7 +470,7 @@
             valid-input (get-valid-input fsm)]
         ;; if the first option is `nil` then advance the fsm one step.
         ;; this auto step can be used to have the npc speak first when approached.
-        (if (= (first valid-input) nil)
+        (if (nil? (first valid-input))
           (step-fsm state fsm nil)
           state))
       (assoc-in state [:world :current-state] :normal))))
@@ -560,8 +554,8 @@
         _ (println "path to player" path)
         new-pos (if (and (not (nil? path))
                          (> (count path) 1)
-                         (not (= (first (second path)) (first player-pos)))
-                         (not (= (second (second path)) (second player-pos))))
+                         (not= (first (second path)) (first player-pos))
+                         (not= (second (second path)) (second player-pos)))
                   (second path)
                   npc-pos)
         new-npc (-> npc
@@ -704,8 +698,8 @@
   
    * Increment the current time"
   [state keyin]
-  (let [current-state (-> state :world :current-state)
-        table         (-> state-transition-table current-state)]
+  (let [current-state (get-in state [:world :current-state])
+        table         (get state-transition-table current-state)]
     ;(println "current-state" current-state)
     (if (or (contains? table keyin) (contains? table :else))
       (let [[transition-fn new-state] (if (contains? table keyin) (table keyin) (table :else))

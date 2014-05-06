@@ -1,6 +1,7 @@
 (defproject dungeon-crusade "0.0.1-SNAPSHOT"
   :description "dungeon-crusade"
-  :plugins      [[lein-marginalia "0.7.1"]]
+  :plugins      [[lein-marginalia "0.7.1"]
+                 [lein-kibit "0.0.8"]]
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [org.clojure/tools.reader "0.8.4"]
                  [org.clojure/core.typed "0.2.44"]

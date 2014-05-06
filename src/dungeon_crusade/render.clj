@@ -49,7 +49,7 @@
                                                 \-)
                                               (% :name))
                                      items)
-                               (repeat (apply str (repeat width " ")))))] 
+                               (repeat (clojure.string/join (repeat width " ")))))] 
      (println "contents" contents)
      (doall (map-indexed (fn [idx line]
        (do

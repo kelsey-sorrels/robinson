@@ -153,7 +153,6 @@
                       "Hey."
                       identity
                       :salutation-not-given]]}}]
-  (do
     (draw-dialog dialog)
-    (run-dialog dialog))))
+    (run-dialog dialog)))
 

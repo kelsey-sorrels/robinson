@@ -231,7 +231,7 @@
             alen (+ (count spacing) wlen)]
         (if (<= alen left)
           (recur (- left alen) (conj line spacing word) lines (next words))
-          (recur (- size wlen) [word] (conj lines (apply str line)) (next words))))
+          (recur (- size wlen) [word] (conj lines (clojure.string/join line)) (next words))))
       (when (seq line)
-        (conj lines (apply str line))))))
+        (conj lines (clojure.string/join line))))))
 

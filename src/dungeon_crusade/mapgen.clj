@@ -29,7 +29,7 @@
    is traversable from every other room."
   [nodes]
   (let [;_ (println "all nodes" nodes)
-        minimum-edges (map #(vector %1 %2) nodes (rest nodes))
+        minimum-edges (map vector nodes (rest nodes))
         all-edges (combo/combinations nodes 2)
         ;_ (println "all edges" all-edges)
         ;_ (println "minimum-edges" minimum-edges)
@@ -87,7 +87,7 @@
 
 (defn cellsxy-to-ascii [cells-xy]
   "Convert a grid of cells into a list of string that can be rendered."
-  (let [contents (map (fn [line] (apply str
+  (let [contents (map (fn [line] (clojure.string/join
                                       (map (fn [[x y cell]]
                                         (if (nil? cell)
                                             \ 
@@ -103,7 +103,6 @@
   "When merging cells, given their types, determine
    the type of the resulting cell."
   [cell1 cell2]
-  (do ;(println "cell1" cell1 "cell2" cell2)
   (case (cell1 :type)
     :floor (case (cell2 :type)
              :floor :floor
@@ -164,7 +163,7 @@
              :corridor :down-stairs 
              :close-door :down-stairs 
              :nil :down-stairs)
-    :nil (cell2 :type))))
+    :nil (cell2 :type)))
 
 (defn merge-with-canvas
   "Merge a grid of `[x y cell]` into an existing grid. The result is a merged grid
@@ -242,7 +241,7 @@
 (defn place-to-ascii
   "Convert a grid of cells into a list of strings so that it can be rendered."
   [place]
-  (let [contents (map (fn [line] (apply str
+  (let [contents (map (fn [line] (clojure.string/join
                                       (map (fn [cell]
                                         (if (nil? cell)
                                             \ 

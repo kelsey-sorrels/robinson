@@ -61,14 +61,14 @@
         width  (-> grid first count)
         height (count grid)
         bounds-xy (filter (fn [[x y e]]
-                            (or (= x 0)
+                            (or (zero? x)
                                 (= x (dec width))
-                                (= y 0)
+                                (zero? y)
                                 (= y (dec height))))
                           (with-xy grid))
         get-cell (fn [grid ks] (memoize (get-in grid ks)))
         visible? (fn [x1 y1 x2 y2]
-                   (not-any? #(blocking? %)
+                   (not-any? blocking?
                      ;(map (fn [[x y]] (get-cell grid [y x]))
                      (map (fn [[x y]] (get-in grid [y x]))
                        (rest (butlast (line-segment-fast [x1 y1] [x2 y2]))))))]

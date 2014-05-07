@@ -6,8 +6,17 @@
 
 ;; State Machine Functions
 ;; =======================
-(defn state-machine [transition-table intial-state]
-  (with-meta transition-table {:current-state (ref intial-state)}))
+(defn state-machine [transition-table initial-state]
+  {:pre  [
+          ;; Make sure all destination states are valid states
+          ;; and that there are no unused states. Ie destination
+          ;; states and state sets are identical.
+          (let [states (map first transition-table)
+                dest-states (map last (reduce concat (vals transition-table)))]
+            (= (set states) (set dest-states)))
+          ;; Make sure that initial-state is a valid state.
+          (contains? (set (map first transition-table)) initial-state)]}
+  (with-meta transition-table {:current-state (ref initial-state)}))
 
 (defn fsm-current-state
   "Get the current state of the fsm."

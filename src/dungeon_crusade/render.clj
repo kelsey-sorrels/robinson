@@ -179,6 +179,26 @@
       (render-multi-select (state :screen) "Respond:" [] options 32 17 68 5)
       (render-img state (npc :image-path) 0 17))))
 
+(defn render-shopping
+  "Render the shopping menu if the world state is `:shopping`."
+  [state]
+  (when (= (get-in state [:world :current-state]) :shopping)
+    (let [npc           (first (talking-npcs state))
+          options       [{:hotkey \a
+                          :name "Buy"}
+                         {:hotkey \b
+                          :name "Sell"}]
+          last-response ((or (last (get-in state [:world :dialog-log])) {:text ""}) :text)
+          response-wrapped (wrap-line (- 30 17) last-response)
+          style {:fg :black :bg :white :styles #{:bold}}]
+      (s/put-string (state :screen) 0 16 (format "Doing business with %-69s" (npc :name)) style)
+      (doall (map (fn [y] (s/put-string (state :screen) 12 y "                    " style))
+                  (range 17 (+ 17 6))))
+      (doall (map-indexed (fn [idx line] (s/put-string (state :screen) 13 (+ 17 idx) line style))
+                          response-wrapped))
+      (render-multi-select (state :screen) "Option:" [] options 32 17 68 5)
+      (render-img state (npc :image-path) 0 17))))
+
 (defn render-map
   "The big render function used during the normal game.
    This renders everything - the map, the menus, the log,
@@ -284,6 +304,8 @@
     (render-quit? state)
     ;; draw dialog menu
     (render-dialog state)
+    ;; draw shopping menu
+    (render-shopping state)
     ;; draw cursor
     (if-let [cursor-pos (-> state :world :cursor)]
       (s/move-cursor (state :screen) (cursor-pos :x) (cursor-pos :y))

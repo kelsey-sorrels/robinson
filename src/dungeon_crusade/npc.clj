@@ -4,17 +4,6 @@
         dungeon-crusade.common
         [dungeon-crusade.dialog :exclude [-main]]))
 
-
-(defn npc-at-xy
-  "Retrieve the first npc in the current place at the position `[x y]`. If not npc exists
-   at `[x y]` return `nil`."
-  [x y state]
-  (let [current-place-id (-> state :world :current-place)
-        npcs             (filter #(= current-place-id (% :place))
-                                 (-> state :world :npcs current-place-id))]
-    (some (fn [npc] (when (and (= x (-> npc :pos :x)) (= y (-> npc :pos :y))) npc)) npcs)))
-
-
 (defn npcs-at-current-place
   "Seq of npcs at the current place."
   [state]
@@ -29,6 +18,13 @@
                                 (= (-> npc :pos :x) x)
                                 (= (-> npc :pos :y) y)))
                  (get-in state [:world :npcs]))))
+
+(defn npc-by-id
+  "The npc with the :id id. Nil if not found."
+  [state id]
+  (first (filter (fn [npc] (= (npc :id) id))
+                 (get-in state [:world :npcs]))))
+
 (defn add-npc
   "Add an npc to the specified place and position."
   [state place-id npc x y]
@@ -93,5 +89,12 @@
                                                   (= (-> npc :pos :y) y))
                                              (f npc)
                                              npc))))
+
+(defn update-npc
+  "Transform the npc with the function f. (f npc)."
+  [state npc f]
+  (map-in state [:world :npcs] (fn [n] (if (= npc n)
+                                           (f npc)
+                                           npc))))
 
 

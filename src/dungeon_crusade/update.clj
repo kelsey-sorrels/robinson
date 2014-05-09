@@ -524,6 +524,32 @@
         new-state)
         state)))
 
+(defn start-shopping
+  "Starts shopping with a specific npc."
+  [state npc]
+    ;; store update the npc and world state with talking
+    (-> state
+        (update-npc npc #(assoc % :shopping true))
+        (assoc-in [:world :current-state] :shopping)))
+   
+(defn shop
+  "Start shopping. Allows the player to select \\a -buy or \\b - sell."
+  [state keyin]
+  (case keyin
+    \a (assoc-in state [:world :current-state] :buy)
+    \b (assoc-in state [:world :current-state] :sell)
+    :else state))
+
+(defn buy
+  "Buy an item from an npc in exchange for money."
+  [state keyin]
+  state)
+
+(defn sell
+  "Sell an item to an npc in exchange for money."
+  [state keyin]
+  state)
+
 (defn move-npc
   "Move `npc` one space closer to the player's position if there is a path
    from the npc to the player."
@@ -666,6 +692,12 @@
                            \l        [talk-right             identity]}
                :talking   {:escape   [stop-talking           :normal]
                            :else     [talk                   identity]}
+               :shop      {\a        [identity               :buy]
+                           \b        [identity               :sell]}
+               :buy       {:escape   [identity               :normal]
+                           :else     [buy                    :buy]}
+               :sell      {:escape   [identity               :normal]
+                           :else     [sell                   :sell]}
                :help      {:else     [(fn [s _] s)           :normal]}
                :close     {\h        [close-left             :normal]
                            \j        [close-down             :normal]

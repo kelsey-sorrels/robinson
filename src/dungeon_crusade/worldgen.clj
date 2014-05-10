@@ -136,7 +136,7 @@
    :dialog-log []
    :player {:hp 10
             :max-hp 10
-            :$ 0
+            :$ 50
             :xp 0
             :level 0
             :sym "@"

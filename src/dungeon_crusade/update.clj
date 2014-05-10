@@ -543,7 +543,17 @@
 (defn buy
   "Buy an item from an npc in exchange for money."
   [state keyin]
-  state)
+  (let [npc       (first (talking-npcs state))
+        options   (zipmap [\a \b \c \d \e \f]
+                          (get npc :inventory []))
+        item      (get options keyin)]
+    (if (and item (< (item :price)
+                     (get-in state [:world :player :$])))
+      (-> state
+          (update-in [:world :player :$] (fn [gold] (- gold (item :price))))
+          (transfer-items-from-npc-to-player (npc :id) (partial = item)))
+      state)))
+
 
 (defn sell
   "Sell an item to an npc in exchange for money."
@@ -692,7 +702,7 @@
                            \l        [talk-right             identity]}
                :talking   {:escape   [stop-talking           :normal]
                            :else     [talk                   identity]}
-               :shop      {\a        [identity               :buy]
+               :shopping  {\a        [identity               :buy]
                            \b        [identity               :sell]}
                :buy       {:escape   [identity               :normal]
                            :else     [buy                    :buy]}

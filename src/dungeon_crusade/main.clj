@@ -31,6 +31,7 @@
                                           (filter #(.contains (-> % ns-name str)
                                                               "dungeon-crusade.quests")
                                                    (all-ns)))))
+        quest-map (apply hash-map (mapcat (fn [i] [(i :id) i]) quests))
         _ (doall (map #(println "Loaded quest" (% :name)) quests))
         _ (println "dialogs" (apply merge (map :dialog quests)))
         dialog (apply merge (map (fn [[k v]]
@@ -39,7 +40,7 @@
 
     (s/start screen)
     ;; tick once using the rest (.) command to update visibility
-    (update-state {:world world :screen screen :quests quests :dialog dialog} \.)))
+    (update-state {:world world :screen screen :quests quest-map :dialog dialog} \.)))
 
 ;; Sometimes rendering can loop and freeze the game. Keep track of how many times
 ;; `render` has been called in each tick and throw if render-coutn > 1.

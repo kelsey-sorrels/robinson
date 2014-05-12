@@ -12,6 +12,9 @@
 (def q (quest :merchant-quest {
   :name "Merchant Quest"
   :data {:state :start}
+  :buy-fn (fn [item] (case (item :type)
+                         :ring (+ (rand-int 10) 10)
+                         :else nil))
   :dialog {:mq-merchant
            {:initial-state :start
             :m {:start
@@ -22,8 +25,8 @@
                  :asked
                  [["Yes"
                    "Check it out"
-                   (fn [state]
-                     (start-shopping state (npc-by-id state :mq-merchant)))
+                   (quest-fn [state quest]
+                     (start-shopping state (npc-by-id state :mq-merchant) (quest :buy-fn)))
                    :start]
                    ["No"
                     "You come back when you want some of this."
@@ -45,7 +48,7 @@
                           :type :human
                           :movement-policy :constant
                           :inventory [{:type :ring
-                                       :name "Bling Ring"
+                                       :name "Gaudy Ring"
                                        :price 100}
                                       {:type :food
                                        :name "Lyrium Yogurt"

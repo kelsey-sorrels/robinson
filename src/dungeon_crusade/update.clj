@@ -526,12 +526,15 @@
 
 (defn start-shopping
   "Starts shopping with a specific npc."
-  [state npc]
-    ;; store update the npc and world state with talking
-    (-> state
-        (update-npc npc #(assoc % :shopping true))
-        (assoc-in [:world :current-state] :shopping)))
-   
+  ([state npc]
+   (start-shopping state npc (constantly nil)))
+  ([state npc buy-fn]
+     ;; store update the npc and world state with talking
+     (-> state
+         (update-npc npc #(assoc % :shopping true))
+         (assoc-in [:world :current-state] :shopping)
+         (assoc :buy-fn buy-fn))))
+    
 (defn shop
   "Start shopping. Allows the player to select \\a -buy or \\b - sell."
   [state keyin]
@@ -558,7 +561,16 @@
 (defn sell
   "Sell an item to an npc in exchange for money."
   [state keyin]
-  state)
+  (let [npc       (first (talking-npcs state))
+        options   (zipmap [\a \b \c \d \e \f]
+                          (get-in state [:world :player :inventory]))
+        item      (get options keyin)]
+    (if (and item (< (item :price)
+                     (get-in state [:world :player :$])))
+      (-> state
+          (update-in [:world :player :$] (fn [gold] (- gold (item :price))))
+          (transfer-items-from-npc-to-player (npc :id) (partial = item)))
+      state)))
 
 (defn move-npc
   "Move `npc` one space closer to the player's position if there is a path
@@ -644,7 +656,7 @@
                                                [:world :quests (quest :id) :stage]
                                                ((stage :nextstagefn) stage)))))
                     state)))))
-            state (state :quests)))
+            state (-> state :quests vals)))
 
 ;; A finite state machine definition for the game state. 
 ;; For each starting state, define a transition symbol, a function

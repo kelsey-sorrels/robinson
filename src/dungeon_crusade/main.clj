@@ -1,5 +1,6 @@
 (ns dungeon-crusade.main
-  (:use    dungeon-crusade.worldgen
+  (:use    clojure.pprint
+           dungeon-crusade.worldgen
            dungeon-crusade.dialog
            dungeon-crusade.update
            dungeon-crusade.render)
@@ -18,8 +19,8 @@
    * `quests` that are loaded dynamically on startup."
   []
   (let [screen (s/get-screen :swing)
-        world (if (.exists (clojure.java.io/file "world.save"))
-                (read-string (slurp "world.save"))
+        world (if (.exists (clojure.java.io/file "save/world.clj"))
+                (read-string (slurp "save/world.clj"))
                 (init-world))
          ;; load quests
          _ (doall (map #(load-file (.getPath %))
@@ -62,6 +63,6 @@
     (let [keyin  (s/get-key-blocking (state :screen))]
       (println "got " keyin " type " (type keyin))
       (let [newstate (update-state state keyin)]
-        (spit "world.save" (state :world))
+        (spit "save/world.clj" (with-out-str (pprint (state :world))))
         newstate))))
 

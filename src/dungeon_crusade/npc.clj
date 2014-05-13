@@ -28,9 +28,11 @@
 (defn add-npc
   "Add an npc to the specified place and position."
   ([state place-id npc x y]
-  (add-npc state place-id npc x y (fn [item] nil)))
-  ([state place-id npc x y buy-fn]
-  (conj-in state [:world :npcs] (assoc npc :pos {:x x :y y} :place place-id))))
+  (add-npc state place-id npc x y nil))
+  ([state place-id npc x y buy-fn-path]
+  (conj-in state [:world :npcs] (assoc npc :pos {:x x :y y}
+                                           :place place-id
+                                           :buy-fn-path buy-fn-path))))
 
 (defn transfer-items-from-npc-to-player
   "Remove items from npc's inventory and add them to the player's inventory."

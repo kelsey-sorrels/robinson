@@ -14,7 +14,7 @@
   :data {:state :start}
   :buy-fn (fn [item] (case (item :type)
                          :ring (+ (rand-int 10) 10)
-                         :else nil))
+                         nil))
   :dialog {:mq-merchant
            {:initial-state :start
             :m {:start
@@ -25,8 +25,8 @@
                  :asked
                  [["Yes"
                    "Check it out"
-                   (quest-fn [state quest]
-                     (start-shopping state (npc-by-id state :mq-merchant) (quest :buy-fn)))
+                   (fn [state]
+                     (start-shopping state (npc-by-id state :mq-merchant)))
                    :start]
                    ["No"
                     "You come back when you want some of this."
@@ -53,6 +53,13 @@
                                       {:type :food
                                        :name "Lyrium Yogurt"
                                        :hunger 100
-                                       :price 20}]} x y)))
-      :nextstagefn (fn [state] nil)}}}))
+                                       :price 20}]}
+                        x y
+                        [:quests :merchant-quest :buy-fn])))
+      :nextstagefn (fn [_] :1)}
+    :1 {
+      :name "End"
+      :pred (fn [_] false)
+      :update identity
+      :nextstagefn (fn [_] nil)}}}))
 

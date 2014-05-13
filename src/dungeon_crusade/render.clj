@@ -226,6 +226,29 @@
       (render-multi-select (state :screen) "Buy:" [] options 32 17 68 5)
       (render-img state (npc :image-path) 0 17))))
 
+(defn render-sell
+  "Render the dialog menu if the world state is `:sell`."
+  [state]
+  (when (= (get-in state [:world :current-state]) :sell)
+    (let [npc           (first (talking-npcs state))
+          buy-fn        (get-in state (npc :buy-fn-path) (fn [_] nil))
+          _ (println "render-sell (npc :buy-fn-path)" (npc :buy-fn-path))
+          _ (println "render-sell buy-fn" buy-fn)
+          options       (filter #(not (nil? (buy-fn %)))
+                                 (get-in state [:world :player :inventory]))
+          _ (println "options" options)
+          last-response ((or (last (get-in state [:world :dialog-log])) {:text ""}) :text)
+          _ (println "last-response" last-response)
+          response-wrapped (wrap-line (- 30 17) last-response)
+          _ (println "response-wrapped" response-wrapped)
+          style {:fg :black :bg :white :styles #{:bold}}]
+      (s/put-string (state :screen) 0 16 (format "Doing business with %-69s" (npc :name)) style)
+      (doall (map (fn [y] (s/put-string (state :screen) 12 y "                    " style))
+                  (range 17 (+ 17 6))))
+      (doall (map-indexed (fn [idx line] (s/put-string (state :screen) 13 (+ 17 idx) line style))
+                          response-wrapped))
+      (render-multi-select (state :screen) "Sell:" [] options 32 17 68 5)
+      (render-img state (npc :image-path) 0 17))))
 
 (defn render-map
   "The big render function used during the normal game.
@@ -334,8 +357,10 @@
     (render-dialog state)
     ;; draw shopping menu
     (render-shopping state)
-    ;; draw buying  menu
+    ;; draw buying menu
     (render-buy state)
+    ;; draw selling menu
+    (render-sell state)
     ;; draw cursor
     (if-let [cursor-pos (-> state :world :cursor)]
       (s/move-cursor (state :screen) (cursor-pos :x) (cursor-pos :y))

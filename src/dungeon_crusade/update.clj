@@ -526,14 +526,11 @@
 
 (defn start-shopping
   "Starts shopping with a specific npc."
-  ([state npc]
-   (start-shopping state npc (constantly nil)))
-  ([state npc buy-fn]
-     ;; store update the npc and world state with talking
-     (-> state
-         (update-npc npc #(assoc % :shopping true))
-         (assoc-in [:world :current-state] :shopping)
-         (assoc :buy-fn buy-fn))))
+  [state npc]
+    ;; store update the npc and world state with talking
+    (-> state
+        (update-npc npc #(assoc % :shopping true))
+        (assoc-in [:world :current-state] :shopping)))
     
 (defn shop
   "Start shopping. Allows the player to select \\a -buy or \\b - sell."
@@ -562,15 +559,21 @@
   "Sell an item to an npc in exchange for money."
   [state keyin]
   (let [npc       (first (talking-npcs state))
-        options   (zipmap [\a \b \c \d \e \f]
-                          (get-in state [:world :player :inventory]))
-        item      (get options keyin)]
-    (if (and item (< (item :price)
-                     (get-in state [:world :player :$])))
-      (-> state
-          (update-in [:world :player :$] (fn [gold] (- gold (item :price))))
-          (transfer-items-from-npc-to-player (npc :id) (partial = item)))
-      state)))
+        buy-fn    (get-in state (npc :buy-fn-path) (fn [_] nil))
+        sellable-items (filter #(not (nil? (buy-fn %)))
+                                (get-in state [:world :player :inventory]))
+        options   (apply hash-map
+                         (mapcat (fn [item] [(item :hotkey) item]) sellable-items))
+        _ (println "sellable items" sellable-items)
+        _ (println "Sell options" options)]
+    (if (contains? options keyin)
+      (let [item  (get options keyin)
+            price (buy-fn item)
+            _ (println "current $" (get-in state [:world :player :$]))]
+        (-> state
+            (update-in [:world :player :$] (fn [gold] (+ gold price)))
+            (transfer-items-from-player-to-npc (npc :id) (partial = item))))
+        state)))
 
 (defn move-npc
   "Move `npc` one space closer to the player's position if there is a path
@@ -715,7 +718,8 @@
                :talking   {:escape   [stop-talking           :normal]
                            :else     [talk                   identity]}
                :shopping  {\a        [identity               :buy]
-                           \b        [identity               :sell]}
+                           \b        [identity               :sell]
+                           :escape   [identity               :normal]}
                :buy       {:escape   [identity               :normal]
                            :else     [buy                    :buy]}
                :sell      {:escape   [identity               :normal]

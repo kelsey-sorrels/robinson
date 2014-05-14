@@ -11,4 +11,4 @@ target
 .*.swp
 
 # Project runtime files
-world.save
+save/*

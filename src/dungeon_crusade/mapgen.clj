@@ -2,7 +2,10 @@
 (ns dungeon-crusade.mapgen
   (:require [clojure.math.combinatorics :as combo]
             [algotools.algos.graph :as graph]
+            [taoensso.timbre :as timbre]
             clojure.set))
+
+(timbre/refer-timbre)
 
 (defn canvas
   "Create a blank grid using `nil` for cell values."
@@ -28,14 +31,14 @@
   "Generate a random set of edges between rooms such that each room
    is traversable from every other room."
   [nodes]
-  (let [;_ (println "all nodes" nodes)
+  (let [_ (trace "all nodes" nodes)
         minimum-edges (map vector nodes (rest nodes))
         all-edges (combo/combinations nodes 2)
-        ;_ (println "all edges" all-edges)
-        ;_ (println "minimum-edges" minimum-edges)
+        _ (trace "all edges" all-edges)
+        _ (trace "minimum-edges" minimum-edges)
         random-edges (map vec (take (/ (count nodes) 2) (shuffle all-edges)))
         union-edges  (distinct (concat minimum-edges random-edges))]
-    ;(println "union-edges" union-edges)
+    (trace "union-edges" union-edges)
     union-edges))
 
 (defn edge-to-points
@@ -193,8 +196,8 @@
                          result
                          (let [x1 (first (filter (partial > (- width max-width)) xl))
                                y1 (first (filter (partial > (- height max-height)) yl))
-                               _ (println "xl" xl)
-                               _ (println "yl" yl)
+                               _ (debug "xl" xl)
+                               _ (debug "yl" yl)
                                x2-potential (map (partial + x1) (shuffle (range min-width max-width)))
                                x2 (first (filter #(and (contains? (set xl) %)
                                                        (contains? (set xl) (int (/ (+ x1 %) 2))))
@@ -203,14 +206,14 @@
                                y2 (first (filter #(and (contains? (set yl) %)
                                                        (contains? (set yl) (int (/ (+ y1 %) 2))))
                                                  y2-potential))
-                               _ (println "x2-potential" x2-potential)
-                               _ (println "y2-potential" y2-potential)
-                               _ (println "x1" x1 "y1" y1 "x2" x2 "y2" y2)]
+                               _ (debug "x2-potential" x2-potential)
+                               _ (debug "y2-potential" y2-potential)
+                               _ (debug "x1" x1 "y1" y1 "x2" x2 "y2" y2)]
                            (if (some nil? [x1 y1 x2 y2])
                              result
                              (let [xc (int (/ (+ x1 x2) 2))
                                    yc (int (/ (+ y1 y2) 2))
-                                   _ (println "xc" xc "yc" yc)
+                                   _ (debug "xc" xc "yc" yc)
                                    result (conj result [x1 y1 x2 y2])]
                                (recur (clojure.set/difference (set xl) #{x1 xc x2})
                                       (clojure.set/difference (set yl) #{y1 yc y2})

@@ -11,7 +11,10 @@
   (:require [lanterna.screen :as s]
             [lanterna.terminal :as t]
             [lanterna.constants :as c]
-            [clojure.reflect :as r]))
+            [clojure.reflect :as r]
+            [taoensso.timbre :as timbre]))
+
+(timbre/refer-timbre)
 
 ;; RBG color definitions. 
 ;; It's easier to use names than numbers.
@@ -50,11 +53,10 @@
                                               (% :name))
                                      items)
                                (repeat (clojure.string/join (repeat width " ")))))] 
-     (println "contents" contents)
+     (debug "contents" contents)
      (doall (map-indexed (fn [idx line]
        (do
          (s/put-string screen x (+ y idx 1) line {:fg :black :bg :white :styles #{:bold}}))) contents))
-     (println "header")
      (s/put-string screen x y (apply str (repeat width " ")) {:fg :black :bg :white})
      (s/put-string screen (+ x 2) y title {:fg :black :bg :white :styles #{:underline :bold}}))))
 
@@ -97,9 +99,9 @@
                                               #(assoc %1 :hotkey %2)
                                               hotkeys
                                               cell-items)]
-    (println "player-x" player-x "player-y" player-y)
-    ;(println "cell" cell)
-    ;(println "cell-items" cell-items)
+    (debug "player-x" player-x "player-y" player-y)
+    (trace "cell" cell)
+    (trace "cell-items" cell-items)
     (render-multi-select (state :screen) "Pick up" selected-hotkeys items))))
 
 (defn render-inventory
@@ -152,14 +154,14 @@
   [state]
   (when (= (get-in state [:world :current-state]) :talking)
     (let [npc           (first (talking-npcs state))
-          ;_ (println "world state" (get-in state [:world :current-state]))
-          ;_ (println "state :dialog" (state :dialog))
-          ;_ (println "npcid" (npc :id))
+          _ (trace "world state" (get-in state [:world :current-state]))
+          _ (trace "state :dialog" (state :dialog))
+          _ (trace "npcid" (npc :id))
           fsm           (get-in state [:dialog (npc :id)])
-          ;_ (println "fsm" fsm)
+          _ (trace "fsm" fsm)
           valid-input   (get-valid-input fsm)
-          ;_ (println "render: valid-input:" valid-input)
-          ;_ (println "render: current-state:" (fsm-current-state fsm))
+          _ (trace "render: valid-input:" valid-input)
+          _ (trace "render: current-state:" (fsm-current-state fsm))
           options       (take (count valid-input)
                               (map (fn [k v]
                                      {:hotkey k
@@ -167,9 +169,9 @@
                                    [\a \b \c \d \e \f]
                                valid-input))
           last-response ((or (last (get-in state [:world :dialog-log])) {:text ""}) :text)
-          _ (println "last-response" last-response)
+          _ (debug "last-response" last-response)
           response-wrapped (wrap-line (- 30 17) last-response)
-          _ (println "response-wrapped" response-wrapped)
+          _ (debug "response-wrapped" response-wrapped)
           style {:fg :black :bg :white :styles #{:bold}}]
       (s/put-string (state :screen) 0 16 (format "Talking to %-69s" (npc :name)) style)
       (doall (map (fn [y] (s/put-string (state :screen) 12 y "                    " style))
@@ -214,9 +216,9 @@
                                    [\a \b \c \d \e \f]
                                valid-input))
           last-response ((or (last (get-in state [:world :dialog-log])) {:text ""}) :text)
-          _ (println "last-response" last-response)
+          _ (debug "last-response" last-response)
           response-wrapped (wrap-line (- 30 17) last-response)
-          _ (println "response-wrapped" response-wrapped)
+          _ (debug "response-wrapped" response-wrapped)
           style {:fg :black :bg :white :styles #{:bold}}]
       (s/put-string (state :screen) 0 16 (format "Doing business with %-69s" (npc :name)) style)
       (doall (map (fn [y] (s/put-string (state :screen) 12 y "                    " style))
@@ -232,15 +234,15 @@
   (when (= (get-in state [:world :current-state]) :sell)
     (let [npc           (first (talking-npcs state))
           buy-fn        (get-in state (npc :buy-fn-path) (fn [_] nil))
-          _ (println "render-sell (npc :buy-fn-path)" (npc :buy-fn-path))
-          _ (println "render-sell buy-fn" buy-fn)
+          _ (debug "render-sell (npc :buy-fn-path)" (npc :buy-fn-path))
+          _ (debug "render-sell buy-fn" buy-fn)
           options       (filter #(not (nil? (buy-fn %)))
                                  (get-in state [:world :player :inventory]))
-          _ (println "options" options)
+          _ (debug "options" options)
           last-response ((or (last (get-in state [:world :dialog-log])) {:text ""}) :text)
-          _ (println "last-response" last-response)
+          _ (debug "last-response" last-response)
           response-wrapped (wrap-line (- 30 17) last-response)
-          _ (println "response-wrapped" response-wrapped)
+          _ (debug "response-wrapped" response-wrapped)
           style {:fg :black :bg :white :styles #{:bold}}]
       (s/put-string (state :screen) 0 16 (format "Doing business with %-69s" (npc :name)) style)
       (doall (map (fn [y] (s/put-string (state :screen) 12 y "                    " style))
@@ -256,13 +258,13 @@
    the status bar. Everything."
   [state]
   (do
-    (println "begin-render")
+    (debug "begin-render")
     (s/clear (state :screen))
-    ;(println "rendering place" (current-place state))
+    (trace "rendering place" (current-place state))
     ;; draw map
     (map-with-xy
       (fn [cell x y]
-        ;(println "render-cell" cell x y)
+        (trace "render-cell" cell x y)
         (when (and (not (nil? cell))
                    (cell :discovered))
           (let [cell-items (cell :items)
@@ -293,7 +295,7 @@
               (apply s/put-string (state :screen) x y out-char))))
       (current-place state))
     ;; draw character
-    (println (-> state :world :player))
+    (debug (-> state :world :player))
     (s/put-string
       (state :screen)
       (-> state :world :player :pos :x)
@@ -302,17 +304,17 @@
       {:fg :green})
     ;; draw npcs
     (let [place-npcs (npcs-at-current-place state)
-          _ (println "place-npcs" place-npcs)
+          _ (debug "place-npcs" place-npcs)
           visibility (map-visibility (let [pos (-> state :world :player :pos)]
                                           [(pos :x) (pos :y)])
                                      cell-blocking?
                                      (current-place state))]
-      ;(println "visibility" visibility)
+      (trace "visibility" visibility)
       (doall (map (fn [npc]
                     (let [x       (-> npc :pos :x)
                           y       (-> npc :pos :y)
                           visible (get-in visibility [y x])]
-                      (println "npc@" x y "visible?" visible)
+                      (debug "npc@" x y "visible?" visible)
                       (when visible
                         (s/put-string (state :screen)
                                       (-> npc :pos :x)
@@ -348,7 +350,7 @@
         {:fg :black :bg :white})
     ;; draw log
     (when-let [message (-> state :world :log last)]
-      (println "message" message)
+      (debug "message" message)
       (when (< (- (-> state :world :time) (message :time)) 5)
         (s/put-string (state :screen) 0 0 (or (message :text) ""))))
     ;; draw quit prompt
@@ -367,7 +369,7 @@
       (let [[x y] (s/get-size (state :screen))]
         (s/move-cursor (state :screen) (dec x) (dec y))))
     (s/redraw (state :screen))
-    (println "end-render")))
+    (debug "end-render")))
 
 (defn render-game-over
   "Render the game over screen."

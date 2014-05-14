@@ -10,6 +10,7 @@
                  [org.clojars.vishk/algotools "0.1.0"]
                  [clj-tiny-astar "0.1.0-SNAPSHOT"]
                  [dorothy "0.0.3"]
+                 [com.taoensso/timbre "3.2.1"]
                  [org.clojars.folcon/clojure-lanterna "0.9.5-SNAPSHOT"]]
   :main dungeon-crusade.core
   :repl-init dungeon-crusade.main)

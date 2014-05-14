@@ -4,7 +4,10 @@
            dungeon-crusade.dialog
            dungeon-crusade.update
            dungeon-crusade.render)
-  (:require [lanterna.screen :as s]))
+  (:require [lanterna.screen :as s]
+            [taoensso.timbre :as timbre]))
+
+(timbre/refer-timbre)
 
 ;; Example setup and tick fns
 (defn setup
@@ -33,8 +36,8 @@
                                                               "dungeon-crusade.quests")
                                                    (all-ns)))))
         quest-map (apply hash-map (mapcat (fn [i] [(i :id) i]) quests))
-        _ (doall (map #(println "Loaded quest" (% :name)) quests))
-        _ (println "dialogs" (apply merge (map :dialog quests)))
+        _ (doall (map #(info "Loaded quest" (% :name)) quests))
+        _ (info "dialogs" (apply merge (map :dialog quests)))
         dialog (apply merge (map (fn [[k v]]
                                    {k (dialog->fsm v)})
                                  (apply merge (map :dialog quests))))]
@@ -61,7 +64,7 @@
     (render state)
     (swap! render-count dec)
     (let [keyin  (s/get-key-blocking (state :screen))]
-      (println "got " keyin " type " (type keyin))
+      (info "got " keyin " type " (type keyin))
       (let [newstate (update-state state keyin)]
         (spit "save/world.clj" (with-out-str (pprint (state :world))))
         newstate))))

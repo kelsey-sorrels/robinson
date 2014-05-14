@@ -1,7 +1,10 @@
 ;; Utility functions and functions for manipulating state
 (ns dungeon-crusade.common
   (:use [dungeon-crusade.mapgen :exclude [-main]]
-        [dungeon-crusade.itemgen :exclude [-main]]))
+        [dungeon-crusade.itemgen :exclude [-main]])
+  (:require [taoensso.timbre :as timbre]))
+
+(timbre/refer-timbre)
 
 (defn fill-missing
   "For each item in coll for which (pred item) returns true, replace that
@@ -158,11 +161,11 @@
   [place extras]
   ;; create a list of functions that can be applied to assoc extras, then create a composition of
   ;; so that setting can pass through each fn in turn.
-  (do (println "extras" extras)
+  (debug "add-extras" place extras)
   (reduce (fn [place [[x y] & r]]
            (let [args (concat [[y x]] r)
-                _ (println "assoc-in place" args)]
-                 (apply assoc-in place args))) place extras)))
+                 _ (debug "assoc-in place" args)]
+                 (apply assoc-in place args))) place extras))
 
 (defn current-place-id
   "Retrieve the current place id."

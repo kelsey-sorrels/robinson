@@ -636,7 +636,7 @@
     (let [[_ x y] (first (shuffle (filter (fn [[cell _ _]] (and (not (nil? cell))
                                                                 (= (cell :type) :floor)))
                                           (with-xy (current-place state)))))]
-      (add-npc state (-> state :word :current-place) {:type :rat :hp 9 :attacks #{:bite :claw}} x y))
+      (add-npc state (-> state :world :current-place) {:type :rat :hp 9 :attacks #{:bite :claw}} x y))
     state))
 
 (defn update-quests

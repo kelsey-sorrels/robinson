@@ -88,13 +88,6 @@
 (defn -main
   "Run speed tests for `map-visibility`."
   [& args]
-  ;(println "generating...")
-  ;(println (time (line-segment [0 0] [22 40])))
-  ;(println (time (line-segment [0 0] [22 40])))
-  ;(println (time (line-segment [0 0] [22 40])))
-  ;(dotimes [i 10]
-  ;  (println (- 10 i))
-  ;  (Thread/sleep 1000))
   (println (= (line-segment [0 0] [22 40]) (line-segment-fast [0 0] [22 40])))
   (println (= (line-segment [10 10] [22 40]) (line-segment-fast [10 10] [22 40])))
   (println (= (line-segment [22 40] [10 10]) (line-segment-fast [22 40] [10 10])))

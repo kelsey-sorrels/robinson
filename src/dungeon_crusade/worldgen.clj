@@ -2,7 +2,10 @@
 (ns dungeon-crusade.worldgen
   (:use dungeon-crusade.common
         [dungeon-crusade.mapgen :exclude [-main]]
-        [dungeon-crusade.itemgen :exclude [-main]]))
+        [dungeon-crusade.itemgen :exclude [-main]])
+  (:require [taoensso.timbre :as timbre]))
+
+(timbre/refer-timbre)
 
 (defn init-place-0
   "Create an example place with two rooms, some doors, two items
@@ -43,16 +46,16 @@
    the spot that would have been reserved for up stairs."
   []
   (let [place       (random-place 50 27)
-        _ (println "place" place)
-        _ (println "(place :up-stairs)" (place :up-stairs))
-        _ (println "(place :down-stairs)" (place :down-stairs))
+        _ (debug "place" place)
+        _ (debug "(place :up-stairs)" (place :up-stairs))
+        _ (debug "(place :down-stairs)" (place :down-stairs))
         down-stairs (assoc-in (place :down-stairs) [1 :dest-place] :1)
         starting-location [[(-> place :up-stairs first first)
                             (-> place :up-stairs first second)]
                            {:type :floor :starting-location true}]
-        _ (println "starting-location" starting-location)
+        _ (debug "starting-location" starting-location)
         place       (place :place)
-        _ (println "place" place)]
+        _ (debug "place" place)]
     (add-extras place [down-stairs starting-location])))
 
 (defn init-random-n
@@ -61,13 +64,13 @@
    placed in floor cells."
   [level]
   (let [place       (random-place 50 27)
-        _ (println "place" place)
-        _ (println "(place :up-stairs)" (place :up-stairs))
-        _ (println "(place :down-stairs)" (place :down-stairs))
-        _ (println "level" level)
-        _ (println "former place id" (keyword (str (dec level))))
+        _ (debug "place" place)
+        _ (debug "(place :up-stairs)" (place :up-stairs))
+        _ (debug "(place :down-stairs)" (place :down-stairs))
+        _ (debug "level" level)
+        _ (debug "former place id" (keyword (str (dec level))))
         up-stairs   (assoc-in (place :up-stairs) [1 :dest-place] (keyword (str (dec level))))
-        _ (println "up-stairs" up-stairs)
+        _ (debug "up-stairs" up-stairs)
         down-stairs (assoc-in (place :down-stairs) [1 :dest-place] (keyword (str (inc level))))
         place       (place :place)
         drops       (map (fn [pos]
@@ -76,8 +79,8 @@
                               (map (fn [[_ x y]] [x y]) (filter (fn [[cell x y]] (and (not (nil? cell))
                                                                                       (= (cell :type) :floor)))
                                                                 (with-xy place))))))
-        _ (println "drops" drops)
-        _ (println "place" place)]
+        _ (debug "drops" drops)
+        _ (debug "place" place)]
     (add-extras place (concat [down-stairs up-stairs] drops))))
 
 (defn test-inventory
@@ -123,7 +126,7 @@
            starting-y]         (first (filter (fn [[cell x y]] (contains? cell :starting-location))
                                               (with-xy place-0)))
         starting-pos           {:x starting-x :y starting-y}
-        _ (println "starting-pos" starting-pos)]
+        _ (debug "starting-pos" starting-pos)]
 
   {:places {:0 place-0}
             ;:1 (init-place-1)}

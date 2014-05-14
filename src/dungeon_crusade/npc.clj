@@ -2,7 +2,10 @@
 (ns dungeon-crusade.npc
   (:use clojure.walk
         dungeon-crusade.common
-        [dungeon-crusade.dialog :exclude [-main]]))
+        [dungeon-crusade.dialog :exclude [-main]])
+  (:require [taoensso.timbre :as timbre]))
+
+(timbre/refer-timbre)
 
 (defn npcs-at-current-place
   "Seq of npcs at the current place."
@@ -13,7 +16,7 @@
 (defn npc-at-xy
   "Seq of npcs at [x y] of the current place."
   [state x y]
-  (println "npcs:" (get-in state [:world :npcs]))
+  (info "npc-at-xy" x y "npcs:" (get-in state [:world :npcs]))
   (first (filter (fn [npc] (and (= (npc :place) (current-place-id state))
                                 (= (-> npc :pos :x) x)
                                 (= (-> npc :pos :y) y)))
@@ -69,7 +72,7 @@
             new-player-inventory     (vec (get player-inventory-grouped false))
             new-npc-inventory        (vec (concat (get player-inventory-grouped true)
                                                   (get npc :inventory)))]
-        (println "player-inventory-grouped" player-inventory-grouped)
+        (debug "player-inventory-grouped" player-inventory-grouped)
         (-> state
           (map-in [:world :npcs]
                   (fn [npc]

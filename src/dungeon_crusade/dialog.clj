@@ -2,7 +2,10 @@
 (ns dungeon-crusade.dialog
   (:use dungeon-crusade.common
         dorothy.core)
-  (:require [lanterna.screen :as s]))
+  (:require [lanterna.screen :as s]
+            [taoensso.timbre :as timbre]))
+
+(timbre/refer-timbre)
 
 ;; State Machine Functions
 ;; =======================
@@ -26,16 +29,16 @@
 (defn step-fsm
   "Updates state using the finite state machine and input."
   [state fsm input]
-  (let [;_ (println "input:" input)
+  (let [_ (trace "input:" input)
         fsm-state (fsm-current-state fsm)
-        _ (println "current-state:" fsm-state)
+        _ (debug "current-state:" fsm-state)
         options (get fsm fsm-state)]
     (if (some (partial = input) (map first options))
       (let [
-            _ (println "options:" options)
+            _ (debug "options:" options)
             [_ transition-fn next-state] (first (filter #(= input (first %)) options))
-            _ (println "trans-fn:" transition-fn)
-            _ (println "next-state:" next-state)
+            _ (debug "trans-fn:" transition-fn)
+            _ (debug "next-state:" next-state)
             _ (dosync (ref-set (-> fsm meta :current-state) next-state))]
         (transition-fn state))
       state)))
@@ -44,7 +47,6 @@
   "Returns a list of values valid for use as input to step-fsm."
   [fsm]
   (let [fsm-state (-> fsm meta :current-state deref)]
-        ;_ (doall (map #(println first %) (get fsm fsm-state)))]
     (map first (get fsm fsm-state))))
 
 ;; Dorothy Drawing Functions

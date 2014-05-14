@@ -1,21 +1,24 @@
 ;; Functions that manipulate state to do what the user commands.
 (ns dungeon-crusade.update
-  (:require clojure.pprint
-            clojure.contrib.core
-            clj-tiny-astar.path)
   (:use     
     dungeon-crusade.common
     [dungeon-crusade.dialog :exclude [-main]]
     dungeon-crusade.npc
     dungeon-crusade.worldgen
-    dungeon-crusade.lineofsight))
+    dungeon-crusade.lineofsight)
+  (:require clojure.pprint
+            clojure.contrib.core
+            clj-tiny-astar.path
+            [taoensso.timbre :as timbre]))
+
+(timbre/refer-timbre)
 
 (defn collide?
   "Return `true` if the cell at `[x y]` is non-traverable. Ie: a wall, closed door or simply does
    not exist."
   [x y state]
   (let [cellxy (get-xy x y (current-place state))]
-    (println "collide? " cellxy)
+    (debug "collide? " cellxy)
     (let [cell (first cellxy)]
       ;; check the cell to see if it is a wall or closed door
       (or
@@ -38,7 +41,7 @@
         npc-hp    (npc :hp)
         npc-dmg 1
         player-dmg 1]
-    (println "fighting npc" npc "with idx" npc-idx)
+    (debug "fighting npc" npc "with idx" npc-idx)
     (cond
       ;; npc and player still alive?
       (and (pos? (- player-hp player-dmg))
@@ -117,7 +120,7 @@
   [state]
   (let [x (-> state :world :player :pos :x)
         y (-> state :world :player :pos :y)]
-    (println "move-down")
+    (debug "move-down")
     (if-not (collide? x (inc y) state)
       (assoc-in state [:world :player :pos :y] (inc y))
       (if (npc-at-xy x (inc y) state)
@@ -141,15 +144,15 @@
                                :up  -1
                                :down 1
                                0))]
-    (println "open-door")
+    (debug "open-door")
     (let [target-cellxy (get-xy target-x target-y (current-place state))
           target-cell   (first target-cellxy)]
-      (println "target-cellxy" target-cellxy)
-      (println "target-cell" target-cell)
+      (debug "target-cellxy" target-cellxy)
+      (debug "target-cell" target-cell)
       (if (and (not (nil? target-cell)) (= (target-cell :type) :close-door))
         (let [place (-> state :world :current-place)]
-          (println "opening door")
-          (println (get-in state [:world :places place target-y target-x]))
+          (debug "opening door")
+          (debug (get-in state [:world :places place target-y target-x]))
           (assoc-in state [:world :places place target-y target-x :type] :open-door))
         state))))
 
@@ -188,14 +191,14 @@
                                :up  -1
                                :down 1
                                0))]
-    (println "close-door")
+    (debug "close-door")
     (let [target-cellxy (get-xy target-x target-y (current-place state))
           target-cell   (first target-cellxy)]
-      (println "target-cellxy" target-cellxy)
-      (println "target-cell" target-cell)
+      (debug "target-cellxy" target-cellxy)
+      (debug "target-cell" target-cell)
       (if (and (not (nil? target-cell)) (= (target-cell :type) :open-door))
         (let [place (-> state :world :current-place)]
-          (println "opening door")
+          (debug "opening door")
           (assoc-in state [:world :places place target-y target-x :type] :close-door))
         state))))
 
@@ -247,9 +250,9 @@
           selected-items     (vec (divided-items :selected))
           not-selected-items (vec (divided-items :not-selected))
           remaining-hotkeys  (vec (remove #(some (partial = %) (map :hotkey selected-items)) remaining-hotkeys))]
-      (println "divided-items" divided-items)
-      (println "selected-items" selected-items)
-      (println "not-selected-items" not-selected-items)
+      (debug "divided-items" divided-items)
+      (debug "selected-items" selected-items)
+      (debug "not-selected-items" not-selected-items)
         (let [new-state (-> state
           ;; dup the item into inventory with hotkey
           (update-in [:world :player :inventory]
@@ -263,7 +266,7 @@
               remaining-hotkeys)
           ;; reset selected-hotkeys
           (assoc-in [:world :selected-hotkeys] #{}))]
-      (println "cell-items (-> state :world :places" place y x ":items)")
+      (debug "cell-items (-> state :world :places" place y x ":items)")
       new-state)))
 
 (defn drop-item
@@ -290,9 +293,9 @@
               ;(assoc-in [:world :remaining-hotkeys]
               ;  (vec (concat (subvec remaining-hotkeys 0 item-index)
               ;               (subvec remaining-hotkeys (inc item-index) (count remaining-hotkeys))))))]
-        (println "dropping at:" x y "item with index" item-index "item" item)
-        (println "new-state" new-state)
-        (println "cell-items (-> state :world :places" place y x ":items)")
+        (debug "dropping at:" x y "item with index" item-index "item" item)
+        (debug "new-state" new-state)
+        (debug "cell-items (-> state :world :places" place y x ":items)")
         new-state)
         state)))
 
@@ -308,7 +311,7 @@
 (defn toggle-hotkey
   "Toggle mark `keyin` as a selected hotkey, or not if it already is."
   [state keyin]
-  (println "toggle-hotkey" keyin)
+  (debug "toggle-hotkey" keyin)
   (update-in state [:world :selected-hotkeys]
              (fn [hotkeys] (if (contains? hotkeys keyin)
                              (disj hotkeys keyin)
@@ -343,7 +346,7 @@
               ;(assoc-in [:world :remaining-hotkeys]
               ;  (vec (concat (subvec remaining-hotkeys 0 item-index)
               ;               (subvec remaining-hotkeys (inc item-index) (count remaining-hotkeys))))))]
-        (println "new-state" new-state)
+        (debug "new-state" new-state)
         new-state)
         state)))
 
@@ -356,9 +359,9 @@
     (if (contains? #{:down-stairs :up-stairs} (player-cell :type))
       (let [dest-place-id     (player-cell :dest-place)
             ;; manipulate state so that if there isn't a destination place, create one
-            _ (println "dest-place-id" dest-place-id)
-            _ (println "name" (name dest-place-id))
-            _ (println "int" (read-string (name dest-place-id)))
+            _ (debug "dest-place-id" dest-place-id)
+            _ (debug "name" (name dest-place-id))
+            _ (debug "int" (read-string (name dest-place-id)))
             state             (if (contains? (-> state :world :places) dest-place-id)
                                 state
                                 (assoc-in state [:world :places dest-place-id] (init-random-n (read-string (name dest-place-id)))))
@@ -370,10 +373,10 @@
                                                  (contains? #{:up-stairs :down-stairs} ((first %) :type))
                                                  (= ((first %) :dest-place) orig-place-id))
                                     (with-xy dest-place)))
-            _ (println "dest-cellxy" dest-cellxy)
+            _ (debug "dest-cellxy" dest-cellxy)
             dest-x             (second dest-cellxy)
             dest-y             (last dest-cellxy)]
-        (println "dest-x" dest-x "dest-y" dest-y)
+        (debug "dest-x" dest-x "dest-y" dest-y)
         (-> state
           ;; change the place
           (assoc-in [:world :current-place] (player-cell :dest-place))
@@ -459,7 +462,7 @@
                                :up  -1
                                :down 1
                                0))]
-    (println "start-talking")
+    (debug "start-talking")
     (if-let [target-npc (npc-at-xy state target-x target-y)]
       ;; store update the npc and world state with talking
       (let [state (-> state
@@ -493,15 +496,15 @@
         valid-input (get-valid-input fsm)
         options (zipmap (take (count valid-input) [\a \b \c \d \e \f]) valid-input)
         input (get options keyin)
-        _ (println "Stepping fsm. valid-input:" valid-input)
-        _ (println "Stepping fsm. options:" options)
-        _ (println "Stepping fsm. input:" input)]
+        _ (debug "Stepping fsm. valid-input:" valid-input)
+        _ (debug "Stepping fsm. options:" options)
+        _ (debug "Stepping fsm. input:" input)]
     (step-fsm state fsm input)))
 
 (defn stop-talking
   "Remove :talking key from all npcs."
   [state]
-  (println "stop-talking")
+  (debug "stop-talking")
   (-> state
       (map-in [:world :npcs] (fn [npc] (dissoc npc :talking)))
       (assoc-in [:world :current-state] :normal)))
@@ -564,12 +567,12 @@
                                 (get-in state [:world :player :inventory]))
         options   (apply hash-map
                          (mapcat (fn [item] [(item :hotkey) item]) sellable-items))
-        _ (println "sellable items" sellable-items)
-        _ (println "Sell options" options)]
+        _ (debug "sellable items" sellable-items)
+        _ (debug "Sell options" options)]
     (if (contains? options keyin)
       (let [item  (get options keyin)
             price (buy-fn item)
-            _ (println "current $" (get-in state [:world :player :$]))]
+            _ (debug "current $" (get-in state [:world :player :$]))]
         (-> state
             (update-in [:world :player :$] (fn [gold] (+ gold price)))
             (transfer-items-from-player-to-npc (npc :id) (partial = item))))
@@ -580,8 +583,8 @@
    from the npc to the player."
   [state result npc]
   (let [npcs (npcs-at-current-place state)
-        _ (println "npc" npc)
-        _ (println "result" result)
+        _ (debug "npc" npc)
+        _ (debug "result" result)
         npc-pos [(-> npc :pos :x) (-> npc :pos :y)]
         player  (-> state :world :player)
         player-pos [(-> player :pos :x) (-> player :pos :y)]
@@ -600,9 +603,9 @@
                (clj-tiny-astar.path/a* traversable? npc-pos player-pos)
                (catch Exception e
                  nil))
-                 ;(println "(clj-tiny-astar.path/a* traversable?" npc-pos player-pos ")")
-                 ;(println (map (fn [y] (map (fn [x] (traversable? [x y])) (range (count (first (current-place state)))))) (range (count (current-place state)))))))
-        _ (println "path to player" path)
+                 ;(debug "(clj-tiny-astar.path/a* traversable?" npc-pos player-pos ")")
+                 ;(debug (map (fn [y] (map (fn [x] (traversable? [x y])) (range (count (first (current-place state)))))) (range (count (current-place state)))))))
+        _ (debug "path to player" path)
         new-pos (if (and (not (nil? path))
                          (> (count path) 1)
                          (not= (first (second path)) (first player-pos))
@@ -612,7 +615,7 @@
         new-npc (-> npc
                     (assoc-in [:pos :x] (first new-pos))
                     (assoc-in [:pos :y] (second new-pos)))
-        _ (println "new-npc" new-npc)]
+        _ (debug "new-npc" new-npc)]
     (conj result new-npc)))
  
 (defn move-npcs
@@ -648,10 +651,10 @@
                 ;; Skip quest if current stage of quest is nil. Ie: it is completed.
                 state
                 (let [stage    (get-in quest [:stages stage-id])]
-                  ;(println "exec quest" quest)
-                  ;(println "quest-id" (quest :id))
-                  ;(println "stage-id" stage-id)
-                  ;(println "exec stage" stage)
+                  ;(debug "exec quest" quest)
+                  ;(debug "quest-id" (quest :id))
+                  ;(debug "stage-id" stage-id)
+                  ;(debug "exec stage" stage)
                   (if ((stage :pred) state)
                     (-> state
                         ((stage :update))
@@ -758,7 +761,7 @@
   [state keyin]
   (let [current-state (get-in state [:world :current-state])
         table         (get state-transition-table current-state)]
-    ;(println "current-state" current-state)
+    ;(debug "current-state" current-state)
     (if (or (contains? table keyin) (contains? table :else))
       (let [[transition-fn new-state] (if (contains? table keyin) (table keyin) (table :else))
             ;; if the table contains keyin, then pass through transition-fn assuming arity-1 [state]
@@ -768,11 +771,11 @@
                                         (fn [state]
                                           (transition-fn state keyin)))
             state                     (transition-fn state)
-            _ (println "new-state" new-state)
+            _ (debug "new-state" new-state)
             new-state (if (keyword? new-state)
                         new-state
                         (new-state (get-in state [:world :current-state])))
-            _ (println "new-state" new-state)]
+            _ (debug "new-state" new-state)]
         (some-> state
             (assoc-in [:world :current-state] new-state)
             ;; do updates that don't deal with keyin
@@ -803,9 +806,9 @@
                                                                              [(pos :x) (pos :y)])
                                                                            cell-blocking?
                                                                            place)]
-                                       ;(println "visibility")
+                                       ;(debug "visibility")
                                        ;(clojure.pprint/pprint visibility)
-                                       ;(println "place")
+                                       ;(debug "place")
                                        ;(clojure.pprint/pprint place)
                                        (vec (map (fn [place-line visibility-line]
                                                        (vec (map (fn [cell visible?]

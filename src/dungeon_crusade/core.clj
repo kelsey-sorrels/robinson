@@ -1,5 +1,6 @@
 ;; ## A roguelike focused on immutability.##
 ;;
+(set! *warn-on-reflection* true)
 (ns dungeon-crusade.core
   (:use dungeon-crusade.main
         clojure.stacktrace))

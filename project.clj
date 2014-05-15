@@ -3,6 +3,7 @@
   :plugins      [[lein-marginalia "0.7.1"]
                  [lein-kibit "0.0.8"]]
   :dependencies [[org.clojure/clojure "1.6.0"]
+                 [org.clojure/core.async "0.1.303.0-886421-alpha"]
                  [org.clojure/tools.reader "0.8.4"]
                  [org.clojure/core.typed "0.2.44"]
                  [org.clojure/math.combinatorics "0.0.7"]

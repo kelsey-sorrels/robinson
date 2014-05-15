@@ -57,7 +57,8 @@
                                    [false false true  false]]))
   "
                                     
-  (let [[ox oy] origin
+  (log-time "map-visibility"
+    (let [[ox oy] origin
         width  (-> grid first count)
         height (count grid)
         bounds-xy (filter (fn [[x y e]]
@@ -73,7 +74,7 @@
                      (map (fn [[x y]] (get-in grid [y x]))
                        (rest (butlast (line-segment-fast [x1 y1] [x2 y2]))))))]
     ;(println (with-xygrid grid))
-    (vec (pmap (fn [line] (vec (map (fn [[_ x y]] (visible? ox oy x y)) line))) (with-xygrid grid)))))
+    (vec (pmap (fn [line] (vec (map (fn [[_ x y]] (visible? ox oy x y)) line))) (with-xygrid grid))))))
 
 (defn cell-blocking?
   "Walls, closed doors, and `nil` cells block visibility."
@@ -88,9 +89,9 @@
 (defn -main
   "Run speed tests for `map-visibility`."
   [& args]
-  (println (= (line-segment [0 0] [22 40]) (line-segment-fast [0 0] [22 40])))
-  (println (= (line-segment [10 10] [22 40]) (line-segment-fast [10 10] [22 40])))
-  (println (= (line-segment [22 40] [10 10]) (line-segment-fast [22 40] [10 10])))
+  ;(println (= (line-segment [0 0] [22 40]) (line-segment-fast [0 0] [22 40])))
+  ;(println (= (line-segment [10 10] [22 40]) (line-segment-fast [10 10] [22 40])))
+  ;(println (= (line-segment [22 40] [10 10]) (line-segment-fast [22 40] [10 10])))
   
   (dotimes [i 10]
     (let [place (repeat 22 (repeat 40 false))]

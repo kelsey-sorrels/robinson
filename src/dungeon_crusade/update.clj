@@ -27,13 +27,13 @@
                                                                      :horizontal-wall
                                                                      :close-door])
         ;; not a wall or closed door, check for npcs
-        (npc-at-xy x y state)))))
+        (npc-at-xy state x y)))))
 
 (defn do-combat
   "Perform combat between the player and the npc at `[x y]` and return
    the state reflecting this."
   [x y state]
-  (let [npc (npc-at-xy x y state)
+  (let [npc (npc-at-xy state x y)
         player (-> state :world :player)
         current-place-id (-> state :world :current-place)
         npc-idx (.indexOf (-> state :world :npcs) npc)
@@ -82,7 +82,7 @@
         y (-> state :world :player :pos :y)]
     (if-not (collide? (dec x) y state)
       (assoc-in state [:world :player :pos :x] (dec x))
-      (if (npc-at-xy (dec x) y state)
+      (if (npc-at-xy state (dec x) y)
         ;; collided with npc. Engage in combat.
         (do-combat (dec x) y state)
         ;; collided with a wall or door, nothing to be done.
@@ -95,7 +95,7 @@
         y (-> state :world :player :pos :y)]
     (if-not (collide? (inc x) y state)
       (assoc-in state [:world :player :pos :x] (inc x))
-      (if (npc-at-xy (inc x) y state)
+      (if (npc-at-xy state (inc x) y)
         ;; collided with npc. Engage in combat.
         (do-combat (inc x) y state)
         ;; collided with a wall or door, nothing to be done.
@@ -109,7 +109,7 @@
     (if-not (collide? x (dec y) state)
       ;; no collision. move up
       (assoc-in state [:world :player :pos :y] (dec y))
-      (if (npc-at-xy x (dec y) state)
+      (if (npc-at-xy state x (dec y))
         ;; collided with npc. Engage in combat.
         (do-combat x (dec y) state)
         ;; collided with a wall or door, nothing to be done.
@@ -123,7 +123,7 @@
     (debug "move-down")
     (if-not (collide? x (inc y) state)
       (assoc-in state [:world :player :pos :y] (inc y))
-      (if (npc-at-xy x (inc y) state)
+      (if (npc-at-xy state x (inc y) )
         ;; collided with npc. Engage in combat.
         (do-combat x (inc y) state)
         ;; collided with a wall or door, nothing to be done.
@@ -580,25 +580,27 @@
 
 (defn move-npc
   "Move `npc` one space closer to the player's position if there is a path
-   from the npc to the player."
-  [state result npc]
+   from the npc to the player. Returns the moved npc and not the updated state."
+  [state npc]
   (let [npcs (npcs-at-current-place state)
         _ (debug "npc" npc)
-        _ (debug "result" result)
         npc-pos [(-> npc :pos :x) (-> npc :pos :y)]
         player  (-> state :world :player)
         player-pos [(-> player :pos :x) (-> player :pos :y)]
-        traversable? (fn [[x y]]
-                       (let [place (current-place state)]
-                         (and (< 0 x (count (first place)))
-                              (< 0 y (count place))
-                              (not-any? (fn [npc] (and (= (-> npc :pos :x) x)
-                                                       (= (-> npc :pos :y) y)))
-                                        npcs)
-                              (contains? #{:floor
-                                           :open-door
-                                           :corridor}
-                                         (get-in place [y x :type])))))
+        place (current-place state)
+        width (count (first place))
+        height (count place)
+        traversable? (memoize
+                       (fn [[x y]]
+                           (and (< 0 x width)
+                                (< 0 y height)
+                                (not-any? (fn [npc] (and (= (-> npc :pos :x) x)
+                                                         (= (-> npc :pos :y) y)))
+                                          npcs)
+                                (contains? #{:floor
+                                             :open-door
+                                             :corridor}
+                                           (get-in place [y x :type])))))
         path (try
                (clj-tiny-astar.path/a* traversable? npc-pos player-pos)
                (catch Exception e
@@ -616,23 +618,28 @@
                     (assoc-in [:pos :x] (first new-pos))
                     (assoc-in [:pos :y] (second new-pos)))
         _ (debug "new-npc" new-npc)]
-    (conj result new-npc)))
+    new-npc))
  
 (defn move-npcs
   "Move all npcs in the current place using `move-npc`."
   [state]
   (update-in state [:world :npcs]  (fn [npcs] (reduce (fn [result npc]
-                                                        (if (= (npc :place)
-                                                               (-> state :world :current-place))
-                                                          (move-npc state result npc)
-                                                          (conj result npc)))
-                                                      []
-                                                      npcs))))
+                                                      (conj result
+                                                            (if (= (npc :place)
+                                                                   (-> state :world :current-place))
+                                                              (move-npc state npc)
+                                                              npc)))
+                                                    []
+                                                    npcs))))
 
 (defn add-npcs
   "Randomly add rats to the current place's in floor cells."
   [state]
-  (if (< (rand-int 10) 4)
+  (if (and (< (rand-int 10) 4)
+           (< (count (filter (fn [npc] (= (-> state :world :current-place)
+                                          (npc :place)))
+                             (-> state :world :npcs)))
+              20))
     (let [[_ x y] (first (shuffle (filter (fn [[cell _ _]] (and (not (nil? cell))
                                                                 (= (cell :type) :floor)))
                                           (with-xy (current-place state)))))]
@@ -802,7 +809,7 @@
                                         current-state)))))
             ((fn [state] (update-in state [:world :places (-> state :world :current-place)]
                                     (fn [place]
-                                     (let [visibility (map-visibility (let [pos (-> state :world :player :pos)]
+                                      (let [visibility (map-visibility (let [pos (-> state :world :player :pos)]
                                                                              [(pos :x) (pos :y)])
                                                                            cell-blocking?
                                                                            place)]

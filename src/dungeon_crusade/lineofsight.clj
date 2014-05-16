@@ -74,7 +74,12 @@
                      (map (fn [[x y]] (get-in grid [y x]))
                        (rest (butlast (line-segment-fast [x1 y1] [x2 y2]))))))]
     ;(println (with-xygrid grid))
-    (vec (pmap (fn [line] (vec (map (fn [[_ x y]] (visible? ox oy x y)) line))) (with-xygrid grid))))))
+    (vec (pmap (fn [line] (vec (map (fn [[cell x y]]
+                                      (if (nil? cell)
+                                        false
+                                        (visible? ox oy x y)))
+                                    line)))
+               (with-xygrid grid))))))
 
 (defn cell-blocking?
   "Walls, closed doors, and `nil` cells block visibility."

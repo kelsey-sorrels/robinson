@@ -578,7 +578,7 @@
             (transfer-items-from-player-to-npc (npc :id) (partial = item))))
         state)))
 
-(defn move-npc
+(defn calc-npc-next-step
   "Move `npc` one space closer to the player's position if there is a path
    from the npc to the player. Returns the moved npc and not the updated state."
   [state npc]
@@ -618,19 +618,28 @@
                     (assoc-in [:pos :x] (first new-pos))
                     (assoc-in [:pos :y] (second new-pos)))
         _ (debug "new-npc" new-npc)]
-    new-npc))
+    [new-pos new-npc npc]))
  
 (defn move-npcs
   "Move all npcs in the current place using `move-npc`."
   [state]
-  (update-in state [:world :npcs]  (fn [npcs] (reduce (fn [result npc]
-                                                      (conj result
-                                                            (if (= (npc :place)
-                                                                   (-> state :world :current-place))
-                                                              (move-npc state npc)
-                                                              npc)))
-                                                    []
-                                                    npcs))))
+  (update-in state
+             [:world :npcs]
+             (fn [npcs]
+               (let [map-result (log-time "map-result" (map (fn [npc] (if (= (npc :place)
+                                                       (-> state :world :current-plce))
+                                                  (calc-npc-next-step state npc)
+                                                  [nil nil npc]))
+                                      npcs))]
+               (log-time "reduce" (reduce
+                 (fn [result [new-pos new-npc npc]]
+                   (conj result
+                         (if (or (nil? new-pos)
+                                 (empty? (npc-at-xy state (new-pos :x) (new-pos :y))))
+                           npc
+                           new-npc)))
+                 []
+                 map-result))))))
 
 (defn add-npcs
   "Randomly add rats to the current place's in floor cells."

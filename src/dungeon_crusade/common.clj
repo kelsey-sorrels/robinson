@@ -7,11 +7,11 @@
 (timbre/refer-timbre)
 
 
-(defn manhattan-distance
+(defn chebyshev-distance
   "Manhattan distance between 2 points"
   [p1 p2]
-  (+ (Math/abs (- (:x p1) (:x p2)))
-     (Math/abs (- (:y p1) (:y p2)))))
+  (max (Math/abs (- (:x p1) (:x p2)))
+       (Math/abs (- (:y p1) (:y p2)))))
 
 (defn distance
   "Euclidean distance between 2 points"
@@ -23,7 +23,7 @@
 (defn farther-than?
   "Are the two points farther in distance than l?"
   [p1 p2 l]
-  (if (or (> (manhattan-distance p1 p2) l)
+  (if (or (> (chebyshev-distance p1 p2) l)
           (> (distance p1 p2) l))
     false
     true))

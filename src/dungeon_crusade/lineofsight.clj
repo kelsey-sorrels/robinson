@@ -38,12 +38,27 @@
       (map (fn [[x y]] [(+ ox x) (+ oy y)])
           (line-segment [0 0] [(- dx ox) (- dy oy)]))))))
 
+;; A fast version of `line-segment`. Internally, shift the values so that
+;; `[x1 y1]` equals `[0 0]`, call `line-segment` and then shift everything back.
+;; It's fast because `(line-segment-fast [0 0] [5 5])` is effectively the same
+;; as `(line-segment [2 2] [7 7])` which plays nicely with memoization.
+(def line-segment-fast-without-endpoints (memoize
+  (fn [start end]
+    "(line-segment-fast [1 1] [5 4])"
+    (let [[ox oy] start
+          [dx dy] end]
+      (rest
+        (butlast
+          (map (fn [[x y]] [(+ ox x) (+ oy y)])
+               (line-segment [0 0] [(- dx ox) (- dy oy)]))))))))
+
 (defn visible?
-  [grid blocking? x1 y1 x2 y2]
+  [get-cell blocking? x1 y1 x2 y2]
   (not-any? blocking?
-    ;(map (fn [[x y]] (get-cell grid [y x]))
-    (map (fn [[x y]] (get-in grid [y x]))
-      (rest (butlast (line-segment-fast [x1 y1] [x2 y2]))))))
+    (map (fn [[x y]] (get-cell x y))
+    ;(map (fn [[x y]] ((fn [x y] (get-in grid [y x])) x y))
+    ;(map (fn [[x y]] (get-in grid [y x]))
+         (line-segment-fast-without-endpoints [x1 y1] [x2 y2]))))
  
 (defn map-visibility
   ([origin blocking? grid]
@@ -74,23 +89,13 @@
      (let [[ox oy] origin
          width  (-> grid first count)
          height (count grid)
-         bounds-xy (filter (fn [[x y e]]
-                             (or (zero? x)
-                                 (= x (dec width))
-                                 (zero? y)
-                                 (= y (dec height))))
-                           (with-xy grid))
-         get-cell (fn [grid ks] (memoize (get-in grid ks)))]
-         ;visible? (fn [x1 y1 x2 y2]
-         ;           (not-any? blocking?
-         ;             ;(map (fn [[x y]] (get-cell grid [y x]))
-         ;             (map (fn [[x y]] (get-in grid [y x]))
-         ;               (rest (butlast (line-segment-fast [x1 y1] [x2 y2]))))))]
+         get-cell (memoize (fn [x y] (get-in grid [y x])))
+         blocking?-memo (memoize blocking?)]
      ;(println (with-xygrid grid))
      (vec (pmap (fn [line] (vec (map (fn [[cell x y]]
                                        (if (exclude? cell x y)
                                          false
-                                         (visible? grid blocking? ox oy x y)))
+                                         (visible? get-cell blocking?-memo ox oy x y)))
                                      line)))
                 (with-xygrid grid)))))))
 

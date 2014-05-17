@@ -305,16 +305,22 @@
     ;; draw npcs
     (let [place-npcs (npcs-at-current-place state)
           _ (debug "place-npcs" place-npcs)
-          pos (-> state :world :player :pos)]
+          pos (-> state :world :player :pos)
+          get-cell (memoize (fn [x y] (get-in (current-place state) [y x])))]
       (doall (map (fn [npc]
                     (let [x       (-> npc :pos :x)
                           y       (-> npc :pos :y)
-                          visible (visible? (current-place state)
-                                            cell-blocking?
-                                            (pos :x)
-                                            (pos :y)
-                                            x
-                                            y)]
+                          visible 
+                                  (and (not (farther-than?
+                                              pos
+                                              {:x x :y y}
+                                              3))
+                                       (visible? get-cell
+                                                 cell-blocking?
+                                                 (pos :x)
+                                                 (pos :y)
+                                                 x
+                                                 y))]
                       (debug "npc@" x y "visible?" visible)
                       (when visible
                         (s/put-string (state :screen)

@@ -818,27 +818,31 @@
                                         current-state)))))
             ((fn [state] (update-in state [:world :places (-> state :world :current-place)]
                                     (fn [place]
-                                      (let [visibility (map-visibility (let [pos (-> state :world :player :pos)]
-                                                                             [(pos :x) (pos :y)])
-                                                                       cell-blocking?
-                                                                       place
-                                                                       (fn [cell x y]
-                                                                         (not
-                                                                           (or (nil? cell)
-                                                                               (farther-than?
-                                                                                 (-> state :world :player :pos)
-                                                                                 {:x x :y y} 3)))))]
-                                       ;(debug "visibility")
-                                       ;(clojure.pprint/pprint visibility)
-                                       ;(debug "place")
-                                       ;(clojure.pprint/pprint place)
-                                       (vec (map (fn [place-line visibility-line]
-                                                       (vec (map (fn [cell visible?]
-                                                              (if (and (not (nil? cell)) visible?)
-                                                                (assoc cell :discovered :true)
-                                                                cell))
-                                                            place-line visibility-line)))
-                                                     place visibility)))))))
+                                      (let [pos (-> state :world :player :pos)
+                                            sight-distance 3
+                                            get-cell (memoize (fn [x y] (get-in place [y x])))]
+                                        (vec (pmap (fn [line y]
+                                                     (if (< sight-distance
+                                                            (Math/abs (- y (pos :y))))
+                                                       line
+                                                       (vec (map (fn [cell x]
+                                                                   (if (and (not (nil? cell))
+                                                                            (not (farther-than?
+                                                                                   pos
+                                                                                   {:x x :y y}
+                                                                                   sight-distance))
+                                                                            (visible?
+                                                                              get-cell
+                                                                              cell-blocking?
+                                                                              (pos :x)
+                                                                              (pos :y)
+                                                                              x
+                                                                              y))
+                                                                     (assoc cell :discovered :true)
+                                                                     cell))
+                                                                 line (range)))))
+                                                    place (range))))))))
+
             ((fn [state] (update-in state [:world :time] inc)))))
       state)))
 

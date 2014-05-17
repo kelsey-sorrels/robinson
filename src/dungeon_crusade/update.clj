@@ -820,8 +820,14 @@
                                     (fn [place]
                                       (let [visibility (map-visibility (let [pos (-> state :world :player :pos)]
                                                                              [(pos :x) (pos :y)])
-                                                                           cell-blocking?
-                                                                           place)]
+                                                                       cell-blocking?
+                                                                       place
+                                                                       (fn [cell x y]
+                                                                         (if (or (nil? cell)
+                                                                                 (farther-than?
+                                                                                   (-> state :world :player :pos)
+                                                                                   {:x x :y y} 5))
+                                                                           false)))]
                                        ;(debug "visibility")
                                        ;(clojure.pprint/pprint visibility)
                                        ;(debug "place")

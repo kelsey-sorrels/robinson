@@ -6,6 +6,28 @@
 
 (timbre/refer-timbre)
 
+
+(defn manhattan-distance
+  "Manhattan distance between 2 points"
+  [p1 p2]
+  (+ (Math/abs (- (:x p1) (:x p2)))
+     (Math/abs (- (:y p1) (:y p2)))))
+
+(defn distance
+  "Euclidean distance between 2 points"
+  [p1 p2]
+  (Math/pow (+ (Math/pow (- (:x p1) (:x p2)) 2)
+               (Math/pow (- (:y p1) (:y p2)) 2))
+            0.5))
+
+(defn farther-than?
+  "Are the two points farther in distance than l?"
+  [p1 p2 l]
+  (if (or (> (manhattan-distance p1 p2) l)
+          (> (distance p1 p2) l))
+    false
+    true))
+
 (defn fill-missing
   "For each item in coll for which (pred item) returns true, replace that
    element with the result of (f item vcoll-item) where vcoll-item

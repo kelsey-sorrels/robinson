@@ -38,48 +38,55 @@
       (map (fn [[x y]] [(+ ox x) (+ oy y)])
           (line-segment [0 0] [(- dx ox) (- dy oy)]))))))
  
-(defn map-visibility [origin blocking? grid]
-  "Determine the visibility of a `grid` as a viewer at `origin`.
+(defn map-visibility
 
-   `blocking?` is a predicate called like this `(blocking? cell)`
-   for each cell in the grid.` It should return `true` if the cell
-   block visibility. Eg: a wall, or closed door and `false` otherwise.
+  ([origin blocking? grid]
+   "Determine the visibility of a `grid` as a viewer at `origin`.
 
-   (map-visibility [x y] blocking? (0,0) ------ x
-                                     |  [[false false false]
-                                     |   [false true  false]
-                                     y   [false true  false]])
-   (clojure.pprint/pprint (map-visibility [0 4] identity
-                                  [[false false false false]
-                                   [false false true  false]
-                                   [false false true  false]
-                                   [false false true  false]
-                                   [false false true  false]]))
-  "
-                                    
-  (log-time "map-visibility"
-    (let [[ox oy] origin
-        width  (-> grid first count)
-        height (count grid)
-        bounds-xy (filter (fn [[x y e]]
-                            (or (zero? x)
-                                (= x (dec width))
-                                (zero? y)
-                                (= y (dec height))))
-                          (with-xy grid))
-        get-cell (fn [grid ks] (memoize (get-in grid ks)))
-        visible? (fn [x1 y1 x2 y2]
-                   (not-any? blocking?
-                     ;(map (fn [[x y]] (get-cell grid [y x]))
-                     (map (fn [[x y]] (get-in grid [y x]))
-                       (rest (butlast (line-segment-fast [x1 y1] [x2 y2]))))))]
-    ;(println (with-xygrid grid))
-    (vec (pmap (fn [line] (vec (map (fn [[cell x y]]
-                                      (if (nil? cell)
-                                        false
-                                        (visible? ox oy x y)))
-                                    line)))
-               (with-xygrid grid))))))
+    `blocking?` is a predicate called like this `(blocking? cell)`
+    for each cell in the grid.` It should return `true` if the cell
+    block visibility. Eg: a wall, or closed door and `false` otherwise.
+
+    (map-visibility [x y] blocking? (0,0) ------ x
+                                      |  [[false false false]
+                                      |   [false true  false]
+                                      y   [false true  false]])
+    (clojure.pprint/pprint (map-visibility [0 4] identity
+                                   [[false false false false]
+                                    [false false true  false]
+                                    [false false true  false]
+                                    [false false true  false]
+                                    [false false true  false]]))
+   "
+   (map-visibility origin blocking? grid (fn [cell x y] (if (nil? cell) false))))
+  ([origin blocking? grid exclude?]
+   "Exclude? is a fn that takes a cell, its x pos, and y pos. If exclude? returns false,
+    no visibility calculations will be performed on the cell and it will not be visible.
+    Exclude? is useful for shortcutting the normal visibility procedure for known
+    non-visible cells and speeding up calculations."
+   (log-time "map-visibility"
+     (let [[ox oy] origin
+         width  (-> grid first count)
+         height (count grid)
+         bounds-xy (filter (fn [[x y e]]
+                             (or (zero? x)
+                                 (= x (dec width))
+                                 (zero? y)
+                                 (= y (dec height))))
+                           (with-xy grid))
+         get-cell (fn [grid ks] (memoize (get-in grid ks)))
+         visible? (fn [x1 y1 x2 y2]
+                    (not-any? blocking?
+                      ;(map (fn [[x y]] (get-cell grid [y x]))
+                      (map (fn [[x y]] (get-in grid [y x]))
+                        (rest (butlast (line-segment-fast [x1 y1] [x2 y2]))))))]
+     ;(println (with-xygrid grid))
+     (vec (pmap (fn [line] (vec (map (fn [[cell x y]]
+                                       (if (exclude? cell x y)
+                                         false
+                                         (visible? ox oy x y)))
+                                     line)))
+                (with-xygrid grid)))))))
 
 (defn cell-blocking?
   "Walls, closed doors, and `nil` cells block visibility."

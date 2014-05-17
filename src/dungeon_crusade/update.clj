@@ -823,11 +823,11 @@
                                                                        cell-blocking?
                                                                        place
                                                                        (fn [cell x y]
-                                                                         (if (or (nil? cell)
-                                                                                 (farther-than?
-                                                                                   (-> state :world :player :pos)
-                                                                                   {:x x :y y} 5))
-                                                                           false)))]
+                                                                         (not
+                                                                           (or (nil? cell)
+                                                                               (farther-than?
+                                                                                 (-> state :world :player :pos)
+                                                                                 {:x x :y y} 3)))))]
                                        ;(debug "visibility")
                                        ;(clojure.pprint/pprint visibility)
                                        ;(debug "place")

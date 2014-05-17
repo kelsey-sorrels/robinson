@@ -37,9 +37,15 @@
           [dx dy] end]
       (map (fn [[x y]] [(+ ox x) (+ oy y)])
           (line-segment [0 0] [(- dx ox) (- dy oy)]))))))
+
+(defn visible?
+  [grid blocking? x1 y1 x2 y2]
+  (not-any? blocking?
+    ;(map (fn [[x y]] (get-cell grid [y x]))
+    (map (fn [[x y]] (get-in grid [y x]))
+      (rest (butlast (line-segment-fast [x1 y1] [x2 y2]))))))
  
 (defn map-visibility
-
   ([origin blocking? grid]
    "Determine the visibility of a `grid` as a viewer at `origin`.
 
@@ -74,17 +80,17 @@
                                  (zero? y)
                                  (= y (dec height))))
                            (with-xy grid))
-         get-cell (fn [grid ks] (memoize (get-in grid ks)))
-         visible? (fn [x1 y1 x2 y2]
-                    (not-any? blocking?
-                      ;(map (fn [[x y]] (get-cell grid [y x]))
-                      (map (fn [[x y]] (get-in grid [y x]))
-                        (rest (butlast (line-segment-fast [x1 y1] [x2 y2]))))))]
+         get-cell (fn [grid ks] (memoize (get-in grid ks)))]
+         ;visible? (fn [x1 y1 x2 y2]
+         ;           (not-any? blocking?
+         ;             ;(map (fn [[x y]] (get-cell grid [y x]))
+         ;             (map (fn [[x y]] (get-in grid [y x]))
+         ;               (rest (butlast (line-segment-fast [x1 y1] [x2 y2]))))))]
      ;(println (with-xygrid grid))
      (vec (pmap (fn [line] (vec (map (fn [[cell x y]]
                                        (if (exclude? cell x y)
                                          false
-                                         (visible? ox oy x y)))
+                                         (visible? grid blocking? ox oy x y)))
                                      line)))
                 (with-xygrid grid)))))))
 

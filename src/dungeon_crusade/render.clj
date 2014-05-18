@@ -7,6 +7,7 @@
             dungeon-crusade.lineofsight
             [dungeon-crusade.dialog :exclude [-main]]
             dungeon-crusade.npc
+            tinter.core
             [clojure.pprint :only [print-table]])
   (:require [lanterna.screen :as s]
             [lanterna.terminal :as t]
@@ -20,7 +21,17 @@
 ;; It's easier to use names than numbers.
 (def rgb-color {
  :brown [139 69 19]
- :black [0 0 0]})
+ :black [0 0 0]
+ :white [255 255 255]
+ :gray [128 128 128]
+ :red    (hex-str-to-dec "D31C00")
+ :orange (hex-str-to-dec "D36C00")
+ :yellow (hex-str-to-dec "D3B100")
+ :green  (hex-str-to-dec "81D300")
+ :blue   (hex-str-to-dec "00ACD3")
+ :purple (hex-str-to-dec "8500D3")
+ :fushia (hex-str-to-dec "D30094")
+})
 
 (defn render-multi-select
   "Render a menu on the right side of the screen. It has a title, and selected items
@@ -323,12 +334,21 @@
                                                  y))]
                       (debug "npc@" x y "visible?" visible)
                       (when visible
-                        (s/put-string (state :screen)
-                                      (-> npc :pos :x)
-                                      (-> npc :pos :y)
-                                      (case (npc :type)
-                                        :rat "r"
-                                        "@")))))
+                        (apply s/put-string (state :screen)
+                                            (-> npc :pos :x)
+                                            (-> npc :pos :y)
+                                            (case (npc :race)
+                                              :rat "r"
+                                              :human (case (npc :class)
+                                                       :cleric    ["@" {:fg (rgb-color :white)}]
+                                                       :barbarian ["@" {:fg (rgb-color :red)}]
+                                                       :bard      ["@" {:fg (rgb-color :fushia)}]
+                                                       :druid     ["@" {:fg (rgb-color :yellow)}]
+                                                       :fighter   ["@" {:fg (rgb-color :orange)}]
+                                                       :ranger    ["@" {:fg (rgb-color :green)}]
+                                                       :rogue     ["@" {:fg (rgb-color :gray)}]
+                                                       :wizard    ["@" {:fg (rgb-color :purple)}])
+                                              "@")))))
                    place-npcs)))
     ;; maybe draw pick up menu
     (render-pick-up state)

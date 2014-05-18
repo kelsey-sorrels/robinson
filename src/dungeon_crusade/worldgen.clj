@@ -126,6 +126,13 @@
            starting-y]         (first (filter (fn [[cell x y]] (contains? cell :starting-location))
                                               (with-xy place-0)))
         starting-pos           {:x starting-x :y starting-y}
+        party-pos              (filter (fn [pos]
+                                         (let [cell (get-in place-0 [(pos :y) (pos :x)])]
+                                           (and (not (nil? cell))
+                                                (= (cell :type) :floor))))
+                                       (for [x (range -1 1)
+                                             y (range -1 1)]
+                                         {:x (+ starting-x x) :y (+ starting-y y)}))
         _ (debug "starting-pos" starting-pos)]
 
   {:places {:0 place-0}
@@ -148,6 +155,22 @@
             :inventory inventory-with-hotkeys
             :status #{}}
    :quests {}
-   :npcs []}))
+   :npcs [{
+     :id :helga
+     :name "Helga"
+     :race :human
+     :class :rogue
+     :movement-policy :follow-player
+     :in-party? true
+     :inventory []
+     :hp 10
+     :max-hp 10
+     :$ 0
+     :xp 0
+     :level 0
+     :hunger 0
+     :pos (first party-pos)
+     :place :0
+     :image-path "./images/helga.png"}]}))
 
 

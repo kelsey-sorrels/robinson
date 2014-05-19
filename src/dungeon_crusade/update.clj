@@ -596,17 +596,18 @@
                                       ;(debug "traversable?" x y "type" (get-in place [y x :type]))
                                       (get-in place [y x :type]))))
         traversable? (memoize
-                       (log-io "traversable?" (fn [[x y]]
-                           (and (< 0 x width)
-                                (< 0 y height)
-                                (not-any? (fn [n] (and (= (-> n :pos :x) x)
-                                                       (= (-> n :pos :y) y)
-                                                       (not= (n :id) (npc :id))))
-                                          npcs)
-                                (contains? #{:floor
-                                             :open-door
-                                             :corridor}
-                                           (get-type x y))))))
+                       (fn [[x y]]
+                         (and (< 0 x width)
+                              (< 0 y height)
+                              (or (and (= (-> npc :pos :x) x)
+                                       (= (-> npc :pos :y) y))
+                                  (not-any? (fn [n] (and (= (-> n :pos :x) x)
+                                                         (= (-> n :pos :y) y)))
+                                            npcs))
+                              (contains? #{:floor
+                                           :open-door
+                                           :corridor}
+                                         (get-type x y)))))
         path (try
                (debug "a* params" traversable? npc-pos [(target :x) (target :y)])
                (clj-tiny-astar.path/a* traversable? npc-pos [(target :x) (target :y)])
@@ -614,14 +615,16 @@
                  (error "Caught exception during a* traversal" e)
                  (st/print-cause-trace e)
                  nil))
-        _ (debug "path to player" path)
+        _ (debug "path to target" path)
         new-pos (if (and (not (nil? path))
                          (> (count path) 1)
                          ;; don't collide with player
-                         (not= (first (second path)) (first player-pos))
-                         (not= (second (second path)) (second player-pos)))
+                         (let [new-pos (second path)]
+                           (not= ((juxt first second) new-pos)
+                                 ((juxt first second) player-pos))))
                   (second path)
                   npc-pos)
+        _ (debug "new-pos" new-pos)
         new-npc (-> npc
                     (assoc-in [:pos :x] (first new-pos))
                     (assoc-in [:pos :y] (second new-pos)))
@@ -639,7 +642,7 @@
         _ (info "moving npc@" (npc :pos) "with policy" policy)]
     (case policy
       :constant [nil nil npc]
-      :entourage (move-to-target state npc (first (shuffle (adjacent-floor-pos (current-place state) pos))))
+      :entourage (move-to-target state npc (first (shuffle (adjacent-navigable-pos (current-place state) pos))))
       :follow-player (move-to-target state npc pos)
       [nil nil npc])))
  
@@ -658,7 +661,7 @@
                  (fn [result [new-pos new-npc npc]]
                    (conj result
                          (if (or (nil? new-pos)
-                                 (empty? (npc-at-xy state (first new-pos) (second new-pos))))
+                                 (not (nil? (npc-at-xy state (first new-pos) (second new-pos)))))
                            npc
                            new-npc)))
                  []

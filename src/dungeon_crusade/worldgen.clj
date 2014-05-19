@@ -128,7 +128,8 @@
                                               (with-xy place-0)))
         starting-pos           {:x starting-x :y starting-y}
         party-pos              (adjacent-navigable-pos place-0 starting-pos)
-        _ (debug "starting-pos" starting-pos)]
+        _ (debug "starting-pos" starting-pos)
+        _ (debug "party-pos" party-pos)]
 
   {:places {:0 place-0}
             ;:1 (init-place-1)}
@@ -164,8 +165,40 @@
      :xp 0
      :level 0
      :hunger 0
-     :pos (first party-pos)
+     :pos (nth party-pos 0)
      :place :0
-     :image-path "./images/helga.png"}]}))
+     :image-path "./images/helga.png"}{
+     :id :cronk
+     :name "Cronk"
+     :race :human
+     :class :wizard
+     :movement-policy :entourage
+     :in-party? true
+     :inventory []
+     :hp 10
+     :max-hp 10
+     :$ 0
+     :xp 0
+     :level 0
+     :hunger 0
+     :pos (nth party-pos 1)
+     :place :0
+     :image-path "./images/cronk.png"}{
+     :id :hans
+     :name "Hans"
+     :race :human
+     :class :fighter
+     :movement-policy :entourage
+     :in-party? true
+     :inventory []
+     :hp 10
+     :max-hp 10
+     :$ 0
+     :xp 0
+     :level 0
+     :hunger 0
+     :pos (nth party-pos 2)
+     :place :0
+     :image-path "./images/hans.png"}]}))
 
 

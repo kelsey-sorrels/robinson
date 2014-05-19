@@ -76,59 +76,51 @@
         (update-in state [:world :player :status]
           (fn [status] (conj status :dead))))))
 
+(defn move
+  "Move the player one space provided her/she is able. Else do combat. Else positions
+   with party member."
+  [state direction]
+  {:pre [(contains? #{:left :right :up :down} direction)]}
+  (let [player-x (-> state :world :player :pos :x)
+        player-y (-> state :world :player :pos :y)
+        target-x (+ player-x (case direction
+                               :left -1
+                               :right 1
+                               0))
+        target-y (+ player-y (case direction
+                               :up  -1
+                               :down 1
+                               0))]
+    (if-not (collide? target-x target-y state)
+      (-> state
+          (assoc-in [:world :player :pos :x] target-x)
+          (assoc-in [:world :player :pos :y] target-y))
+      (if (npc-at-xy state target-x target-y)
+        ;; collided with npc. Engage in combat.
+        (do-combat target-x target-y state)
+        ;; collided with a wall or door, nothing to be done.
+        state))))
+  
+
 (defn move-left
   "Moves the player one space to the left provided he/she is able."
   [state]
-  (let [x (-> state :world :player :pos :x)
-        y (-> state :world :player :pos :y)]
-    (if-not (collide? (dec x) y state)
-      (assoc-in state [:world :player :pos :x] (dec x))
-      (if (npc-at-xy state (dec x) y)
-        ;; collided with npc. Engage in combat.
-        (do-combat (dec x) y state)
-        ;; collided with a wall or door, nothing to be done.
-        state))))
-  
+  (move state :left))
+
 (defn move-right
   "Moves the player one space to the right provided he/she is able."
   [state]
-  (let [x (-> state :world :player :pos :x)
-        y (-> state :world :player :pos :y)]
-    (if-not (collide? (inc x) y state)
-      (assoc-in state [:world :player :pos :x] (inc x))
-      (if (npc-at-xy state (inc x) y)
-        ;; collided with npc. Engage in combat.
-        (do-combat (inc x) y state)
-        ;; collided with a wall or door, nothing to be done.
-        state))))
-  
+  (move state :right))
+
 (defn move-up
   "Moves the player one space up provided he/she is able."
   [state]
-  (let [x (-> state :world :player :pos :x)
-        y (-> state :world :player :pos :y)]
-    (if-not (collide? x (dec y) state)
-      ;; no collision. move up
-      (assoc-in state [:world :player :pos :y] (dec y))
-      (if (npc-at-xy state x (dec y))
-        ;; collided with npc. Engage in combat.
-        (do-combat x (dec y) state)
-        ;; collided with a wall or door, nothing to be done.
-        state))))
-  
+  (move state :up))
+
 (defn move-down
   "Moves the player one space down provided he/she is able."
   [state]
-  (let [x (-> state :world :player :pos :x)
-        y (-> state :world :player :pos :y)]
-    (debug "move-down")
-    (if-not (collide? x (inc y) state)
-      (assoc-in state [:world :player :pos :y] (inc y))
-      (if (npc-at-xy state x (inc y) )
-        ;; collided with npc. Engage in combat.
-        (do-combat x (inc y) state)
-        ;; collided with a wall or door, nothing to be done.
-        state))))
+  (move state :down))
 
 (defn open-door
   "Open the door one space in the direction relative to the player's position.
@@ -837,7 +829,7 @@
                                                            nil)
                                                          ]))))))
             (move-npcs)
-            ;;(add-npcs)
+            (add-npcs)
             (update-quests)
             ((fn [state] (update-in state [:world :current-state]
                                     (fn [current-state]

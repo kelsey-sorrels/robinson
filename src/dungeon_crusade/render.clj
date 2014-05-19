@@ -20,17 +20,17 @@
 ;; RBG color definitions. 
 ;; It's easier to use names than numbers.
 (def rgb-color {
- :brown [139 69 19]
- :black [0 0 0]
- :white [255 255 255]
- :gray [128 128 128]
- :red    (hex-str-to-dec "D31C00")
- :orange (hex-str-to-dec "D36C00")
- :yellow (hex-str-to-dec "D3B100")
- :green  (hex-str-to-dec "81D300")
- :blue   (hex-str-to-dec "00ACD3")
- :purple (hex-str-to-dec "8500D3")
- :fushia (hex-str-to-dec "D30094")
+ :brown  [139 69 19]
+ :black  [0 0 0]
+ :white  [255 255 255]
+ :gray   [128 128 128]
+ :red    (vec (hex-str-to-dec "D31C00"))
+ :orange (vec (hex-str-to-dec "D36C00"))
+ :yellow (vec (hex-str-to-dec "D3B100"))
+ :green  (vec (hex-str-to-dec "81D300"))
+ :blue   (vec (hex-str-to-dec "00ACD3"))
+ :purple (vec (hex-str-to-dec "8500D3"))
+ :fushia (vec (hex-str-to-dec "D30094"))
 })
 
 (defn render-multi-select

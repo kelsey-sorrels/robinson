@@ -91,15 +91,28 @@
                                :up  -1
                                :down 1
                                0))]
-    (if-not (collide? target-x target-y state)
-      (-> state
-          (assoc-in [:world :player :pos :x] target-x)
-          (assoc-in [:world :player :pos :y] target-y))
-      (if (npc-at-xy state target-x target-y)
+    (cond
+      (not (collide? target-x target-y state))
+        (-> state
+            (assoc-in [:world :player :pos :x] target-x)
+            (assoc-in [:world :player :pos :y] target-y))
+      (= (get (npc-at-xy state target-x target-y) :in-party?) true)
+        (-> state
+            (assoc-in [:world :player :pos :x] target-x)
+            (assoc-in [:world :player :pos :y] target-y)
+            (map-in [:world :npcs]
+                    (fn [npc] (if (and (= (-> npc :pos :x) target-x)
+                                       (= (-> npc :pos :y) target-y))
+                                (-> npc
+                                    (assoc-in [:pos :x] player-x)
+                                    (assoc-in [:pos :y] player-y))
+                                npc))))
+      (npc-at-xy state target-x target-y)
         ;; collided with npc. Engage in combat.
         (do-combat target-x target-y state)
-        ;; collided with a wall or door, nothing to be done.
-        state))))
+      ;; collided with a wall or door, nothing to be done.
+      :else
+        state)))
   
 
 (defn move-left
@@ -644,10 +657,11 @@
   (update-in state
              [:world :npcs]
              (fn [npcs]
-               (let [map-result (map (fn [npc] (if (= (npc :place)
-                                                      (-> state :world :current-place))
-                                                 (calc-npc-next-step state npc)
-                                                 [nil nil npc]))
+               (let [map-result (map (fn [npc]
+                                       (if (= (npc :place)
+                                              (-> state :world :current-place))
+                                         (calc-npc-next-step state npc)
+                                         [nil nil npc]))
                                       npcs)]
                (reduce
                  (fn [result [new-pos new-npc npc]]

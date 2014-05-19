@@ -7,7 +7,7 @@
 
 (timbre/refer-timbre)
 
-(defn adjacent-floor-pos
+(defn adjacent-navigable-pos
   "Return a collection of positions of `:floor` type cells centered around pos.
    Pos is a map with the keys `:x` and `:y`.
   
@@ -18,7 +18,7 @@
   (filter (fn [{x :x y :y}]
             (let [cell (get-in place [y x])]
               (and (not (nil? cell))
-                   (= (cell :type) :floor))))
+                   (contains? #{:floor :corridor :open-door} (cell :type)))))
           (for [x (range -1 1)
                 y (range -1 1)]
             {:x (+ (pos :x) x) :y (+ (pos :y) y)})))
@@ -30,7 +30,7 @@
           (get-in state [:world :npcs])))
 
 (defn npc-at-xy
-  "Seq of npcs at [x y] of the current place."
+  "npc at [x y] of the current place. Otherwise `nil`."
   [state x y]
   (first (filter (fn [npc] (and (= (npc :place) (current-place-id state))
                                 (= (-> npc :pos :x) x)

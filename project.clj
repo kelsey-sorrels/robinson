@@ -9,6 +9,7 @@
                  [org.clojure/math.combinatorics "0.0.7"]
                  [org.clojure/clojure-contrib "1.2.0"]
                  [org.clojars.vishk/algotools "0.1.0"]
+                 [tinter "0.1.1-SNAPSHOT"]
                  [clj-tiny-astar "0.1.0-SNAPSHOT"]
                  [dorothy "0.0.3"]
                  [com.taoensso/timbre "3.2.1"]

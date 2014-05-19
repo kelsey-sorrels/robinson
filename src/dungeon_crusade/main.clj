@@ -11,6 +11,8 @@
 
 (timbre/refer-timbre)
 
+(timbre/set-config! [] (read-string (slurp "config/timbre.clj")))
+
 (defn tick
   "The game loop.
 

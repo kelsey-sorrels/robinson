@@ -1,6 +1,7 @@
 ;; Utility functions and functions for manipulating state
 (ns dungeon-crusade.worldgen
   (:use dungeon-crusade.common
+        dungeon-crusade.npc
         [dungeon-crusade.mapgen :exclude [-main]]
         [dungeon-crusade.itemgen :exclude [-main]])
   (:require [taoensso.timbre :as timbre]))
@@ -126,13 +127,7 @@
            starting-y]         (first (filter (fn [[cell x y]] (contains? cell :starting-location))
                                               (with-xy place-0)))
         starting-pos           {:x starting-x :y starting-y}
-        party-pos              (filter (fn [pos]
-                                         (let [cell (get-in place-0 [(pos :y) (pos :x)])]
-                                           (and (not (nil? cell))
-                                                (= (cell :type) :floor))))
-                                       (for [x (range -1 1)
-                                             y (range -1 1)]
-                                         {:x (+ starting-x x) :y (+ starting-y y)}))
+        party-pos              (adjacent-floor-pos place-0 starting-pos)
         _ (debug "starting-pos" starting-pos)]
 
   {:places {:0 place-0}
@@ -160,7 +155,7 @@
      :name "Helga"
      :race :human
      :class :rogue
-     :movement-policy :follow-player
+     :movement-policy :entourage
      :in-party? true
      :inventory []
      :hp 10

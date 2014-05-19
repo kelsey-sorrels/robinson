@@ -9,6 +9,7 @@
   (:require clojure.pprint
             clojure.contrib.core
             clj-tiny-astar.path
+            [clojure.stacktrace :as st]
             [taoensso.timbre :as timbre]))
 
 (timbre/refer-timbre)
@@ -253,21 +254,21 @@
       (debug "divided-items" divided-items)
       (debug "selected-items" selected-items)
       (debug "not-selected-items" not-selected-items)
-        (let [new-state (-> state
-          ;; dup the item into inventory with hotkey
-          (update-in [:world :player :inventory]
-            (fn [prev-inventory]
-              (vec (concat prev-inventory selected-items))))
-          ;; remove the item from cell
-          (assoc-in [:world :places place y x :items]
-                    not-selected-items)
-          ;;;; hotkey is no longer available
-          (assoc-in [:world :remaining-hotkeys]
-              remaining-hotkeys)
-          ;; reset selected-hotkeys
-          (assoc-in [:world :selected-hotkeys] #{}))]
-      (debug "cell-items (-> state :world :places" place y x ":items)")
-      new-state)))
+      (let [new-state (-> state
+                          ;; dup the item into inventory with hotkey
+                          (update-in [:world :player :inventory]
+                            (fn [prev-inventory]
+                              (vec (concat prev-inventory selected-items))))
+                          ;; remove the item from cell
+                          (assoc-in [:world :places place y x :items]
+                                    not-selected-items)
+                          ;;;; hotkey is no longer available
+                          (assoc-in [:world :remaining-hotkeys]
+                              remaining-hotkeys)
+                          ;; reset selected-hotkeys
+                          (assoc-in [:world :selected-hotkeys] #{}))]
+        (debug "cell-items (-> state :world :places" place y x ":items)")
+        new-state)))
 
 (defn drop-item
   "Drop the item from the player's inventory whose hotkey matches `keyin`.
@@ -578,38 +579,45 @@
             (transfer-items-from-player-to-npc (npc :id) (partial = item))))
         state)))
 
-(defn calc-npc-next-step
-  "Move `npc` one space closer to the player's position if there is a path
-   from the npc to the player. Returns the moved npc and not the updated state."
-  [state npc]
+(defn move-to-target
+  "Move `npc` one space closer to the target position if there is a path
+   from the npc to the target. Returns the moved npc and not the updated state.
+   `target` is a map with the keys `:x` and `:y`."
+  [state npc target]
   (let [npcs (npcs-at-current-place state)
-        _ (debug "npc" npc)
+        _ (debug "move-to-target npc" npc "target" target)
         npc-pos [(-> npc :pos :x) (-> npc :pos :y)]
         player  (-> state :world :player)
         player-pos [(-> player :pos :x) (-> player :pos :y)]
         place (current-place state)
         width (count (first place))
         height (count place)
+        get-type (memoize (fn [x y] (do
+                                      ;(debug "traversable?" x y "type" (get-in place [y x :type]))
+                                      (get-in place [y x :type]))))
         traversable? (memoize
-                       (fn [[x y]]
+                       (log-io "traversable?" (fn [[x y]]
                            (and (< 0 x width)
                                 (< 0 y height)
-                                (not-any? (fn [npc] (and (= (-> npc :pos :x) x)
-                                                         (= (-> npc :pos :y) y)))
+                                (not-any? (fn [n] (and (= (-> n :pos :x) x)
+                                                       (= (-> n :pos :y) y)
+                                                       (not= (n :id) (npc :id))))
                                           npcs)
                                 (contains? #{:floor
                                              :open-door
                                              :corridor}
-                                           (get-in place [y x :type])))))
+                                           (get-type x y))))))
         path (try
-               (clj-tiny-astar.path/a* traversable? npc-pos player-pos)
+               (debug "a* params" traversable? npc-pos [(target :x) (target :y)])
+               (clj-tiny-astar.path/a* traversable? npc-pos [(target :x) (target :y)])
                (catch Exception e
+                 (error "Caught exception during a* traversal" e)
+                 (st/print-cause-trace e)
                  nil))
-                 ;(debug "(clj-tiny-astar.path/a* traversable?" npc-pos player-pos ")")
-                 ;(debug (map (fn [y] (map (fn [x] (traversable? [x y])) (range (count (first (current-place state)))))) (range (count (current-place state)))))))
         _ (debug "path to player" path)
         new-pos (if (and (not (nil? path))
                          (> (count path) 1)
+                         ;; don't collide with player
                          (not= (first (second path)) (first player-pos))
                          (not= (second (second path)) (second player-pos)))
                   (second path)
@@ -619,6 +627,21 @@
                     (assoc-in [:pos :y] (second new-pos)))
         _ (debug "new-npc" new-npc)]
     [new-pos new-npc npc]))
+
+(defn calc-npc-next-step
+  "Returns the moved npc and not the updated state. New npc pos will depend on
+   the npc's `:movement-policy which is one of `:constant` `:entourage` `:follow-player`."
+  [state npc]
+  {:pre  [(contains? #{:constant :entourage :follow-player} (npc :movement-policy))]
+   :post [(= (count %) 3)]}
+  (let [policy (npc :movement-policy)
+        pos    (-> state :world :player :pos)
+        _ (info "moving npc@" (npc :pos) "with policy" policy)]
+    (case policy
+      :constant [nil nil npc]
+      :entourage (move-to-target state npc (first (shuffle (adjacent-floor-pos (current-place state) pos))))
+      :follow-player (move-to-target state npc pos)
+      [nil nil npc])))
  
 (defn move-npcs
   "Move all npcs in the current place using `move-npc`."
@@ -626,20 +649,20 @@
   (update-in state
              [:world :npcs]
              (fn [npcs]
-               (let [map-result (log-time "map-result" (map (fn [npc] (if (= (npc :place)
-                                                       (-> state :world :current-plce))
-                                                  (calc-npc-next-step state npc)
-                                                  [nil nil npc]))
-                                      npcs))]
-               (log-time "reduce" (reduce
+               (let [map-result (map (fn [npc] (if (= (npc :place)
+                                                      (-> state :world :current-place))
+                                                 (calc-npc-next-step state npc)
+                                                 [nil nil npc]))
+                                      npcs)]
+               (reduce
                  (fn [result [new-pos new-npc npc]]
                    (conj result
                          (if (or (nil? new-pos)
-                                 (empty? (npc-at-xy state (new-pos :x) (new-pos :y))))
+                                 (empty? (npc-at-xy state (first new-pos) (second new-pos))))
                            npc
                            new-npc)))
                  []
-                 map-result))))))
+                 map-result)))))
 
 (defn add-npcs
   "Randomly add rats to the current place's in floor cells."
@@ -652,7 +675,11 @@
     (let [[_ x y] (first (shuffle (filter (fn [[cell _ _]] (and (not (nil? cell))
                                                                 (= (cell :type) :floor)))
                                           (with-xy (current-place state)))))]
-      (add-npc state (-> state :world :current-place) {:race :rat :hp 9 :attacks #{:bite :claw}} x y))
+      (add-npc state (-> state :world :current-place)
+                     {:race :rat
+                      :movement-policy :follow-player
+                      :hp 9
+                      :attacks #{:bite :claw}} x y))
     state))
 
 (defn update-quests
@@ -807,7 +834,7 @@
                                                            nil)
                                                          ]))))))
             (move-npcs)
-            (add-npcs)
+            ;;(add-npcs)
             (update-quests)
             ((fn [state] (update-in state [:world :current-state]
                                     (fn [current-state]

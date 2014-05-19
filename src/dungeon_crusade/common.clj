@@ -266,3 +266,10 @@
        (println ~msg)
        result#)))
 
+(defn log-io
+  "Log function inputs and outputsi by wrapping an function f."
+  [msg f]
+  (fn [& args]
+    (let [result (apply f args)]
+      (println (format "(%s %s)=>%s" msg (str args) (str result)))
+      result)))

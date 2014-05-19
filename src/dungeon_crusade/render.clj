@@ -315,7 +315,7 @@
       {:fg :green})
     ;; draw npcs
     (let [place-npcs (npcs-at-current-place state)
-          _ (debug "place-npcs" place-npcs)
+          ;_ (debug "place-npcs" place-npcs)
           pos (-> state :world :player :pos)
           get-cell (memoize (fn [x y] (get-in (current-place state) [y x])))]
       (doall (map (fn [npc]
@@ -338,7 +338,7 @@
                                             (-> npc :pos :x)
                                             (-> npc :pos :y)
                                             (case (npc :race)
-                                              :rat "r"
+                                              :rat ["r"]
                                               :human (case (npc :class)
                                                        :cleric    ["@" {:fg (rgb-color :white)}]
                                                        :barbarian ["@" {:fg (rgb-color :red)}]
@@ -348,7 +348,7 @@
                                                        :ranger    ["@" {:fg (rgb-color :green)}]
                                                        :rogue     ["@" {:fg (rgb-color :gray)}]
                                                        :wizard    ["@" {:fg (rgb-color :purple)}])
-                                              "@")))))
+                                              ["@"])))))
                    place-npcs)))
     ;; maybe draw pick up menu
     (render-pick-up state)

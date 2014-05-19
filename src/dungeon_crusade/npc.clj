@@ -7,6 +7,22 @@
 
 (timbre/refer-timbre)
 
+(defn adjacent-floor-pos
+  "Return a collection of positions of `:floor` type cells centered around pos.
+   Pos is a map with the keys `:x` and `:y`.
+  
+   Ex: `(adjacent-floor-pos [...] {:x 0 :y 0})`
+   `[{:x 1 :y 1} {:x 0 :y 0}]`"
+  [place pos]
+  {:pre [(= (set (keys pos)) #{:x :y})]}
+  (filter (fn [{x :x y :y}]
+            (let [cell (get-in place [y x])]
+              (and (not (nil? cell))
+                   (= (cell :type) :floor))))
+          (for [x (range -1 1)
+                y (range -1 1)]
+            {:x (+ (pos :x) x) :y (+ (pos :y) y)})))
+
 (defn npcs-at-current-place
   "Seq of npcs at the current place."
   [state]
@@ -16,7 +32,6 @@
 (defn npc-at-xy
   "Seq of npcs at [x y] of the current place."
   [state x y]
-  (info "npc-at-xy" x y "npcs:" (get-in state [:world :npcs]))
   (first (filter (fn [npc] (and (= (npc :place) (current-place-id state))
                                 (= (-> npc :pos :x) x)
                                 (= (-> npc :pos :y) y)))

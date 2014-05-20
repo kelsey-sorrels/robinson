@@ -89,6 +89,26 @@
   [m ks f]
   (fn-in (fn [coll _] (remove f coll)) m ks nil))
 
+(defn map-indexed-in-p
+  "Update in m the collection accessible by (get-in m ks)
+   for which (p item) returns true for an item in the collection
+   is replaced with the value of (f index element) where index
+   starts at zero and is incremented with each call to f."
+  [m ks p f]
+  (update-in m ks (fn [coll]
+    (loop [i 0
+           j 0
+           result []]
+      (debug "loop i" i "j" j "count coll" (count coll))
+      (if (>= j (count coll))
+        (do (debug result)
+        result)
+        (let [item (nth coll i)]
+          (if (p item)
+            (recur (inc i) (inc j) (conj result (f i item)))
+            (recur i (inc j) (conj result item)))))))))
+
+
 (defn with-xygrid
   "Inclue x y values alongside elements in a grid and preserve the structure
    of the grid.

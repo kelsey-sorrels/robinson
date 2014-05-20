@@ -381,13 +381,20 @@
                                     (with-xy dest-place)))
             _ (debug "dest-cellxy" dest-cellxy)
             dest-x             (second dest-cellxy)
-            dest-y             (last dest-cellxy)]
+            dest-y             (last dest-cellxy)
+            party-pos          (adjacent-navigable-pos dest-place {:x dest-x :y dest-y})]
         (debug "dest-x" dest-x "dest-y" dest-y)
+        (debug "party-pos" party-pos)
         (-> state
           ;; change the place
           (assoc-in [:world :current-place] (player-cell :dest-place))
           ;; move player to cell where stairs go back to original place
-          (assoc-in [:world :player :pos] {:x dest-x :y dest-y})))
+          (assoc-in [:world :player :pos] {:x dest-x :y dest-y})
+          ;; move all party members to new place too
+          (map-indexed-in-p [:world :npcs]
+                            (fn [npc] (contains? npc :in-party?))
+                            (fn [i npc] (assoc npc :pos (nth party-pos i)
+                                                   :place (player-cell :dest-place))))))
       state)))
 
 (defn init-cursor
@@ -843,7 +850,7 @@
                                                            nil)
                                                          ]))))))
             (move-npcs)
-            (add-npcs)
+            ;(add-npcs)
             (update-quests)
             ((fn [state] (update-in state [:world :current-state]
                                     (fn [current-state]

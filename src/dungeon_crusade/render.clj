@@ -24,6 +24,8 @@
  :black  [0 0 0]
  :white  [255 255 255]
  :gray   [128 128 128]
+ :light-gray   [64 64 64]
+ :dark-gray   [192 192 192]
  :red    (vec (hex-str-to-dec "D31C00"))
  :orange (vec (hex-str-to-dec "D36C00"))
  :yellow (vec (hex-str-to-dec "D3B100"))
@@ -32,6 +34,20 @@
  :purple (vec (hex-str-to-dec "8500D3"))
  :fushia (vec (hex-str-to-dec "D30094"))
 })
+
+(defn class->color
+  "Convert a class to a color characters of that type should be drawn."
+  [pc-class]
+  (debug "class->color" pc-class)
+  (case pc-class
+    :cleric    (rgb-color :white)
+    :barbarian (rgb-color :red)
+    :bard      (rgb-color :fushia)
+    :druid     (rgb-color :yellow)
+    :fighter   (rgb-color :orange)
+    :ranger    (rgb-color :green)
+    :rogue     (rgb-color :gray)
+    :wizard    (rgb-color :purple)))
 
 (defn render-multi-select
   "Render a menu on the right side of the screen. It has a title, and selected items
@@ -312,7 +328,7 @@
       (-> state :world :player :pos :x)
       (-> state :world :player :pos :y)
       (-> state :world :player :sym)
-      {:fg :green})
+      {:fg (class->color (-> state :world :player :class))})
     ;; draw npcs
     (let [place-npcs (npcs-at-current-place state)
           ;_ (debug "place-npcs" place-npcs)
@@ -339,15 +355,7 @@
                                             (-> npc :pos :y)
                                             (case (npc :race)
                                               :rat ["r"]
-                                              :human (case (npc :class)
-                                                       :cleric    ["@" {:fg (rgb-color :white)}]
-                                                       :barbarian ["@" {:fg (rgb-color :red)}]
-                                                       :bard      ["@" {:fg (rgb-color :fushia)}]
-                                                       :druid     ["@" {:fg (rgb-color :yellow)}]
-                                                       :fighter   ["@" {:fg (rgb-color :orange)}]
-                                                       :ranger    ["@" {:fg (rgb-color :green)}]
-                                                       :rogue     ["@" {:fg (rgb-color :gray)}]
-                                                       :wizard    ["@" {:fg (rgb-color :purple)}])
+                                              :human ["@" {:fg (class->color (npc :class))}]
                                               ["@"])))))
                    place-npcs)))
     ;; maybe draw pick up menu
@@ -375,6 +383,13 @@
         (-> state :world :time)
         (apply str (interpose " " (-> state :world :player :status))))
         {:fg :black :bg :white})
+    (doall (map #(s/put-string (state :screen) (+ 73 %1) 23 " " {:bg (rgb-color %2)})
+                (range)
+                [:dark-gray :gray :light-gray]))
+    (s/put-string (state :screen) 76 23 "@" {:fg (class->color (-> state :world :player :class))
+                                             :bg :black})
+    (s/put-string (state :screen) 77 23 "    "{:fg :white
+                                               :bg :black})
     ;; draw log
     (when-let [message (-> state :world :log last)]
       (debug "message" message)

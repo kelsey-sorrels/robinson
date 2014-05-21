@@ -146,6 +146,7 @@
             :xp 0
             :level 0
             :sym "@"
+            :class :ranger
             :hunger 0
             :pos starting-pos
             :inventory inventory-with-hotkeys

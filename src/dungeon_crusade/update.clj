@@ -850,7 +850,7 @@
                                                            nil)
                                                          ]))))))
             (move-npcs)
-            ;(add-npcs)
+            (add-npcs)
             (update-quests)
             ((fn [state] (update-in state [:world :current-state]
                                     (fn [current-state]

@@ -327,7 +327,7 @@
       (state :screen)
       (-> state :world :player :pos :x)
       (-> state :world :player :pos :y)
-      (-> state :world :player :sym)
+      "@"
       {:fg (class->color (-> state :world :player :class))})
     ;; draw npcs
     (let [place-npcs (npcs-at-current-place state)

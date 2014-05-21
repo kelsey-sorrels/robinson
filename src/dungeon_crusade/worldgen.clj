@@ -140,16 +140,22 @@
    :remaining-hotkeys remaining-hotkeys
    :log []
    :dialog-log []
-   :player {:hp 10
+   :player {
+            :id :player
+            :name "Player"
+            :race :human
+            :class :ranger
+            :movement-policy :entourage
+            :in-party? true
+            :inventory inventory-with-hotkeys
+            :hp 10
             :max-hp 10
             :$ 50
             :xp 0
             :level 0
-            :sym "@"
-            :class :ranger
             :hunger 0
             :pos starting-pos
-            :inventory inventory-with-hotkeys
+            :place :0
             :status #{}}
    :quests {}
    :npcs [{
@@ -168,6 +174,7 @@
      :hunger 0
      :pos (nth party-pos 0)
      :place :0
+     :state #{}
      :image-path "./images/helga.png"}{
      :id :cronk
      :name "Cronk"
@@ -184,6 +191,7 @@
      :hunger 0
      :pos (nth party-pos 1)
      :place :0
+     :state #{}
      :image-path "./images/cronk.png"}{
      :id :hans
      :name "Hans"
@@ -200,6 +208,7 @@
      :hunger 0
      :pos (nth party-pos 2)
      :place :0
+     :state #{}
      :image-path "./images/hans.png"}]}))
 
 

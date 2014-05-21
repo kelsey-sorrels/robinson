@@ -591,6 +591,20 @@
             (transfer-items-from-player-to-npc (npc :id) (partial = item))))
         state)))
 
+(defn next-party-member
+  "Switch (-> state :world :player) with the next npc where (-> npc :in-party?) is equal to true.
+   Place the player at the end of (-> state :world :npcs)."
+  [state]
+  (let [npc (first (filter #(contains? % :in-party?)
+                            (get-in state [:world :npcs])))]
+    (-> state
+      (remove-in [:world :npcs] (partial = npc))
+      ;; make world npcs a vector so that conj adds the player to the end of the collection
+      ;; rather than the beginning.
+      (update-in [:world :npcs] vec)
+      (conj-in [:world :npcs] (get-in state [:world :player]))
+      (assoc-in [:world :player] npc))))
+
 (defn move-to-target
   "Move `npc` one space closer to the target position if there is a path
    from the npc to the target. Returns the moved npc and not the updated state.
@@ -747,6 +761,7 @@
                            \<        [use-stairs             :normal]
                            \;        [init-cursor            :describe]
                            \Q        [identity               :quests]
+                           \P        [next-party-member      :normal]
                            \T        [identity               :talk]
                            \?        [identity               :help]
                            :escape   [identity               :quit?]}

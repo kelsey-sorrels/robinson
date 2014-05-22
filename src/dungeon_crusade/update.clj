@@ -1,6 +1,7 @@
 ;; Functions that manipulate state to do what the user commands.
 (ns dungeon-crusade.update
   (:use     
+    clojure.pprint
     dungeon-crusade.common
     [dungeon-crusade.dialog :exclude [-main]]
     dungeon-crusade.npc
@@ -68,7 +69,7 @@
           (update-in [:world :places current-place-id y x :items]
                      (fn [items]
                        (if (zero? (rand-int 3))
-                         (conj items {:type :food :name (format "%s corpse" (name (npc :type))) :hunger 10})
+                         (conj items {:type :food :name (format "%s corpse" (name (npc :race))) :hunger 10})
                          items))))
       ;; player dead?
       (not (pos? (- player-hp player-dmg)))
@@ -385,6 +386,7 @@
             party-pos          (adjacent-navigable-pos dest-place {:x dest-x :y dest-y})]
         (debug "dest-x" dest-x "dest-y" dest-y)
         (debug "party-pos" party-pos)
+        (debug "npcs" (with-out-str (pprint (-> state :world :npcs))))
         (-> state
           ;; change the place
           (assoc-in [:world :current-place] (player-cell :dest-place))
@@ -596,14 +598,16 @@
    Place the player at the end of (-> state :world :npcs)."
   [state]
   (let [npc (first (filter #(contains? % :in-party?)
-                            (get-in state [:world :npcs])))]
-    (-> state
+                            (get-in state [:world :npcs])))
+    state (-> state
       (remove-in [:world :npcs] (partial = npc))
       ;; make world npcs a vector so that conj adds the player to the end of the collection
       ;; rather than the beginning.
       (update-in [:world :npcs] vec)
       (conj-in [:world :npcs] (get-in state [:world :player]))
-      (assoc-in [:world :player] npc))))
+      (assoc-in [:world :player] npc))]
+    (debug "npcs" (with-out-str (pprint (-> state :world :npcs))))
+    state))
 
 (defn move-to-target
   "Move `npc` one space closer to the target position if there is a path
@@ -688,7 +692,11 @@
                  (fn [result [new-pos new-npc npc]]
                    (conj result
                          (if (or (nil? new-pos)
-                                 (not (nil? (npc-at-xy state (first new-pos) (second new-pos)))))
+                                 (some (fn [npc]
+                                         (= (npc :pos)
+                                            {:x (first new-pos)
+                                             :y (second new-pos)}))
+                                       result))
                            npc
                            new-npc)))
                  []
@@ -865,7 +873,7 @@
                                                            nil)
                                                          ]))))))
             (move-npcs)
-            (add-npcs)
+            ;(add-npcs)
             (update-quests)
             ((fn [state] (update-in state [:world :current-state]
                                     (fn [current-state]

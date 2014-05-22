@@ -103,7 +103,8 @@
       (if (>= j (count coll))
         (do (debug result)
         result)
-        (let [item (nth coll i)]
+        (let [item (nth coll j)]
+          (debug "item" item)
           (if (p item)
             (recur (inc i) (inc j) (conj result (f i item)))
             (recur i (inc j) (conj result item)))))))))

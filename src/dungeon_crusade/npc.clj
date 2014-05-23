@@ -23,6 +23,25 @@
                 y (range -1 1)]
             {:x (+ (pos :x) x) :y (+ (pos :y) y)})))
 
+
+(defn adjacent-navigable-pos-extended
+  "Return a collection of positions of `:floor` type cells centered around pos.
+   Pos is a map with the keys `:x` and `:y`.
+  
+   Ex: `(adjacent-floor-pos [...] {:x 0 :y 0})`
+   `[{:x 1 :y 1} {:x 0 :y 0}]`"
+  [place pos]
+  {:pre [(= (set (keys pos)) #{:x :y})]}
+  (filter (fn [{x :x y :y}]
+            (let [cell (get-in place [y x])]
+              (and (not (nil? cell))
+                   (contains? #{:floor :corridor :open-door} (cell :type)))))
+          (for [x (range -2 2)
+                y (range -2 2)]
+            {:x (+ (pos :x) x) :y (+ (pos :y) y)})))
+
+
+
 (defn npcs-at-current-place
   "Seq of npcs at the current place."
   [state]

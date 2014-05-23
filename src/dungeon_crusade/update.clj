@@ -383,7 +383,7 @@
             _ (debug "dest-cellxy" dest-cellxy)
             dest-x             (second dest-cellxy)
             dest-y             (last dest-cellxy)
-            party-pos          (adjacent-navigable-pos dest-place {:x dest-x :y dest-y})]
+            party-pos          (adjacent-navigable-pos-extended dest-place {:x dest-x :y dest-y})]
         (debug "dest-x" dest-x "dest-y" dest-y)
         (debug "party-pos" party-pos)
         (debug "npcs" (with-out-str (pprint (-> state :world :npcs))))

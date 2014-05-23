@@ -372,7 +372,7 @@
     (render-quests state)
     ;; draw status bar
     (s/put-string (state :screen) 0  23
-      (format "Dgnlvl %s $%d HP:%d(%d) Pw:%d(%d) Amr:%d XP:%d/%d T%d %s                             "
+      (format "Dgnlvl %s $%d HP:%d(%d) Pw:%d(%d) Amr:%d XP:%d/%d T%d %s %s                            "
         (name (-> state :world :current-place))
         (-> state :world :player :$)
         (int (-> state :world :player :hp))
@@ -381,7 +381,8 @@
         (-> state :world :player :xp)
         100
         (-> state :world :time)
-        (apply str (interpose " " (-> state :world :player :status))))
+        (apply str (interpose " " (-> state :world :player :status)))
+        (-> state :world :player :name))
         {:fg :black :bg :white})
     (doall (map #(s/put-string (state :screen) (+ 73 %1) 23 " " {:bg (rgb-color %2)})
                 (range)

@@ -629,11 +629,6 @@
                        (fn [[x y]]
                          (and (< 0 x width)
                               (< 0 y height)
-                              (or (and (= (-> npc :pos :x) x)
-                                       (= (-> npc :pos :y) y))
-                                  (not-any? (fn [n] (and (= (-> n :pos :x) x)
-                                                         (= (-> n :pos :y) y)))
-                                            npcs))
                               (contains? #{:floor
                                            :open-door
                                            :corridor}

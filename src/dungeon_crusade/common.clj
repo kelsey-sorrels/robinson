@@ -26,6 +26,12 @@
   (or (> (chebyshev-distance p1 p2) l)
       (> (distance p1 p2) l)))
 
+(defn distance-from-player
+  "Calculate the distrance between the player and pos."
+  [state pos]
+  (distance (-> state :world :player :pos) pos))
+ 
+
 (defn fill-missing
   "For each item in coll for which (pred item) returns true, replace that
    element with the result of (f item vcoll-item) where vcoll-item

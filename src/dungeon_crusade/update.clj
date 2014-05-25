@@ -682,12 +682,18 @@
   (update-in state
              [:world :npcs]
              (fn [npcs]
-               (let [map-result (map (fn [npc]
+               ;; since most npcs are moving toward the player, sort by distance
+               ;; to player. The npcs closest will be moved first, leaving a gap
+               ;; behind them allowing the next most distant npc to move forward
+               ;; to fill the gap.
+               (let [npcs-ordered-by-distance (sort-by (fn [npc] (distance-from-player state (npc :pos)))
+                                                       npcs)
+                     map-result (map (fn [npc]
                                        (if (= (npc :place)
                                               (-> state :world :current-place))
                                          (calc-npc-next-step state npc)
                                          [nil nil npc]))
-                                      npcs)]
+                                      npcs-ordered-by-distance)]
                (reduce
                  (fn [result [new-pos new-npc npc]]
                    (conj result
@@ -705,7 +711,7 @@
 (defn add-npcs
   "Randomly add rats to the current place's in floor cells."
   [state]
-  (if (and (< (rand-int 10) 4)
+  (if (and (< (rand-int 10) 2)
            (< (count (filter (fn [npc] (= (-> state :world :current-place)
                                           (npc :place)))
                              (-> state :world :npcs)))
@@ -873,7 +879,7 @@
                                                            nil)
                                                          ]))))))
             (move-npcs)
-            ;(add-npcs)
+            (add-npcs)
             (update-quests)
             ((fn [state] (update-in state [:world :current-state]
                                     (fn [current-state]

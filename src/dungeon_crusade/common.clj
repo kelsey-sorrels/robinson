@@ -34,7 +34,7 @@
 (defn adjacent-to-player?
   "Return true is pos is adjacent to the player's pos."
   [state pos]
-  (<= 1 (distance-from-player state pos)))
+  (<= (distance-from-player state pos) 1))
  
 
 (defn fill-missing

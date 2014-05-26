@@ -80,9 +80,16 @@
                               (map (fn [[_ x y]] [x y]) (filter (fn [[cell x y]] (and (not (nil? cell))
                                                                                       (= (cell :type) :floor)))
                                                                 (with-xy place))))))
+        cash-drops  (map (fn [pos]
+                           [pos {:type :floor :items [(gen-cash (* level 10))]}])
+                           (take 5 (shuffle
+                              (map (fn [[_ x y]] [x y]) (filter (fn [[cell x y]] (and (not (nil? cell))
+                                                                                      (= (cell :type) :floor)))
+                                                                (with-xy place))))))
         _ (debug "drops" drops)
+        _ (debug "cash-drops" cash-drops)
         _ (debug "place" place)]
-    (add-extras place (concat [down-stairs up-stairs] drops))))
+    (add-extras place (concat [down-stairs up-stairs] drops cash-drops))))
 
 (defn test-inventory
   "Make five random items for the player to have when creating a new world."

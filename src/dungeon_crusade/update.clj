@@ -66,6 +66,26 @@
           (update-in state [:world :player :status]
             (fn [status] (conj status :dead)))))))
 
+(defn pick-up-gold
+  "Vacuums up gold from the floor into player's inventory."
+  [state]
+  (let [place-id (current-place-id state)
+        ;player-x (-> state :world :player :pos :x)
+        ;player-y (-> state :world :player :pos :y)
+        [{items :items} x y]  (player-cellxy state)
+        ;items              (player-cell :items)
+        {cash  true
+         non-cash-items false}  (group-by (fn [item] (= (item :type) :$))
+                                          items)
+        _ (debug "picking up gold. Divided items" cash non-cash-items)
+        _ (debug "calling (assoc-in state [:world" place-id y x :items"]" (or non-cash-items [])")")
+        $                  (reduce + (map :amount (or cash [])))]
+    (-> state
+      (assoc-in [:world :places place-id y x :items]
+        (or non-cash-items []))
+      (update-in [:world :player :$]
+        (fn [player-$] (+ $ player-$))))))
+
 (defn move
   "Move the player one space provided her/she is able. Else do combat. Else positions
    with party member."
@@ -85,11 +105,13 @@
       (not (collide? target-x target-y state))
         (-> state
             (assoc-in [:world :player :pos :x] target-x)
-            (assoc-in [:world :player :pos :y] target-y))
+            (assoc-in [:world :player :pos :y] target-y)
+            (pick-up-gold))
       (= (get (npc-at-xy state target-x target-y) :in-party?) true)
         (-> state
             (assoc-in [:world :player :pos :x] target-x)
             (assoc-in [:world :player :pos :y] target-y)
+            (pick-up-gold)
             (map-in [:world :npcs]
                     (fn [npc] (if (and (= (-> npc :pos :x) target-x)
                                        (= (-> npc :pos :y) target-y))
@@ -670,9 +692,11 @@
                 (fn [result npc]
                   (do (debug "npc attacks player?" (npc :place) current-place-id
                      (npc :pos) (-> state :world :player :pos)
-                     (adjacent-to-player? state (npc :pos)))
+                     (adjacent-to-player? state (npc :pos))
+                     (npc :disposition))
                   (if (and (= (npc :place)
                               current-place-id)
+                           (contains? (npc :disposition) :hostile)
                            (adjacent-to-player? state (npc :pos)))
                     (attack state (npc->keys state npc) [:world :player])
                     state)))
@@ -712,7 +736,7 @@
 (defn add-npcs
   "Randomly add rats to the current place's in floor cells."
   [state]
-  (if (and (< (rand-int 10) 2)
+  (if (and (< (rand-int 100) 2)
            (< (count (filter (fn [npc] (= (-> state :world :current-place)
                                           (npc :place)))
                              (-> state :world :npcs)))
@@ -724,6 +748,7 @@
                      {:race :rat
                       :movement-policy :follow-player
                       :hp 9
+                      :disposition #{:hostile}
                       :attacks #{:bite :claw}} x y))
     state))
 

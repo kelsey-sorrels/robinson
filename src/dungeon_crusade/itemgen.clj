@@ -34,6 +34,11 @@
                  {:type :scroll :name "Mystery Scroll"}]]
     (rand-nth scrolls)))
 
+(defn gen-cash
+  [max-cash]
+  "Generate a random amount of cash between [1 and max-cash]."
+  {:type :$ :amount (inc (rand-int max-cash))})
+
 (defn gen-item []
   "Generate one random food, ring, or scroll item."
   (let [item-fns [gen-food

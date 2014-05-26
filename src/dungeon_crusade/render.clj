@@ -306,7 +306,7 @@
                              :wand           ["/"]
                              :spellbook      ["+"]
                              :scroll         ["?"]
-                             :coins          ["$" {:fg :yellow :styles #{:bold}}]
+                             :$              ["$" {:fg :yellow :styles #{:bold}}]
                              :amulet         ["\"" {:fg :blue :styles #{:bold}}]
                              ["?"])
                            (case (cell :type)

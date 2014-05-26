@@ -31,51 +31,40 @@
         ;; not a wall or closed door, check for npcs
         (npc-at-xy state x y)))))
 
-(defn do-combat
-  "Perform combat between the player and the npc at `[x y]` and return
-   the state reflecting this."
-  [x y state]
-  (let [npc (npc-at-xy state x y)
-        player (-> state :world :player)
-        current-place-id (-> state :world :current-place)
-        npc-idx (.indexOf (-> state :world :npcs) npc)
-        player-hp (player :hp)
-        npc-hp    (npc :hp)
-        npc-dmg 1
-        player-dmg 1]
-    (debug "fighting npc" npc "with idx" npc-idx)
+(defn attack
+  "Perform combat. The attacker fights the defender, but not vice-versa.
+   Return a new state reflecting combat outcome."
+  [state attacker-path defender-path]
+  {:pre [(every? (get-in state defender-path) [:hp :race :inventory])]}
+  (let [defender    (get-in state defender-path)
+        {x :x y :y} (defender :pos)
+        hp          (defender :hp)
+        dmg         1]
+    (debug "attack" attacker-path "is attacking defender" defender-path)
+    (debug "defender-detail" defender)
     (cond
-      ;; npc and player still alive?
-      (and (pos? (- player-hp player-dmg))
-           (pos? (- npc-hp npc-dmg)))
+      ;; defender still alive?
+      (pos? (- hp dmg))
         (-> state
-          ;; modify player hp
-          (update-in [:world :player :hp]
-            (fn [hp] (- hp player-dmg)))
-          ;; modify npc hp
-          (update-in [:world :npcs npc-idx :hp]
-          (fn [hp] (- hp npc-dmg))))
-      ;; npc dead?
-      (not (pos? (- npc-hp npc-dmg)))
-        (-> state
-          ;; modify player hp
-          (update-in [:world :player :hp]
-            (fn [hp] (- hp player-dmg)))
-          ;; remove npc
-          (update-in [:world :npcs]
-            (fn [npcs]
-              (vec (remove #(= npc %) npcs))))
-          ;; maybe add corpse
-          (update-in [:world :places current-place-id y x :items]
-                     (fn [items]
-                       (if (zero? (rand-int 3))
-                         (conj items {:type :food :name (format "%s corpse" (name (npc :race))) :hunger 10})
-                         items))))
-      ;; player dead?
-      (not (pos? (- player-hp player-dmg)))
-        ;; add dead status
-        (update-in state [:world :player :status]
-          (fn [status] (conj status :dead))))))
+          ;; modify defender hp
+          (update-in (conj defender-path :hp)
+            (fn [hp] (- hp dmg))))
+      ;; defender dead? (0 or less hp)
+      (not (pos? (- hp dmg)))
+        (if (contains? (set defender-path) :npcs)
+          ;; defender is npc
+          (-> state
+            ;; remove defender
+            (remove-in (butlast defender-path) (partial = defender))
+            ;; maybe add corpse
+            (update-in [:world :places current-place-id y x :items]
+                       (fn [items]
+                         (if (zero? (rand-int 3))
+                           (conj items {:type :food :name (format "%s corpse" (name (defender :race))) :hunger 10})
+                           items))))
+          ;; defender is player
+          (update-in state [:world :player :status]
+            (fn [status] (conj status :dead)))))))
 
 (defn move
   "Move the player one space provided her/she is able. Else do combat. Else positions
@@ -110,7 +99,7 @@
                                 npc))))
       (npc-at-xy state target-x target-y)
         ;; collided with npc. Engage in combat.
-        (do-combat target-x target-y state)
+        (attack state [:world :player] (npc->keys state (npc-at-xy state target-x target-y)))
       ;; collided with a wall or door, nothing to be done.
       :else
         state)))
@@ -671,37 +660,53 @@
       :follow-player (move-to-target state npc pos)
       [nil nil npc])))
  
-(defn move-npcs
+(defn update-npcs
   "Move all npcs in the current place using `move-npc`."
   [state]
-  (update-in state
-             [:world :npcs]
-             (fn [npcs]
-               ;; since most npcs are moving toward the player, sort by distance
-               ;; to player. The npcs closest will be moved first, leaving a gap
-               ;; behind them allowing the next most distant npc to move forward
-               ;; to fill the gap.
-               (let [npcs-ordered-by-distance (sort-by (fn [npc] (distance-from-player state (npc :pos)))
-                                                       npcs)
-                     map-result (map (fn [npc]
-                                       (if (= (npc :place)
-                                              (-> state :world :current-place))
-                                         (calc-npc-next-step state npc)
-                                         [nil nil npc]))
-                                      npcs-ordered-by-distance)]
-               (reduce
-                 (fn [result [new-pos new-npc npc]]
-                   (conj result
-                         (if (or (nil? new-pos)
-                                 (some (fn [npc]
-                                         (= (npc :pos)
-                                            {:x (first new-pos)
-                                             :y (second new-pos)}))
-                                       result))
-                           npc
-                           new-npc)))
-                 []
-                 map-result)))))
+  ;; do npc->player attacks if adjacent
+  (let [current-place-id (current-place-id state)
+        state (reduce
+                (fn [result npc]
+                  (do (debug "npc attacks player?" (npc :place) current-place-id
+                     (npc :pos) (-> state :world :player :pos)
+                     (adjacent-to-player? state (npc :pos)))
+                  (if (and (= (npc :place)
+                              current-place-id)
+                           (adjacent-to-player? state (npc :pos)))
+                    (attack state (npc->keys state npc) [:world :player])
+                    state)))
+                state
+                (get-in state [:world :npcs]))]
+    (-> state
+      ;; move npcs
+      (update-in 
+        [:world :npcs]
+        (fn [npcs]
+          ;; since most npcs are moving toward the player, sort by distance
+          ;; to player. The npcs closest will be moved first, leaving a gap
+          ;; behind them allowing the next most distant npc to move forward
+          ;; to fill the gap.
+          (let [npcs-ordered-by-distance (sort-by (fn [npc] (distance-from-player state (npc :pos)))
+                                                  npcs)
+                map-result (map (fn [npc]
+                                  (if (= (npc :place)
+                                         (-> state :world :current-place))
+                                    (calc-npc-next-step state npc)
+                                    [nil nil npc]))
+                                 npcs-ordered-by-distance)]
+          (reduce
+            (fn [result [new-pos new-npc npc]]
+              (conj result
+                    (if (or (nil? new-pos)
+                            (some (fn [npc]
+                                    (= (npc :pos)
+                                       {:x (first new-pos)
+                                        :y (second new-pos)}))
+                                  result))
+                      npc
+                      new-npc)))
+            []
+            map-result)))))))
 
 (defn add-npcs
   "Randomly add rats to the current place's in floor cells."
@@ -873,7 +878,7 @@
                                                            100 :hungry
                                                            nil)
                                                          ]))))))
-            (move-npcs)
+            (update-npcs)
             (add-npcs)
             (update-quests)
             ((fn [state] (update-in state [:world :current-state]

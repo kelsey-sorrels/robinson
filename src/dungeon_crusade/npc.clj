@@ -62,6 +62,12 @@
   (first (filter (fn [npc] (= (npc :id) id))
                  (get-in state [:world :npcs]))))
 
+(defn npc->keys
+  "Find the keys required to lookup the npc.
+   npc and (get-in state (npc->path state npc)) refer to the same npc."
+  [state npc]
+  [:world :npcs (.indexOf (get-in state [:world :npcs]) npc)])
+
 (defn add-npc
   "Add an npc to the specified place and position."
   ([state place-id npc x y]
@@ -69,6 +75,9 @@
   ([state place-id npc x y buy-fn-path]
   (conj-in state [:world :npcs] (assoc npc :pos {:x x :y y}
                                            :place place-id
+                                           :inventory (if (contains? npc :inventory)
+                                                        (npc :inventory)
+                                                        [])
                                            :buy-fn-path buy-fn-path))))
 
 (defn transfer-items-from-npc-to-player

@@ -27,9 +27,14 @@
       (> (distance p1 p2) l)))
 
 (defn distance-from-player
-  "Calculate the distrance between the player and pos."
+  "Calculate the distance between the player and pos."
   [state pos]
   (distance (-> state :world :player :pos) pos))
+
+(defn adjacent-to-player?
+  "Return true is pos is adjacent to the player's pos."
+  [state pos]
+  (<= 1 (distance-from-player state pos)))
  
 
 (defn fill-missing

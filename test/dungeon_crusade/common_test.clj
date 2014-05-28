@@ -20,3 +20,38 @@
     (is (= (remove-in state [:world :0 0 0 :items]
                             (fn [item] (= (item :type) :$)))
            expected))))
+
+(def direction->cells-state
+ {:world {:player {:pos {:x 2 :y 2}}
+          :current-place :0
+          :places {:0 [[:a :b :c :d :e :f]
+                       [:g :h :i :j :k :l]
+                       [:m :n :o :p :q :r]
+                       [:s :t :y :v :w :x]
+                       [:y :z :0 :1 :2 :3]]}}})
+
+(deftest direction->cells-0
+  (is (= (direction->cells
+            direction->cells-state
+            :left)
+         [:n :m])))
+
+(deftest direction->cells-1
+  (is (= (direction->cells
+            direction->cells-state
+            :right)
+         [:p :q :r])))
+
+(deftest direction->cells-2
+  (is (= (direction->cells
+            direction->cells-state
+            :up)
+         [:i :c])))
+
+(deftest direction->cells-3
+  (is (= (direction->cells
+            direction->cells-state
+            :down)
+         [:y :0])))
+          
+           

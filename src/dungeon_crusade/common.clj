@@ -253,6 +253,18 @@
   "Return `true` if the player has a status of `:dead`."
   [state]
   (contains? (-> state :world :player :status) :dead))
+
+(defn direction->cells
+  [state direction]
+  {:pre [(contains? #{:left :right :up :down} direction)]}
+  (let [{x :x y :y} (get-in state [:world :player :pos])
+        place (current-place state)]
+   (vec
+     (case direction
+       :left  (reverse (take x (get place y)))
+       :right (rest (drop x (get place y)))
+       :up    (reverse (take y (map #(nth % x) place)))
+       :down  (rest (drop y (map #(nth % x) place)))))))
  
 (defn append-log
   "Append a message to the in-game log. The last five log messages are retained."
@@ -305,3 +317,5 @@
     (let [result (apply f args)]
       (println (format "(%s %s)=>%s" msg (str args) (str result)))
       result)))
+
+

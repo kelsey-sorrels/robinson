@@ -15,22 +15,6 @@
 
 (timbre/refer-timbre)
 
-(defn collide?
-  "Return `true` if the cell at `[x y]` is non-traverable. Ie: a wall, closed door or simply does
-   not exist."
-  [x y state]
-  (let [cellxy (get-xy x y (current-place state))]
-    (debug "collide? " cellxy)
-    (let [cell (first cellxy)]
-      ;; check the cell to see if it is a wall or closed door
-      (or
-        (nil? cell)
-        (some (fn [collision-type] (= (cell :type) collision-type)) [:vertical-wall
-                                                                     :horizontal-wall
-                                                                     :close-door])
-        ;; not a wall or closed door, check for npcs
-        (npc-at-xy state x y)))))
-
 (defn attack
   "Perform combat. The attacker fights the defender, but not vice-versa.
    Return a new state reflecting combat outcome."
@@ -802,6 +786,7 @@
                            \;        [init-cursor            :describe]
                            \Q        [identity               :quests]
                            \P        [next-party-member      :normal]
+                           \Z        [identity               :magic]
                            \T        [identity               :talk]
                            \?        [identity               :help]
                            :escape   [identity               :quit?]}
@@ -841,6 +826,16 @@
                            :else     [buy                    :buy]}
                :sell      {:escape   [identity               :normal]
                            :else     [sell                   :sell]}
+               :magic     {:escape   [identity               :normal]
+                           :else     [magic                  identity]}
+               :magic-direction
+                          {\h        [magic-left             identity]
+                           \j        [magic-down             identity]
+                           \k        [magic-up               identity]
+                           \l        [magic-right            identity]}
+               :magic-inventory
+                          {:escape   [identity               :normal]
+                           :else     [magic-inventory        :normal]}
                :help      {:else     [(fn [s _] s)           :normal]}
                :close     {\h        [close-left             :normal]
                            \j        [close-down             :normal]

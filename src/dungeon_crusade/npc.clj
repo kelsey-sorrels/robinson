@@ -48,14 +48,6 @@
   (filter (fn [npc] (= (npc :place) (current-place-id state)))
           (get-in state [:world :npcs])))
 
-(defn npc-at-xy
-  "npc at [x y] of the current place. Otherwise `nil`."
-  [state x y]
-  (first (filter (fn [npc] (and (= (npc :place) (current-place-id state))
-                                (= (-> npc :pos :x) x)
-                                (= (-> npc :pos :y) y)))
-                 (get-in state [:world :npcs]))))
-
 (defn npc-by-id
   "The npc with the :id id. Nil if not found."
   [state id]

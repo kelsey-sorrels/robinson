@@ -54,4 +54,19 @@
             :down)
          [:y :0])))
           
-           
+
+(def first-collidable-cells-state
+ {:world {:player {:pos {:x 2 :y 2}}
+          :current-place :0
+          :npcs []
+          :places {:0 [[{:type :vertical-wall}  {:type :vertical-wall}{:type :vertical-wall}{:type :vertical-wall}{:type :vertial-wall}]
+                       [{:type :horizontal-wall}{:type :floor}        {:type :floor}        {:type :floor}        {:type :horizontal-wall}]
+                       [{:type :horizontal-wall}{:type :floor}        {:type :floor}        {:type :floor}        {:type :horizontal-wall}]
+                       [{:type :horizontal-wall}{:type :floor}        {:type :floor}        {:type :floor}        {:type :horizontal-wall}]
+                       [{:type :vertical-wall}  {:type :vertical-wall}{:type :vertical-wall}{:type :vertical-wall}{:type :vertial-wall}]]}}})
+
+(deftest first-collidable-cells-0
+  (is (= {:cell {:type :vertical-wall}}
+         (let [state first-collidable-cells-state] 
+           (first-collidable-cell state (direction->cellsxy state :up))))))
+

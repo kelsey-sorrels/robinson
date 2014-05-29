@@ -265,7 +265,73 @@
        :right (rest (drop x (get place y)))
        :up    (reverse (take y (map #(nth % x) place)))
        :down  (rest (drop y (map #(nth % x) place)))))))
- 
+
+(defn direction->xys
+  [state direction]
+  {:pre [(contains? #{:left :right :up :down} direction)]}
+  (let [{x :x y :y} (get-in state [:world :player :pos])
+        place (current-place state)
+        max-x (count (first place))
+        max-y (count place)]
+    (case direction
+      :left  (reverse (map (fn [x] [x y]) (range 0 x)))
+      :right (map (fn [x] [x y]) (range (inc x) (max-x)))
+      :up    (reverse (map (fn [y] [x y]) (range 0 y)))
+      :down  (map (fn [y] [x y]) (range (inc y) (max-y))))))
+
+(defn direction->cellsxy
+  [state direction]
+  (map (fn [[x y]] [(get-in state [:world :places (current-place-id state) y x]) x y])
+       (direction->xys state direction)))
+
+(defn npc-at-xy
+  "npc at [x y] of the current place. Otherwise `nil`."
+  [state x y]
+  (first (filter (fn [npc] (and (= (npc :place) (current-place-id state))
+                                (= (-> npc :pos :x) x)
+                                (= (-> npc :pos :y) y)))
+                 (get-in state [:world :npcs]))))
+
+
+(defn collide?
+  "Return `true` if the cell at `[x y]` is non-traverable. Ie: a wall, closed door or simply does
+   not exist. Cells occupied by npcs are considered non-traversable."
+  ([x y state]
+  (collide? x y state true))
+  ([x y state include-npcs?]
+  (let [cellxy (get-xy x y (current-place state))]
+    (debug "collide? " cellxy)
+    (let [cell (first cellxy)]
+      ;; check the cell to see if it is a wall or closed door
+      (or
+        (nil? cell)
+        (some (fn [collision-type] (= (cell :type) collision-type)) [:vertical-wall
+                                                                     :horizontal-wall
+                                                                     :close-door])
+        ;; not a wall or closed door, check for npcs
+        (and include-npcs?
+             (npc-at-xy state x y)))))))
+
+
+(defn first-collidable-cell
+ "Return a map based on the first collidable cell in cellsxy.
+  If an npc is encountered first, return `{:npc npc}`.
+  If a non-npc is encountered first, return `{:cell cell}`.
+  If no collision occurs in any of the cells, return `{}`."
+ [state cellsxy]
+ (loop [[cell x y] (first cellsxy)
+       xs         (rest cellsxy)]
+   (let [npc (npc-at-xy state x y)]
+     (cond
+       (not (nil? npc))
+         {:npc npc}
+       (collide? x y state false)
+         {:cell cell}
+       (empty? xs)
+         {}
+       :else
+         (recur (second cellsxy) (rest xs))))))
+
 (defn append-log
   "Append a message to the in-game log. The last five log messages are retained."
   ([state message]

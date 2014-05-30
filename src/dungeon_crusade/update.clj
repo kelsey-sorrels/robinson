@@ -5,6 +5,7 @@
     dungeon-crusade.common
     [dungeon-crusade.dialog :exclude [-main]]
     dungeon-crusade.npc
+    dungeon-crusade.magic
     dungeon-crusade.worldgen
     dungeon-crusade.lineofsight)
   (:require clojure.pprint
@@ -827,7 +828,7 @@
                :sell      {:escape   [identity               :normal]
                            :else     [sell                   :sell]}
                :magic     {:escape   [identity               :normal]
-                           :else     [magic                  identity]}
+                           :else     [do-magic                  identity]}
                :magic-direction
                           {\h        [magic-left             identity]
                            \j        [magic-down             identity]

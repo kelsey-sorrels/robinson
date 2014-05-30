@@ -68,5 +68,5 @@
 (deftest first-collidable-cells-0
   (is (= {:cell {:type :vertical-wall}}
          (let [state first-collidable-cells-state] 
-           (first-collidable-cell state (direction->cellsxy state :up))))))
+           (first-collidable-object state :up)))))
 

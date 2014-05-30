@@ -6,15 +6,24 @@
 
 (timbre/refer-timbre)
 
-(defn get-magical-abilities
-  "Return a list of `{:id :keyword
-                      :name ""}` of magical abilities."
-  [character]
+
+(def magic
   [{:id :zap
     :name "zap"
-    :state :magic-direction}])
+    :state :direction-magic
+    :fn (fn [state collided-object] state)}])
 
-(defn magic
+(defn id->magic
+  "Get magical ability by id."
+  [id]
+  (first (filter #(= id (% :id)) magic)))
+
+(defn get-magical-abilities
+  "Return a subset of magical abilities."
+  [character]
+  magic)
+
+(defn do-magic
   "Perform a feat of magical ability."
   [state keyin]
   (let [valid-input (get-magical-abilities (-> state :world :player))
@@ -25,10 +34,13 @@
       (assoc-in [:world :magical-ability-id] (input :id)))))
 
 (defn directional-magic
-  "Perform a feat of magic in a direction."
+  "Perform a feat of magic in a direction by returning a new state with
+   the magical ability applied."
   [state direction]
   {:pre [(contains? #{:left :right :up :down} direction)]}
-  (magic-in-cells state (file-from-player state direction)))
+  (let [obj (first-collidable-object state direction)
+        magic (id->magic (get-in state [:world :magical-ability-id]))]
+    ((magic :fn) obj)))
 
 (defn magic-left
   "Perform a feat of directional magic to the left of the player."

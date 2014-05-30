@@ -313,24 +313,26 @@
              (npc-at-xy state x y)))))))
 
 
-(defn first-collidable-cell
+(defn first-collidable-object
  "Return a map based on the first collidable cell in cellsxy.
   If an npc is encountered first, return `{:npc npc}`.
   If a non-npc is encountered first, return `{:cell cell}`.
   If no collision occurs in any of the cells, return `{}`."
- [state cellsxy]
- (loop [[cell x y] (first cellsxy)
-       xs         (rest cellsxy)]
-   (let [npc (npc-at-xy state x y)]
-     (cond
-       (not (nil? npc))
-         {:npc npc}
-       (collide? x y state false)
-         {:cell cell}
-       (empty? xs)
-         {}
-       :else
-         (recur (second cellsxy) (rest xs))))))
+ [state direction]
+ {:pre [(contains? #{:up :down :left :right} direction)]}
+  (let [cellsxy (direction->cellsxy state direction)]
+   (loop [[cell x y] (first cellsxy)
+          xs         (rest cellsxy)]
+     (let [npc (npc-at-xy state x y)]
+       (cond
+         (not (nil? npc))
+           {:npc npc}
+         (collide? x y state false)
+           {:cell cell}
+         (empty? xs)
+           {}
+         :else
+           (recur (first xs) (rest xs)))))))
 
 (defn append-log
   "Append a message to the in-game log. The last five log messages are retained."

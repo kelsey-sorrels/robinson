@@ -10,8 +10,10 @@
 (def magic
   [{:id :zap
     :name "zap"
-    :state :direction-magic
-    :fn (fn [state collided-object] state)}])
+    :hotkey \z
+    :state :magic-direction
+    :fn (fn [state collided-object]
+          (assoc-in state [:world :current-state] :normal))}])
 
 (defn id->magic
   "Get magical ability by id."
@@ -27,11 +29,12 @@
   "Perform a feat of magical ability."
   [state keyin]
   (let [valid-input (get-magical-abilities (-> state :world :player))
-        options (zipmap (take (count valid-input) [\a \b \c \d \e \f]) valid-input)
+        options (zipmap (map :hotkey valid-input) valid-input)
         input (get options keyin)]
-    (-> state
-      (assoc-in [:world :current-state] (input :state))
-      (assoc-in [:world :magical-ability-id] (input :id)))))
+    (if (not (nil? input))
+      (-> state
+        (assoc-in [:world :current-state] (input :state))
+        (assoc-in [:world :magical-ability-id] (input :id))))))
 
 (defn directional-magic
   "Perform a feat of magic in a direction by returning a new state with
@@ -40,27 +43,27 @@
   {:pre [(contains? #{:left :right :up :down} direction)]}
   (let [obj (first-collidable-object state direction)
         magic (id->magic (get-in state [:world :magical-ability-id]))]
-    ((magic :fn) obj)))
+    ((magic :fn) state obj)))
 
 (defn magic-left
   "Perform a feat of directional magic to the left of the player."
   [state]
-  (directional-magic :left))
+  (directional-magic state :left))
 
 (defn magic-right
   "Perform a feat of directional magic to the right of the player."
   [state]
-  (directional-magic :right))
+  (directional-magic state :right))
 
 (defn magic-up
   "Perform a feat of directional magic up from the player."
   [state]
-  (directional-magic :up))
+  (directional-magic state :up))
 
 (defn magic-down
   "Perform a feat of directional magic down from the player."
   [state]
-  (directional-magic :down))
+  (directional-magic state :down))
 
 (defn magic-inventory
   "Perform a feat of magic on inventory."

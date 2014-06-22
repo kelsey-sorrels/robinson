@@ -4,6 +4,7 @@
             (java.awt.image BufferedImage)
             (javax.swing ImageIcon))
   (:use     dungeon-crusade.common
+            dungeon-crusade.magic
             dungeon-crusade.lineofsight
             [dungeon-crusade.dialog :exclude [-main]]
             dungeon-crusade.npc
@@ -136,6 +137,12 @@
   [state]
   (when (= (-> state :world :current-state) :inventory)
     (render-multi-select (state :screen) "Inventory" [] (-> state :world :player :inventory))))
+
+(defn render-magic
+  "Render the pickup item menu if the world state is `:magic`."
+  [state]
+  (when (= (-> state :world :current-state) :magic)
+    (render-multi-select (state :screen) "Magic" [] (get-magical-abilities (-> state :world :player)))))
 
 (defn render-drop
   "Render the pickup item menu if the world state is `:pickup`."
@@ -362,6 +369,8 @@
     (render-pick-up state)
     ;; maybe draw inventory
     (render-inventory state)
+    ;; maybe draw magic menu
+    (render-magic state)
     ;; maybe draw drop menu
     (render-drop state)
     ;; maybe draw describe menu

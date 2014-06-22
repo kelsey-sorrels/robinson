@@ -275,9 +275,9 @@
         max-y (count place)]
     (case direction
       :left  (reverse (map (fn [x] [x y]) (range 0 x)))
-      :right (map (fn [x] [x y]) (range (inc x) (max-x)))
+      :right (map (fn [x] [x y]) (range (inc x) max-x))
       :up    (reverse (map (fn [y] [x y]) (range 0 y)))
-      :down  (map (fn [y] [x y]) (range (inc y) (max-y))))))
+      :down  (map (fn [y] [x y]) (range (inc y) max-y)))))
 
 (defn direction->cellsxy
   [state direction]

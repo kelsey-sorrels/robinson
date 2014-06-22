@@ -828,7 +828,7 @@
                :sell      {:escape   [identity               :normal]
                            :else     [sell                   :sell]}
                :magic     {:escape   [identity               :normal]
-                           :else     [do-magic                  identity]}
+                           :else     [do-magic               identity]}
                :magic-direction
                           {\h        [magic-left             identity]
                            \j        [magic-down             identity]

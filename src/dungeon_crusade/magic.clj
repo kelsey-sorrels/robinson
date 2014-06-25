@@ -1,7 +1,9 @@
 ;; Functions for querying and manipulating magic
 (ns dungeon-crusade.magic
   (:use dungeon-crusade.common
-        [dungeon-crusade.dialog :exclude [-main]])
+        dungeon-crusade.combat
+        dungeon-crusade.npc
+        pallet.thread-expr)
   (:require [taoensso.timbre :as timbre]))
 
 (timbre/refer-timbre)
@@ -13,7 +15,13 @@
     :hotkey \z
     :state :magic-direction
     :fn (fn [state collided-object]
-          (assoc-in state [:world :current-state] :normal))}])
+          (-> state
+            (when-> (and (not (nil? collided-object))
+                       (contains? collided-object :npc))
+              (do
+                (println "Zapped" collided-object)
+                (attack state [:world :player] (npc->keys state (collided-object :npc)))))
+            (assoc-in [:world :current-state] :normal)))}])
 
 (defn id->magic
   "Get magical ability by id."

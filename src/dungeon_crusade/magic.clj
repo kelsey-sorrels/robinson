@@ -8,6 +8,16 @@
 
 (timbre/refer-timbre)
 
+(defn heal [state player-path target-path]
+  {:pre [(every? (get-in state target-path) [:hp :max-hp])]}
+  (let [target (get-in state target-path)
+        hp          (target :hp)
+        max-hp      (target :max-hp)
+        amount      1]
+    (debug "heal" player-path "is healing" target-path)
+    (debug "target-detail" target)
+    (update-in state (conj target-path :hp)
+      (fn [hp] (min max-hp (+ amount hp))))))
 
 (def magic
   [{:id :zap
@@ -21,6 +31,18 @@
               (do
                 (println "Zapped" collided-object)
                 (attack state [:world :player] (npc->keys state (collided-object :npc)))))
+            (assoc-in [:world :current-state] :normal)))}
+   {:id :heal
+    :name "heal"
+    :hotkey \h
+    :state :magic-direction
+    :fn (fn [state collided-object]
+          (-> state
+            (when-> (and (not (nil? collided-object))
+                       (contains? collided-object :npc))
+              (do
+                (println "Healed" collided-object)
+                (heal state [:world :player] (npc->keys state (collided-object :npc)))))
             (assoc-in [:world :current-state] :normal)))}])
 
 (defn id->magic

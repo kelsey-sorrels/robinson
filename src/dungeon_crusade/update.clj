@@ -2,6 +2,7 @@
 (ns dungeon-crusade.update
   (:use     
     clojure.pprint
+    clojure.contrib.core
     dungeon-crusade.common
     [dungeon-crusade.dialog :exclude [-main]]
     dungeon-crusade.npc
@@ -10,7 +11,6 @@
     dungeon-crusade.worldgen
     dungeon-crusade.lineofsight)
   (:require clojure.pprint
-            clojure.contrib.core
             clj-tiny-astar.path
             [clojure.stacktrace :as st]
             [taoensso.timbre :as timbre]))
@@ -332,9 +332,14 @@
             _ (debug "dest-place-id" dest-place-id)
             _ (debug "name" (name dest-place-id))
             _ (debug "int" (read-string (name dest-place-id)))
-            state             (if (contains? (-> state :world :places) dest-place-id)
-                                state
-                                (assoc-in state [:world :places dest-place-id] (init-random-n (read-string (name dest-place-id)))))
+            ;; save the current place to disk
+            _                 (spit (format "save/%s.place.clj" orig-place-id)
+                                    (with-out-str (pprint (-> state :world :places orig-place-id))))
+            ;; load the place into state. From file if exists or gen a new random place.
+            state             (assoc-in state [:world :places dest-place-id]
+                                (if (.exists (clojure.java.io/as-file (format "save/%s.place.clj" (str dest-place-id))))
+                                  (read-string (slurp (format "save/%s.place.clj" (str dest-place-id))))
+                                  (init-random-n (read-string (name dest-place-id)))))
  
             dest-place        (-> state :world :places dest-place-id)
 
@@ -351,6 +356,8 @@
         (debug "party-pos" party-pos)
         (debug "npcs" (with-out-str (pprint (-> state :world :npcs))))
         (-> state
+          ;; unload the current place
+          (dissoc-in [:world :places orig-place-id])
           ;; change the place
           (assoc-in [:world :current-place] (player-cell :dest-place))
           ;; move player to cell where stairs go back to original place

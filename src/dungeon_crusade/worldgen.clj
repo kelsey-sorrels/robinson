@@ -1,6 +1,8 @@
 ;; Utility functions and functions for manipulating state
 (ns dungeon-crusade.worldgen
-  (:use dungeon-crusade.common
+  (:use 
+        [clisk.live :exclude [error]]
+        dungeon-crusade.common
         dungeon-crusade.npc
         [dungeon-crusade.mapgen :exclude [-main]]
         [dungeon-crusade.itemgen :exclude [-main]])
@@ -217,5 +219,52 @@
      :place :0
      :state #{}
      :image-path "./images/hans.png"}]}))
+
+;; clisk utils
+(defn invert [a] (v+ [1 1 1] (v* [-1 -1 -1] a)))
+
+(defn center [f]
+  (offset [-0.5 -0.5] (scale 0.5 f)))
+
+(defn center-radius []
+  (radius (center [x y])))
+
+(defn -main [& args]
+  (let [_ (seed-simplex-noise!)
+        node (vectorize
+               (vlet [c (center (invert (offset (scale 0.43 (v* [0.5 0.5 0.5] vsnoise)) radius)))]
+                 (v+
+                   (vif (v+ [-0.7 -0.7 -0.7]  (v* c (v+ [0.4 0.4 0.4] (scale 0.05 noise))))
+                     [0 0 1]
+                     [0 0 0])
+                   (vif (v+ [-0.6 -0.6 -0.6]  c)
+                     [0 1 0]
+                     [0 0 0])
+                   (vif (v+ [-0.5 -0.5 -0.5]  c)
+                     [1 0 0]
+                     [0 0 0]))))
+        fns  (vec (map compile-fn (:nodes node)))]
+    (dorun
+      (map (comp (partial apply str) println)
+        (partition 40
+          (log-time "for" (for [y (range 20)
+                x (range 40)
+                :let [s (vec (map #(.calc ^clisk.IFunction % (double (/ x 40)) (double (/ y 20)) (double 0.0) (double 0.0))
+                             fns))]]
+            (case s
+              [0.0 0.0 0.0] \~
+              [1.0 0.0 0.0] \_
+              [1.0 1.0 0.0] (case (rand-int 3)
+                              0 \,
+                              1 \`
+                              2 \.)
+              [1.0 0.0 1.0] \.
+              [1.0 1.0 1.0] (case (rand-int 5)
+                              0 \T
+                              1 \"
+                              2 \'
+                              3 \.
+                              4 \`)))))))))
+        
 
 

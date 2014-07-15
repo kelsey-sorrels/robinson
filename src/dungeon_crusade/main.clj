@@ -1,7 +1,7 @@
 (ns dungeon-crusade.main
   (:use    clojure.pprint
            dungeon-crusade.common
-           dungeon-crusade.worldgen
+           [dungeon-crusade.worldgen :exclude [-main]]
            dungeon-crusade.dialog
            dungeon-crusade.update
            dungeon-crusade.render)

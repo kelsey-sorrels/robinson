@@ -8,7 +8,7 @@
     dungeon-crusade.npc
     dungeon-crusade.combat
     dungeon-crusade.magic
-    dungeon-crusade.worldgen
+    [dungeon-crusade.worldgen :exclude [-main]]
     dungeon-crusade.lineofsight)
   (:require clojure.pprint
             clj-tiny-astar.path

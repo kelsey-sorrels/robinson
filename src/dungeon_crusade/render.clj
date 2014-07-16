@@ -31,9 +31,11 @@
  :orange (vec (hex-str-to-dec "D36C00"))
  :yellow (vec (hex-str-to-dec "D3B100"))
  :green  (vec (hex-str-to-dec "81D300"))
+ :dark-green  (vec (hex-str-to-dec "406900"))
  :blue   (vec (hex-str-to-dec "00ACD3"))
  :purple (vec (hex-str-to-dec "8500D3"))
  :fushia (vec (hex-str-to-dec "D30094"))
+ :beige (vec (hex-str-to-dec "C8B464"))
 })
 
 (defn class->color
@@ -321,10 +323,17 @@
                             :horizontal-wall ["-"]
                             :floor           ["."]
                             :open-door       ["-" {:fg (rgb-color :brown) :bg (rgb-color :black) :styles #{:bold}}]
-                            :close-door     ["+" {:fg (rgb-color :brown) :bg (rgb-color :black) :styles #{:bold}}]
+                            :close-door      ["+" {:fg (rgb-color :brown) :bg (rgb-color :black) :styles #{:bold}}]
                             :corridor        ["#"]
                             :down-stairs     [">"]
                             :up-stairs       ["<"]
+                            :water           ["~" {:fg (rgb-color :blue) :bg (rgb-color :black)}]
+                            :sand            ["_" {:fg (rgb-color :beige) :bg (rgb-color :black)}]
+                            :dirt            ["," {:fg (rgb-color :brown) :bg (rgb-color :black)}]
+                            :gravel          ["`" {:fg (rgb-color :gray) :bg (rgb-color :black)}]
+                            :short-grass     ["'" {:fg (rgb-color :green) :bg (rgb-color :black)}]
+                            :tall-grass      ["\"" {:fg (rgb-color :dark-green) :bg (rgb-color :black)}]
+                            :tree            ["T" {:fg (rgb-color :dark-green) :bg (rgb-color :black)}]
                             ["?"]))]
               (apply s/put-string (state :screen) x y out-char))))
       (current-place state))

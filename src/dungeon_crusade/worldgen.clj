@@ -42,6 +42,35 @@
      [[6 14  :items] [{:type :scroll :name "Scroll of Power"}]]
      [[7 19]         {:type :up-stairs :dest-place :0}]]))
 
+(defn init-island
+  "Create an example place with an island, two items
+   and a set of down stairs that lead to place `:1`"
+  []
+  (add-extras (ascii-to-place
+    [
+     "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+     "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+     "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+     "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+     "~~~~~~~~~~~___~~~~~~~~___~~~~~~~~~~~~~~~"
+     "~~~~~~~~~~___~~~~~______~~~~~~~~~~~~~~~~"
+     "~~~~~~~~~~~~_~~~_```.___.,__~~~~~~~~~~~~"
+     "~~~~~~~~~~~~~___.`T,\"``.T`,_~~~~~~~~~~~~"
+     "~~~~~~~~~~~~_.`.`,,``.T,``T.~~~~~~~~~~~~"
+     "~~~~~~~~~~_`.`.T\".`',..T..,'_~~~~~~~~~~~"
+     "~~~~~~_T\"`.,,```..`,.`..``.._~~~~~~~~~~~"
+     "~~~~~~~_```_~~_.`,__,'T`.\"`\"`_~~~~~~~~~~"
+     "~~~~~~~~~~____,`,`...`'.`.T._~~~~~~~~~~~"
+     "~~~~~~~~~~~~__,`,`,\",.\"`,._~~~~~~~~~~~~~"
+     "~~~~~~~~~~~_____~~_...`,.~~~~~~~~~~~~~~~"
+     "~~~~~~~~~~~~~~~~~~~_''\"`.~~~~~~~~~~~~~~~"
+     "~~~~~~~~~~~~~~~~~~~~~___~~~~~~~~~~~~~~~~"
+     "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+     "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+     "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"])
+    [[[10 15]      {:type :dirt :starting-location true}]
+     [[12 13]      {:type :down-stairs :dest-place :1}]]))
+
 
 (defn init-random-0
   "Create a random grid suitable for a starting level.
@@ -131,7 +160,7 @@
         hotkey-groups          (split-at (count inventory) remaining-hotkeys)
         inventory-with-hotkeys (vec (map #(assoc %1 :hotkey %2) inventory (first hotkey-groups)))
         remaining-hotkeys      (vec (apply str (second hotkey-groups)))
-        place-0                (init-random-0)
+        place-0                (init-island)
         [_ starting-x
            starting-y]         (first (filter (fn [[cell x y]] (contains? cell :starting-location))
                                               (with-xy place-0)))
@@ -167,58 +196,60 @@
             :place :0
             :status #{}}
    :quests {}
-   :npcs [{
-     :id :helga
-     :name "Helga"
-     :race :human
-     :class :rogue
-     :movement-policy :entourage
-     :in-party? true
-     :inventory []
-     :hp 10
-     :max-hp 10
-     :$ 0
-     :xp 0
-     :level 0
-     :hunger 0
-     :pos (nth party-pos 0)
-     :place :0
-     :state #{}
-     :image-path "./images/helga.png"}{
-     :id :cronk
-     :name "Cronk"
-     :race :human
-     :class :wizard
-     :movement-policy :entourage
-     :in-party? true
-     :inventory []
-     :hp 10
-     :max-hp 10
-     :$ 0
-     :xp 0
-     :level 0
-     :hunger 0
-     :pos (nth party-pos 1)
-     :place :0
-     :state #{}
-     :image-path "./images/cronk.png"}{
-     :id :hans
-     :name "Hans"
-     :race :human
-     :class :fighter
-     :movement-policy :entourage
-     :in-party? true
-     :inventory []
-     :hp 10
-     :max-hp 10
-     :$ 0
-     :xp 0
-     :level 0
-     :hunger 0
-     :pos (nth party-pos 2)
-     :place :0
-     :state #{}
-     :image-path "./images/hans.png"}]}))
+   :npcs [
+;{
+;     :id :helga
+;     :name "Helga"
+;     :race :human
+;     :class :rogue
+;     :movement-policy :entourage
+;     :in-party? true
+;     :inventory []
+;     :hp 10
+;     :max-hp 10
+;     :$ 0
+;     :xp 0
+;     :level 0
+;     :hunger 0
+;     :pos (nth party-pos 0)
+;     :place :0
+;     :state #{}
+;     :image-path "./images/helga.png"}{
+;     :id :cronk
+;     :name "Cronk"
+;     :race :human
+;     :class :wizard
+;     :movement-policy :entourage
+;     :in-party? true
+;     :inventory []
+;     :hp 10
+;     :max-hp 10
+;     :$ 0
+;     :xp 0
+;     :level 0
+;     :hunger 0
+;     :pos (nth party-pos 1)
+;     :place :0
+;     :state #{}
+;     :image-path "./images/cronk.png"}{
+;     :id :hans
+;     :name "Hans"
+;     :race :human
+;     :class :fighter
+;     :movement-policy :entourage
+;     :in-party? true
+;     :inventory []
+;     :hp 10
+;     :max-hp 10
+;     :$ 0
+;     :xp 0
+;     :level 0
+;     :hunger 0
+;     :pos (nth party-pos 2)
+;     :place :0
+;     :state #{}
+;     :image-path "./images/hans.png"}
+]}))
 
 ;; clisk utils
 (defn invert [a] (v+ [1 1 1] (v* [-1 -1 -1] a)))

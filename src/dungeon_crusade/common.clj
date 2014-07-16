@@ -171,6 +171,13 @@
        # = :corridor
        < = :down-stairs
        > = :up-stairs
+       ~ = :water
+       _ = :sand
+       , = :dirt
+       ` = :gravel
+       ' = :short-grass
+      \" = :tall-grass
+       T = :tree
 
    An example collection of ascii lines.
 
@@ -202,6 +209,13 @@
         \# {:type :corridor}
         \< {:type :up-stairs}
         \> {:type :down-stairs}
+        \~ {:type :water}
+        \_ {:type :sand}
+        \, {:type :dirt}
+        \` {:type :gravel}
+        \' {:type :short-grass}
+        \" {:type :tall-grass}
+        \T {:type :tree}
         nil))]
     ;; convert ascii to place
     (vec (map (fn [line] (vec (map char-to-cell line))) ascii))))
@@ -300,7 +314,7 @@
   (collide? x y state true))
   ([x y state include-npcs?]
   (let [cellxy (get-xy x y (current-place state))]
-    (debug "collide? " cellxy)
+    (debug "collide? " cellxy x y)
     (let [cell (first cellxy)]
       ;; check the cell to see if it is a wall or closed door
       (or

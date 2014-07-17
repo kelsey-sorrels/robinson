@@ -42,34 +42,59 @@
      [[6 14  :items] [{:type :scroll :name "Scroll of Power"}]]
      [[7 19]         {:type :up-stairs :dest-place :0}]]))
 
+;; clisk utils
+(defn invert [a] (v+ [1 1 1] (v* [-1 -1 -1] a)))
+
+(defn center [f]
+  (offset [-0.5 -0.5] (scale 0.5 f)))
+
+(defn center-radius []
+  (radius (center [x y])))
+
 (defn init-island
   "Create an example place with an island, two items
    and a set of down stairs that lead to place `:1`"
   []
-  (add-extras (ascii-to-place
-    [
-     "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-     "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-     "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-     "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-     "~~~~~~~~~~~___~~~~~~~~___~~~~~~~~~~~~~~~"
-     "~~~~~~~~~~___~~~~~______~~~~~~~~~~~~~~~~"
-     "~~~~~~~~~~~~_~~~_```.___.,__~~~~~~~~~~~~"
-     "~~~~~~~~~~~~~___.`T,\"``.T`,_~~~~~~~~~~~~"
-     "~~~~~~~~~~~~_.`.`,,``.T,``T.~~~~~~~~~~~~"
-     "~~~~~~~~~~_`.`.T\".`',..T..,'_~~~~~~~~~~~"
-     "~~~~~~_T\"`.,,```..`,.`..``.._~~~~~~~~~~~"
-     "~~~~~~~_```_~~_.`,__,'T`.\"`\"`_~~~~~~~~~~"
-     "~~~~~~~~~~____,`,`...`'.`.T._~~~~~~~~~~~"
-     "~~~~~~~~~~~~__,`,`,\",.\"`,._~~~~~~~~~~~~~"
-     "~~~~~~~~~~~_____~~_...`,.~~~~~~~~~~~~~~~"
-     "~~~~~~~~~~~~~~~~~~~_''\"`.~~~~~~~~~~~~~~~"
-     "~~~~~~~~~~~~~~~~~~~~~___~~~~~~~~~~~~~~~~"
-     "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-     "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-     "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"])
-    [[[10 15]      {:type :dirt :starting-location true}]
-     [[12 13]      {:type :down-stairs :dest-place :1}]]))
+  (let [_ (seed-simplex-noise!)
+        node (vectorize
+               (vlet [c (center (invert (offset (scale 0.43 (v* [0.5 0.5 0.5] vsnoise)) radius)))]
+                 (v+
+                   (vif (v+ [-0.7 -0.7 -0.7]  (v* c (v+ [0.4 0.4 0.4] (scale 0.05 noise))))
+                     [0 0 1]
+                     [0 0 0])
+                   (vif (v+ [-0.6 -0.6 -0.6]  c)
+                     [0 1 0]
+                     [0 0 0])
+                   (vif (v+ [-0.5 -0.5 -0.5]  c)
+                     [1 0 0]
+                     [0 0 0]))))
+        fns  (vec (map compile-fn (:nodes node)))
+        max-x 55
+        max-y 20]
+    (add-extras
+      (vec
+        (map vec
+          (partition max-x
+            (log-time "for" (for [y (range max-y)
+                  x (range max-x)
+                  :let [s (vec (map #(.calc ^clisk.IFunction % (double (/ x max-x)) (double (/ y max-y)) (double 0.0) (double 0.0))
+                               fns))]]
+              (case s
+                [0.0 0.0 0.0] {:type :water}
+                [1.0 0.0 0.0] {:type :sand}
+                [1.0 1.0 0.0] (case (rand-int 3)
+                                0 {:type :dirt}
+                                1 {:type :gravel}
+                                2 {:type :floor})
+                [1.0 0.0 1.0] {:type :gravel}
+                [1.0 1.0 1.0] (case (rand-int 5)
+                                0 {:type :tree}
+                                1 {:type :tall-grass}
+                                2 {:type :short-grass}
+                                3 {:type :floor}
+                                4 {:type :gravel})))))))
+    [[[(int (/ max-x 2)) (int (/ max-y 2))]      {:type :dirt :starting-location true}]
+     [[(int (inc (/ max-x 2))) (int (inc (/ max-y 2)))]      {:type :down-stairs :dest-place :1}]])))
 
 
 (defn init-random-0
@@ -250,15 +275,6 @@
 ;     :state #{}
 ;     :image-path "./images/hans.png"}
 ]}))
-
-;; clisk utils
-(defn invert [a] (v+ [1 1 1] (v* [-1 -1 -1] a)))
-
-(defn center [f]
-  (offset [-0.5 -0.5] (scale 0.5 f)))
-
-(defn center-radius []
-  (radius (center [x y])))
 
 (defn -main [& args]
   (let [_ (seed-simplex-noise!)

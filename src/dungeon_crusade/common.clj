@@ -321,7 +321,9 @@
         (nil? cell)
         (some (fn [collision-type] (= (cell :type) collision-type)) [:vertical-wall
                                                                      :horizontal-wall
-                                                                     :close-door])
+                                                                     :close-door
+                                                                     :water
+                                                                     :tree])
         ;; not a wall or closed door, check for npcs
         (and include-npcs?
              (npc-at-xy state x y)))))))

@@ -45,7 +45,7 @@
 (defn npcs-at-current-place
   "Seq of npcs at the current place."
   [state]
-  (filter (fn [npc] (= (npc :place) (current-place-id state)))
+  (filter (fn [npc] (= (get npc :place) (current-place-id state)))
           (get-in state [:world :npcs])))
 
 (defn npc-by-id

@@ -7,6 +7,7 @@
     [dungeon-crusade.dialog :exclude [-main]]
     dungeon-crusade.npc
     dungeon-crusade.combat
+    [dungeon-crusade.monstergen :exclude [-main]]
     dungeon-crusade.magic
     [dungeon-crusade.worldgen :exclude [-main]]
     dungeon-crusade.lineofsight)
@@ -477,7 +478,7 @@
 
 (defn talk [state keyin]
   (let [npc (first (talking-npcs state))
-        fsm (get-in state [:dialog (npc :id)])
+        fsm (get-in state [:dialog (get npc :id)])
         valid-input (get-valid-input fsm)
         options (zipmap (take (count valid-input) [\a \b \c \d \e \f]) valid-input)
         input (get options keyin)
@@ -539,7 +540,7 @@
                      (get-in state [:world :player :$])))
       (-> state
           (update-in [:world :player :$] (fn [gold] (- gold (item :price))))
-          (transfer-items-from-npc-to-player (npc :id) (partial = item)))
+          (transfer-items-from-npc-to-player (get npc :id) (partial = item)))
       state)))
 
 
@@ -547,7 +548,7 @@
   "Sell an item to an npc in exchange for money."
   [state keyin]
   (let [npc       (first (talking-npcs state))
-        buy-fn    (get-in state (npc :buy-fn-path) (fn [_] nil))
+        buy-fn    (get-in state (get npc :buy-fn-path) (fn [_] nil))
         sellable-items (filter #(not (nil? (buy-fn %)))
                                 (get-in state [:world :player :inventory]))
         options   (apply hash-map
@@ -560,7 +561,7 @@
             _ (debug "current $" (get-in state [:world :player :$]))]
         (-> state
             (update-in [:world :player :$] (fn [gold] (+ gold price)))
-            (transfer-items-from-player-to-npc (npc :id) (partial = item))))
+            (transfer-items-from-player-to-npc (get npc :id) (partial = item))))
         state)))
 
 (defn next-party-member
@@ -630,11 +631,11 @@
   "Returns the moved npc and not the updated state. New npc pos will depend on
    the npc's `:movement-policy which is one of `:constant` `:entourage` `:follow-player`."
   [state npc]
-  {:pre  [(contains? #{:constant :entourage :follow-player} (npc :movement-policy))]
+  {:pre  [(contains? #{:constant :entourage :follow-player} (get npc :movement-policy))]
    :post [(= (count %) 3)]}
-  (let [policy (npc :movement-policy)
+  (let [policy (get npc :movement-policy)
         pos    (-> state :world :player :pos)
-        _ (info "moving npc@" (npc :pos) "with policy" policy)]
+        _ (info "moving npc@" (get npc :pos) "with policy" policy)]
     (case policy
       :constant [nil nil npc]
       :entourage (move-to-target state npc (first (shuffle (adjacent-navigable-pos (current-place state) pos))))
@@ -648,14 +649,14 @@
   (let [current-place-id (current-place-id state)
         state (reduce
                 (fn [result npc]
-                  (do (debug "npc attacks player?" (npc :place) current-place-id
-                     (npc :pos) (-> state :world :player :pos)
-                     (adjacent-to-player? state (npc :pos))
-                     (npc :disposition))
-                  (if (and (= (npc :place)
+                  (do (debug "npc attacks player?" (get npc :place) current-place-id
+                     (get npc :pos) (-> state :world :player :pos)
+                     (adjacent-to-player? state (get npc :pos))
+                     (get npc :disposition))
+                  (if (and (= (get npc :place)
                               current-place-id)
-                           (contains? (npc :disposition) :hostile)
-                           (adjacent-to-player? state (npc :pos)))
+                           (contains? (get npc :disposition) :hostile)
+                           (adjacent-to-player? state (get npc :pos)))
                     (attack state (npc->keys state npc) [:world :player])
                     state)))
                 state
@@ -669,10 +670,10 @@
           ;; to player. The npcs closest will be moved first, leaving a gap
           ;; behind them allowing the next most distant npc to move forward
           ;; to fill the gap.
-          (let [npcs-ordered-by-distance (sort-by (fn [npc] (distance-from-player state (npc :pos)))
+          (let [npcs-ordered-by-distance (sort-by (fn [npc] (distance-from-player state (get npc :pos)))
                                                   npcs)
                 map-result (map (fn [npc]
-                                  (if (= (npc :place)
+                                  (if (= (get npc :place)
                                          (-> state :world :current-place))
                                     (calc-npc-next-step state npc)
                                     [nil nil npc]))
@@ -682,7 +683,7 @@
               (conj result
                     (if (or (nil? new-pos)
                             (some (fn [npc]
-                                    (= (npc :pos)
+                                    (= (get npc :pos)
                                        {:x (first new-pos)
                                         :y (second new-pos)}))
                                   result))
@@ -692,22 +693,20 @@
             map-result)))))))
 
 (defn add-npcs
-  "Randomly add rats to the current place's in floor cells."
-  [state]
+  "Randomly add monsters to the current place's in floor cells."
+  [state level]
   (if (and (< (rand-int 100) 2)
            (< (count (filter (fn [npc] (= (-> state :world :current-place)
-                                          (npc :place)))
+                                          (get npc :place)))
                              (-> state :world :npcs)))
               20))
-    (let [[_ x y] (first (shuffle (filter (fn [[cell _ _]] (and (not (nil? cell))
-                                                                (= (cell :type) :floor)))
-                                          (with-xy (current-place state)))))]
+    (let [[cell x y] (first (shuffle (filter (fn [[cell _ _]] (and (not (nil? cell))
+                                                                   (= (cell :type) :floor)))
+                                             (with-xy (current-place state)))))]
       (add-npc state (-> state :world :current-place)
-                     {:race :rat
-                      :movement-policy :follow-player
-                      :hp 9
-                      :disposition #{:hostile}
-                      :attacks #{:bite :claw}} x y))
+                     (gen-monster level (cell :type))
+                     x
+                     y))
     state))
 
 (defn update-quests
@@ -874,7 +873,8 @@
                                                            nil)
                                                          ]))))))
             (update-npcs)
-            (add-npcs)
+            ;; TODO: Add appropriate level
+            (add-npcs 1)
             (update-quests)
             ((fn [state] (update-in state [:world :current-state]
                                     (fn [current-state]

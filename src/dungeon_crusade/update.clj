@@ -72,7 +72,7 @@
                                     (assoc-in [:pos :y] player-y))
                                 npc))))
       (and (npc-at-xy state target-x target-y)
-           (every? (npc-at-xy state target-x target-y) [:hp :race :inventory]))
+           (every? (set (keys (npc-at-xy state target-x target-y))) #{:hp :race :inventory}))
         ;; collided with npc. Engage in combat.
         (attack state [:world :player] (npc->keys state (npc-at-xy state target-x target-y)))
       ;; collided with a wall or door, nothing to be done.

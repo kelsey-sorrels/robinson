@@ -2,7 +2,7 @@
 (ns dungeon-crusade.monstergen
   (:require [clojure.math.combinatorics :as combo]))
 
-(defrecord Monster [race name hp attacks movement-policy disposition])
+(defrecord Monster [race name hp body-parts attacks movement-policy dispositiond])
 
 (defn gen-rat
   "Generate one rat."
@@ -11,6 +11,7 @@
    :rat
    "rat"
    9
+   #{:head :neck :body :leg :tail}
    #{:bite :claws}
    :follow-player
    #{:hostile}))
@@ -22,6 +23,7 @@
    :spider
    "spider"
    4
+   #{:face :leg :abdomen}
    #{:bite}
    :follow-player
    #{:hostile}))
@@ -33,7 +35,8 @@
    :scorpion
    "scorpion"
    3
-   #{:bite :claws}
+   #{:head :claw :abdomen :tail}
+   #{:bite :claws :sting}
    :follow-player
    #{:hostile}))
 
@@ -44,6 +47,7 @@
    :snake
    "snake"
    8
+   #{:head :body :tail}
    #{:bite}
    :follow-player
    #{:hostile}))
@@ -51,7 +55,10 @@
 
 (defn gen-monster [level cell-type]
   "Generate one random monster."
-  (let [monster-fns [gen-rat]]
+  (let [monster-fns [gen-rat
+                     gen-spider
+                     gen-scorpion
+                     gen-snake]]
     ((rand-nth monster-fns))))
 
 (defn gen-monsters

@@ -219,6 +219,8 @@
             :hunger 0
             :pos starting-pos
             :place :0
+            :body-parts #{:head :neck :face :abdomen :arm :leg :foot}
+            :attacks #{:punch}
             :status #{}}
    :quests {}
    :npcs [

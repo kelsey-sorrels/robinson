@@ -12,6 +12,7 @@
     [dungeon-crusade.worldgen :exclude [-main]]
     dungeon-crusade.lineofsight)
   (:require clojure.pprint
+            clojure.edn
             clj-tiny-astar.path
             [clojure.stacktrace :as st]
             [taoensso.timbre :as timbre]))
@@ -334,12 +335,13 @@
             _ (debug "name" (name dest-place-id))
             _ (debug "int" (read-string (name dest-place-id)))
             ;; save the current place to disk
-            _                 (spit (format "save/%s.place.clj" orig-place-id)
+            _                 (spit (format "save/%s.place.edn" orig-place-id)
                                     (with-out-str (pprint (-> state :world :places orig-place-id))))
             ;; load the place into state. From file if exists or gen a new random place.
             state             (assoc-in state [:world :places dest-place-id]
-                                (if (.exists (clojure.java.io/as-file (format "save/%s.place.clj" (str dest-place-id))))
-                                  (read-string (slurp (format "save/%s.place.clj" (str dest-place-id))))
+                                (if (.exists (clojure.java.io/as-file (format "save/%s.place.edn" (str dest-place-id))))
+                                  (->> (slurp (format "save/%s.place.edn" (str dest-place-id)))
+                                       (clojure.edn/read-string {:readers {'Monster map->Monster}}))
                                   (init-random-n (read-string (name dest-place-id)))))
  
             dest-place        (-> state :world :places dest-place-id)

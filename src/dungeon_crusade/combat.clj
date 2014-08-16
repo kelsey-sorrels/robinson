@@ -25,28 +25,41 @@
    `damage-type` is one of :miss :hit :dead"
   [attacker defender attack defender-body-part damage-type]
   (let [attacker-name      (get attacker :name)
-        defender-name      (get defender :name)]
+        defender-name      (get defender :name)
+        rand-punch-verb    (fn [] (rand-nth ["wack" "punch" "hit" "pummel" "batter"
+                                             "pound" "beat" "strike" "slug"]))]
     (condp vec-match? [attacker-name defender-name attack defender-body-part damage-type]
       ["Player" :*       :punch :*       :miss] (format "You punch the %s but miss." defender-name)
-      ["Player" :*       :punch :*       :hit]  (format "You punch the %s %s in the %s."
+      ["Player" :*       :punch :*       :hit]  (format "You %s the %s %s %s the %s."
+                                                        (rand-punch-verb)
                                                         defender-name
-                                                        (rand-nth ["narrowly" "solidly" "swiftly" "repeatedly"
+                                                        (rand-nth ["solidly" "swiftly" "repeatedly"
                                                                    "perfectly" "competently" "acceptably"])
+                                                        (rand-nth ["on" "in" "across"])
                                                         (name defender-body-part))
-      ["Player" :*       :punch :head    :dead] (format "You punch the %s in the head. Brains fly everywhere and it dies." defender-name)
-      ["Player" :*       :punch :neck    :dead] (format "You punch the %s in the neck snapping it and it dies." defender-name)
-      ["Player" :*       :punch :body    :dead] (format "You punch the %s in the body damaging internal organs. It dies." defender-name)
-      ["Player" :*       :punch :leg     :dead] (format "You punch the %s in the leg severing it and it dies." defender-name)
-      ["Player" :*       :punch :face    :dead] (format "You punch the %s in the face. Peices of face fly everywhere and it dies." defender-name)
-      ["Player" :*       :punch :abdomen :dead] (format "You punch the %s in the abdomen. Internal organs fly everywhere and it dies." defender-name)
-      ["Player" :*       :punch :claw    :dead] (format "You punch the %s in the claw and it dies." defender-name)
-      ["Player" :*       :punch :tail    :dead] (format "You punch the %s in the tail causing massive injuries and it dies." defender-name)
-      [:*       "Player" :bite  :*       :miss] (format "The %s lunges at you its mouth but misses." attacker-name)
-      [:*       "Player" :claws :*       :miss] (format "The %s claws at you and narrowly misses." attacker-name)
+      ["Player" :*       :punch :head    :dead] (format "You %s the %s in the head. Brains fly everywhere and it dies." (rand-punch-verb) defender-name)
+      ["Player" :*       :punch :neck    :dead] (format "You %s the %s in the neck snapping it and it dies." (rand-punch-verb) defender-name)
+      ["Player" :*       :punch :body    :dead] (format "You %s the %s in the body damaging internal organs. It dies." (rand-punch-verb) defender-name)
+      ["Player" :*       :punch :leg     :dead] (format "You %s the %s in the leg severing it and it dies." (rand-punch-verb) defender-name)
+      ["Player" :*       :punch :face    :dead] (format "You %s the %s in the face. Peices of face fly everywhere and it dies." (rand-punch-verb) defender-name)
+      ["Player" :*       :punch :abdomen :dead] (format "You %s the %s in the abdomen. Internal organs fly everywhere and it dies." (rand-punch-verb) defender-name)
+      ["Player" :*       :punch :claw    :dead] (format "You %s the %s in the claw and it dies." (rand-punch-verb) defender-name)
+      ["Player" :*       :punch :tail    :dead] (format "You %s the %s in the tail causing massive injuries and it dies." (rand-punch-verb) defender-name)
+      ["Player" :*       :punch :wing    :dead] (format "You %s the %s in the wing ripping it clean off and it dies." (rand-punch-verb) defender-name)
+      ["Player" :*       :punch :eye     :dead] (format "You %s the %s in the eye exploding it upon impact and it dies." (rand-punch-verb) defender-name)
+      ["Player" :*       :punch :snout   :dead] (format "You %s the %s in the snount crushing it and it dies." (rand-punch-verb) defender-name)
+      ["Player" :*       :punch :arm     :dead] (format "You %s the %s in the arm crushing bones it and it dies." (rand-punch-verb) defender-name)
+      ["Player" :*       :punch :beak    :dead] (format "You %s the %s in the beak ripping it from its face and it dies." (rand-punch-verb) defender-name)
+      ["Player" :*       :punch :shell   :dead] (format "You %s the %s in the shell ripping to peices and it dies." (rand-punch-verb) defender-name)
+      ["Player" :*       :punch :*       :dead] (format "You %s the %s causing massive injuries and it dies." (rand-punch-verb) defender-name)
+      [:*       "Player" :bite  :*       :miss] (format "The %s lunges at you its mouth but misses." (rand-punch-verb) attacker-name)
+      [:*       "Player" :claws :*       :miss] (format "The %s claws at you and narrowly misses." (rand-punch-verb) attacker-name)
       [:*       "Player" :punch :*       :miss] (format "The %s punches you but misses" attacker-name)
+      [:*       "Player" :sting :*       :miss] (format "The %s tries to sting you but misses" attacker-name)
       [:*       "Player" :bite  :*       :hit]  (format "The %s sinks its teeth into your flesh." attacker-name)
       [:*       "Player" :claws :*       :hit]  (format "The %s claws into your flesh." attacker-name)
-      [:*       "Player" :punch :*       :hit]  (format "The %s punches you." attacker-name))))
+      [:*       "Player" :punch :*       :hit]  (format "The %s punches you.`" attacker-name)
+      [:*       "Player" :sting :*       :hit]  (format "The %s stings you, pumping you full of poison." attacker-name))))
 
 (defn attack
   "Perform combat. The attacker fights the defender, but not vice-versa.
@@ -83,7 +96,7 @@
             (update-in [:world :places current-place-id y x :items]
                        (fn [items]
                          (if (zero? (rand-int 3))
-                           (conj items {:type :food :name (format "%s corpse" (name (defender :race))) :hunger 10})
+                           (conj items {:type :food :name (format "%s corpse" (name (get defender :race))) :hunger 10})
                            items)))
             (append-log (gen-attack-message attacker
                                             defender

@@ -59,6 +59,7 @@
       [:*       "Player" :bite  :*       :hit]  (format "The %s sinks its teeth into your flesh." attacker-name)
       [:*       "Player" :claw  :*       :hit]  (format "The %s claws into your flesh." attacker-name)
       [:*       "Player" :punch :*       :hit]  (format "The %s punches you.`" attacker-name)
+      [:*       "Player" :gore  :*       :hit]  (format "The %s gores into your body with it's tusks.`" attacker-name)
       [:*       "Player" :sting :*       :hit]  (format "The %s stings you, pumping you full of poison." attacker-name))))
 
 (defn attack
@@ -93,7 +94,7 @@
             ;; remove defender
             (remove-in (butlast defender-path) (partial = defender))
             ;; maybe add corpse
-            (update-in [:world :places current-place-id y x :items]
+            (update-in [:world :places (current-place-id state) y x :items]
                        (fn [items]
                          (if (zero? (rand-int 3))
                            (conj items {:type :food :name (format "%s corpse" (name (get defender :race))) :hunger 10})

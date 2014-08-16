@@ -2,7 +2,9 @@
 (ns dungeon-crusade.monstergen
   (:require [clojure.math.combinatorics :as combo]))
 
-(defrecord Monster [race name hp body-parts attacks movement-policy dispositiond])
+(defrecord Monster [race name hp body-parts attacks movement-policy disposition]
+  Object
+  (toString [this] (str "#Monster" (into {} this))))
 
 (defn gen-rat
   "Generate one rat."
@@ -12,7 +14,7 @@
    "rat"
    9
    #{:head :neck :body :leg :tail}
-   #{:bite :claws}
+   #{:bite :claw}
    :follow-player
    #{:hostile}))
 
@@ -36,7 +38,7 @@
    "scorpion"
    3
    #{:head :claw :abdomen :tail}
-   #{:bite :claws :sting}
+   #{:bite :claw :sting}
    :follow-player
    #{:hostile}))
 
@@ -52,13 +54,124 @@
    :follow-player
    #{:hostile}))
 
+(defn gen-bat
+  "Generate one bat"
+  []
+  (Monster.
+   :bat
+   "bat"
+   8
+   #{:head :body :wing :leg :face}
+   #{:bite}
+   :follow-player
+   #{:hostile}))
+
+(defn gen-boar
+  "Generate one boar"
+  []
+  (Monster.
+   :boar
+   "boar"
+   18
+   #{:head :body :tail :snout :face :eye :leg}
+   #{:bite :gore}
+   :follow-player
+   #{:hostile}))
+
+(defn gen-gecko
+  "Generate one gecko"
+  []
+  (Monster.
+   :gecko
+   "gecko"
+   2
+   #{:head :body :tail :leg}
+   #{:bite}
+   :follow-player
+   #{:hostile}))
+
+(defn gen-monkey
+  "Generate one monkey"
+  []
+  (Monster.
+   :monkey
+   "monkey"
+   13
+   #{:head :body :tail :leg :face :arm}
+   #{:bite :punch}
+   :follow-player
+   #{:hostile}))
+
+(defn gen-bird
+  "Generate one bird"
+  []
+  (Monster.
+   :bird
+   "bird"
+   6
+   #{:head :body :tail :leg :beak :wing}
+   #{:bite :claw}
+   :follow-player
+   #{:hostile}))
+
+(defn gen-centipede
+  "Generate one centipede"
+  []
+  (Monster.
+   :centipede
+   "centipede"
+   4
+   #{:head :body :leg}
+   #{:bite}
+   :follow-player
+   #{:hostile}))
+
+(defn gen-turtle
+  "Generate one turtle"
+  []
+  (Monster.
+   :turtle
+   "turtle"
+   4
+   #{:head :body :leg :face :shell}
+   #{:bite}
+   :follow-player
+   #{:hostile}))
+
+(defn gen-frog
+  "Generate one frog"
+  []
+  (Monster.
+   :frog
+   "frog"
+   2
+   #{:head :body :leg :face}
+   #{:claw}
+   :follow-player
+   #{:hostile}))
+
+(defn gen-parrot
+  "Generate one parrot"
+  []
+  (Monster.
+   :parrot
+   "parrot"
+   7
+   #{:head :body :leg :face :wing :tail}
+   #{:claw :bite}
+   :follow-player
+   #{:hostile}))
 
 (defn gen-monster [level cell-type]
   "Generate one random monster."
   (let [monster-fns [gen-rat
                      gen-spider
                      gen-scorpion
-                     gen-snake]]
+                     gen-snake
+                     gen-bat
+                     gen-boar
+                     gen-gecko
+                     gen-monkey]]
     ((rand-nth monster-fns))))
 
 (defn gen-monsters

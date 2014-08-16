@@ -4,8 +4,10 @@
            [dungeon-crusade.worldgen :exclude [-main]]
            dungeon-crusade.dialog
            dungeon-crusade.update
+           [dungeon-crusade.monstergen :exclude [-main]]
            dungeon-crusade.render)
-  (:require [lanterna.screen :as s]
+  (:require clojure.edn
+            [lanterna.screen :as s]
             [taoensso.timbre :as timbre]
             [clojure.core.async :as async]))
 
@@ -28,7 +30,7 @@
       (info "got " keyin " type " (type keyin))
       (log-time "tick"
         (let [new-state (log-time "update-state" (update-state state keyin))]
-          (async/thread (spit "save/world.clj" (with-out-str (pprint (new-state :world)))))
+          (async/thread (spit "save/world.edn" (with-out-str (pprint (new-state :world)))))
           (log-time "render" (render new-state))
           new-state)))))
 
@@ -45,8 +47,9 @@
    * `quests` that are loaded dynamically on startup."
   []
   (let [screen (s/get-screen :swing)
-        world (if (.exists (clojure.java.io/file "save/world.clj"))
-                (read-string (slurp "save/world.clj"))
+        world (if (.exists (clojure.java.io/file "save/world.edn"))
+                (->> (slurp "save/world.edn")
+                     (clojure.edn/read-string {:readers {'Monster map->Monster}}))
                 (init-world))
          ;; load quests
          _ (doall (map #(load-file (.getPath %))

@@ -374,6 +374,15 @@
                                               :spider ["S"]
                                               :scorpion ["\u03C2"] ;;ς
                                               :snake ["\u00A7"] ;;§
+                                              :bat ["B"]
+                                              :boar ["b"]
+                                              :gecko ["g"]
+                                              :monkey ["y"]
+                                              :bird ["a"]
+                                              :centipede ["c"]
+                                              :turtle ["t"]
+                                              :frog ["\u03B1"] ;;α
+                                              :parrot ["p"]
                                               :human ["@" {:fg (class->color (get npc :class))}]
                                               ["@"])))))
                    place-npcs)))

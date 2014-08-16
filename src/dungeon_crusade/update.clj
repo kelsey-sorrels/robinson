@@ -2,6 +2,7 @@
 (ns dungeon-crusade.update
   (:use     
     clojure.pprint
+    [clojure.string :only [lower-case]]
     clojure.contrib.core
     dungeon-crusade.common
     [dungeon-crusade.dialog :exclude [-main]]
@@ -33,11 +34,14 @@
         _ (debug "picking up gold. Divided items" cash non-cash-items)
         _ (debug "calling (assoc-in state [:world" place-id y x :items"]" (or non-cash-items [])")")
         $                  (reduce + (map :amount (or cash [])))]
-    (-> state
-      (assoc-in [:world :places place-id y x :items]
-        (or non-cash-items []))
-      (update-in [:world :player :$]
-        (fn [player-$] (+ $ player-$))))))
+    (if (> $ 0)
+      (-> state
+        (append-log (format "You pick up %d cash." $))
+        (assoc-in [:world :places place-id y x :items]
+          (or non-cash-items []))
+        (update-in [:world :player :$]
+          (fn [player-$] (+ $ player-$))))
+      state)))
 
 (defn move
   "Move the player one space provided her/she is able. Else do combat. Else positions
@@ -125,7 +129,9 @@
         (let [place (-> state :world :current-place)]
           (debug "opening door")
           (debug (get-in state [:world :places place target-y target-x]))
-          (assoc-in state [:world :places place target-y target-x :type] :open-door))
+          (-> state
+            (append-log "The door creaks open")
+            (assoc-in [:world :places place target-y target-x :type] :open-door)))
         state))))
 
 (defn open-left
@@ -171,7 +177,9 @@
       (if (and (not (nil? target-cell)) (= (target-cell :type) :open-door))
         (let [place (-> state :world :current-place)]
           (debug "opening door")
-          (assoc-in state [:world :places place target-y target-x :type] :close-door))
+          (-> state
+            (append-log "The door closes")
+            (assoc-in [:world :places place target-y target-x :type] :close-door)))
         state))))
 
 (defn close-left
@@ -226,6 +234,7 @@
       (debug "selected-items" selected-items)
       (debug "not-selected-items" not-selected-items)
       (let [new-state (-> state
+                          (append-log (format "You pick up the item%s" (if (> (count selected-items) 1) "s" "")))
                           ;; dup the item into inventory with hotkey
                           (update-in [:world :player :inventory]
                             (fn [prev-inventory]
@@ -253,6 +262,7 @@
     (if (and (>= item-index 0) (< item-index (count items)))
       (let [item (nth items item-index)
             new-state (-> state
+              (append-log (format "You let the %s fall to the ground" (lower-case (get item :name))))
               ;; dup the item into cell
               (update-in [:world :places place y x :items]
                 (fn [prev-items]
@@ -305,6 +315,8 @@
     (if (and (>= item-index 0) (< item-index (count items)))
       (let [item (nth items item-index)
             new-state (-> state
+              (append-log (format "The %s tastes %s." (lower-case (get item :name))
+                                                      (rand-nth ["great" "foul" "greasy" "delicious" "burnt" "sweet" "salty"])))
               ;; reduce hunger
               (update-in [:world :player :hunger]
                 (fn [hunger]

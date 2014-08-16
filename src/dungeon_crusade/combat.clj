@@ -53,11 +53,11 @@
       ["Player" :*       :punch :shell   :dead] (format "You %s the %s in the shell ripping to peices and it dies." (rand-punch-verb) defender-name)
       ["Player" :*       :punch :*       :dead] (format "You %s the %s causing massive injuries and it dies." (rand-punch-verb) defender-name)
       [:*       "Player" :bite  :*       :miss] (format "The %s lunges at you its mouth but misses." (rand-punch-verb) attacker-name)
-      [:*       "Player" :claws :*       :miss] (format "The %s claws at you and narrowly misses." (rand-punch-verb) attacker-name)
+      [:*       "Player" :claw  :*       :miss] (format "The %s claws at you and narrowly misses." (rand-punch-verb) attacker-name)
       [:*       "Player" :punch :*       :miss] (format "The %s punches you but misses" attacker-name)
       [:*       "Player" :sting :*       :miss] (format "The %s tries to sting you but misses" attacker-name)
       [:*       "Player" :bite  :*       :hit]  (format "The %s sinks its teeth into your flesh." attacker-name)
-      [:*       "Player" :claws :*       :hit]  (format "The %s claws into your flesh." attacker-name)
+      [:*       "Player" :claw  :*       :hit]  (format "The %s claws into your flesh." attacker-name)
       [:*       "Player" :punch :*       :hit]  (format "The %s punches you.`" attacker-name)
       [:*       "Player" :sting :*       :hit]  (format "The %s stings you, pumping you full of poison." attacker-name))))
 

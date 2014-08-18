@@ -595,46 +595,49 @@
    from the npc to the target. Returns the moved npc and not the updated state.
    `target` is a map with the keys `:x` and `:y`."
   [state npc target]
-  (let [npcs (npcs-at-current-place state)
-        _ (debug "move-to-target npc" npc "target" target)
-        npc-pos [(-> npc :pos :x) (-> npc :pos :y)]
-        player  (-> state :world :player)
-        player-pos [(-> player :pos :x) (-> player :pos :y)]
-        place (current-place state)
-        width (count (first place))
-        height (count place)
-        get-type (memoize (fn [x y] (do
-                                      ;(debug "traversable?" x y "type" (get-in place [y x :type]))
-                                      (get-in place [y x :type]))))
-        traversable? (memoize
-                       (fn [[x y]]
-                         (and (< 0 x width)
-                              (< 0 y height)
-                              (contains? #{:floor
-                                           :open-door
-                                           :corridor}
-                                         (get-type x y)))))
-        path (try
-               (debug "a* params" traversable? npc-pos [(target :x) (target :y)])
-               (clj-tiny-astar.path/a* traversable? npc-pos [(target :x) (target :y)])
-               (catch Exception e
-                 (error "Caught exception during a* traversal" e)
-                 (st/print-cause-trace e)
-                 nil))
-        _ (debug "path to target" path)
-        new-pos (if (and (not (nil? path))
-                         (> (count path) 1)
-                         ;; don't collide with player
-                         (let [new-pos (second path)]
-                           (not= ((juxt first second) new-pos)
-                                 ((juxt first second) player-pos))))
-                  (second path)
-                  npc-pos)
-        _ (debug "new-pos" new-pos)
-        new-npc (-> npc
-                    (assoc-in [:pos :x] (first new-pos))
-                    (assoc-in [:pos :y] (second new-pos)))
-        _ (debug "new-npc" new-npc)]
+  (let [npcs                   (npcs-at-current-place state)
+        _                      (debug "move-to-target npc" npc "target" target)
+        npc-pos                [(-> npc :pos :x) (-> npc :pos :y)]
+        npc-can-move-in-water? (can-move-in-water? (get npc :race))
+        player                 (-> state :world :player)
+        player-pos             [(-> player :pos :x) (-> player :pos :y)]
+        place                  (current-place state)
+        width                  (count (first place))
+        height                 (count place)
+        get-type               (memoize (fn [x y] (do
+                                                    ;(debug "traversable?" x y "type" (get-in place [y x :type]))
+                                                    (get-in place [y x :type]))))
+        traversable?           (memoize
+                                 (fn [[x y]]
+                                   (and (< 0 x width)
+                                        (< 0 y height)
+                                        (if (can-move-in-water? (get npc :race))
+                                          (= (get-type x y) :water)
+                                          (contains? #{:floor
+                                                       :open-door
+                                                       :corridor}
+                                                     (get-type x y))))))
+        path                   (try
+                                 (debug "a* params" traversable? npc-pos [(target :x) (target :y)])
+                                 (clj-tiny-astar.path/a* traversable? npc-pos [(target :x) (target :y)])
+                                 (catch Exception e
+                                   (error "Caught exception during a* traversal" e)
+                                   (st/print-cause-trace e)
+                                   nil))
+        _                      (debug "path to target" path)
+        new-pos                (if (and (not (nil? path))
+                                        (> (count path) 1)
+                                        ;; don't collide with player
+                                        (let [new-pos (second path)]
+                                          (not= ((juxt first second) new-pos)
+                                                ((juxt first second) player-pos))))
+                                 (second path)
+                                 npc-pos)
+        _                      (debug "new-pos" new-pos)
+        new-npc                (-> npc
+                                   (assoc-in [:pos :x] (first new-pos))
+                                   (assoc-in [:pos :y] (second new-pos)))
+        _                      (debug "new-npc" new-npc)]
     [new-pos new-npc npc]))
 
 (defn calc-npc-next-step

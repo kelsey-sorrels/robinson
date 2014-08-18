@@ -316,7 +316,7 @@
            :or {include-npcs? true
                 collide-water? true}} opts
           cell (get-cell (current-place state) x y)]
-      (debug "collide? " cell x y)
+      ;(debug "collide? " cell x y)
       (or
         (nil? cell)
         ;; check the cell to see if it is a wall or closed door

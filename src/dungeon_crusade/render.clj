@@ -383,6 +383,8 @@
                                               :turtle ["t"]
                                               :frog ["\u03B1"] ;;α
                                               :parrot ["p"]
+                                              :shark ["\u039B"] ;;Λ
+                                              :fish ["f"]
                                               :human ["@" {:fg (class->color (get npc :class))}]
                                               ["@"])))))
                    place-npcs)))

@@ -2,6 +2,10 @@
 (ns dungeon-crusade.monstergen
   (:require [clojure.math.combinatorics :as combo]))
 
+(defn can-move-in-water?
+  [race]
+  (contains? #{:shark :fish :octopus :sea-snake :clam :urchin :squid} race))
+
 (defrecord Monster [race name hp body-parts attacks movement-policy disposition]
   Object
   (toString [this] (str "#Monster" (into {} this))))
@@ -162,17 +166,50 @@
    :follow-player
    #{:hostile}))
 
+(defn gen-shark
+  "Generate one shark"
+  []
+  (Monster.
+   :shark
+   "shark"
+   16
+   #{:head :body :fin :nose :tail}
+   #{:bite}
+   :follow-player
+   #{:hostile}))
+
+(defn gen-fish
+  "Generate one fish"
+  []
+  (Monster.
+   :fish
+   "fish"
+   4
+   #{:head :body :fin :tail}
+   #{:bite}
+   :follow-player
+   #{:hostile}))
+
 (defn gen-monster [level cell-type]
   "Generate one random monster."
-  (let [monster-fns [gen-rat
-                     gen-spider
-                     gen-scorpion
-                     gen-snake
-                     gen-bat
-                     gen-boar
-                     gen-gecko
-                     gen-monkey]]
-    ((rand-nth monster-fns))))
+  (let [land-monster-fns  [gen-rat
+                           gen-spider
+                           gen-scorpion
+                           gen-snake
+                           gen-bat
+                           gen-boar
+                           gen-gecko
+                           gen-monkey
+                           gen-bird
+                           gen-centipede
+                           gen-turtle
+                           gen-frog
+                           gen-parrot]
+        water-monster-fns [gen-shark
+                           gen-fish]]
+    (case cell-type
+      :water ((rand-nth water-monster-fns))
+      ((rand-nth land-monster-fns)))))
 
 (defn gen-monsters
   "Generate `n` random monsters using `gen-monster`."

@@ -249,19 +249,18 @@
   (doall 
     (map (fn [e] (apply f e)) (with-xy grid))))
 
-(defn get-xy
+(defn get-cell
   "Retrieve the cell at the position `[x y]` within the given grid. If `[x y]` is outside the bounds
    of the grid, return `nil`."
-  [x y grid]
-  (when-first [cell (filter (fn [[cell cx cy]] (and (= x cx) (= y cy))) (with-xy grid))]
-    cell))
+  [grid x y]
+  (get-in grid [y x]))
 
 (defn player-cellxy
   "Retrieve the cell at which the player is located."
   [state]
   (let [x (-> state :world :player :pos :x)
         y (-> state :world :player :pos :y)]
-    (get-xy x y (current-place state))))
+    [(get-cell (current-place state) x y) x y]))
 
 (defn player-dead?
   "Return `true` if the player has a status of `:dead`."
@@ -310,23 +309,30 @@
 (defn collide?
   "Return `true` if the cell at `[x y]` is non-traverable. Ie: a wall, closed door or simply does
    not exist. Cells occupied by npcs are considered non-traversable."
-  ([x y state]
-  (collide? x y state true))
-  ([x y state include-npcs?]
-  (let [cellxy (get-xy x y (current-place state))]
-    (debug "collide? " cellxy x y)
-    (let [cell (first cellxy)]
-      ;; check the cell to see if it is a wall or closed door
+  ([state x y opts]
+    ;; destructure opts into variables with defaults
+    (let [{:keys [include-npcs?
+                  collide-water?]
+           :or {include-npcs? true
+                collide-water? true}} opts
+          cell (get-cell (current-place state) x y)]
+      (debug "collide? " cell x y)
       (or
         (nil? cell)
+        ;; check the cell to see if it is a wall or closed door
         (some (fn [collision-type] (= (cell :type) collision-type)) [:vertical-wall
                                                                      :horizontal-wall
                                                                      :close-door
-                                                                     :water
                                                                      :tree])
+        ;; water collides?
+        (and collide-water?
+             (= (cell :type) :water))
         ;; not a wall or closed door, check for npcs
         (and include-npcs?
-             (npc-at-xy state x y)))))))
+             (npc-at-xy state x y)))))
+
+  ([state x y]
+  (collide? state x y {})))
 
 
 (defn first-collidable-object
@@ -343,7 +349,7 @@
        (cond
          (not (nil? npc))
            {:npc npc}
-         (collide? x y state false)
+         (collide? state x y false)
            {:cell cell}
          (empty? xs)
            {}

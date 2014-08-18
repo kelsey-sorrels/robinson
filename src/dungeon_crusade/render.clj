@@ -121,7 +121,7 @@
   (when (= (-> state :world :current-state) :pickup)
     (let [player-x         (-> state :world :player :pos :x)
           player-y         (-> state :world :player :pos :y)
-          cell             (first (get-xy player-x player-y (current-place state)))
+          cell             (get-cell (current-place state) player-x player-y)
           cell-items       (or (cell :items) [])
           hotkeys          (-> state :world :remaining-hotkeys)
           selected-hotkeys (-> state :world :selected-hotkeys)

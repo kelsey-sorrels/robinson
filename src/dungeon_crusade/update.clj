@@ -59,7 +59,7 @@
                                :down 1
                                0))]
     (cond
-      (not (collide? target-x target-y state))
+      (not (collide? state target-x target-y))
         (-> state
             (assoc-in [:world :player :pos :x] target-x)
             (assoc-in [:world :player :pos :y] target-y)
@@ -121,9 +121,7 @@
                                :down 1
                                0))]
     (debug "open-door")
-    (let [target-cellxy (get-xy target-x target-y (current-place state))
-          target-cell   (first target-cellxy)]
-      (debug "target-cellxy" target-cellxy)
+    (let [target-cell (get-cell (current-place state) target-x target-y)]
       (debug "target-cell" target-cell)
       (if (and (not (nil? target-cell)) (= (target-cell :type) :close-door))
         (let [place (-> state :world :current-place)]
@@ -170,9 +168,7 @@
                                :down 1
                                0))]
     (debug "close-door")
-    (let [target-cellxy (get-xy target-x target-y (current-place state))
-          target-cell   (first target-cellxy)]
-      (debug "target-cellxy" target-cellxy)
+    (let [target-cell (get-cell (current-place state) target-x target-y)]
       (debug "target-cell" target-cell)
       (if (and (not (nil? target-cell)) (= (target-cell :type) :open-door))
         (let [place (-> state :world :current-place)]
@@ -714,8 +710,8 @@
                                           (get npc :place)))
                              (-> state :world :npcs)))
               20))
-    (let [[cell x y] (first (shuffle (filter (fn [[cell _ _]] (and (not (nil? cell))
-                                                                   (= (cell :type) :floor)))
+    (let [[cell x y] (first (shuffle (filter (fn [[cell x y]] (not (collide? state x y {:include-npcs? true
+                                                                                         :collide-water? false})))
                                              (with-xy (current-place state)))))]
       (add-npc state (-> state :world :current-place)
                      (gen-monster level (cell :type))

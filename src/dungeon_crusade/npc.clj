@@ -13,12 +13,12 @@
   
    Ex: `(adjacent-floor-pos [...] {:x 0 :y 0})`
    `[{:x 1 :y 1} {:x 0 :y 0}]`"
-  [place pos]
+  [place pos navigable-types]
   {:pre [(= (set (keys pos)) #{:x :y})]}
   (filter (fn [{x :x y :y}]
             (let [cell (get-in place [y x])]
               (and (not (nil? cell))
-                   (contains? #{:floor :corridor :open-door} (cell :type)))))
+                   (contains? navigable-types (cell :type)))))
           (for [x (range -1 1)
                 y (range -1 1)]
             {:x (+ (pos :x) x) :y (+ (pos :y) y)})))

@@ -608,20 +608,28 @@
                                                     ;(debug "traversable?" x y "type" (get-in place [y x :type]))
                                                     (get-in place [y x :type]))))
         traversable?           (memoize
-                                 (fn [[x y]]
-                                   (and (< 0 x width)
-                                        (< 0 y height)
-                                        (if (can-move-in-water? (get npc :race))
-                                          (= (get-type x y) :water)
+                                 (if npc-can-move-in-water?
+                                   (fn [[x y]]
+                                     (and (< 0 x width)
+                                          (< 0 y height)
+                                          (= (get-type x y) :water)))
+                                   (fn [[x y]]
+                                     (and (< 0 x width)
+                                          (< 0 y height)
                                           (contains? #{:floor
                                                        :open-door
-                                                       :corridor}
+                                                       :corridor
+                                                       :sand
+                                                       :dirt
+                                                       :gravel
+                                                       :tall-grass
+                                                       :short-grass}
                                                      (get-type x y))))))
         path                   (try
                                  (debug "a* params" traversable? npc-pos [(target :x) (target :y)])
                                  (clj-tiny-astar.path/a* traversable? npc-pos [(target :x) (target :y)])
                                  (catch Exception e
-                                   (error "Caught exception during a* traversal" e)
+                                   (error "Caught exception during a* traversal." npc-pos [(target :x) (target :y)] e)
                                    (st/print-cause-trace e)
                                    nil))
         _                      (debug "path to target" path)
@@ -640,19 +648,65 @@
         _                      (debug "new-npc" new-npc)]
     [new-pos new-npc npc]))
 
+(defn move-to-target-in-range-or-random
+  [state npc target]
+  (let [threshold (get npc :range-threshold)
+        npc-pos  (get npc :pos)
+        distance (distance npc-pos target)
+        navigable-types (if (can-move-in-water? (get npc :race))
+                          #{:water}
+                          #{:floor
+                            :corridor
+                            :open-door
+                            :sand
+                            :dirt
+                            :gravel
+                            :tall-grass
+                            :short-grass})]
+    (if (> distance threshold)
+      ;; outside of range, move randomly into an adjacent cell
+      (let [target (first
+                     (shuffle
+                       (adjacent-navigable-pos (current-place state)
+                                               npc-pos
+                                               navigable-types)))]
+        (debug "distance > threshold, move randomly. target" target)
+        (move-to-target state
+                        npc
+                        target))
+      ;; inside range, move toward player
+      (move-to-target state npc target))))
+
 (defn calc-npc-next-step
   "Returns the moved npc and not the updated state. New npc pos will depend on
-   the npc's `:movement-policy which is one of `:constant` `:entourage` `:follow-player`."
+   the npc's `:movement-policy which is one of `:constant` `:entourage` `:follow-player` `:follow-player-in-range-or-random`."
   [state npc]
-  {:pre  [(contains? #{:constant :entourage :follow-player} (get npc :movement-policy))]
+  {:pre  [(contains? #{:constant :entourage :follow-player :follow-player-in-range-or-random} (get npc :movement-policy))]
    :post [(= (count %) 3)]}
   (let [policy (get npc :movement-policy)
         pos    (-> state :world :player :pos)
+        navigable-types (if (can-move-in-water? (get npc :race))
+                          #{:water}
+                          #{:floor
+                            :corridor
+                            :open-door
+                            :sand
+                            :dirt
+                            :gravel
+                            :tall-grass
+                            :short-grass})
         _ (info "moving npc@" (get npc :pos) "with policy" policy)]
     (case policy
       :constant [nil nil npc]
-      :entourage (move-to-target state npc (first (shuffle (adjacent-navigable-pos (current-place state) pos))))
+      :entourage (move-to-target state
+                                 npc
+                                 (first
+                                   (shuffle
+                                     (adjacent-navigable-pos (current-place state)
+                                                             pos
+                                                             navigable-types))))
       :follow-player (move-to-target state npc pos)
+      :follow-player-in-range-or-random (move-to-target-in-range-or-random state npc pos)
       [nil nil npc])))
  
 (defn update-npcs

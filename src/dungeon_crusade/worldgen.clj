@@ -190,7 +190,7 @@
            starting-y]         (first (filter (fn [[cell x y]] (contains? cell :starting-location))
                                               (with-xy place-0)))
         starting-pos           {:x starting-x :y starting-y}
-        party-pos              (adjacent-navigable-pos place-0 starting-pos)
+        party-pos              (adjacent-navigable-pos place-0 starting-pos #{:corridor :open-door :floor})
         _ (debug "starting-pos" starting-pos)
         _ (debug "party-pos" party-pos)]
 

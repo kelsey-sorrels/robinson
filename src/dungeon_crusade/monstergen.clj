@@ -6,7 +6,7 @@
   [race]
   (contains? #{:shark :fish :octopus :sea-snake :clam :urchin :squid} race))
 
-(defrecord Monster [race name hp body-parts attacks movement-policy disposition]
+(defrecord Monster [race name hp body-parts attacks movement-policy range-threshold disposition]
   Object
   (toString [this] (str "#Monster" (into {} this))))
 
@@ -19,7 +19,8 @@
    9
    #{:head :neck :body :leg :tail}
    #{:bite :claw}
-   :follow-player
+   :follow-player-in-range-or-random
+   10
    #{:hostile}))
 
 (defn gen-spider
@@ -31,7 +32,8 @@
    4
    #{:face :leg :abdomen}
    #{:bite}
-   :follow-player
+   :follow-player-in-range-or-random
+   10
    #{:hostile}))
 
 (defn gen-scorpion
@@ -43,7 +45,8 @@
    3
    #{:head :claw :abdomen :tail}
    #{:bite :claw :sting}
-   :follow-player
+   :follow-player-in-range-or-random
+   10
    #{:hostile}))
 
 (defn gen-snake
@@ -55,7 +58,8 @@
    8
    #{:head :body :tail}
    #{:bite}
-   :follow-player
+   :follow-player-in-range-or-random
+   10
    #{:hostile}))
 
 (defn gen-bat
@@ -67,7 +71,8 @@
    8
    #{:head :body :wing :leg :face}
    #{:bite}
-   :follow-player
+   :follow-player-in-range-or-random
+   10
    #{:hostile}))
 
 (defn gen-boar
@@ -79,7 +84,8 @@
    18
    #{:head :body :tail :snout :face :eye :leg}
    #{:bite :gore}
-   :follow-player
+   :follow-player-in-range-or-random
+   10
    #{:hostile}))
 
 (defn gen-gecko
@@ -91,7 +97,8 @@
    2
    #{:head :body :tail :leg}
    #{:bite}
-   :follow-player
+   :follow-player-in-range-or-random
+   10
    #{:hostile}))
 
 (defn gen-monkey
@@ -103,7 +110,8 @@
    13
    #{:head :body :tail :leg :face :arm}
    #{:bite :punch}
-   :follow-player
+   :follow-player-in-range-or-random
+   10
    #{:hostile}))
 
 (defn gen-bird
@@ -115,7 +123,8 @@
    6
    #{:head :body :tail :leg :beak :wing}
    #{:bite :claw}
-   :follow-player
+   :follow-player-in-range-or-random
+   10
    #{:hostile}))
 
 (defn gen-centipede
@@ -127,7 +136,8 @@
    4
    #{:head :body :leg}
    #{:bite}
-   :follow-player
+   :follow-player-in-range-or-random
+   10
    #{:hostile}))
 
 (defn gen-turtle
@@ -139,7 +149,8 @@
    4
    #{:head :body :leg :face :shell}
    #{:bite}
-   :follow-player
+   :follow-player-in-range-or-random
+   10
    #{:hostile}))
 
 (defn gen-frog
@@ -151,7 +162,8 @@
    2
    #{:head :body :leg :face}
    #{:claw}
-   :follow-player
+   :follow-player-in-range-or-random
+   10
    #{:hostile}))
 
 (defn gen-parrot
@@ -163,7 +175,8 @@
    7
    #{:head :body :leg :face :wing :tail}
    #{:claw :bite}
-   :follow-player
+   :follow-player-in-range-or-random
+   10
    #{:hostile}))
 
 (defn gen-shark
@@ -175,7 +188,8 @@
    16
    #{:head :body :fin :nose :tail}
    #{:bite}
-   :follow-player
+   :follow-player-in-range-or-random
+   10
    #{:hostile}))
 
 (defn gen-fish
@@ -187,7 +201,8 @@
    4
    #{:head :body :fin :tail}
    #{:bite}
-   :follow-player
+   :follow-player-in-range-or-random
+   10
    #{:hostile}))
 
 (defn gen-monster [level cell-type]

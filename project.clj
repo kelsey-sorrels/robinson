@@ -9,7 +9,7 @@
                  [org.clojure/math.combinatorics "0.0.7"]
                  [org.clojure/clojure-contrib "1.2.0"]
                  [org.clojars.vishk/algotools "0.1.0"]
-                 [net.mikera/clisk "0.9.1-SNAPSHOT"]
+                 [net.mikera/clisk "0.10.0"]
                  [com.palletops/thread-expr "1.3.0"]
                  [tinter "0.1.1-SNAPSHOT"]
                  [clj-tiny-astar "0.1.0-SNAPSHOT"]

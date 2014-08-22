@@ -20,7 +20,7 @@
    #{:head :neck :body :leg :tail}
    #{:bite :claw}
    :follow-player-in-range-or-random
-   10
+   5
    #{:hostile}))
 
 (defn gen-spider
@@ -33,7 +33,7 @@
    #{:face :leg :abdomen}
    #{:bite}
    :follow-player-in-range-or-random
-   10
+   5
    #{:hostile}))
 
 (defn gen-scorpion
@@ -46,7 +46,7 @@
    #{:head :claw :abdomen :tail}
    #{:bite :claw :sting}
    :follow-player-in-range-or-random
-   10
+   4
    #{:hostile}))
 
 (defn gen-snake
@@ -59,7 +59,7 @@
    #{:head :body :tail}
    #{:bite}
    :follow-player-in-range-or-random
-   10
+   5
    #{:hostile}))
 
 (defn gen-bat
@@ -72,7 +72,7 @@
    #{:head :body :wing :leg :face}
    #{:bite}
    :follow-player-in-range-or-random
-   10
+   7
    #{:hostile}))
 
 (defn gen-boar
@@ -85,7 +85,7 @@
    #{:head :body :tail :snout :face :eye :leg}
    #{:bite :gore}
    :follow-player-in-range-or-random
-   10
+   7
    #{:hostile}))
 
 (defn gen-gecko
@@ -98,7 +98,7 @@
    #{:head :body :tail :leg}
    #{:bite}
    :follow-player-in-range-or-random
-   10
+   4
    #{:hostile}))
 
 (defn gen-monkey
@@ -124,7 +124,7 @@
    #{:head :body :tail :leg :beak :wing}
    #{:bite :claw}
    :follow-player-in-range-or-random
-   10
+   8
    #{:hostile}))
 
 (defn gen-centipede
@@ -137,7 +137,7 @@
    #{:head :body :leg}
    #{:bite}
    :follow-player-in-range-or-random
-   10
+   3
    #{:hostile}))
 
 (defn gen-turtle
@@ -150,7 +150,7 @@
    #{:head :body :leg :face :shell}
    #{:bite}
    :follow-player-in-range-or-random
-   10
+   5
    #{:hostile}))
 
 (defn gen-frog
@@ -163,7 +163,7 @@
    #{:head :body :leg :face}
    #{:claw}
    :follow-player-in-range-or-random
-   10
+   4
    #{:hostile}))
 
 (defn gen-parrot
@@ -202,7 +202,7 @@
    #{:head :body :fin :tail}
    #{:bite}
    :follow-player-in-range-or-random
-   10
+   4
    #{:hostile}))
 
 (defn gen-monster [level cell-type]

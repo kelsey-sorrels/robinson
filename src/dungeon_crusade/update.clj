@@ -13,6 +13,7 @@
     [dungeon-crusade.worldgen :exclude [-main]]
     dungeon-crusade.lineofsight)
   (:require clojure.pprint
+            clojure.core.memoize
             clojure.edn
             clj-tiny-astar.path
             [clojure.stacktrace :as st]
@@ -590,63 +591,88 @@
     (debug "npcs" (with-out-str (pprint (-> state :world :npcs))))
     state))
 
-(defn move-to-target
+(defn
+  ^{:water-traversable?-memo (atom nil)
+    :land-traversable?-memo  (atom nil)}
+  move-to-target
   "Move `npc` one space closer to the target position if there is a path
    from the npc to the target. Returns the moved npc and not the updated state.
    `target` is a map with the keys `:x` and `:y`."
-  [state npc target]
-  (let [npcs                   (npcs-at-current-place state)
-        _                      (debug "move-to-target npc" npc "target" target)
-        npc-pos                [(-> npc :pos :x) (-> npc :pos :y)]
-        npc-can-move-in-water? (can-move-in-water? (get npc :race))
-        player                 (-> state :world :player)
-        player-pos             [(-> player :pos :x) (-> player :pos :y)]
-        place                  (current-place state)
-        width                  (count (first place))
-        height                 (count place)
-        get-type               (memoize (fn [x y] (do
-                                                    ;(debug "traversable?" x y "type" (get-in place [y x :type]))
-                                                    (get-in place [y x :type]))))
-        traversable?           (memoize
-                                 (if npc-can-move-in-water?
-                                   (fn [[x y]]
-                                     (and (< 0 x width)
-                                          (< 0 y height)
-                                          (= (get-type x y) :water)))
-                                   (fn [[x y]]
-                                     (and (< 0 x width)
-                                          (< 0 y height)
-                                          (contains? #{:floor
-                                                       :open-door
-                                                       :corridor
-                                                       :sand
-                                                       :dirt
-                                                       :gravel
-                                                       :tall-grass
-                                                       :short-grass}
-                                                     (get-type x y))))))
-        path                   (try
-                                 (debug "a* params" traversable? npc-pos [(target :x) (target :y)])
-                                 (clj-tiny-astar.path/a* traversable? npc-pos [(target :x) (target :y)])
-                                 (catch Exception e
-                                   (error "Caught exception during a* traversal." npc-pos [(target :x) (target :y)] e)
-                                   (st/print-cause-trace e)
-                                   nil))
-        _                      (debug "path to target" path)
-        new-pos                (if (and (not (nil? path))
-                                        (> (count path) 1)
-                                        ;; don't collide with player
-                                        (let [new-pos (second path)]
-                                          (not= ((juxt first second) new-pos)
-                                                ((juxt first second) player-pos))))
-                                 (second path)
-                                 npc-pos)
-        _                      (debug "new-pos" new-pos)
-        new-npc                (-> npc
-                                   (assoc-in [:pos :x] (first new-pos))
-                                   (assoc-in [:pos :y] (second new-pos)))
-        _                      (debug "new-npc" new-npc)]
-    [new-pos new-npc npc]))
+  ([state npc target]
+    (move-to-target state npc target false))
+  ([state npc target clear-cache]
+    (let [npcs                   (npcs-at-current-place state)
+          ;_                      (debug "meta" (-> move-to-target var meta))
+          ;_                      (debug "move-to-target npc" npc "target" target)
+          npc-pos                [(-> npc :pos :x) (-> npc :pos :y)]
+          npc-can-move-in-water  (can-move-in-water? (get npc :race))
+          player                 (-> state :world :player)
+          player-pos             [(-> player :pos :x) (-> player :pos :y)]
+          place                  (current-place state)
+          width                  (count (first place))
+          height                 (count place)
+          get-type               (memoize (fn [x y] (do
+                                                      ;(debug "traversable?" x y "type" (get-in place [y x :type]))
+                                                      (get-in place [y x :type]))))
+          
+          ;; set persistent memoized traversibility functions if not defined
+          _                      (when (and (nil? (-> (var move-to-target) meta :water-traversable?-memo deref))
+                                            (nil? (-> (var move-to-target) meta :land-traversable?-memo deref)))
+                                   (dosync
+                                     (reset! (-> (var move-to-target) meta :water-traversable?-memo)
+                                              (clojure.core.memoize/memo
+                                                (fn [[x y]]
+                                                  (and (< 0 x width)
+                                                       (< 0 y height)
+                                                       (= (get-type x y) :water)))))
+                                     (reset! (-> (var move-to-target) meta :land-traversable?-memo)
+                                              (clojure.core.memoize/memo
+                                                (fn [[x y]]
+                                                  (and (< 0 x width)
+                                                       (< 0 y height)
+                                                       (contains? #{:floor
+                                                                    :open-door
+                                                                    :corridor
+                                                                    :sand
+                                                                    :dirt
+                                                                    :gravel
+                                                                    :tall-grass
+                                                                    :short-grass}
+                                                                  (get-type x y))))))))
+          ;; if specified, clear the memoization caches
+          _                      (when clear-cache
+                                   (dosync
+                                     (-> (var move-to-target) meta :water-traversable?-memo deref clojure.core.memoize/memo-clear!)
+                                     (-> (var move-to-target) meta :land-traversable?-memo deref clojure.core.memoize/memo-clear!)))
+          water-traversable?     (-> (var move-to-target) meta :water-traversable?-memo deref)
+          land-traversable?      (-> (var move-to-target) meta :land-traversable?-memo deref)
+      
+          traversable?           (if npc-can-move-in-water
+                                     water-traversable?
+                                     land-traversable?)
+          path                   (try
+                                   (debug "a* params" [width height] traversable? npc-pos [(target :x) (target :y)])
+                                   (clj-tiny-astar.path/a* [width height] traversable? npc-pos [(target :x) (target :y)])
+                                   (catch Exception e
+                                     (error "Caught exception during a* traversal." npc-pos [(target :x) (target :y)] e)
+                                     ;(st/print-cause-trace e)
+                                     nil))
+          ;_                      (debug "path to target" path)
+          new-pos                (if (and (not (nil? path))
+                                          (> (count path) 1)
+                                          ;; don't collide with player
+                                          (let [new-pos (second path)]
+                                            (not= ((juxt first second) new-pos)
+                                                  ((juxt first second) player-pos))))
+                                   (second path)
+                                   npc-pos)
+          ;_                      (debug "new-pos" new-pos)
+          new-npc                (-> npc
+                                     (assoc-in [:pos :x] (first new-pos))
+                                     (assoc-in [:pos :y] (second new-pos)))
+          ;_                      (debug "new-npc" new-npc)
+        ]
+      [new-pos new-npc npc])))
 
 (defn move-to-target-in-range-or-random
   [state npc target]
@@ -670,10 +696,12 @@
                        (adjacent-navigable-pos (current-place state)
                                                npc-pos
                                                navigable-types)))]
-        (debug "distance > threshold, move randomly. target" target)
-        (move-to-target state
-                        npc
-                        target))
+        ;(debug "distance > threshold, move randomly. target" target)
+        [target
+         (-> npc
+           (assoc-in [:pos :x] (get target :x))
+           (assoc-in [:pos :y] (get target :y)))
+         npc])
       ;; inside range, move toward player
       (move-to-target state npc target))))
 
@@ -694,8 +722,8 @@
                             :dirt
                             :gravel
                             :tall-grass
-                            :short-grass})
-        _ (info "moving npc@" (get npc :pos) "with policy" policy)]
+                            :short-grass})]
+        ;_ (info "moving npc@" (get npc :pos) "with policy" policy)]
     (case policy
       :constant [nil nil npc]
       :entourage (move-to-target state
@@ -716,10 +744,11 @@
   (let [current-place-id (current-place-id state)
         state (reduce
                 (fn [result npc]
-                  (do (debug "npc attacks player?" (get npc :place) current-place-id
-                     (get npc :pos) (-> state :world :player :pos)
-                     (adjacent-to-player? state (get npc :pos))
-                     (get npc :disposition))
+                  (do 
+                     ;(debug "npc attacks player?" (get npc :place) current-place-id
+                     ;  (get npc :pos) (-> state :world :player :pos)
+                     ;  (adjacent-to-player? state (get npc :pos))
+                     ;  (get npc :disposition))
                   (if (and (= (get npc :place)
                               current-place-id)
                            (contains? (get npc :disposition) :hostile)
@@ -739,10 +768,11 @@
           ;; to fill the gap.
           (let [npcs-ordered-by-distance (sort-by (fn [npc] (distance-from-player state (get npc :pos)))
                                                   npcs)
-                map-result (map (fn [npc]
+                map-result (pmap (fn [npc]
                                   (if (= (get npc :place)
                                          (-> state :world :current-place))
-                                    (calc-npc-next-step state npc)
+                                    (log-time "calc-npc-next-step"
+                                      (calc-npc-next-step state npc))
                                     [nil nil npc]))
                                  npcs-ordered-by-distance)]
           (reduce

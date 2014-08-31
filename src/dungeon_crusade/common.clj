@@ -90,15 +90,22 @@
 
 (defn map-in
   [m ks f]
-  (fn-in (fn [coll _] (map f coll)) m ks nil))
+  (fn-in (fn [coll _] (if (vector? coll)
+                        (vec (map f coll))
+                        (map f coll)))
+         m ks nil))
 
 (defn filter-in
   [m ks f]
-  (fn-in (fn [coll _] (filter f coll)) m ks nil))
+  (fn-in (fn [coll _] (if (vector? coll)
+                        (vec (filter f coll))
+                        (filter f coll))) m ks nil))
 
 (defn remove-in
   [m ks f]
-  (fn-in (fn [coll _] (remove f coll)) m ks nil))
+  (fn-in (fn [coll _] (if (vector? coll)
+                        (vec (remove f coll))
+                        (remove f coll))) m ks nil))
 
 (defn map-indexed-in-p
   "Update in m the collection accessible by (get-in m ks)
@@ -248,6 +255,12 @@
   [f grid]
   (doall 
     (map (fn [e] (apply f e)) (with-xy grid))))
+
+(defn pmap-with-xy
+  "Non-lazily call `(f cell x y)` for each cell in the grid."
+  [f grid]
+  (doall 
+    (pmap (fn [e] (apply f e)) (with-xy grid))))
 
 (defn get-cell
   "Retrieve the cell at the position `[x y]` within the given grid. If `[x y]` is outside the bounds

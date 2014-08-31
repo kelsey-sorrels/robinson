@@ -16,6 +16,17 @@
                  [clj-tiny-astar "0.1.1-SNAPSHOT"]
                  [dorothy "0.0.3"]
                  [com.taoensso/timbre "3.2.1"]
-                 [org.clojars.folcon/clojure-lanterna "0.9.5-SNAPSHOT"]]
+                 [aaron-santos/lanterna "3.0.0-SNAPSHOT"]]
+                 ;;[org.clojars.folcon/clojure-lanterna "0.9.5-SNAPSHOT"]]
   :main dungeon-crusade.core
-  :repl-init dungeon-crusade.main)
+  :repl-init dungeon-crusade.main
+  ;:aot [dungeon-crusade.common
+  ;      dungeon-crusade.update
+  ;      dungeon-crusade.render
+  ;      dungeon-crusade.swingterminal
+  ;      dungeon-crusade.npc]
+  :jvm-opts [
+             ;"-agentpath:/home/santos/bin/yjp-2014-build-14096/bin/linux-x86-64/libyjpagent.so"
+             "-Dsun.java2d.opengl=true"
+             ;"-Dsun.java2d.trace=log"
+             "-Dsun.java2d.opengl.fbobject=true"])

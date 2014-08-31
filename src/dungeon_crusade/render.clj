@@ -26,21 +26,23 @@
 ;; RBG color definitions. 
 ;; It's easier to use names than numbers.
 (def color-to-rgb-map
-  {:brown  [139 69 19]
-   :black  [0 0 0]
-   :white  [255 255 255]
-   :gray   [128 128 128]
-   :light-gray   [64 64 64]
+  {:brown       [139 69 19]
+   :black       [0 0 0]
+   :white       [255 255 255]
+   :gray        [128 128 128]
+   :light-gray  [64 64 64]
    :dark-gray   [192 192 192]
-   :red    (vec (hex-str-to-dec "D31C00"))
-   :orange (vec (hex-str-to-dec "D36C00"))
-   :yellow (vec (hex-str-to-dec "D3B100"))
-   :green  (vec (hex-str-to-dec "81D300"))
+   :red         (vec (hex-str-to-dec "D31C00"))
+   :orange      (vec (hex-str-to-dec "D36C00"))
+   :yellow      (vec (hex-str-to-dec "D3B100"))
+   :green       (vec (hex-str-to-dec "81D300"))
    :dark-green  (vec (hex-str-to-dec "406900"))
-   :blue   (vec (hex-str-to-dec "00ACD3"))
-   :purple (vec (hex-str-to-dec "8500D3"))
-   :fushia (vec (hex-str-to-dec "D30094"))
-   :beige (vec (hex-str-to-dec "C8B464"))})
+   :blue        (vec (hex-str-to-dec "00ACD3"))
+   :light-blue  (vec (hex-str-to-dec "19B4D7"))
+   :dark-blue   (vec (hex-str-to-dec "009ABD"))
+   :purple      (vec (hex-str-to-dec "8500D3"))
+   :fushia      (vec (hex-str-to-dec "D30094"))
+   :beige       (vec (hex-str-to-dec "C8B464"))})
 
 (defn color->rgb
   [color]
@@ -381,7 +383,7 @@
                             :corridor        ["#"] 
                             :down-stairs     [">"] 
                             :up-stairs       ["<"] 
-                            :water           ["~"  :blue       :black]
+                            :water           ["~"  (rand-nth [:blue :light-blue :dark-blue]) :black]
                             :sand            ["_"  :beige      :black]
                             :dirt            [","  :brown      :black]
                             :gravel          ["`"  :gray       :black]

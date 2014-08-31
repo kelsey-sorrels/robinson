@@ -16,8 +16,8 @@
                  [clj-tiny-astar "0.1.1-SNAPSHOT"]
                  [dorothy "0.0.3"]
                  [com.taoensso/timbre "3.2.1"]
-                 [aaron-santos/lanterna "3.0.0-SNAPSHOT"]]
-                 ;;[org.clojars.folcon/clojure-lanterna "0.9.5-SNAPSHOT"]]
+                 ;;[aaron-santos/lanterna "3.0.0-SNAPSHOT"]]
+                 [org.clojars.folcon/clojure-lanterna "0.9.5-SNAPSHOT"]]
   :main dungeon-crusade.core
   :repl-init dungeon-crusade.main
   ;:aot [dungeon-crusade.common

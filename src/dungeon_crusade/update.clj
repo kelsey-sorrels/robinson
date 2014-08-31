@@ -602,10 +602,13 @@
     (let [npcs                   (npcs-at-current-place state)
           ;_                      (debug "meta" (-> move-to-target var meta))
           ;_                      (debug "move-to-target npc" npc "target" target)
-          npc-pos                [(-> npc :pos :x) (-> npc :pos :y)]
+          npc-pos                (get npc :pos)
+          npc-pos-vec            [(npc-pos :x) (npc-pos :y)]
+          threshold              (get npc :range-threshold)
           npc-can-move-in-water  (can-move-in-water? (get npc :race))
+        
           player                 (-> state :world :player)
-          player-pos             [(-> player :pos :x) (-> player :pos :y)]
+          player-pos-vec         [(-> player :pos :x) (-> player :pos :y)]
           place                  (current-place state)
           width                  (count (first place))
           height                 (count place)
@@ -615,10 +618,12 @@
           water-traversable?     (fn [[x y]]
                                    (and (< 0 x width)
                                         (< 0 y height)
+                                        (not (farther-than? npc-pos {:x x :y y} threshold))
                                         (= (get-type x y) :water)))
           land-traversable?      (fn [[x y]]
                                    (and (< 0 x width)
                                         (< 0 y height)
+                                        (not (farther-than? npc-pos {:x x :y y} threshold))
                                         (contains? #{:floor
                                                      :open-door
                                                      :corridor
@@ -633,10 +638,10 @@
                                      water-traversable?
                                      land-traversable?)
           path                   (try
-                                   (debug "a* params" [width height] traversable? npc-pos [(target :x) (target :y)])
-                                   (clj-tiny-astar.path/a* [width height] traversable? npc-pos [(target :x) (target :y)])
+                                   (debug "a* params" [width height] traversable? npc-pos-vec [(target :x) (target :y)])
+                                   (clj-tiny-astar.path/a* [width height] traversable? npc-pos-vec [(target :x) (target :y)])
                                    (catch Exception e
-                                     (error "Caught exception during a* traversal." npc-pos [(target :x) (target :y)] e)
+                                     (error "Caught exception during a* traversal." npc-pos-vec [(target :x) (target :y)] e)
                                      ;(st/print-cause-trace e)
                                      nil))
           ;_                      (debug "path to target" path)
@@ -645,9 +650,9 @@
                                           ;; don't collide with player
                                           (let [new-pos (second path)]
                                             (not= ((juxt first second) new-pos)
-                                                  ((juxt first second) player-pos))))
+                                                  ((juxt first second) player-pos-vec))))
                                    (second path)
-                                   npc-pos)
+                                   npc-pos-vec)
           ;_                      (debug "new-pos" new-pos)
           new-npc                (-> npc
                                      (assoc-in [:pos :x] (first new-pos))

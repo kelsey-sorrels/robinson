@@ -6,7 +6,7 @@
         [dungeon-crusade.mapgen :exclude [-main]]
         [dungeon-crusade.itemgen :exclude [-main]])
   (:require [taoensso.timbre :as timbre]
-            [clisk.live :as clisk] :reload-all :verbose))
+            [clisk.live :as clisk]))
 
 (timbre/refer-timbre)
 

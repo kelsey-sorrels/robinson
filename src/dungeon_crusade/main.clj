@@ -6,10 +6,13 @@
            dungeon-crusade.update
            [dungeon-crusade.monstergen :exclude [-main]]
            dungeon-crusade.render)
-  (:require clojure.edn
-            [lanterna.screen :as s]
+  (:require 
+            [dungeon-crusade.swingterminal :as swingterminal]
+            clojure.edn
+            ;[lanterna.screen :as s]
             [taoensso.timbre :as timbre]
             [clojure.core.async :as async]))
+
 
 (timbre/refer-timbre)
 
@@ -23,15 +26,18 @@
    world too, in case the  game is interrupted. Then we can load it next
    time we start up."
   ([state]
-   (let [keyin  (s/get-key-blocking (state :screen))]
-     (tick state keyin)))
+   (let [keyin (swingterminal/wait-for-key (state :screen))]
+     (if keyin
+       (tick state keyin)
+       state)))
   ([state keyin]
     (do
-      (info "got " keyin " type " (type keyin))
+      (info "got " (str keyin) " type " (type keyin))
       (log-time "tick"
         (let [new-state (log-time "update-state" (update-state state keyin))]
-          (async/thread (spit "save/world.edn" (with-out-str (pprint (new-state :world)))))
           (log-time "render" (render new-state))
+          (async/thread (spit "save/world.edn" (prn-str (new-state :world))))
+          ;(async/thread (spit "save/world.edn" (with-out-str (pprint (new-state :world)))))
           new-state)))))
 
 ;; Example setup and tick fns
@@ -46,10 +52,10 @@
 
    * `quests` that are loaded dynamically on startup."
   []
-  (let [screen (s/get-screen :swing)
+  (let [terminal  (swingterminal/make-terminal 80 24)
         world (if (.exists (clojure.java.io/file "save/world.edn"))
                 (->> (slurp "save/world.edn")
-                     (clojure.edn/read-string {:readers {'Monster map->Monster}}))
+                     (clojure.edn/read-string {:readers {'dungeon_crusade.monstergen.Monster map->Monster}}))
                 (init-world))
          ;; load quests
          _ (doall (map #(load-file (.getPath %))
@@ -68,7 +74,6 @@
                                    {k (dialog->fsm v)})
                                  (apply merge (map :dialog quests))))]
 
-    (s/start screen)
     ;; tick once using the rest (.) command to update visibility
-    (tick {:world world :screen screen :quests quest-map :dialog dialog} \.)))
+    (tick {:world world :screen terminal :quests quest-map :dialog dialog} \.)))
 

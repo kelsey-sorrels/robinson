@@ -10,47 +10,94 @@
             dungeon-crusade.npc
             tinter.core
             [clojure.pprint :only [print-table]])
-  (:require [lanterna.screen :as s]
-            [lanterna.terminal :as t]
-            [lanterna.constants :as c]
+  (:require ;[lanterna.screen :as s]
+            ;[lanterna.terminal :as t]
+            ;[lanterna.constants :as c]
             [clojure.reflect :as r]
-            [taoensso.timbre :as timbre]))
+            [taoensso.timbre :as timbre]
+            [dungeon-crusade.swingterminal :as swingterminal])
+  (:refer   clojure.set)
+  (:import dungeon_crusade.swingterminal.ATerminal))
+
 
 (timbre/refer-timbre)
+(set! *warn-on-reflection* true)
 
 ;; RBG color definitions. 
 ;; It's easier to use names than numbers.
-(def rgb-color {
- :brown  [139 69 19]
- :black  [0 0 0]
- :white  [255 255 255]
- :gray   [128 128 128]
- :light-gray   [64 64 64]
- :dark-gray   [192 192 192]
- :red    (vec (hex-str-to-dec "D31C00"))
- :orange (vec (hex-str-to-dec "D36C00"))
- :yellow (vec (hex-str-to-dec "D3B100"))
- :green  (vec (hex-str-to-dec "81D300"))
- :dark-green  (vec (hex-str-to-dec "406900"))
- :blue   (vec (hex-str-to-dec "00ACD3"))
- :purple (vec (hex-str-to-dec "8500D3"))
- :fushia (vec (hex-str-to-dec "D30094"))
- :beige (vec (hex-str-to-dec "C8B464"))
-})
+(def color-to-rgb-map
+  {:brown  [139 69 19]
+   :black  [0 0 0]
+   :white  [255 255 255]
+   :gray   [128 128 128]
+   :light-gray   [64 64 64]
+   :dark-gray   [192 192 192]
+   :red    (vec (hex-str-to-dec "D31C00"))
+   :orange (vec (hex-str-to-dec "D36C00"))
+   :yellow (vec (hex-str-to-dec "D3B100"))
+   :green  (vec (hex-str-to-dec "81D300"))
+   :dark-green  (vec (hex-str-to-dec "406900"))
+   :blue   (vec (hex-str-to-dec "00ACD3"))
+   :purple (vec (hex-str-to-dec "8500D3"))
+   :fushia (vec (hex-str-to-dec "D30094"))
+   :beige (vec (hex-str-to-dec "C8B464"))})
 
-(defn class->color
+(defn color->rgb
+  [color]
+  (get color-to-rgb-map color color))
+
+(defn move-cursor
+  ([screen x y]
+  nil)
+  ([screen o]
+  nil))
+
+(defn put-string
+  ([^dungeon_crusade.swingterminal.ATerminal screen x y string]
+     (put-string screen x y string :white :black #{}))
+  ([^dungeon_crusade.swingterminal.ATerminal screen x y string fg bg]
+     (put-string screen x y string fg bg #{}))
+  ([^dungeon_crusade.swingterminal.ATerminal screen x y string fg bg styles]
+   {:pre [(clojure.set/superset? #{:underline :bold} styles)]}
+   (let [fg        (color->rgb fg)
+         bg        (color->rgb bg)]
+     (.put-string screen
+                  x
+                  y
+                  string
+                  fg
+                  bg
+                  styles))))
+      
+(defn get-size
+  [^dungeon_crusade.swingterminal.ATerminal screen]
+  (.get-size screen))
+
+(defn refresh
+  [^dungeon_crusade.swingterminal.ATerminal screen]
+  (.refresh screen))
+
+(defn clear
+  [^dungeon_crusade.swingterminal.ATerminal screen]
+  (.clear screen))
+
+(defn class->rgb
   "Convert a class to a color characters of that type should be drawn."
   [pc-class]
-  (debug "class->color" pc-class)
-  (case pc-class
-    :cleric    (rgb-color :white)
-    :barbarian (rgb-color :red)
-    :bard      (rgb-color :fushia)
-    :druid     (rgb-color :yellow)
-    :fighter   (rgb-color :orange)
-    :ranger    (rgb-color :green)
-    :rogue     (rgb-color :gray)
-    :wizard    (rgb-color :purple)))
+  ;(debug "class->color" pc-class)
+  (color->rgb
+    (case pc-class
+      :cleric    :white
+      :barbarian :red
+      :bard      :fushia
+      :druid     :yellow
+      :fighter   :orange
+      :ranger    :green
+      :rogue     :gray
+      :wizard    :purple)))
+
+(defn is-menu-state? [state]
+  (contains? #{:inventory :describe-inventory :pickup :drop :eat} (get-in state [:world :current-state])))
 
 (defn render-multi-select
   "Render a menu on the right side of the screen. It has a title, and selected items
@@ -83,23 +130,22 @@
                                               (% :name))
                                      items)
                                (repeat (clojure.string/join (repeat width " ")))))] 
-     (debug "contents" contents)
-     (doall (map-indexed (fn [idx line]
-       (do
-         (s/put-string screen x (+ y idx 1) line {:fg :black :bg :white :styles #{:bold}}))) contents))
-     (s/put-string screen x y (apply str (repeat width " ")) {:fg :black :bg :white})
-     (s/put-string screen (+ x 2) y title {:fg :black :bg :white :styles #{:underline :bold}}))))
+     (doseq [i (range (count contents))]
+       (let [line (nth contents i)]
+         (put-string screen x (+ y i 1) line :black :white #{:bold})))
+     (put-string screen x y (apply str (repeat width " ")) :black :white)
+     (put-string screen (+ x 2) y title :black :white #{:underline :bold}))))
 
 (defn render-img
   "Render an image using block element U+2584."
-  [state path x y]
-  (let [image          (-> (ImageIcon. path) .getImage)
-        width          (.getWidth image)
-        height         (.getHeight image)
-        buffered-image (BufferedImage. width height BufferedImage/TYPE_INT_RGB)
-        gfx2d          (doto (.createGraphics buffered-image)
-                         (.drawImage image 0 0 width height nil)
-                         (.dispose))]
+  [state ^String path x y]
+  (let [image ^java.awt.Image (-> (ImageIcon. path) .getImage)
+        width                 (.getWidth image)
+        height                (.getHeight image)
+        buffered-image        (BufferedImage. width height BufferedImage/TYPE_INT_RGB)
+        gfx2d                 (doto (.createGraphics buffered-image)
+                                (.drawImage image 0 0 width height nil)
+                                (.dispose))]
    (doall
      (for [py (filter even? (range height))
            px (range width)]
@@ -107,11 +153,13 @@
              color2 (Color. (.getRGB buffered-image px (inc py)))
              rgb1 ((juxt #(.getRed %) #(.getGreen %) #(.getBlue %)) color1)
              rgb2 ((juxt #(.getRed %) #(.getGreen %) #(.getBlue %)) color2)]
-         (s/put-string (state :screen)
+         (put-string (state :screen)
                        (+ x px)
                        (int (+ y (/ py 2)))
                        "\u2584"
-                       {:fg rgb2 :bg rgb1 :styles #{:underline}}))))))
+                       rgb2
+                       rgb1
+                       #{:underline}))))))
 
 
 (defn render-pick-up
@@ -183,7 +231,7 @@
   "Render the pickup item menu if the world state is `:pickup`."
   [state]
   (when (= (-> state :world :current-state) :quit?)
-    (s/put-string (state :screen) 1 0 "quit? [yn]")))
+    (put-string (state :screen) 1 0 "quit? [yn]")))
 
 (defn render-dialog
   "Render the dialog menu if the world state is `:talking`."
@@ -207,12 +255,11 @@
           last-response ((or (last (get-in state [:world :dialog-log])) {:text ""}) :text)
           _ (debug "last-response" last-response)
           response-wrapped (wrap-line (- 30 17) last-response)
-          _ (debug "response-wrapped" response-wrapped)
-          style {:fg :black :bg :white :styles #{:bold}}]
-      (s/put-string (state :screen) 0 16 (format "Talking to %-69s" (get npc :name)) style)
-      (doall (map (fn [y] (s/put-string (state :screen) 12 y "                    " style))
+          _ (debug "response-wrapped" response-wrapped)]
+      (put-string (state :screen) 0 16 (format "Talking to %-69s" (get npc :name)) :black :white #{:bold})
+      (doall (map (fn [y] (put-string (state :screen) 12 y "                    " :black :white #{:bold}))
                   (range 17 (+ 17 6))))
-      (doall (map-indexed (fn [idx line] (s/put-string (state :screen) 13 (+ 17 idx) line style))
+      (doall (map-indexed (fn [idx line] (put-string (state :screen) 13 (+ 17 idx) line :black :white #{:bold}))
                           response-wrapped))
       (render-multi-select (state :screen) "Respond:" [] options 32 17 68 5)
       (render-img state (get npc :image-path) 0 17))))
@@ -229,10 +276,10 @@
           last-response ((or (last (get-in state [:world :dialog-log])) {:text ""}) :text)
           response-wrapped (wrap-line (- 30 17) last-response)
           style {:fg :black :bg :white :styles #{:bold}}]
-      (s/put-string (state :screen) 0 16 (format "Doing business with %-69s" (get npc :name)) style)
-      (doall (map (fn [y] (s/put-string (state :screen) 12 y "                    " style))
+      (put-string (state :screen) 0 16 (format "Doing business with %-69s" (get npc :name)) :black :white #{:bold})
+      (doall (map (fn [y] (put-string (state :screen) 12 y "                    " :black :white #{:bold}))
                   (range 17 (+ 17 6))))
-      (doall (map-indexed (fn [idx line] (s/put-string (state :screen) 13 (+ 17 idx) line style))
+      (doall (map-indexed (fn [idx line] (put-string (state :screen) 13 (+ 17 idx) line :black :white #{:bold}))
                           response-wrapped))
       (render-multi-select (state :screen) "Option:" [] options 32 17 68 5)
       (render-img state (get npc :image-path) 0 17))))
@@ -256,10 +303,10 @@
           response-wrapped (wrap-line (- 30 17) last-response)
           _ (debug "response-wrapped" response-wrapped)
           style {:fg :black :bg :white :styles #{:bold}}]
-      (s/put-string (state :screen) 0 16 (format "Doing business with %-69s" (get npc :name)) style)
-      (doall (map (fn [y] (s/put-string (state :screen) 12 y "                    " style))
+      (put-string (state :screen) 0 16 (format "Doing business with %-69s" (get npc :name)) :black :white #{:bold})
+      (doall (map (fn [y] (put-string (state :screen) 12 y "                    " :black :white #{:bold}))
                   (range 17 (+ 17 6))))
-      (doall (map-indexed (fn [idx line] (s/put-string (state :screen) 13 (+ 17 idx) line style))
+      (doall (map-indexed (fn [idx line] (put-string (state :screen) 13 (+ 17 idx) line :black :white #{:bold}))
                           response-wrapped))
       (render-multi-select (state :screen) "Buy:" [] options 32 17 68 5)
       (render-img state (get npc :image-path) 0 17))))
@@ -280,10 +327,10 @@
           response-wrapped (wrap-line (- 30 17) last-response)
           _ (debug "response-wrapped" response-wrapped)
           style {:fg :black :bg :white :styles #{:bold}}]
-      (s/put-string (state :screen) 0 16 (format "Doing business with %-69s" (get npc :name)) style)
-      (doall (map (fn [y] (s/put-string (state :screen) 12 y "                    " style))
+      (put-string (state :screen) 0 16 (format "Doing business with %-69s" (get npc :name)) :black :white #{:bold})
+      (doall (map (fn [y] (put-string (state :screen) 12 y "                    " :black :white #{:bold}))
                   (range 17 (+ 17 6))))
-      (doall (map-indexed (fn [idx line] (s/put-string (state :screen) 13 (+ 17 idx) line style))
+      (doall (map-indexed (fn [idx line] (put-string (state :screen) 13 (+ 17 idx) line :black :white #{:bold}))
                           response-wrapped))
       (render-multi-select (state :screen) "Sell:" [] options 32 17 68 5)
       (render-img state (get npc :image-path) 0 17))))
@@ -293,16 +340,23 @@
    This renders everything - the map, the menus, the log,
    the status bar. Everything."
   [state]
-  (do
-    (debug "begin-render")
-    (s/clear (state :screen))
+  (let [[columns rows] (get-size (state :screen))
+         place         (current-place state)]
+    ;(debug "begin-render")
+    ;(clear (state :screen))
     (trace "rendering place" (current-place state))
     ;; draw map
-    (map-with-xy
-      (fn [cell x y]
-        (trace "render-cell" cell x y)
-        (when (and (not (nil? cell))
-                   (cell :discovered))
+    (doseq [y (range rows)
+            x (range
+                (if (is-menu-state? state)
+                  (- columns 40)
+                  columns))]
+      (let [screen (get state :screen)
+            cell (get-cell place x y)]
+        ;(trace "render-cell" cell x y)
+        (if (or (nil? cell)
+                (not (cell :discovered)))
+          (put-string screen x y " ")
           (let [cell-items (cell :items)
                 out-char (if (and cell-items (not (empty? cell-items)))
                            (case (-> cell-items first :type)
@@ -315,36 +369,36 @@
                              :wand           ["/"]
                              :spellbook      ["+"]
                              :scroll         ["?"]
-                             :$              ["$" {:fg :yellow :styles #{:bold}}]
-                             :amulet         ["\"" {:fg :blue :styles #{:bold}}]
+                             :$              ["$"  :yellow :black #{:bold}]
+                             :amulet         ["\"" :blue   :black #{:bold}]
                              ["?"])
                            (case (cell :type)
                             :vertical-wall   ["|"]
                             :horizontal-wall ["-"]
                             :floor           ["."]
-                            :open-door       ["-" {:fg (rgb-color :brown) :bg (rgb-color :black) :styles #{:bold}}]
-                            :close-door      ["+" {:fg (rgb-color :brown) :bg (rgb-color :black) :styles #{:bold}}]
-                            :corridor        ["#"]
-                            :down-stairs     [">"]
-                            :up-stairs       ["<"]
-                            :water           ["~" {:fg (rgb-color :blue) :bg (rgb-color :black)}]
-                            :sand            ["_" {:fg (rgb-color :beige) :bg (rgb-color :black)}]
-                            :dirt            ["," {:fg (rgb-color :brown) :bg (rgb-color :black)}]
-                            :gravel          ["`" {:fg (rgb-color :gray) :bg (rgb-color :black)}]
-                            :short-grass     ["'" {:fg (rgb-color :green) :bg (rgb-color :black)}]
-                            :tall-grass      ["\"" {:fg (rgb-color :dark-green) :bg (rgb-color :black)}]
-                            :tree            ["T" {:fg (rgb-color :dark-green) :bg (rgb-color :black)}]
+                            :open-door       ["-"  :brown  :black #{:bold}]
+                            :close-door      ["+"  :brown  :black #{:bold}]
+                            :corridor        ["#"] 
+                            :down-stairs     [">"] 
+                            :up-stairs       ["<"] 
+                            :water           ["~"  :blue       :black]
+                            :sand            ["_"  :beige      :black]
+                            :dirt            [","  :brown      :black]
+                            :gravel          ["`"  :gray       :black]
+                            :short-grass     ["'"  :green      :black]
+                            :tall-grass      ["\"" :dark-green :black]
+                            :tree            ["T"  :dark-green :black]
                             ["?"]))]
-              (apply s/put-string (state :screen) x y out-char))))
-      (current-place state))
+              (apply put-string screen x y out-char)))))
     ;; draw character
-    (debug (-> state :world :player))
-    (s/put-string
+    ;(debug (-> state :world :player))
+    (put-string
       (state :screen)
       (-> state :world :player :pos :x)
       (-> state :world :player :pos :y)
       "@"
-      {:fg (class->color (-> state :world :player :class))})
+      (class->rgb (-> state :world :player :class))
+      :black)
     ;; draw npcs
     (let [place-npcs (npcs-at-current-place state)
           ;_ (debug "place-npcs" place-npcs)
@@ -364,9 +418,9 @@
                                                  (pos :y)
                                                  x
                                                  y))]
-                      (debug "npc@" x y "visible?" visible)
+                      ;(debug "npc@" x y "visible?" visible)
                       (when visible
-                        (apply s/put-string (state :screen)
+                        (apply put-string (state :screen)
                                             (-> npc :pos :x)
                                             (-> npc :pos :y)
                                             (case (get npc :race)
@@ -385,7 +439,7 @@
                                               :parrot ["p"]
                                               :shark ["\u039B"] ;;Λ
                                               :fish ["f"]
-                                              :human ["@" {:fg (class->color (get npc :class))}]
+                                              :human ["@" (class->rgb (get npc :class)) :black]
                                               ["@"])))))
                    place-npcs)))
     ;; maybe draw pick up menu
@@ -403,7 +457,7 @@
     ;; maybe draw quests menu
     (render-quests state)
     ;; draw status bar
-    (s/put-string (state :screen) 0  23
+    (put-string (state :screen) 0  23
       (format "Dgnlvl %s $%d HP:%d(%d) Pw:%d(%d) Amr:%d XP:%d/%d T%d %s %s                            "
         (name (-> state :world :current-place))
         (-> state :world :player :$)
@@ -415,19 +469,17 @@
         (-> state :world :time)
         (apply str (interpose " " (-> state :world :player :status)))
         (-> state :world :player :name))
-        {:fg :black :bg :white})
-    (doall (map #(s/put-string (state :screen) (+ 73 %1) 23 " " {:bg (rgb-color %2)})
+        :black :white)
+    (doall (map #(put-string (state :screen) (+ 73 %1) 23 " " :white (color->rgb %2))
                 (range)
                 [:dark-gray :gray :light-gray]))
-    (s/put-string (state :screen) 76 23 "@" {:fg (class->color (-> state :world :player :class))
-                                             :bg :black})
-    (s/put-string (state :screen) 77 23 "    "{:fg :white
-                                               :bg :black})
+    (put-string (state :screen) 76 23 "@" (class->rgb (-> state :world :player :class)) :black)
+    (put-string (state :screen) 77 23 "    " :white :black)
     ;; draw log
     (when-let [message (-> state :world :log last)]
-      (debug "message" message)
+      ;(debug "message" message)
       (when (< (- (-> state :world :time) (message :time)) 5)
-        (s/put-string (state :screen) 0 0 (or (message :text) ""))))
+        (put-string (state :screen) 0 0 (or (message :text) ""))))
     ;; draw quit prompt
     (render-quit? state)
     ;; draw dialog menu
@@ -440,35 +492,36 @@
     (render-sell state)
     ;; draw cursor
     (if-let [cursor-pos (-> state :world :cursor)]
-      (s/move-cursor (state :screen) (cursor-pos :x) (cursor-pos :y))
-      (let [[x y] (s/get-size (state :screen))]
-        (s/move-cursor (state :screen) (dec x) (dec y))))
-    (s/redraw (state :screen))
-    (debug "end-render")))
+      (move-cursor (state :screen) (cursor-pos :x) (cursor-pos :y))
+      (let [[x y] (get-size (state :screen))]
+        (move-cursor (state :screen) (dec x) (dec y))))
+    (move-cursor (state :screen) nil)
+    (refresh (state :screen))))
+    ;;(debug "end-render")))
 
 (defn render-game-over
   "Render the game over screen."
   [state]
   (let [points 0]
-    (s/clear (state :screen))
+    (clear (state :screen))
     ;; Title
-    (s/put-string (state :screen) 10 1 "You died")
-    (s/put-string (state :screen) 10 3 "Inventory:")
+    (put-string (state :screen) 10 1 "You died")
+    (put-string (state :screen) 10 3 "Inventory:")
     (doall (map-indexed
-      (fn [idx item] (s/put-string (state :screen) 10 (+ idx 5) (item :name)))
+      (fn [idx item] (put-string (state :screen) 10 (+ idx 5) (item :name)))
       (-> state :world :player :inventory)))
-    (s/put-string (state :screen) 10 22 "Play again? [yn]")
-    (s/redraw (state :screen))))
+    (put-string (state :screen) 10 22 "Play again? [yn]")
+    (refresh (state :screen))))
 
 (defn render-help
   "Render the help screen."
   [state]
   (let [help-contents (read-string (slurp "data/help"))]
-    (s/clear (state :screen))
+    (clear (state :screen))
     (doall (map-indexed (fn [idx line]
-                          (s/put-string (state :screen) 0 idx line))
+                          (put-string (state :screen) 0 idx line))
                         help-contents))
-    (s/redraw (state :screen))))
+    (refresh (state :screen))))
 
 (defn render
   "Pick between the normal render function and the

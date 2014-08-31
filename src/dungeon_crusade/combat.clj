@@ -66,13 +66,17 @@
   "Perform combat. The attacker fights the defender, but not vice-versa.
    Return a new state reflecting combat outcome."
   [state attacker-path defender-path]
-  {:pre [(every? (set (keys (get-in state defender-path))) [:hp :race :inventory])]}
+  {:pre [(every? (set (keys (get-in state defender-path))) [:hp :pos :race :body-parts :inventory])
+         (every? (set (keys (get-in state attacker-path))) [:attacks])
+         (vector? (get-in state [:world :npcs]))]
+   :post [(vector? (get-in % [:world :npcs]))]}
   (let [defender    (get-in state defender-path)
         attacker    (get-in state attacker-path)
         {x :x y :y} (get defender :pos)
         hp          (get defender :hp)
         dmg         1]
     (debug "attack" attacker-path "is attacking defender" defender-path)
+    (debug "attacker-detail" attacker)
     (debug "defender-detail" defender)
     (cond
       ;; defender still alive?

@@ -2,8 +2,10 @@
 (ns dungeon-crusade.dialog
   (:use dungeon-crusade.common
         dorothy.core)
-  (:require [lanterna.screen :as s]
-            [taoensso.timbre :as timbre]))
+  (:require ;[lanterna.screen :as s]
+            [taoensso.timbre :as timbre])
+  (:import com.googlecode.lanterna.screen.Screen
+           com.googlecode.lanterna.terminal.swing.SwingTerminal))
 
 (timbre/refer-timbre)
 
@@ -106,18 +108,25 @@
   "Runs through a dialog indefinitely."
   [dialog]
   (let [fsm (dialog->fsm dialog)
-        screen (s/get-screen :swing)]
-    (s/in-screen screen
-      (loop [state {:dialog-log []}]
-        (let [valid-input (get-valid-input fsm)
-              options (zipmap (take (count valid-input) [\a \b \c \d \e \f \g \h \i]) valid-input)
-              _ (s/clear screen)
-              _ (s/put-string screen 0 0 (or (some-> state :world :dialog-log last :text) ""))
-              _ (doall (map-indexed (fn [i [k v]] (s/put-string screen 0 (+ i 5) (format "%c - %s" k (if (nil? v) "nil" v)))) options))
-              _ (s/redraw screen)
-              key-in (s/get-key-blocking screen)
-              input (get options key-in)]
-        (recur (step-fsm state fsm input)))))))
+        terminal (SwingTerminal.)
+        screen (Screen. terminal)]
+    (.startScreen screen)
+    (loop [state {:dialog-log []}]
+      (let [valid-input (get-valid-input fsm)
+            options (zipmap (take (count valid-input) [\a \b \c \d \e \f \g \h \i]) valid-input)
+            ;_ (.clear screen)
+            _ (.clearScreen terminal)
+            ;_ (s/clear screen)
+            _ (.moveCursor terminal 0 0)
+            _ (.putString terminal (or (some-> state :world :dialog-log last :text) ""))
+            _ (doall (map-indexed (fn [i [k v]] (do
+                                                  (.moveCursor terminal 0 (+ i 5))
+                                                  (.putString terminal (format "%c - %s" k (if (nil? v) "nil" v))))) options))
+            _ (.refresh screen)
+            key-in (.getCharacter (.readInputBlocking terminal))
+            input (get options key-in)]
+        (recur (step-fsm state fsm input))))
+     (.stopScreen screen)))
 
 (defn -main
   "Draw a sample dialog tree and then run through it using a lanterna screen."

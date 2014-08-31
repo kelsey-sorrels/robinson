@@ -48,7 +48,9 @@
   "Move the player one space provided her/she is able. Else do combat. Else positions
    with party member."
   [state direction]
-  {:pre [(contains? #{:left :right :up :down} direction)]}
+  {:pre  [(contains? #{:left :right :up :down} direction)
+          (vector? (get-in state [:world :npcs]))]
+   :post [(vector? (get-in % [:world :npcs]))]}
   (let [player-x (-> state :world :player :pos :x)
         player-y (-> state :world :player :pos :y)
         target-x (+ player-x (case direction
@@ -78,7 +80,7 @@
                                     (assoc-in [:pos :y] player-y))
                                 npc))))
       (and (npc-at-xy state target-x target-y)
-           (every? (set (keys (npc-at-xy state target-x target-y))) #{:hp :race :inventory}))
+           (every? (set (keys (npc-at-xy state target-x target-y))) #{:hp :pos :race :body-parts :inventory}))
         ;; collided with npc. Engage in combat.
         (attack state [:world :player] (npc->keys state (npc-at-xy state target-x target-y)))
       ;; collided with a wall or door, nothing to be done.
@@ -592,15 +594,11 @@
     state))
 
 (defn
-  ^{:water-traversable?-memo (atom nil)
-    :land-traversable?-memo  (atom nil)}
   move-to-target
   "Move `npc` one space closer to the target position if there is a path
    from the npc to the target. Returns the moved npc and not the updated state.
    `target` is a map with the keys `:x` and `:y`."
-  ([state npc target]
-    (move-to-target state npc target false))
-  ([state npc target clear-cache]
+  [state npc target]
     (let [npcs                   (npcs-at-current-place state)
           ;_                      (debug "meta" (-> move-to-target var meta))
           ;_                      (debug "move-to-target npc" npc "target" target)
@@ -614,38 +612,22 @@
           get-type               (memoize (fn [x y] (do
                                                       ;(debug "traversable?" x y "type" (get-in place [y x :type]))
                                                       (get-in place [y x :type]))))
-          
-          ;; set persistent memoized traversibility functions if not defined
-          _                      (when (and (nil? (-> (var move-to-target) meta :water-traversable?-memo deref))
-                                            (nil? (-> (var move-to-target) meta :land-traversable?-memo deref)))
-                                   (dosync
-                                     (reset! (-> (var move-to-target) meta :water-traversable?-memo)
-                                              (clojure.core.memoize/memo
-                                                (fn [[x y]]
-                                                  (and (< 0 x width)
-                                                       (< 0 y height)
-                                                       (= (get-type x y) :water)))))
-                                     (reset! (-> (var move-to-target) meta :land-traversable?-memo)
-                                              (clojure.core.memoize/memo
-                                                (fn [[x y]]
-                                                  (and (< 0 x width)
-                                                       (< 0 y height)
-                                                       (contains? #{:floor
-                                                                    :open-door
-                                                                    :corridor
-                                                                    :sand
-                                                                    :dirt
-                                                                    :gravel
-                                                                    :tall-grass
-                                                                    :short-grass}
-                                                                  (get-type x y))))))))
-          ;; if specified, clear the memoization caches
-          _                      (when clear-cache
-                                   (dosync
-                                     (-> (var move-to-target) meta :water-traversable?-memo deref clojure.core.memoize/memo-clear!)
-                                     (-> (var move-to-target) meta :land-traversable?-memo deref clojure.core.memoize/memo-clear!)))
-          water-traversable?     (-> (var move-to-target) meta :water-traversable?-memo deref)
-          land-traversable?      (-> (var move-to-target) meta :land-traversable?-memo deref)
+          water-traversable?     (fn [[x y]]
+                                   (and (< 0 x width)
+                                        (< 0 y height)
+                                        (= (get-type x y) :water)))
+          land-traversable?      (fn [[x y]]
+                                   (and (< 0 x width)
+                                        (< 0 y height)
+                                        (contains? #{:floor
+                                                     :open-door
+                                                     :corridor
+                                                     :sand
+                                                     :dirt
+                                                     :gravel
+                                                     :tall-grass
+                                                     :short-grass}
+                                                   (get-type x y))))
       
           traversable?           (if npc-can-move-in-water
                                      water-traversable?
@@ -672,7 +654,7 @@
                                      (assoc-in [:pos :y] (second new-pos)))
           ;_                      (debug "new-npc" new-npc)
         ]
-      [new-pos new-npc npc])))
+      [new-pos new-npc npc]))
 
 (defn move-to-target-in-range-or-random
   [state npc target]
@@ -740,6 +722,8 @@
 (defn update-npcs
   "Move all npcs in the current place using `move-npc`."
   [state]
+  {:pre  [(vector? (get-in state [:world :npcs]))]
+   :post [(vector? (get-in % [:world :npcs]))]}
   ;; do npc->player attacks if adjacent
   (let [current-place-id (current-place-id state)
         state (reduce
@@ -753,7 +737,11 @@
                               current-place-id)
                            (contains? (get npc :disposition) :hostile)
                            (adjacent-to-player? state (get npc :pos)))
-                    (attack state (npc->keys state npc) [:world :player])
+                    ;; TODO: remove let vars
+                    (let [ks        (npc->keys state npc)
+                          npc-in-ks (get-in state ks)
+                          butlast-ks (get-in state (butlast ks))]
+                      (attack state (npc->keys state npc) [:world :player]))
                     state)))
                 state
                 (get-in state [:world :npcs]))]
@@ -775,19 +763,19 @@
                                       (calc-npc-next-step state npc))
                                     [nil nil npc]))
                                  npcs-ordered-by-distance)]
-          (reduce
-            (fn [result [new-pos new-npc npc]]
-              (conj result
-                    (if (or (nil? new-pos)
-                            (some (fn [npc]
-                                    (= (get npc :pos)
-                                       {:x (first new-pos)
-                                        :y (second new-pos)}))
-                                  result))
-                      npc
-                      new-npc)))
-            []
-            map-result)))))))
+            (reduce
+              (fn [result [new-pos new-npc npc]]
+                (conj result
+                      (if (or (nil? new-pos)
+                              (some (fn [npc]
+                                      (= (get npc :pos)
+                                         {:x (first new-pos)
+                                          :y (second new-pos)}))
+                                    result))
+                        npc
+                        new-npc)))
+              []
+              map-result)))))))
 
 (defn add-npcs
   "Randomly add monsters to the current place's in floor cells."
@@ -949,8 +937,10 @@
                                         transition-fn
                                         (fn [state]
                                           (transition-fn state keyin)))
+            _ (debug "type of npcs" (type (get-in state [:world :npcs])))
             state                     (transition-fn state)
             _ (debug "new-state" new-state)
+            _ (debug "type of npcs" (type (get-in state [:world :npcs])))
             new-state (if (keyword? new-state)
                         new-state
                         (new-state (get-in state [:world :current-state])))

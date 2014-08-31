@@ -72,8 +72,10 @@
         _ (info "dialogs" (apply merge (map :dialog quests)))
         dialog (apply merge (map (fn [[k v]]
                                    {k (dialog->fsm v)})
-                                 (apply merge (map :dialog quests))))]
+                                 (apply merge (map :dialog quests))))
+        state {:world world :screen terminal :quests quest-map :dialog dialog}
+        state (reduce (fn [state _] (add-npcs state 1)) state (range 500))]
 
     ;; tick once using the rest (.) command to update visibility
-    (tick {:world world :screen terminal :quests quest-map :dialog dialog} \.)))
+    (tick state \.)))
 

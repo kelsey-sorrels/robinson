@@ -44,6 +44,9 @@
    :fushia      (vec (hex-str-to-dec "D30094"))
    :beige       (vec (hex-str-to-dec "C8B464"))})
 
+(defn darken-rgb [rgb]
+  (vec (map #(/ % 3) rgb)))
+
 (defn color->rgb
   [color]
   (get color-to-rgb-map color color))
@@ -53,6 +56,17 @@
   nil)
   ([screen o]
   nil))
+
+(defn fill-put-string-color-style-defaults
+  ([string]
+    (fill-put-string-color-style-defaults string :white :black #{}))
+  ([string fg bg]
+    (fill-put-string-color-style-defaults string fg bg #{}))
+  ([string fg bg styles]
+   {:pre [(clojure.set/superset? #{:underline :bold} styles)]}
+   (let [fg (color->rgb fg)
+         bg (color->rgb bg)]
+     [string fg bg styles])))
 
 (defn put-string
   ([^dungeon_crusade.swingterminal.ATerminal screen x y string]
@@ -343,7 +357,8 @@
    the status bar. Everything."
   [state]
   (let [[columns rows] (get-size (state :screen))
-         place         (current-place state)]
+         place         (current-place state)
+         current-time  (get-in state [:world :time])]
     ;(debug "begin-render")
     ;(clear (state :screen))
     (trace "rendering place" (current-place state))
@@ -360,38 +375,42 @@
                 (not (cell :discovered)))
           (put-string screen x y " ")
           (let [cell-items (cell :items)
-                out-char (if (and cell-items (not (empty? cell-items)))
-                           (case (-> cell-items first :type)
-                             :ring           ["="]
-                             :food           ["%"]
-                             :bow            [")"]
-                             :sword          [")"]
-                             :armor          ["["]
-                             :shoes          ["!"]
-                             :wand           ["/"]
-                             :spellbook      ["+"]
-                             :scroll         ["?"]
-                             :$              ["$"  :yellow :black #{:bold}]
-                             :amulet         ["\"" :blue   :black #{:bold}]
-                             ["?"])
-                           (case (cell :type)
-                            :vertical-wall   ["|"]
-                            :horizontal-wall ["-"]
-                            :floor           ["."]
-                            :open-door       ["-"  :brown  :black #{:bold}]
-                            :close-door      ["+"  :brown  :black #{:bold}]
-                            :corridor        ["#"] 
-                            :down-stairs     [">"] 
-                            :up-stairs       ["<"] 
-                            :water           ["~"  (rand-nth [:blue :light-blue :dark-blue]) :black]
-                            :sand            ["_"  :beige      :black]
-                            :dirt            [","  :brown      :black]
-                            :gravel          ["`"  :gray       :black]
-                            :short-grass     ["'"  :green      :black]
-                            :tall-grass      ["\"" :dark-green :black]
-                            :tree            ["T"  :dark-green :black]
-                            ["?"]))]
-              (apply put-string screen x y out-char)))))
+                out-char (apply fill-put-string-color-style-defaults
+                           (if (and cell-items (not (empty? cell-items)))
+                             (case (-> cell-items first :type)
+                               :ring           ["="]
+                               :food           ["%"]
+                               :bow            [")"]
+                               :sword          [")"]
+                               :armor          ["["]
+                               :shoes          ["!"]
+                               :wand           ["/"]
+                               :spellbook      ["+"]
+                               :scroll         ["?"]
+                               :$              ["$"  :yellow :black #{:bold}]
+                               :amulet         ["\"" :blue   :black #{:bold}]
+                               ["?"])
+                             (case (cell :type)
+                              :vertical-wall   ["|"]
+                              :horizontal-wall ["-"]
+                              :floor           ["."]
+                              :open-door       ["-"  :brown  :black #{:bold}]
+                              :close-door      ["+"  :brown  :black #{:bold}]
+                              :corridor        ["#"] 
+                              :down-stairs     [">"] 
+                              :up-stairs       ["<"] 
+                              :water           ["~"  (rand-nth [:blue :light-blue :dark-blue]) :black]
+                              :sand            ["_"  :beige      :black]
+                              :dirt            [","  :brown      :black]
+                              :gravel          ["`"  :gray       :black]
+                              :short-grass     ["'"  :green      :black]
+                              :tall-grass      ["\"" :dark-green :black]
+                              :tree            ["T"  :dark-green :black]
+                              ["?"])))
+                shaded-out-char (if (= (cell :discovered) current-time)
+                                  out-char
+                                  (update-in out-char [1] darken-rgb))]
+              (apply put-string screen x y shaded-out-char)))))
     ;; draw character
     ;(debug (-> state :world :player))
     (put-string

@@ -949,6 +949,8 @@
             new-state (if (keyword? new-state)
                         new-state
                         (new-state (get-in state [:world :current-state])))
+
+            new-time  (inc (get-in state [:world :time]))
             _ (debug "new-state" new-state)]
         (some-> state
             (assoc-in [:world :current-state] new-state)
@@ -997,11 +999,11 @@
                                                                               (pos :y)
                                                                               x
                                                                               y))
-                                                                     (assoc cell :discovered :true)
+                                                                     (assoc cell :discovered new-time)
                                                                      cell))
                                                                  line (range)))))
                                                     place (range))))))))
 
-            ((fn [state] (update-in state [:world :time] inc)))))
+            ((fn [state] (assoc-in state [:world :time] new-time)))))
       state)))
 

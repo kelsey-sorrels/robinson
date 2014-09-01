@@ -6,7 +6,7 @@
   [race]
   (contains? #{:shark :fish :octopus :sea-snake :clam :urchin :squid} race))
 
-(defrecord Monster [race name hp body-parts attacks movement-policy range-threshold disposition]
+(defrecord Monster [race name hp energy speed body-parts attacks movement-policy range-threshold disposition]
   Object
   (toString [this] (str "#Monster" (into {} this))))
 
@@ -17,6 +17,8 @@
    :rat
    "rat"
    9
+   0
+   1.1
    #{:head :neck :body :leg :tail}
    #{:bite :claw}
    :follow-player-in-range-or-random
@@ -30,6 +32,8 @@
    :spider
    "spider"
    4
+   0
+   0.9
    #{:face :leg :abdomen}
    #{:bite}
    :follow-player-in-range-or-random
@@ -43,6 +47,8 @@
    :scorpion
    "scorpion"
    3
+   0
+   1.1
    #{:head :claw :abdomen :tail}
    #{:bite :claw :sting}
    :follow-player-in-range-or-random
@@ -56,6 +62,8 @@
    :snake
    "snake"
    8
+   0
+   0.8
    #{:head :body :tail}
    #{:bite}
    :follow-player-in-range-or-random
@@ -69,6 +77,8 @@
    :bat
    "bat"
    8
+   0
+   1.6
    #{:head :body :wing :leg :face}
    #{:bite}
    :follow-player-in-range-or-random
@@ -82,6 +92,8 @@
    :boar
    "boar"
    18
+   0
+   1.2
    #{:head :body :tail :snout :face :eye :leg}
    #{:bite :gore}
    :follow-player-in-range-or-random
@@ -95,6 +107,8 @@
    :gecko
    "gecko"
    2
+   0
+   0.9
    #{:head :body :tail :leg}
    #{:bite}
    :follow-player-in-range-or-random
@@ -108,6 +122,8 @@
    :monkey
    "monkey"
    13
+   0
+   1.2
    #{:head :body :tail :leg :face :arm}
    #{:bite :punch}
    :follow-player-in-range-or-random
@@ -121,6 +137,8 @@
    :bird
    "bird"
    6
+   0
+   2.1
    #{:head :body :tail :leg :beak :wing}
    #{:bite :claw}
    :follow-player-in-range-or-random
@@ -134,6 +152,8 @@
    :centipede
    "centipede"
    4
+   0
+   0.5
    #{:head :body :leg}
    #{:bite}
    :follow-player-in-range-or-random
@@ -147,6 +167,8 @@
    :turtle
    "turtle"
    4
+   0
+   0.5
    #{:head :body :leg :face :shell}
    #{:bite}
    :follow-player-in-range-or-random
@@ -160,6 +182,8 @@
    :frog
    "frog"
    2
+   0
+   0.9
    #{:head :body :leg :face}
    #{:claw}
    :follow-player-in-range-or-random
@@ -173,6 +197,8 @@
    :parrot
    "parrot"
    7
+   0
+   2.1
    #{:head :body :leg :face :wing :tail}
    #{:claw :bite}
    :follow-player-in-range-or-random
@@ -186,6 +212,8 @@
    :shark
    "shark"
    16
+   0
+   1.4
    #{:head :body :fin :nose :tail}
    #{:bite}
    :follow-player-in-range-or-random
@@ -199,6 +227,8 @@
    :fish
    "fish"
    4
+   0
+   1.2
    #{:head :body :fin :tail}
    #{:bite}
    :follow-player-in-range-or-random

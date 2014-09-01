@@ -731,23 +731,24 @@
    :post [(vector? (get-in % [:world :npcs]))]}
   ;; do npc->player attacks if adjacent
   (let [current-place-id (current-place-id state)
+        ;; increase all npcs energy by their speed value and have any adjacent npcs attack the player.
         state (reduce
-                (fn [result npc]
-                  (do 
-                     ;(debug "npc attacks player?" (get npc :place) current-place-id
-                     ;  (get npc :pos) (-> state :world :player :pos)
-                     ;  (adjacent-to-player? state (get npc :pos))
-                     ;  (get npc :disposition))
+                (fn [state npc]
+                  ;; only update npcs that are in the current place and have an :energy value.
                   (if (and (= (get npc :place)
                               current-place-id)
-                           (contains? (get npc :disposition) :hostile)
-                           (adjacent-to-player? state (get npc :pos)))
-                    ;; TODO: remove let vars
-                    (let [ks        (npc->keys state npc)
-                          npc-in-ks (get-in state ks)
-                          butlast-ks (get-in state (butlast ks))]
-                      (attack state (npc->keys state npc) [:world :player]))
-                    state)))
+                           (get npc :energy))
+                    (let [npc-keys (npc->keys state npc)
+                          ;; add speed value to energy.
+                          _ (info "adding speed to" (conj npc-keys  :energy))
+                          state (update-in state (conj npc-keys :energy) (partial + (get npc :speed)))]
+                      ;; adjacent hostile npcs attack player.
+                      (if (and (contains? (get npc :disposition) :hostile)
+                               (adjacent-to-player? state (get npc :pos)))
+                        (let [_ (info "npc attacker" npc)]
+                          (attack state npc-keys [:world :player]))
+                        state))
+                    state))
                 state
                 (get-in state [:world :npcs]))]
     (-> state

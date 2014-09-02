@@ -659,7 +659,7 @@
                                      (assoc-in [:pos :y] (second new-pos)))
           ;_                      (debug "new-npc" new-npc)
         ]
-      [new-pos new-npc npc]))
+      [{:x (first new-pos) :y (second new-pos)} new-npc npc]))
 
 (defn move-to-target-in-range-or-random
   [state npc target]
@@ -737,10 +737,10 @@
                   ;; only update npcs that are in the current place and have an :energy value.
                   (if (and (= (get npc :place)
                               current-place-id)
-                           (get npc :energy))
+                           (contains? npc :energy))
                     (let [npc-keys (npc->keys state npc)
                           ;; add speed value to energy.
-                          _ (info "adding speed to" (conj npc-keys  :energy))
+                          _ (trace "adding speed to" (select-keys npc [:race :place :pos :speed :energy]))
                           state (update-in state (conj npc-keys :energy) (partial + (get npc :speed)))]
                       ;; adjacent hostile npcs attack player.
                       (if (and (contains? (get npc :disposition) :hostile)
@@ -751,37 +751,76 @@
                     state))
                 state
                 (get-in state [:world :npcs]))]
-    (-> state
-      ;; move npcs
-      (update-in 
-        [:world :npcs]
-        (fn [npcs]
-          ;; since most npcs are moving toward the player, sort by distance
-          ;; to player. The npcs closest will be moved first, leaving a gap
-          ;; behind them allowing the next most distant npc to move forward
-          ;; to fill the gap.
-          (let [npcs-ordered-by-distance (sort-by (fn [npc] (distance-from-player state (get npc :pos)))
-                                                  npcs)
-                map-result (pmap (fn [npc]
-                                  (if (= (get npc :place)
-                                         (-> state :world :current-place))
-                                    (log-time "calc-npc-next-step"
-                                      (calc-npc-next-step state npc))
-                                    [nil nil npc]))
-                                 npcs-ordered-by-distance)]
-            (reduce
-              (fn [result [new-pos new-npc npc]]
-                (conj result
-                      (if (or (nil? new-pos)
-                              (some (fn [npc]
-                                      (= (get npc :pos)
-                                         {:x (first new-pos)
-                                          :y (second new-pos)}))
-                                    result))
-                        npc
-                        new-npc)))
-              []
-              map-result)))))))
+    (loop [state          state
+           ;; find all npcs in the current place with enough energy to move (energy > 1).
+           ;;; Since most npcs are moving toward the player, sort by distance
+           ;;; to player. The npcs closest will be moved first, leaving a gap
+           ;;; behind them allowing the next most distant npc to move forward
+           ;;; to fill the gap.
+           remaining-npcs (sort-by (fn [npc] (distance-from-player state (get npc :pos)))
+                                   (filter (fn [npc] (and (contains? npc :energy)
+                                                          (> (get npc :energy) 1)
+                                                          (= (get npc :place) current-place-id)))
+                                     (get-in state [:world :npcs])))
+           i 5]
+      (info "looping over" (count remaining-npcs) "npcs")
+      (if (or (empty? remaining-npcs)
+              (neg? i))
+        ;; no more results to process, stop looping and return state
+        state
+        ;; In parallel, find their next step
+        ;; Each element in this list has the form [new-pos new-npc npc] (a list of 3-tuples.
+        ;; new-pos: a map {:x <int> :y <int>}  describing where the npc is trying to move to
+        ;; or nil if the npc is not moving.
+        ;; new-npc: is the npc updated to reflect the movement.
+        ;; npc: is the original npc object.
+        ;; we can execute pathfinding in parallel, and then serially, move each npc, checking
+        ;; at each step whether new-pos is occupied and use new-npc or npc depending on the
+        ;; outcome.
+        ;; Filter out elements where the first value is nil.
+        ;_ (info "map-result" (map (fn [npc]
+        ;                               (log-time "calc-npc-next-step"
+        ;                                 (first (calc-npc-next-step state npc))))
+        ;                             remaining-npcs))
+        (let [map-result (remove (comp nil? first)
+                             (vec (pmap (fn [npc]
+                                     (log-time "calc-npc-next-step"
+                                       (calc-npc-next-step state npc)))
+                                   remaining-npcs)))
+              ;; update the npcs in serial
+              state      (reduce
+                           (fn [state [new-pos new-npc old-npc]]
+                             (trace "reducing" new-pos (select-keys old-npc [:race :place :pos :speed :energy]))
+                             (trace "npcs")
+                             (doseq [npc (get-in state [:world :npcs])]
+                               (println (select-keys npc [:race :place :pos :speed :energy])))
+
+                             ;; decrement energy either way
+                             (update-npc state old-npc
+                               (fn [npc]
+                                 (trace "updating npc" (select-keys npc [:race :place :pos :speed :energy]))
+                                 (update-in
+                                   ;; no npc at the destination cell?
+                                   (if (not-any? (fn [npc] (and (= (get npc :pos)
+                                                                   new-pos)
+                                                                (= (get npc :place)
+                                                                   (get new-npc :place))))
+                                                 (get-in state [:world :npcs]))
+                                     ;; use the new npc value
+                                     new-npc
+                                     ;; otherwise there is an npc at the destination, use the old npc
+                                     old-npc)
+                                   [:energy]
+                                   (fn [energy] (max (dec energy) 0))))))
+                           state
+                           map-result)
+              remaining-npcs (sort-by (fn [npc] (distance-from-player state (get npc :pos)))
+                               (filter (fn [npc] (and (contains? npc :energy)
+                                                      (> (get npc :energy) 1)
+                                                      (= (get npc :place) current-place-id)))
+                                 (get-in state [:world :npcs])))
+              _ (trace "count remaining npcs" (count remaining-npcs))]
+        (recur state remaining-npcs (dec i)))))))
 
 (defn add-npcs
   "Randomly add monsters to the current place's in floor cells."

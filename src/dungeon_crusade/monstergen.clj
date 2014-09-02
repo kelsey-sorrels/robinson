@@ -6,7 +6,7 @@
   [race]
   (contains? #{:shark :fish :octopus :sea-snake :clam :urchin :squid} race))
 
-(defrecord Monster [race name hp energy speed body-parts attacks movement-policy range-threshold disposition]
+(defrecord Monster [race name hp energy speed body-parts attacks movement-policy range-threshold status]
   Object
   (toString [this] (str "#Monster" (into {} this))))
 
@@ -35,7 +35,7 @@
    0
    0.9
    #{:face :leg :abdomen}
-   #{:bite}
+   #{:bite-venom}
    :follow-player-in-range-or-random
    5
    #{:hostile}))
@@ -50,7 +50,7 @@
    0
    1.1
    #{:head :claw :abdomen :tail}
-   #{:bite :claw :sting}
+   #{:bite :claw :sting-venom}
    :follow-player-in-range-or-random
    4
    #{:hostile}))
@@ -65,7 +65,7 @@
    0
    0.8
    #{:head :body :tail}
-   #{:bite}
+   #{:bite :bite-venom}
    :follow-player-in-range-or-random
    5
    #{:hostile}))
@@ -245,7 +245,7 @@
    0
    1.5
    #{:head :body :tentacle}
-   #{:bite :squeeze}
+   #{:bite :bite-venom :squeeze}
    :follow-player-in-range-or-random
    2
    #{:hostile}))
@@ -260,10 +260,10 @@
    0
    1.5
    #{:head :body}
-   #{:bite}
+   #{:bite :bite-venom}
    :follow-player-in-range-or-random
    2
-   #{:hostile :venomous}))
+   #{:hostile}))
 
 (defn gen-clam
   "Generate one clam"

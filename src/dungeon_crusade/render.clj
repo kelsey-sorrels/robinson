@@ -460,6 +460,11 @@
                                               :parrot ["p"]
                                               :shark ["\u039B"] ;;Λ
                                               :fish ["f"]
+                                              :octopus ["#" :orange :black]
+                                              :sea-snake ["\u00A7"]
+                                              :clam ["c"]
+                                              :urchin ["u"]
+                                              :squid ["q" :orange :black]
                                               :human ["@" (class->rgb (get npc :class)) :black]
                                               ["@"])))))
                    place-npcs)))

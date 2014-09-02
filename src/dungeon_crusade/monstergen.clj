@@ -235,9 +235,86 @@
    4
    #{:hostile}))
 
+(defn gen-octopus
+  "Generate one octopus"
+  []
+  (Monster.
+   :octopus
+   "octopus"
+   4
+   0
+   1.5
+   #{:head :body :tentacle}
+   #{:bite :squeeze}
+   :follow-player-in-range-or-random
+   2
+   #{:hostile}))
+
+(defn gen-sea-snake
+  "Generate one sea snake"
+  []
+  (Monster.
+   :sea-snake
+   "sea snake"
+   4
+   0
+   1.5
+   #{:head :body}
+   #{:bite}
+   :follow-player-in-range-or-random
+   2
+   #{:hostile :venomous}))
+
+(defn gen-clam
+  "Generate one clam"
+  []
+  (Monster.
+   :clam
+   "clam"
+   2
+   0
+   0.1
+   #{:shell}
+   #{:clamp}
+   :constant
+   1
+   #{:hostile}))
+
+(defn gen-urchin
+  "Generate one urchin"
+  []
+  (Monster.
+   :urchin
+   "urchin"
+   2
+   0
+   0.1
+   #{:body}
+   #{:spike}
+   :constant
+   1
+   #{:hostile}))
+
+(defn gen-squid
+  "Generate one squid"
+  []
+  (Monster.
+   :squid
+   "squid"
+   4
+   0
+   1.5
+   #{:head :body :tentacle}
+   #{:bite :squeeze}
+   :follow-player-in-range-or-random
+   2
+   #{:hostile}))
+
+
+
 (defn gen-monster [level cell-type]
   "Generate one random monster."
-  (let [land-monster-fns  [gen-rat
+  (let [land-monster-fns [ gen-rat
                            gen-spider
                            gen-scorpion
                            gen-snake
@@ -251,7 +328,12 @@
                            gen-frog
                            gen-parrot]
         water-monster-fns [gen-shark
-                           gen-fish]]
+                           gen-fish
+                           gen-octopus 
+                           gen-sea-snake 
+                           gen-clam 
+                           gen-urchin 
+                           gen-squid]]
     (case cell-type
       :water ((rand-nth water-monster-fns))
       ((rand-nth land-monster-fns)))))

@@ -137,6 +137,6 @@
   [state npc f]
   (map-in state [:world :npcs] (fn [n] (if (= npc n)
                                            (f npc)
-                                           npc))))
+                                           n))))
 
 

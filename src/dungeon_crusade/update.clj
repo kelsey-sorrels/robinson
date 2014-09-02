@@ -743,7 +743,7 @@
                           _ (trace "adding speed to" (select-keys npc [:race :place :pos :speed :energy]))
                           state (update-in state (conj npc-keys :energy) (partial + (get npc :speed)))]
                       ;; adjacent hostile npcs attack player.
-                      (if (and (contains? (get npc :disposition) :hostile)
+                      (if (and (contains? (get npc :status) :hostile)
                                (adjacent-to-player? state (get npc :pos)))
                         (let [_ (info "npc attacker" npc)]
                           (attack state npc-keys [:world :player]))
@@ -997,6 +997,11 @@
             ;; do updates that don't deal with keyin
             ;; Get hungrier
             ((fn [state] (update-in state [:world :player :hunger] inc)))
+            ;; if poisoned, damage player, else heal
+            (update-in[:world :player :hp] (fn [hp] (if (contains? (get-in state [:world :player :status]) :poisoned)
+                                                      (- hp 0.1)
+                                                      (min (get-in state [:world :player :max-hp])
+                                                           (+ hp 0.2)))))
             ((fn [state] (assoc-in state [:world :player :status]
                                   (set (remove nil?
                                          (apply conj #{} [(condp <= (-> state :world :player :hunger)

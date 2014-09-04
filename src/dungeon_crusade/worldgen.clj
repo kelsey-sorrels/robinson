@@ -221,7 +221,9 @@
             :place :0
             :body-parts #{:head :neck :face :abdomen :arm :leg :foot}
             :attacks #{:punch}
-            :status #{}}
+            :status #{}
+            ;; map from body-part to {:time <int> :damage <float>}
+            :wounds {}}
    :quests {}
    :npcs [
 ;{

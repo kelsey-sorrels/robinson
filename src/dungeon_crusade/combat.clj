@@ -65,7 +65,7 @@
       [:*       "Player" :bite        :*        :hit]  (format "The %s sinks its teeth into your flesh." attacker-name)
       [:*       "Player" :bite-venom  :*        :hit]  (format "The %s buries its teeth into your body and starts pumping poison into you." attacker-name)
       [:*       "Player" :claw        :*        :hit]  (format "The %s claws into your flesh." attacker-name)
-      [:*       "Player" :punch       :*        :hit]  (format "The %s punches you.`" attacker-name)
+      [:*       "Player" :punch       :*        :hit]  (format "The %s punches you." attacker-name)
       [:*       "Player" :gore        :*        :hit]  (format "The %s gores into your body with it's tusks.`" attacker-name)
       [:*       "Player" :sting       :*        :hit]  (format "The %s jabs you with its stinger." attacker-name)
       [:*       "Player" :sting-venom :*        :hit]  (format "The %s stings you, pumping you full of poison." attacker-name)
@@ -81,11 +81,13 @@
          (every? (set (keys (get-in state attacker-path))) [:attacks])
          (vector? (get-in state [:world :npcs]))]
    :post [(vector? (get-in % [:world :npcs]))]}
-  (let [defender    (get-in state defender-path)
-        attacker    (get-in state attacker-path)
-        {x :x y :y} (get defender :pos)
-        hp          (get defender :hp)
-        dmg         1]
+  (let [defender     (get-in state defender-path)
+        attacker     (get-in state attacker-path)
+        {x :x y :y}  (get defender :pos)
+        hp           (get defender :hp)
+        dmg          (+ (rand) 1)
+        is-wound     (> dmg 1.5)
+        wounded-part (rand-nth (vec (get defender :body-parts)))]
     (debug "attack" attacker-path "is attacking defender" defender-path)
     (debug "attacker-detail" attacker)
     (debug "defender-detail" defender)
@@ -106,7 +108,13 @@
             (update-in (conj defender-path :status) (fn [status] (if (and (re-find #"venom" (str attack))
                                                                           (= (rand-int 10) 0))
                                                                    (conj status :poisioned)
-                                                                   status)))))
+                                                                   status)))
+            ;; chance of being wounded
+            (update-in defender-path (fn [defender] (if (and is-wound
+                                                             (contains? defender :wounds))
+                                                      (update-in defender [:wounds]
+                                                        (fn [wounds] (conj wounds {wounded-part (get-in state [:world :time])})))
+                                                      defender)))))
       ;; defender dead? (0 or less hp)
       (not (pos? (- hp dmg)))
         (if (contains? (set defender-path) :npcs)

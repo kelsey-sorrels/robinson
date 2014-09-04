@@ -107,6 +107,14 @@
                         (vec (remove f coll))
                         (remove f coll))) m ks nil))
 
+(defn update-in-matching
+  [m ks p f]
+  (if (fn? p)
+    (map-in m ks (fn [e] (if (p e)
+                           (f e)
+                           e)))
+    (update-in-matching m ks (partial = p) f)))
+
 (defn map-indexed-in-p
   "Update in m the collection accessible by (get-in m ks)
    for which (p item) returns true for an item in the collection
@@ -249,6 +257,10 @@
   "Retrieve the current place."
   [state]
   (get-in state [:world :places (current-place-id state)]))
+
+(defn current-state
+  [state]
+  (get-in state [:world :current-state]))
 
 (defn map-with-xy
   "Non-lazily call `(f cell x y)` for each cell in the grid."

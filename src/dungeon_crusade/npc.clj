@@ -135,8 +135,6 @@
 (defn update-npc
   "Transform the npc with the function f. (f npc)."
   [state npc f]
-  (map-in state [:world :npcs] (fn [n] (if (= npc n)
-                                           (f npc)
-                                           n))))
+  (update-in-matching state [:world :npcs] npc f))
 
 

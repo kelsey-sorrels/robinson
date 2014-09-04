@@ -19,7 +19,7 @@
    9
    0
    1.1
-   #{:head :neck :body :leg :tail}
+   #{:face :head :neck :body :leg :tail}
    #{:bite :claw}
    :follow-player-in-range-or-random
    5
@@ -49,7 +49,7 @@
    3
    0
    1.1
-   #{:head :claw :abdomen :tail}
+   #{:head :claw :leg :abdomen :tail}
    #{:bite :claw :sting-venom}
    :follow-player-in-range-or-random
    4
@@ -109,7 +109,7 @@
    2
    0
    0.9
-   #{:head :body :tail :leg}
+   #{:head :face :body :tail :leg}
    #{:bite}
    :follow-player-in-range-or-random
    4
@@ -124,7 +124,7 @@
    13
    0
    1.2
-   #{:head :body :tail :leg :face :arm}
+   #{:head :neck :body :tail :leg :face :arm}
    #{:bite :punch}
    :follow-player-in-range-or-random
    10
@@ -169,7 +169,7 @@
    4
    0
    0.5
-   #{:head :body :leg :face :shell}
+   #{:head :neck :body :leg :face :shell}
    #{:bite}
    :follow-player-in-range-or-random
    5

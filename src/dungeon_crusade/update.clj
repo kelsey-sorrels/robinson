@@ -577,6 +577,83 @@
             (transfer-items-from-player-to-npc (get npc :id) (partial = item))))
         state)))
 
+(defn scroll-log
+  [state keyin]
+  (let [t (get-in state [:world :time])]
+    (-> state
+      (update-in [:world :logs-viewed] inc)
+      ((fn [state]
+        (let [c (count (filter #(= t (get % :time)) (get-in state [:world :log])))
+              logs-viewed (get-in state [:world :logs-viewed])]
+          (if (>= logs-viewed c)
+            (assoc-in state [:world :current-state] :normal)
+            state)))))))
+
+(defn init-log-scrolling
+  [state]
+  (let [t (get-in state [:world :time])
+        c (count (filter #(= t (get % :time)) (get-in state [:world :log])))]
+    (-> state
+      (assoc-in [:world :logs-viewed] 1)
+      ((fn [state] (if (> c 1)
+                     (assoc-in state [:world :current-state] :more-log)
+                     state))))))
+
+(defn get-hungrier
+  "Increase player's hunger."
+  [state]
+  (-> state
+    (update-in [:world :player :hunger] inc)
+    ((fn [state] (update-in state
+                            [:world :player :status]
+                            (fn [status]
+                              (set (remove nil?
+                                   (conj status (condp <= (-> state :world :player :hunger)
+                                                  400 :dead
+                                                  300 :dying
+                                                  200 :starving
+                                                  100 :hungry
+                                                  nil))))))))))
+
+(defn if-poisoned-get-hurt
+  "Decrease player's hp if they are poisoned."
+  [state]
+  (update-in state [:world :player :hp] (fn [hp] (if (contains? (get-in state [:world :player :status]) :poisoned)
+                                                   (- hp 0.1)
+                                                   (min (get-in state [:world :player :max-hp])
+                                                        (+ hp 0.2))))))
+
+;; update visibility
+(defn update-visibility
+  [state]
+  (update-in state [:world :places (-> state :world :current-place)]
+    (fn [place]
+      (let [pos (-> state :world :player :pos)
+            sight-distance 3
+            get-cell (memoize (fn [x y] (get-in place [y x])))
+            new-time (get-in state [:world :time])]
+        (vec (pmap (fn [line y]
+                     (if (< sight-distance
+                            (Math/abs (- y (pos :y))))
+                       line
+                       (vec (map (fn [cell x]
+                                   (if (and (not (nil? cell))
+                                            (not (farther-than?
+                                                   pos
+                                                   {:x x :y y}
+                                                   sight-distance))
+                                            (visible?
+                                              get-cell
+                                              cell-blocking?
+                                              (pos :x)
+                                              (pos :y)
+                                              x
+                                              y))
+                                     (assoc cell :discovered new-time)
+                                     cell))
+                                 line (range)))))
+                    place (range)))))))
+
 (defn next-party-member
   "Switch (-> state :world :player) with the next npc where (-> npc :in-party?) is equal to true.
    Place the player at the end of (-> state :world :npcs)."
@@ -871,83 +948,84 @@
 ;; transtion table's states and the application state variable, but
 ;; they are indeed two different things.
 (def state-transition-table
-  ;;         starting      transition transition             new
-  ;;         state         symbol     fn                     state
-  (let [table {:normal    {\i        [identity               :inventory]
-                           \d        [identity               :drop]
-                           \,        [identity               :pickup]
-                           \e        [identity               :eat]
-                           \o        [identity               :open]
-                           \c        [identity               :close]
-                           \.        [do-rest                :normal]
-                           \h        [move-left              :normal]
-                           \j        [move-down              :normal]
-                           \k        [move-up                :normal]
-                           \l        [move-right             :normal]
-                           \>        [use-stairs             :normal]
-                           \<        [use-stairs             :normal]
-                           \;        [init-cursor            :describe]
-                           \Q        [identity               :quests]
-                           \P        [next-party-member      :normal]
-                           \Z        [identity               :magic]
-                           \T        [identity               :talk]
-                           \?        [identity               :help]
-                           :escape   [identity               :quit?]}
-               :inventory {:escape   [identity               :normal]}
-               :describe  {:escape   [free-cursor            :normal]
-                           \i        [free-cursor            :describe-inventory]
-                           \h        [move-cursor-left       :describe]
-                           \j        [move-cursor-down       :describe]
-                           \k        [move-cursor-up         :describe]
-                           \l        [move-cursor-right      :describe]
-                           :enter    [describe-at-cursor     :normal]}
-               :quests    {:escape   [identity               :normal]}
+  ;;         starting      transition transition             new        advance
+  ;;         state         symbol     fn                     state      time?
+  (let [table {:normal    {\i        [identity               :inventory false]
+                           \d        [identity               :drop      false]
+                           \,        [identity               :pickup    false]
+                           \e        [identity               :eat       false]
+                           \o        [identity               :open      false]
+                           \c        [identity               :close     false]
+                           \.        [do-rest                :normal    true]
+                           \h        [move-left              :normal    true]
+                           \j        [move-down              :normal    true]
+                           \k        [move-up                :normal    true]
+                           \l        [move-right             :normal    true]
+                           \>        [use-stairs             :normal    true]
+                           \<        [use-stairs             :normal    true]
+                           \;        [init-cursor            :describe  false]
+                           \Q        [identity               :quests    false]
+                           \P        [next-party-member      :normal    false]
+                           \Z        [identity               :magic     true]
+                           \T        [identity               :talk      true]
+                           \?        [identity               :help      false]
+                           :escape   [identity               :quit?     false]}
+               :inventory {:escape   [identity               :normal    false]}
+               :describe  {:escape   [free-cursor            :normal    false]
+                           \i        [free-cursor            :describe-inventory false]
+                           \h        [move-cursor-left       :describe  false]
+                           \j        [move-cursor-down       :describe  false]
+                           \k        [move-cursor-up         :describe  false]
+                           \l        [move-cursor-right      :describe  false]
+                           :enter    [describe-at-cursor     :normal    false]}
+               :quests    {:escape   [identity               :normal    false]}
                :describe-inventory
-                          {:escape   [identity               :normal]
-                           :else     [describe-inventory     :normal]}
-               :drop      {:escape   [identity               :normal]
-                           :else     [drop-item              :normal]}
-               :pickup    {:escape   [identity               :normal]
-                           :else     [toggle-hotkey          :pickup]
-                           :enter    [pick-up                :normal]}
-               :eat       {:escape   [identity               :normal]
-                           :else     [eat                    :normal]}
-               :open      {\h        [open-left              :normal]
-                           \j        [open-down              :normal]
-                           \k        [open-up                :normal]
-                           \l        [open-right             :normal]}
-               :talk      {\h        [talk-left              identity]
-                           \j        [talk-down              identity]
-                           \k        [talk-up                identity]
-                           \l        [talk-right             identity]}
-               :talking   {:escape   [stop-talking           :normal]
-                           :else     [talk                   identity]}
-               :shopping  {\a        [identity               :buy]
-                           \b        [identity               :sell]
-                           :escape   [identity               :normal]}
-               :buy       {:escape   [identity               :normal]
-                           :else     [buy                    :buy]}
-               :sell      {:escape   [identity               :normal]
-                           :else     [sell                   :sell]}
-               :magic     {:escape   [identity               :normal]
-                           :else     [do-magic               identity]}
+                          {:escape   [identity               :normal    false]
+                           :else     [describe-inventory     :normal    false]}
+               :drop      {:escape   [identity               :normal    false]
+                           :else     [drop-item              :normal    true]}
+               :pickup    {:escape   [identity               :normal    false]
+                           :else     [toggle-hotkey          :pickup    false]
+                           :enter    [pick-up                :normal    true]}
+               :eat       {:escape   [identity               :normal    false]
+                           :else     [eat                    :normal    true]}
+               :open      {\h        [open-left              :normal    true]
+                           \j        [open-down              :normal    true]
+                           \k        [open-up                :normal    true]
+                           \l        [open-right             :normal    true]}
+               :talk      {\h        [talk-left              identity   false]
+                           \j        [talk-down              identity   false]
+                           \k        [talk-up                identity   false]
+                           \l        [talk-right             identity   false]}
+               :talking   {:escape   [stop-talking           :normal    false]
+                           :else     [talk                   identity   true]}
+               :shopping  {\a        [identity               :buy       true]
+                           \b        [identity               :sell      true]
+                           :escape   [identity               :normal    false]}
+               :buy       {:escape   [identity               :normal    false]
+                           :else     [buy                    :buy       true]}
+               :sell      {:escape   [identity               :normal    false]
+                           :else     [sell                   :sell      true]}
+               :magic     {:escape   [identity               :normal    false]
+                           :else     [do-magic               identity   true]}
                :magic-direction
-                          {\h        [magic-left             identity]
-                           \j        [magic-down             identity]
-                           \k        [magic-up               identity]
-                           \l        [magic-right            identity]}
+                          {\h        [magic-left             identity   true]
+                           \j        [magic-down             identity   true]
+                           \k        [magic-up               identity   true]
+                           \l        [magic-right            identity   true]}
                :magic-inventory
-                          {:escape   [identity               :normal]
-                           :else     [magic-inventory        :normal]}
-               :help      {:else     [(fn [s _] s)           :normal]}
-               :close     {\h        [close-left             :normal]
-                           \j        [close-down             :normal]
-                           \k        [close-up               :normal]
-                           \l        [close-right            :normal]}
-               :dead      {\y        [reinit-world           :normal]
-                           \n        [(constantly nil)       :normal]}
-               :quit?     {\y        [(constantly nil)       :normal]
-                           :else     [(fn [s _] s)           :normal]}}
+                          {:escape   [identity               :normal    false]
+                           :else     [magic-inventory        :normal    true]}
+               :help      {:else     [(fn [s _] s)           :normal    false]}
+               :close     {\h        [close-left             :normal    true]
+                           \j        [close-down             :normal    true]
+                           \k        [close-up               :normal    true]
+                           \l        [close-right            :normal    true]}
+               :more-log  {:else     [scroll-log             identity   false]}
+               :dead      {\y        [reinit-world           :normal    false]
+                           \n        [(constantly nil)       :normal    false]}
+               :quit?     {\y        [(constantly nil)       :normal    false]
+                           :else     [(fn [s _] s)           :normal    false]}}
         expander-fn (fn [table] table)]
     (expander-fn table)))
 
@@ -975,80 +1053,55 @@
         table         (get state-transition-table current-state)]
     ;(debug "current-state" current-state)
     (if (or (contains? table keyin) (contains? table :else))
-      (let [[transition-fn new-state] (if (contains? table keyin) (table keyin) (table :else))
+      (let [[transition-fn new-state advance-time] (if (contains? table keyin) (get table keyin) (get table :else))
             ;; if the table contains keyin, then pass through transition-fn assuming arity-1 [state]
             ;; else the transition-fn takes [state keyin]. Bind keying so that it becomes arity-1 [state]
+            _ (debug "current-state" (get-in state [:world :current-state]))
+            _ (debug "transition-fn" transition-fn)
             transition-fn             (if (contains? table keyin)
                                         transition-fn
                                         (fn [state]
                                           (transition-fn state keyin)))
             _ (debug "type of npcs" (type (get-in state [:world :npcs])))
-            state                     (transition-fn state)
+            new-time  (inc (get-in state [:world :time]))
+            state     (transition-fn
+                        (if advance-time
+                          (assoc-in state [:world :time] new-time)
+                          state))
+            _ (debug "current-state" (get-in state [:world :current-state]))
             _ (debug "new-state" new-state)
             _ (debug "type of npcs" (type (get-in state [:world :npcs])))
             new-state (if (keyword? new-state)
                         new-state
                         (new-state (get-in state [:world :current-state])))
-
-            new-time  (inc (get-in state [:world :time]))
-            _ (debug "new-state" new-state)]
+            _ (assert (not (nil? new-state)))
+            _ (info "new-state" new-state)]
         (some-> state
             (assoc-in [:world :current-state] new-state)
-            ;; do updates that don't deal with keyin
-            ;; Get hungrier
-            ((fn [state] (update-in state [:world :player :hunger] inc)))
-            ;; if poisoned, damage player, else heal
-            (update-in[:world :player :hp] (fn [hp] (if (contains? (get-in state [:world :player :status]) :poisoned)
-                                                      (- hp 0.1)
-                                                      (min (get-in state [:world :player :max-hp])
-                                                           (+ hp 0.2)))))
-            ((fn [state] (assoc-in state [:world :player :status]
-                                  (set (remove nil?
-                                         (apply conj #{} [(condp <= (-> state :world :player :hunger)
-                                                           400 :dead
-                                                           300 :dying
-                                                           200 :starving
-                                                           100 :hungry
-                                                           nil)
-                                                         ]))))))
-            (update-npcs)
-            ;; TODO: Add appropriate level
-            (add-npcs 1)
+            ((fn [state] (if advance-time
+                           (-> state
+                             ;; do updates that don't deal with keyin
+                             ;; Get hungrier
+                             (get-hungrier)
+                             ;; if poisoned, damage player, else heal
+                             (if-poisoned-get-hurt)
+                             (update-npcs)
+                             ;; TODO: Add appropriate level
+                             (add-npcs 1)
+                             ;; update visibility
+                             (update-visibility))
+                           state)))
             (update-quests)
             ((fn [state] (update-in state [:world :current-state]
                                     (fn [current-state]
                                       (if (contains? (-> state :world :player :status) :dead)
                                         ;; delete the save game on player death
-                                        (do (.delete (clojure.java.io/file "world.save"))
+                                        (do (.delete (clojure.java.io/file "save/world.edn"))
                                             :dead)
                                         current-state)))))
-            ((fn [state] (update-in state [:world :places (-> state :world :current-place)]
-                                    (fn [place]
-                                      (let [pos (-> state :world :player :pos)
-                                            sight-distance 3
-                                            get-cell (memoize (fn [x y] (get-in place [y x])))]
-                                        (vec (pmap (fn [line y]
-                                                     (if (< sight-distance
-                                                            (Math/abs (- y (pos :y))))
-                                                       line
-                                                       (vec (map (fn [cell x]
-                                                                   (if (and (not (nil? cell))
-                                                                            (not (farther-than?
-                                                                                   pos
-                                                                                   {:x x :y y}
-                                                                                   sight-distance))
-                                                                            (visible?
-                                                                              get-cell
-                                                                              cell-blocking?
-                                                                              (pos :x)
-                                                                              (pos :y)
-                                                                              x
-                                                                              y))
-                                                                     (assoc cell :discovered new-time)
-                                                                     cell))
-                                                                 line (range)))))
-                                                    place (range))))))))
-
-            ((fn [state] (assoc-in state [:world :time] new-time)))))
+            ;; only try to start log scrolling if the state we were just in was not more-log
+            ((fn [state] (if (not= current-state :more-log)
+                           (init-log-scrolling state)
+                           state)))))
       state)))
 

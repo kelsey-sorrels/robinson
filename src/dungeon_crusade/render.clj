@@ -502,10 +502,20 @@
     (put-string (state :screen) 76 23 "@" (class->rgb (-> state :world :player :class)) :black)
     (put-string (state :screen) 77 23 "    " :white :black)
     ;; draw log
-    (when-let [message (-> state :world :log last)]
-      ;(debug "message" message)
-      (when (< (- (-> state :world :time) (message :time)) 5)
-        (put-string (state :screen) 0 0 (or (message :text) ""))))
+    (let [logs-viewed (get-in state [:world :logs-viewed])
+          current-time (get-in state [:world :time])
+          cur-state (current-state state)]
+      (debug "current-state" cur-state)
+      (if (= cur-state :more-log)
+        (let [logs (vec (filter #(= (get % :time) current-time) (get-in state [:world :log])))
+              _ (info "logs-viewed" logs-viewed "current-time" current-time "logs" logs)
+              message (get logs (dec logs-viewed))]
+          ;(debug "message" message)
+          (put-string (state :screen) 0 0 (format "%s --More--" (message :text))))
+        (let [message (last (get-in state [:world :log]))]
+          (when (and message
+                     (< (- current-time (message :time)) 5))
+            (put-string (state :screen) 0 0 (get message :text))))))
     ;; draw quit prompt
     (render-quit? state)
     ;; draw dialog menu

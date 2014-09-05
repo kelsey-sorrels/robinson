@@ -3,6 +3,7 @@
            dungeon-crusade.common
            [dungeon-crusade.worldgen :exclude [-main]]
            dungeon-crusade.dialog
+           dungeon-crusade.npc
            dungeon-crusade.update
            [dungeon-crusade.monstergen :exclude [-main]]
            dungeon-crusade.render)
@@ -74,7 +75,7 @@
                                    {k (dialog->fsm v)})
                                  (apply merge (map :dialog quests))))
         state {:world world :screen terminal :quests quest-map :dialog dialog}
-        state (reduce (fn [state _] (add-npcs state 1)) state (range 500))]
+        state (reduce (fn [state _] (add-npcs state 1)) state (range 5))]
 
     ;; tick once using the rest (.) command to update visibility
     (tick state \.)))

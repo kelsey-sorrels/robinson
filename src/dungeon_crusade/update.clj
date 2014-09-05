@@ -302,7 +302,9 @@
   "Re-initialize the value of `:world` within `state`. Used when the player
    dies and a new game is started."
   [state]
-  (assoc state :world (init-world)))
+  (reduce (fn [state _] (add-npcs state 1))
+          (assoc state :world (init-world))
+          (range 5)))
 
 (defn eat
   "Remove the item whose `:hotkey` equals `keyin` and subtract from the player's
@@ -591,13 +593,32 @@
 
 (defn init-log-scrolling
   [state]
-  (let [t (get-in state [:world :time])
-        c (count (filter #(= t (get % :time)) (get-in state [:world :log])))]
-    (-> state
-      (assoc-in [:world :logs-viewed] 1)
-      ((fn [state] (if (> c 1)
-                     (assoc-in state [:world :current-state] :more-log)
-                     state))))))
+  (-> state
+    (update-in [:world :logs]
+      (fn [logs]
+        (mapcat
+          (fn [logs-with-same-time]
+            (vec
+              (reduce (fn [logs-with-same-time log]
+                        (if (< (+ (count (get (last logs-with-same-time) :message))
+                                  (count (get log :message)))
+                                70)
+                          (vec (conj (butlast logs-with-same-time)
+                                      {:time (get log :time)
+                                       :message (clojure.string/join " " [(get (last logs-with-same-time) :message)
+                                                                          (get log :message)])}))
+                          (conj logs-with-same-time log)))
+                      []
+                      logs-with-same-time)))
+          (vals (group-by :time logs)))))
+    ((fn [state]
+      (let [t (get-in state [:world :time])
+            c (count (filter #(= t (get % :time)) (get-in state [:world :log])))]
+        (-> state
+          (assoc-in [:world :logs-viewed] 1)
+          ((fn [state] (if (> c 1)
+                         (assoc-in state [:world :current-state] :more-log)
+                         state)))))))))
 
 (defn get-hungrier
   "Increase player's hunger."
@@ -899,23 +920,6 @@
               _ (trace "count remaining npcs" (count remaining-npcs))]
         (recur state remaining-npcs (dec i)))))))
 
-(defn add-npcs
-  "Randomly add monsters to the current place's in floor cells."
-  [state level]
-  (if (and (< (rand-int 100) 2)
-           (< (count (filter (fn [npc] (= (-> state :world :current-place)
-                                          (get npc :place)))
-                             (-> state :world :npcs)))
-              20))
-    (let [[cell x y] (first (shuffle (filter (fn [[cell x y]] (not (collide? state x y {:include-npcs? true
-                                                                                         :collide-water? false})))
-                                             (with-xy (current-place state)))))]
-      (add-npc state (-> state :world :current-place)
-                     (gen-monster level (cell :type))
-                     x
-                     y))
-    state))
-
 (defn update-quests
   "Execute the `pred` function for the current stage of each quest. If 
   `(pred state)` returns `true` then execute the quest's update fn as
@@ -1087,7 +1091,7 @@
                              (if-poisoned-get-hurt)
                              (update-npcs)
                              ;; TODO: Add appropriate level
-                             (add-npcs 1)
+                             (add-npcs-random 1)
                              ;; update visibility
                              (update-visibility))
                            state)))

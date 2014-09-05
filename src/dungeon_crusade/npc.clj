@@ -2,6 +2,7 @@
 (ns dungeon-crusade.npc
   (:use clojure.walk
         dungeon-crusade.common
+        [dungeon-crusade.monstergen :exclude [-main]]
         [dungeon-crusade.dialog :exclude [-main]])
   (:require [taoensso.timbre :as timbre]))
 
@@ -137,4 +138,27 @@
   [state npc f]
   (update-in-matching state [:world :npcs] npc f))
 
+
+
+(defn add-npcs
+  "Randomly add monsters to the current place's in floor cells."
+  [state level]
+  (let [[cell x y] (first (shuffle (filter (fn [[cell x y]] (not (collide? state x y {:include-npcs? true
+                                                                                       :collide-water? false})))
+                                           (with-xy (current-place state)))))]
+    (add-npc state (-> state :world :current-place)
+                   (gen-monster level (cell :type))
+                   x
+                   y)))
+
+(defn add-npcs-random
+  "Randomly add monsters to the current place."
+  [state level]
+  (if (and (< (rand-int 100) 2)
+           (< (count (filter (fn [npc] (= (-> state :world :current-place)
+                                          (get npc :place)))
+                             (-> state :world :npcs)))
+              20))
+    (add-npcs state level)
+    state))
 

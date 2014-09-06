@@ -347,5 +347,33 @@
 (defn -main
   "Generate five random monsters and display them."
   [& args]
-  (println "generating...")
-  (println (gen-monsters 5)))
+  (if (contains? (set args) "--list")
+    (let [monsters (map #(%)
+                              [gen-rat
+                              gen-spider
+                              gen-scorpion
+                              gen-snake
+                              gen-bat
+                              gen-boar
+                              gen-gecko
+                              gen-monkey
+                              gen-bird
+                              gen-centipede
+                              gen-turtle
+                              gen-frog
+                              gen-parrot
+                              gen-shark
+                              gen-fish
+                              gen-octopus 
+                              gen-sea-snake 
+                              gen-clam 
+                              gen-urchin 
+                              gen-squid])]
+      (doseq [monster monsters]
+        (doseq [part (get monster :body-parts)]
+          (println "[:human :punch" (get monster :race) part "] (+ (rand) 0.5)"))
+        (doseq [attack (get monster :attacks)]
+          (doseq [part #{:head :neck :face :abdomen :arm :leg :foot}]
+            (println "[" (get monster :race) attack ":human" part "] (+ (rand) 0.5)")))))
+          
+    (println (gen-monsters 5))))

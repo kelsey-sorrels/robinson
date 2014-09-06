@@ -9,7 +9,8 @@
     dungeon-crusade.npc
     dungeon-crusade.combat
     [dungeon-crusade.monstergen :exclude [-main]]
-    dungeon-crusade.magic
+    [dungeon-crusade.magic :only [do-magic magic-left magic-down     
+                                  magic-up magic-right magic-inventory]]
     [dungeon-crusade.worldgen :exclude [-main]]
     dungeon-crusade.lineofsight)
   (:require clojure.pprint
@@ -643,6 +644,62 @@
                                                    (- hp 0.1)
                                                    (min (get-in state [:world :player :max-hp])
                                                         (+ hp 0.2))))))
+(defn if-wounded-get-infected
+  [state]
+  (let [hp                  (get-in state [:world :player :hp])
+        max-hp              (get-in state [:world :player :max-hp])
+        chance-of-infection (inc (/ -1 (inc (/ hp (* max-hp 20)))))] 
+    (if (and (not-empty (get-in state [:world :player :wounds]))
+             (< (rand) chance-of-infection))
+      (-> state
+        (update-in [:world :player :status]
+          (fn [status]
+              (conj status :infected)))
+        (append-log "Your wounds have become infected."))
+      state)))
+
+(defn if-infected-get-hurt
+  [state]
+  (update-in state [:world :player :hp]
+    (fn [hp]
+      (if (contains? (get-in state [:world :player :status]) :infected)
+        (- hp 0.2)
+        hp))))
+
+(defn heal
+  [state]
+  (-> state
+    ;; heal wounds
+    ((fn [state]
+      (update-in state [:world :player :wounds]
+        (fn [wounds]
+          (reduce-kv (fn [wounds body-part wound]
+            (if (< (get wound :dmg) 1)
+              wounds
+              (assoc wounds body-part {:dmg (- (get wound :dmg) 0.1)
+                                       :time (get wound :time)})))
+            {}
+            wounds)))))
+    ;; chance of poison wearing off
+    ((fn [state]
+      (if (and (contains? (get-in state [:world :player :status]) :poisoned)
+               (< (rand) 0.1))
+        (-> state
+          (update-in [:world :player :status]
+            (fn [status]
+                (disj status :poisoned)))
+          (append-log "The poison wore off."))
+        state)))
+    ;; chance of infection clearing up
+    ((fn [state]
+      (if (and (contains? (get-in state [:world :player :status]) :infected)
+               (< (rand) 0.1))
+        (-> state
+          (update-in [:world :player :status]
+            (fn [status]
+                (disj status :infected)))
+          (append-log "The infection has cleared up."))
+        state)))))
 
 ;; update visibility
 (defn update-visibility
@@ -1079,6 +1136,7 @@
                         new-state
                         (new-state (get-in state [:world :current-state])))
             _ (assert (not (nil? new-state)))
+            _ (info "player" (get-in state [:world :player]))
             _ (info "new-state" new-state)]
         (some-> state
             (assoc-in [:world :current-state] new-state)
@@ -1089,6 +1147,9 @@
                              (get-hungrier)
                              ;; if poisoned, damage player, else heal
                              (if-poisoned-get-hurt)
+                             (heal)
+                             (if-wounded-get-infected)
+                             (if-infected-get-hurt)
                              (update-npcs)
                              ;; TODO: Add appropriate level
                              (add-npcs-random 1)

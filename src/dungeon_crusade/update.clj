@@ -923,7 +923,7 @@
                            (contains? npc :energy))
                     (let [npc-keys (npc->keys state npc)
                           ;; add speed value to energy.
-                          _ (trace "adding speed to" (select-keys npc [:race :place :pos :speed :energy]))
+                          ;_ (trace "adding speed to" (select-keys npc [:race :place :pos :speed :energy]))
                           state (update-in state (conj npc-keys :energy) (partial + (get npc :speed)))]
                       ;; adjacent hostile npcs attack player.
                       (if (and (contains? (get npc :status) :hostile)
@@ -946,7 +946,7 @@
                                                           (= (get npc :place) current-place-id)))
                                      (get-in state [:world :npcs])))
            i 5]
-      (info "looping over" (count remaining-npcs) "npcs")
+      ;(info "looping over" (count remaining-npcs) "npcs")
       (if (or (empty? remaining-npcs)
               (neg? i))
         ;; no more results to process, stop looping and return state
@@ -967,21 +967,21 @@
         ;                             remaining-npcs))
         (let [map-result (remove (comp nil? first)
                              (vec (pmap (fn [npc]
-                                     (log-time "calc-npc-next-step"
-                                       (calc-npc-next-step state npc)))
+                                     ;(log-time "calc-npc-next-step"
+                                       (calc-npc-next-step state npc));)
                                    remaining-npcs)))
               ;; update the npcs in serial
               state      (reduce
                            (fn [state [new-pos new-npc old-npc]]
-                             (trace "reducing" new-pos (select-keys old-npc [:race :place :pos :speed :energy]))
-                             (trace "npcs")
-                             (doseq [npc (get-in state [:world :npcs])]
-                               (println (select-keys npc [:race :place :pos :speed :energy])))
+                             ;(trace "reducing" new-pos (select-keys old-npc [:race :place :pos :speed :energy]))
+                             ;(trace "npcs")
+                             ;(doseq [npc (get-in state [:world :npcs])]
+                             ;  (println (select-keys npc [:race :place :pos :speed :energy])))
 
                              ;; decrement energy either way
                              (update-npc state old-npc
                                (fn [npc]
-                                 (trace "updating npc" (select-keys npc [:race :place :pos :speed :energy]))
+                                 ;(trace "updating npc" (select-keys npc [:race :place :pos :speed :energy]))
                                  (update-in
                                    ;; no npc at the destination cell?
                                    (if (not-any? (fn [npc] (and (= (get npc :pos)
@@ -1001,8 +1001,8 @@
                                (filter (fn [npc] (and (contains? npc :energy)
                                                       (> (get npc :energy) 1)
                                                       (= (get npc :place) current-place-id)))
-                                 (get-in state [:world :npcs])))
-              _ (trace "count remaining npcs" (count remaining-npcs))]
+                                 (get-in state [:world :npcs])))]
+              ;_ (trace "count remaining npcs" (count remaining-npcs))]
         (recur state remaining-npcs (dec i)))))))
 
 (defn update-quests

@@ -131,7 +131,7 @@
                                (let [character (.getKeyChar e)
                                      altDown   (not= (bit-and (.getModifiersEx e) InputEvent/ALT_DOWN_MASK) 0)
                                      ctrlDown  (not= (bit-and (.getModifiersEx e) InputEvent/CTRL_DOWN_MASK) 0)
-                                     ignore    #{\n \t \r \b (char 33) (char 27)}]
+                                     ignore    #{(char 33) (char 27)}]
                                  (when-not (contains? ignore character)
                                    (if ctrlDown
                                        (on-key-fn (char (+ (int \a) -1 (int character))))

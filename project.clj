@@ -27,6 +27,11 @@
   ;      dungeon-crusade.npc]
   :jvm-opts [
              ;"-agentpath:/home/santos/bin/yjp-2014-build-14096/bin/linux-x86-64/libyjpagent.so"
+             "-XX:+UseParNewGC"
+             "-XX:+UseConcMarkSweepGC"
+             "-XX:+CMSConcurrentMTEnabled"
+             "-XX:MaxGCPauseMillis=20"
+             "-XX:+CMSIncrementalMode"
              "-Dsun.java2d.opengl=true"
              ;"-Dsun.java2d.trace=log"
              "-Dsun.java2d.opengl.fbobject=true"])

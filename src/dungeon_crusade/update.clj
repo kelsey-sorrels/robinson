@@ -49,7 +49,7 @@
   "Move the player one space provided her/she is able. Else do combat. Else positions
    with party member."
   [state direction]
-  {:pre  [(contains? #{:left :right :up :down} direction)
+  {:pre  [(contains? #{:left :right :up :down :up-left :up-right :down-left :down-right} direction)
           (vector? (get-in state [:world :npcs]))]
    :post [(vector? (get-in % [:world :npcs]))]}
   (let [player-x (-> state :world :player :pos :x)
@@ -57,10 +57,18 @@
         target-x (+ player-x (case direction
                                :left -1
                                :right 1
+                               :up-left -1
+                               :up-right 1
+                               :down-left -1
+                               :down-right 1
                                0))
         target-y (+ player-y (case direction
                                :up  -1
                                :down 1
+                               :up-left -1
+                               :up-right -1
+                               :down-left 1
+                               :down-right 1
                                0))]
     (cond
       (not (collide? state target-x target-y))
@@ -90,24 +98,44 @@
   
 
 (defn move-left
-  "Moves the player one space to the left provided he/she is able."
+  "moves the player one space to the left provided he/she is able."
   [state]
   (move state :left))
 
 (defn move-right
-  "Moves the player one space to the right provided he/she is able."
+  "moves the player one space to the right provided he/she is able."
   [state]
   (move state :right))
 
 (defn move-up
-  "Moves the player one space up provided he/she is able."
+  "moves the player one space up provided he/she is able."
   [state]
   (move state :up))
 
 (defn move-down
-  "Moves the player one space down provided he/she is able."
+  "moves the player one space down provided he/she is able."
   [state]
   (move state :down))
+
+(defn move-up-left
+  "moves the player one space to the left and up provided he/she is able."
+  [state]
+  (move state :up-left))
+
+(defn move-up-right
+  "moves the player one space to the right and up provided he/she is able."
+  [state]
+  (move state :up-right))
+
+(defn move-down-left
+  "moves the player one space down and left provided he/she is able."
+  [state]
+  (move state :down-left))
+
+(defn move-down-right
+  "moves the player one space down and right provided he/she is able."
+  [state]
+  (move state :down-right))
 
 (defn open-door
   "Open the door one space in the direction relative to the player's position.
@@ -1022,6 +1050,10 @@
                            \j        [move-down              :normal    true]
                            \k        [move-up                :normal    true]
                            \l        [move-right             :normal    true]
+                           \y        [move-up-left           :normal    true]
+                           \u        [move-up-right          :normal    true]
+                           \b        [move-down-left         :normal    true]
+                           \n        [move-down-right        :normal    true]
                            \>        [use-stairs             :normal    true]
                            \<        [use-stairs             :normal    true]
                            \;        [init-cursor            :describe  false]

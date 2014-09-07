@@ -31,7 +31,6 @@
              "-XX:+UseConcMarkSweepGC"
              "-XX:+CMSConcurrentMTEnabled"
              "-XX:MaxGCPauseMillis=20"
-             "-XX:+CMSIncrementalMode"
              "-Dsun.java2d.opengl=true"
              ;"-Dsun.java2d.trace=log"
              "-Dsun.java2d.opengl.fbobject=true"])

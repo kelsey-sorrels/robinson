@@ -10,11 +10,6 @@
 
 (timbre/refer-timbre)
 
-(defn uniform-rand
-  [minimum maximum]
-  {:pre [(< minimum maximum)]}
-  (+ (rand (- maximum minimum)) minimum))
-
 (defn- vec-match?
   [v0 v1]
   (let [arg-match? (fn [[arg0 arg1]]

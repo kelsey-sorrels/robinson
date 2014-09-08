@@ -5,6 +5,7 @@
     [clojure.string :only [lower-case]]
     clojure.contrib.core
     dungeon-crusade.common
+    dungeon-crusade.player
     [dungeon-crusade.dialog :exclude [-main]]
     dungeon-crusade.npc
     dungeon-crusade.combat
@@ -488,6 +489,44 @@
               (describe-cell-fn state direction (get-cell-at-current-place state (+ x dx) (+ y dy)))))
           state
           directions))))))
+
+(defn harvest
+  "Collect non-item resources from adjacent or current cell"
+  [state direction]
+  {:pre  [(contains? #{:left :right :up :down :center} direction)]}
+  (let [player-x (-> state :world :player :pos :x)
+        player-y (-> state :world :player :pos :y)
+        target-x (+ player-x (case direction
+                               :left -1
+                               :right 1
+                               0))
+        target-y (+ player-y (case direction
+                               :up  -1
+                               :down 1
+                               0))
+        target-cell (get-cell-at-current-place state target-x target-y)
+        harvest-items (if (not= target-cell nil)
+          (cond
+            (= (get target-cell :type) :tree)
+              [{:id :stick :name "Stick" :count (uniform-rand-int 1 5)}
+               {:id :plant-fiber :name "Plant fiber" :count (uniform-rand-int 1 5)}]
+            :else [])
+          [])]
+    (-> state
+      (add-to-inventory harvest-items)
+      (append-log (format "You gathered %s." (clojure.string/join ", " (map #(clojure.string/lower-case (get % :name)) harvest-items)))))))
+
+(defn harvest-left [state]
+  (harvest state :left))
+
+(defn harvest-right [state]
+  (harvest state :right))
+
+(defn harvest-up [state]
+  (harvest state :up))
+
+(defn harvest-down [state]
+  (harvest state :down))
 
 (defn free-cursor
   "Dissassociate the cursor from the world."
@@ -1116,6 +1155,7 @@
                            \u        [move-up-right          :normal    true]
                            \b        [move-down-left         :normal    true]
                            \n        [move-down-right        :normal    true]
+                           \x        [identity               :harvest   false]
                            \>        [use-stairs             :normal    true]
                            \<        [use-stairs             :normal    true]
                            \;        [init-cursor            :describe  false]
@@ -1154,6 +1194,10 @@
                            \j        [talk-down              identity   false]
                            \k        [talk-up                identity   false]
                            \l        [talk-right             identity   false]}
+               :harvest   {\h        [harvest-left           :normal    true]
+                           \j        [harvest-down           :normal    true]
+                           \k        [harvest-up             :normal    true]
+                           \l        [harvest-right          :normal    true]}
                :talking   {:escape   [stop-talking           :normal    false]
                            :else     [talk                   identity   true]}
                :shopping  {\a        [identity               :buy       true]

@@ -44,6 +44,16 @@
     [arg [sym] condition form else-form]
     (arg-if- 'clojure.core/-> arg sym condition form else-form)))
 
+(defn uniform-rand
+  [minimum maximum]
+  {:pre [(< minimum maximum)]}
+  (+ (rand (- maximum minimum)) minimum))
+
+(defn uniform-rand-int
+  [minimum maximum]
+  {:pre [(< minimum maximum)]}
+  (+ (rand-int (- maximum minimum)) minimum))
+
 
 (defn chebyshev-distance
   "Chebyshev/chessboard distance between 2 points"
@@ -328,11 +338,6 @@
   (let [x (-> state :world :player :pos :x)
         y (-> state :world :player :pos :y)]
     [(get-cell (current-place state) x y) x y]))
-
-(defn player-dead?
-  "Return `true` if the player has a status of `:dead`."
-  [state]
-  (contains? (-> state :world :player :status) :dead))
 
 (defn direction->cells
   [state direction]

@@ -4,6 +4,7 @@
             (java.awt.image BufferedImage)
             (javax.swing ImageIcon))
   (:use     dungeon-crusade.common
+            dungeon-crusade.player
             dungeon-crusade.magic
             dungeon-crusade.lineofsight
             [dungeon-crusade.dialog :exclude [-main]]
@@ -137,13 +138,16 @@
    (render-multi-select screen title selected-hotkeys items 40 0 40 22))
   ([screen title selected-hotkeys items x y width height]
    (let [contents (take height
-                        (concat (map #(format (clojure.string/join ["%c%c%-" (- width 2)  "s"])
+                        (concat (map #(format (clojure.string/join ["%c%c%s%-" (- width 2)  "s"])
                                               (or (% :hotkey)
                                                   \ )
                                               (if (contains? selected-hotkeys (% :hotkey))
                                                 \+
                                                 \-)
-                                              (% :name))
+                                              (if (contains? % :count)
+                                                (format "%dx " (get % :count))
+                                                "")
+                                              (get % :name))
                                      items)
                                (repeat (clojure.string/join (repeat width " ")))))] 
      (doseq [i (range (count contents))]

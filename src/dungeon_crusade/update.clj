@@ -17,6 +17,7 @@
             clojure.core.memoize
             clojure.edn
             clj-tiny-astar.path
+            [pallet.thread-expr :as tx]
             [clojure.stacktrace :as st]
             [taoensso.timbre :as timbre]))
 
@@ -420,6 +421,74 @@
   (let [player-pos (get-in state [:world :player :pos])]
     (assoc-in state [:world :cursor] player-pos)))
 
+(defn search
+  "Search the Moore neighborhood for hidden things and make them visible."
+  [state]
+  state)
+
+(defn extended-search
+  "Search the Moore neighborhood for hidden things and make them visible. Describe interesting items in the log."
+  [state]
+  (let [directions       [["To the north-west" -1 -1] ["To the north" 0 -1] ["To the north-east" 1 -1]
+                          ["To the west" -1 0]        ["At your feet" 0 0]  ["To the east" 1 0]
+                          ["To the south-west" -1 1]  ["To the south" 0 1]  ["To the south-east" 1 1]]
+        describe-cell-fn (fn [state direction cell]
+                           (let [items     (get cell :items [])
+                                 cell-type (get cell :type)]
+                             (info "describing" direction items cell-type)
+                             (cond 
+                               (and (empty? items)
+                                    (= :tall-grass cell-type))
+                                 (append-log state (format "%s is tall grass." direction))
+                               (and (empty? items)
+                                    (= :tree cell-type))
+                                 (append-log state (format "%s is a tree." direction))
+                               (empty? items)
+                                 state
+                               (and (= (count items) 1)
+                                    (= :tall-grass cell-type))
+                                 (append-log state (format "%s is a %s and tall grass." direction (get (first items) :name)))
+                               (and (= (count items) 1)
+                                    (= :tree cell-type))
+                                 (append-log state (format "%s is a %s and a tree." direction (get (first items) :name)))
+                               (and (> (count items) 1)
+                                    (= :tall-grass cell-type))
+                                 (append-log state (format "%s there are %s, and tall grass."
+                                                           direction (clojure.string/join ", "
+                                                                                          (map (fn [[item-name item-count]]
+                                                                                                 (format "%s x%d" item-name item-count))
+                                                                                               (frequencies (map :name items))))))
+                               (and (> (count items) 1)
+                                    (= :tree cell-type))
+                                 (append-log state (format "%s there are %s, and a tree."
+                                                           direction (clojure.string/join ", "
+                                                                                          (map (fn [[item-name item-count]]
+                                                                                                 (format "%s x%d" item-name item-count))
+                                                                                               (frequencies (map :name items))))))
+                               (= (count items) 1)
+                                 (append-log state (format "%s there is a %s."
+                                                           direction (clojure.string/join ", "
+                                                                                          (map (fn [[item-name item-count]]
+                                                                                                 (format "%s x%d" item-name item-count))
+                                                                                               (frequencies (map :name items))))))
+                               (> (count items) 1)
+                                 (append-log state (format "%s there are %s."
+                                                           direction (clojure.string/join ", "
+                                                                                          (map (fn [[item-name item-count]]
+                                                                                                 (format "%s x%d" item-name item-count))
+                                                                                               (frequencies (map :name items))))))
+                               :else
+                                 state)))]
+    (-> state
+      (search)
+      ((fn [state]
+        (reduce
+          (fn [state [direction dx dy]]
+            (let [{x :x y :y} (get-in state [:world :player :pos])]
+              (describe-cell-fn state direction (get-cell-at-current-place state (+ x dx) (+ y dy)))))
+          state
+          directions))))))
+
 (defn free-cursor
   "Dissassociate the cursor from the world."
   [state]
@@ -645,9 +714,8 @@
             c (count (filter #(= t (get % :time)) (get-in state [:world :log])))]
         (-> state
           (assoc-in [:world :logs-viewed] 1)
-          ((fn [state] (if (> c 1)
-                         (assoc-in state [:world :current-state] :more-log)
-                         state)))))))))
+          (tx/when-> (> c 1)
+            (assoc-in [:world :current-state] :more-log))))))))
 
 (defn get-hungrier
   "Increase player's hunger."
@@ -698,8 +766,8 @@
   [state]
   (-> state
     ;; heal wounds
-    ((fn [state]
-      (update-in state [:world :player :wounds]
+    (tx/arg-> [state]
+      (update-in [:world :player :wounds]
         (fn [wounds]
           (reduce-kv (fn [wounds body-part wound]
             (if (< (get wound :dmg) 1)
@@ -707,27 +775,23 @@
               (assoc wounds body-part {:dmg (- (get wound :dmg) 0.1)
                                        :time (get wound :time)})))
             {}
-            wounds)))))
+            wounds))))
     ;; chance of poison wearing off
-    ((fn [state]
-      (if (and (contains? (get-in state [:world :player :status]) :poisoned)
-               (< (rand) 0.1))
-        (-> state
-          (update-in [:world :player :status]
-            (fn [status]
-                (disj status :poisoned)))
-          (append-log "The poison wore off."))
-        state)))
+    (arg-when-> [state]
+      (and (contains? (get-in state [:world :player :status]) :poisoned)
+           (< (rand) 0.1))
+        (update-in [:world :player :status]
+          (fn [status]
+              (disj status :poisoned)))
+        (append-log "The poison wore off."))
     ;; chance of infection clearing up
-    ((fn [state]
-      (if (and (contains? (get-in state [:world :player :status]) :infected)
-               (< (rand) 0.1))
-        (-> state
-          (update-in [:world :player :status]
-            (fn [status]
-                (disj status :infected)))
-          (append-log "The infection has cleared up."))
-        state)))))
+    (arg-when-> [state]
+      (and (contains? (get-in state [:world :player :status]) :infected)
+           (< (rand) 0.1))
+        (update-in [:world :player :status]
+          (fn [status]
+              (disj status :infected)))
+        (append-log "The infection has cleared up."))))
 
 ;; update visibility
 (defn update-visibility
@@ -1021,13 +1085,11 @@
                   ;(debug "quest-id" (quest :id))
                   ;(debug "stage-id" stage-id)
                   ;(debug "exec stage" stage)
-                  (if ((stage :pred) state)
-                    (-> state
-                        ((stage :update))
-                        ((fn [state] (assoc-in state
-                                               [:world :quests (quest :id) :stage]
-                                               ((stage :nextstagefn) stage)))))
-                    state)))))
+                  (-> state
+                    (tx/when-> ((stage :pred) state)
+                      ((stage :update))
+                      (assoc-in [:world :quests (quest :id) :stage]
+                                ((stage :nextstagefn) stage))))))))
             state (-> state :quests vals)))
 
 ;; A finite state machine definition for the game state. 
@@ -1057,6 +1119,8 @@
                            \>        [use-stairs             :normal    true]
                            \<        [use-stairs             :normal    true]
                            \;        [init-cursor            :describe  false]
+                           \s        [search                 :normal    true]
+                           \S        [extended-search        :normal    true]
                            \Q        [identity               :quests    false]
                            \P        [next-party-member      :normal    false]
                            \Z        [identity               :magic     true]
@@ -1172,33 +1236,29 @@
             _ (info "new-state" new-state)]
         (some-> state
             (assoc-in [:world :current-state] new-state)
-            ((fn [state] (if advance-time
-                           (-> state
-                             ;; do updates that don't deal with keyin
-                             ;; Get hungrier
-                             (get-hungrier)
-                             ;; if poisoned, damage player, else heal
-                             (if-poisoned-get-hurt)
-                             (heal)
-                             (if-wounded-get-infected)
-                             (if-infected-get-hurt)
-                             (update-npcs)
-                             ;; TODO: Add appropriate level
-                             (add-npcs-random 1)
-                             ;; update visibility
-                             (update-visibility))
-                           state)))
+            (tx/when-> advance-time
+              ;; do updates that don't deal with keyin
+              ;; Get hungrier
+              (get-hungrier)
+              ;; if poisoned, damage player, else heal
+              (if-poisoned-get-hurt)
+              (heal)
+              (if-wounded-get-infected)
+              (if-infected-get-hurt)
+              (update-npcs)
+              ;; TODO: Add appropriate level
+              (add-npcs-random 1)
+              ;; update visibility
+              (update-visibility))
             (update-quests)
-            ((fn [state] (update-in state [:world :current-state]
-                                    (fn [current-state]
-                                      (if (contains? (-> state :world :player :status) :dead)
-                                        ;; delete the save game on player death
-                                        (do (.delete (clojure.java.io/file "save/world.edn"))
-                                            :dead)
-                                        current-state)))))
+            (arg-when-> [state] (contains? (-> state :world :player :status) :dead)
+              ((fn [state]
+                (.delete (clojure.java.io/file "save/world.edn"))
+                state))
+              (assoc-in [:world :current-state] :dead))
+              ;; delete the save game on player death
             ;; only try to start log scrolling if the state we were just in was not more-log
-            ((fn [state] (if (not= current-state :more-log)
-                           (init-log-scrolling state)
-                           state)))))
+            (tx/when-> (not= current-state :more-log)
+              (init-log-scrolling))))
       state)))
 

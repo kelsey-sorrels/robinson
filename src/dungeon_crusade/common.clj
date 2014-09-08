@@ -2,9 +2,47 @@
 (ns dungeon-crusade.common
   (:use [dungeon-crusade.mapgen :exclude [-main]]
         [dungeon-crusade.itemgen :exclude [-main]])
-  (:require [taoensso.timbre :as timbre]))
+  (:require [taoensso.timbre :as timbre]
+            [pallet.thread-expr :as tx]))
 
 (timbre/refer-timbre)
+
+(letfn [(arg-when- [threader arg sym condition body]
+  `(let [~sym ~arg
+         arg# ~arg]
+    (if ~condition
+      (~threader arg# ~@body)
+      arg#)))]
+  (defmacro arg-when->
+    "Lexically assign the threaded argument to the specified symbol
+    and conditionally execute the body statements.
+    (-> 3
+      (arg-when-> [x] (> x 2) (* x)))
+    (-> 2
+      (arg-when-> [x] (> x 2) (* x)))
+    => 2"
+    {:indent 1}
+    [arg [sym] condition & body]
+    (arg-when- 'clojure.core/-> arg sym condition body)))
+
+(letfn [(arg-if- [threader arg sym condition form else-form]
+  `(let [~sym ~arg
+         arg# ~arg]
+    (if ~condition
+      (~threader arg# ~form)
+      (~threader arg# ~else-form)
+      arg#)))]
+  (defmacro arg-if->
+    "Lexically assign the threaded argument to the specified symbol
+    and conditionally execute the body statements.
+    (-> 3
+      (arg-when-> [x] (> x 2) (* x)))
+    (-> 2
+      (arg-when-> [x] (> x 2) (* x)))
+    => 2"
+    {:indent 1}
+    [arg [sym] condition form else-form]
+    (arg-if- 'clojure.core/-> arg sym condition form else-form)))
 
 
 (defn chebyshev-distance
@@ -279,6 +317,10 @@
    of the grid, return `nil`."
   [grid x y]
   (get-in grid [y x]))
+
+(defn get-cell-at-current-place
+  [state x y]
+  (get-cell (current-place state) x y))
 
 (defn player-cellxy
   "Retrieve the cell at which the player is located."

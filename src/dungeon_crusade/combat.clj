@@ -2,7 +2,8 @@
 (ns dungeon-crusade.combat
   (:use     
     clojure.pprint
-    dungeon-crusade.common)
+    dungeon-crusade.common
+    dungeon-crusade.itemgen)
   (:require clojure.pprint
             clojure.contrib.core
             [clojure.stacktrace :as st]
@@ -337,7 +338,7 @@
             (update-in [:world :places (current-place-id state) y x :items]
                        (fn [items]
                          (if (zero? (rand-int 3))
-                           (conj items {:type :food :name (format "%s corpse" (name (get defender :race))) :hunger 10})
+                           (conj items (gen-corpse defender))
                            items)))
             (append-log (gen-attack-message attacker
                                             defender

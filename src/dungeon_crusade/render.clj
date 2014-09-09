@@ -138,16 +138,16 @@
    (render-multi-select screen title selected-hotkeys items 40 0 40 22))
   ([screen title selected-hotkeys items x y width height]
    (let [contents (take height
-                        (concat (map #(format (clojure.string/join ["%c%c%s%-" (- width 2)  "s"])
+                        (concat (map #(do (info %) (format (clojure.string/join ["%c%c%s%-" (- width 2)  "s"])
                                               (or (% :hotkey)
                                                   \ )
                                               (if (contains? selected-hotkeys (% :hotkey))
                                                 \+
                                                 \-)
                                               (if (contains? % :count)
-                                                (format "%dx " (get % :count))
+                                                (format "%dx " (int (get % :count)))
                                                 "")
-                                              (get % :name))
+                                              (get % :name)))
                                      items)
                                (repeat (clojure.string/join (repeat width " ")))))] 
      (doseq [i (range (count contents))]

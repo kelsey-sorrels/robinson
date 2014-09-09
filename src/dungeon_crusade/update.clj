@@ -9,6 +9,7 @@
     [dungeon-crusade.dialog :exclude [-main]]
     dungeon-crusade.npc
     dungeon-crusade.combat
+    [dungeon-crusade.itemgen :exclude [-main]]
     [dungeon-crusade.monstergen :exclude [-main]]
     [dungeon-crusade.magic :only [do-magic magic-left magic-down     
                                   magic-up magic-right magic-inventory]]
@@ -506,15 +507,35 @@
                                0))
         target-cell (get-cell-at-current-place state target-x target-y)
         harvest-items (if (not= target-cell nil)
-          (cond
-            (= (get target-cell :type) :tree)
-              [{:id :stick :name "Stick" :count (uniform-rand-int 1 5)}
-               {:id :plant-fiber :name "Plant fiber" :count (uniform-rand-int 1 5)}]
-            :else [])
-          [])]
-    (-> state
-      (add-to-inventory harvest-items)
-      (append-log (format "You gathered %s." (clojure.string/join ", " (map #(clojure.string/lower-case (get % :name)) harvest-items)))))))
+                        (remove nil?
+                          (cond
+                            (= (get target-cell :type) :tree)
+                              [(if (= 0 (rand-int 10))
+                                 (gen-sticks (uniform-rand-int 1 2))
+                                 nil)
+                               (if (= 0 (rand-int 10))
+                                 (gen-plant-fibers (uniform-rand-int 1 5))
+                                 nil)]
+                            (= (get target-cell :type) :tall-grass)
+                              [(if (= 0 (rand-int 10))
+                                 (gen-grass (uniform-rand-int 1 5))
+                                 nil)
+                               (if (= 0 (rand-int 10))
+                                 (gen-plant-fibers (uniform-rand-int 1 5))
+                                 nil)]
+                            :else []))
+                        [])]
+    (if (empty? harvest-items)
+      (append-log state "You don't find anything.")
+      (-> state
+        (add-to-inventory harvest-items)
+        (append-log (format "You gather %s." (clojure.string/join ", " (map #(if (> (get % :count) 1)
+                                                                                  (format "%d %s" (get % :count) (get % :name-plural))
+                                                                                  (format "%s %s" (if (contains? #{\a \e \i \o} (first (get % :name)))
+                                                                                                     "an"
+                                                                                                     "a")
+                                                                                                  (get % :name)))
+                                                                              harvest-items))))))))
 
 (defn harvest-left [state]
   (harvest state :left))

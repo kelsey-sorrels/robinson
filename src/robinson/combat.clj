@@ -1,9 +1,9 @@
 ;; Functions that manipulate state to do what the user commands.
-(ns dungeon-crusade.combat
+(ns robinson.combat
   (:use     
     clojure.pprint
-    dungeon-crusade.common
-    dungeon-crusade.itemgen)
+    robinson.common
+    robinson.itemgen)
   (:require clojure.pprint
             clojure.contrib.core
             [clojure.stacktrace :as st]

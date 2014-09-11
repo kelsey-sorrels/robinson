@@ -1,6 +1,6 @@
 ;; Functions for drawing dialog trees as finite state machines
-(ns dungeon-crusade.dialog
-  (:use dungeon-crusade.common
+(ns robinson.dialog
+  (:use robinson.common
         dorothy.core)
   (:require ;[lanterna.screen :as s]
             [taoensso.timbre :as timbre])

@@ -1,5 +1,5 @@
 ;; Functions for randomly generating maps.
-(ns dungeon-crusade.mapgen
+(ns robinson.mapgen
   (:require [clojure.math.combinatorics :as combo]
             [algotools.algos.graph :as graph]
             [taoensso.timbre :as timbre]

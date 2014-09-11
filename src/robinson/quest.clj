@@ -1,5 +1,5 @@
 ;; DSL for defining quests.
-(ns dungeon-crusade.quest)
+(ns robinson.quest)
 
 ;; Quest DSL
 ;; =========

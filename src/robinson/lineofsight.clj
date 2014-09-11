@@ -1,6 +1,6 @@
-(ns dungeon-crusade.lineofsight
-  (:use [dungeon-crusade.mapgen :exclude [-main]]
-        dungeon-crusade.common)
+(ns robinson.lineofsight
+  (:use [robinson.mapgen :exclude [-main]]
+        robinson.common)
   (:require [clojure.contrib.math :as math]
             clojure.pprint))
 

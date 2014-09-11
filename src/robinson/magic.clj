@@ -1,8 +1,8 @@
 ;; Functions for querying and manipulating magic
-(ns dungeon-crusade.magic
-  (:use dungeon-crusade.common
-        dungeon-crusade.combat
-        dungeon-crusade.npc
+(ns robinson.magic
+  (:use robinson.common
+        robinson.combat
+        robinson.npc
         pallet.thread-expr)
   (:require [taoensso.timbre :as timbre]))
 

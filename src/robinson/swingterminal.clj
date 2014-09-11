@@ -1,5 +1,5 @@
 ;; Functions for rendering state to screen
-(ns dungeon-crusade.swingterminal
+(ns robinson.swingterminal
   (:import  
             java.util.concurrent.LinkedBlockingQueue
             java.awt.Color
@@ -179,7 +179,7 @@
 (defn -main
   "Show a terminal and echo input."
   [& args]
-  (let [terminal ^dungeon_crusade.swingterminal.ATerminal (make-terminal 80 20)]
+  (let [terminal ^robinson.swingterminal.ATerminal (make-terminal 80 20)]
     (.clear terminal)
     (.put-string terminal 5 5 "Hello world")
     (.refresh terminal)

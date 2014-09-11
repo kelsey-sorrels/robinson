@@ -1,9 +1,9 @@
-(ns dungeon-crusade.quests.merchant-quest
+(ns robinson.quests.merchant-quest
   (:use 
-        dungeon-crusade.common
-        dungeon-crusade.quest
-        dungeon-crusade.npc
-        dungeon-crusade.update
+        robinson.common
+        robinson.quest
+        robinson.npc
+        robinson.update
         dorothy.core))
 
 

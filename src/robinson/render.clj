@@ -1,14 +1,14 @@
 ;; Functions for rendering state to screen
-(ns dungeon-crusade.render
+(ns robinson.render
   (:import  (java.awt Color)
             (java.awt.image BufferedImage)
             (javax.swing ImageIcon))
-  (:use     dungeon-crusade.common
-            dungeon-crusade.player
-            dungeon-crusade.magic
-            dungeon-crusade.lineofsight
-            [dungeon-crusade.dialog :exclude [-main]]
-            dungeon-crusade.npc
+  (:use     robinson.common
+            robinson.player
+            robinson.magic
+            robinson.lineofsight
+            [robinson.dialog :exclude [-main]]
+            robinson.npc
             tinter.core
             [clojure.pprint :only [print-table]])
   (:require ;[lanterna.screen :as s]
@@ -16,9 +16,9 @@
             ;[lanterna.constants :as c]
             [clojure.reflect :as r]
             [taoensso.timbre :as timbre]
-            [dungeon-crusade.swingterminal :as swingterminal])
+            [robinson.swingterminal :as swingterminal])
   (:refer   clojure.set)
-  (:import dungeon_crusade.swingterminal.ATerminal))
+  (:import robinson.swingterminal.ATerminal))
 
 
 (timbre/refer-timbre)
@@ -70,11 +70,11 @@
      [string fg bg styles])))
 
 (defn put-string
-  ([^dungeon_crusade.swingterminal.ATerminal screen x y string]
+  ([^robinson.swingterminal.ATerminal screen x y string]
      (put-string screen x y string :white :black #{}))
-  ([^dungeon_crusade.swingterminal.ATerminal screen x y string fg bg]
+  ([^robinson.swingterminal.ATerminal screen x y string fg bg]
      (put-string screen x y string fg bg #{}))
-  ([^dungeon_crusade.swingterminal.ATerminal screen x y string fg bg styles]
+  ([^robinson.swingterminal.ATerminal screen x y string fg bg styles]
    {:pre [(clojure.set/superset? #{:underline :bold} styles)]}
    (let [fg        (color->rgb fg)
          bg        (color->rgb bg)]
@@ -87,15 +87,15 @@
                   styles))))
       
 (defn get-size
-  [^dungeon_crusade.swingterminal.ATerminal screen]
+  [^robinson.swingterminal.ATerminal screen]
   (.get-size screen))
 
 (defn refresh
-  [^dungeon_crusade.swingterminal.ATerminal screen]
+  [^robinson.swingterminal.ATerminal screen]
   (.refresh screen))
 
 (defn clear
-  [^dungeon_crusade.swingterminal.ATerminal screen]
+  [^robinson.swingterminal.ATerminal screen]
   (.clear screen))
 
 (defn class->rgb

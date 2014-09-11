@@ -106,7 +106,10 @@
     true
     (contains? #{:vertical-wall
                  :horizontal-wall
-                 :close-door} (cell :type))))
+                 :close-door
+                 :tree
+                 :palm-tree
+                 :fruit-tree} (cell :type))))
 
 
 (defn -main

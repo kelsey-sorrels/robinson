@@ -394,7 +394,9 @@
         (some (fn [collision-type] (= (cell :type) collision-type)) [:vertical-wall
                                                                      :horizontal-wall
                                                                      :close-door
-                                                                     :tree])
+                                                                     :tree
+                                                                     :palm-tree
+                                                                     :fruit-tree])
         ;; water collides?
         (and collide-water?
              (= (cell :type) :water))

@@ -33,10 +33,20 @@
   [n]
   {:id :wood-log :name "wood log" :name-plural "wood logs" :count n})
 
+(defn gen-sticks
+  "Generate sticks"
+  [n]
+  {:id :stick :name "stick" :name-plural "sticks" :count n})
+
 (defn gen-rocks
   "Generate rocks"
   [n]
   {:id :rock :name "rock" :name-plural "rocks" :count n})
+
+(defn gen-obsidian
+  "Generate obsidian"
+  [n]
+  {:id :obsidian :name "obsidian stone" :name-plural "obsidian stones" :count n})
 
 (defn gen-grass
   "Generate grass"

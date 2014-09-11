@@ -516,12 +516,28 @@
                                (if (= 0 (rand-int 10))
                                  (gen-plant-fibers (uniform-rand-int 1 5))
                                  nil)]
-                            (= (get target-cell :type) :tall-grass)
+                            (= (get target-cell :type) :palm-tree)
+                              [(if (= 0 (rand-int 10))
+                                 (gen-coconuts (uniform-rand-int 1 2))
+                                 nil)
+                               (if (= 0 (rand-int 15))
+                                 (gen-plant-fibers (uniform-rand-int 1 2))
+                                 nil)]
+                            (and (= (get target-cell :type) :tall-grass)
+                                 (= direction :center))
                               [(if (= 0 (rand-int 10))
                                  (gen-grass (uniform-rand-int 1 5))
                                  nil)
                                (if (= 0 (rand-int 10))
                                  (gen-plant-fibers (uniform-rand-int 1 5))
+                                 nil)]
+                            (and (= (get target-cell :type) :gravel)
+                                 (= direction :center))
+                              [(if (= 0 (rand-int 10))
+                                 (gen-rocks (uniform-rand-int 1 5))
+                                 nil)
+                               (if (= 0 (rand-int 20))
+                                 (gen-obsidian (uniform-rand-int 1 5))
                                  nil)]
                             :else []))
                         [])]
@@ -548,6 +564,9 @@
 
 (defn harvest-down [state]
   (harvest state :down))
+
+(defn harvest-center [state]
+  (harvest state :center))
 
 (defn free-cursor
   "Dissassociate the cursor from the world."
@@ -1218,7 +1237,8 @@
                :harvest   {\h        [harvest-left           :normal    true]
                            \j        [harvest-down           :normal    true]
                            \k        [harvest-up             :normal    true]
-                           \l        [harvest-right          :normal    true]}
+                           \l        [harvest-right          :normal    true]
+                           \.        [harvest-center         :normal    true]}
                :talking   {:escape   [stop-talking           :normal    false]
                            :else     [talk                   identity   true]}
                :shopping  {\a        [identity               :buy       true]

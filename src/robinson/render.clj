@@ -404,12 +404,14 @@
                               :down-stairs     [">"] 
                               :up-stairs       ["<"] 
                               :water           ["~"  (rand-nth [:blue :light-blue :dark-blue]) :black]
-                              :sand            ["_"  :beige      :black]
-                              :dirt            [","  :brown      :black]
-                              :gravel          ["`"  :gray       :black]
-                              :short-grass     ["'"  :green      :black]
+                              :sand            ["."  :beige      :black]
+                              :dirt            ["."  :brown      :black]
+                              :gravel          ["."  :gray       :black]
+                              :short-grass     ["."  :green      :black]
                               :tall-grass      ["\"" :dark-green :black]
                               :tree            ["T"  :dark-green :black]
+                              :palm-tree       ["7"  :dark-green :black]
+                              :fruit-tree      ["\u2648"  :dark-green :black] ;; ♈
                               ["?"])))
                 shaded-out-char (if (= (cell :discovered) current-time)
                                   out-char

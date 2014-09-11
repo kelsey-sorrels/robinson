@@ -1,6 +1,6 @@
 ;; Functions for generating random items.
-(ns dungeon-crusade.itemgen
-  (:use     dungeon-crusade.common)
+(ns robinson.itemgen
+  (:use     robinson.common)
   (:require [clojure.math.combinatorics :as combo]))
 
 

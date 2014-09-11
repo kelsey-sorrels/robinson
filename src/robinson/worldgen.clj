@@ -1,10 +1,10 @@
 ;; Utility functions and functions for manipulating state
-(ns dungeon-crusade.worldgen
+(ns robinson.worldgen
   (:use 
-        dungeon-crusade.common
-        dungeon-crusade.npc
-        [dungeon-crusade.mapgen :exclude [-main]]
-        [dungeon-crusade.itemgen :exclude [-main]])
+        robinson.common
+        robinson.npc
+        [robinson.mapgen :exclude [-main]]
+        [robinson.itemgen :exclude [-main]])
   (:require [taoensso.timbre :as timbre]
             [clisk.live :as clisk]))
 

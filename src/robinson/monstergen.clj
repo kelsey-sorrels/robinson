@@ -1,5 +1,5 @@
 ;; Functions for generating random monsters
-(ns dungeon-crusade.monstergen
+(ns robinson.monstergen
   (:require [clojure.math.combinatorics :as combo]))
 
 (defn can-move-in-water?

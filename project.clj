@@ -1,5 +1,5 @@
-(defproject dungeon-crusade "0.0.1-SNAPSHOT"
-  :description "dungeon-crusade"
+(defproject robinson "0.0.1-SNAPSHOT"
+  :description "robinson"
   :plugins      [[lein-marginalia "0.7.1"]
                  [lein-kibit "0.0.8"]]
   :dependencies [[org.clojure/clojure "1.6.0"]
@@ -18,13 +18,13 @@
                  [com.taoensso/timbre "3.2.1"]
                  ;;[aaron-santos/lanterna "3.0.0-SNAPSHOT"]]
                  [org.clojars.folcon/clojure-lanterna "0.9.5-SNAPSHOT"]]
-  :main dungeon-crusade.core
-  :repl-init dungeon-crusade.main
-  ;:aot [dungeon-crusade.common
-  ;      dungeon-crusade.update
-  ;      dungeon-crusade.render
-  ;      dungeon-crusade.swingterminal
-  ;      dungeon-crusade.npc]
+  :main robinson.core
+  :repl-init robinson.main
+  ;:aot [robinson.common
+  ;      robinson.update
+  ;      robinson.render
+  ;      robinson.swingterminal
+  ;      robinson.npc]
   :jvm-opts [
              ;"-agentpath:/home/santos/bin/yjp-2014-build-14096/bin/linux-x86-64/libyjpagent.so"
              "-XX:+UseParNewGC"

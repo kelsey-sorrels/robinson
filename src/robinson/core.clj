@@ -1,14 +1,14 @@
 ;; ## A roguelike focused on immutability.##
 ;;
 ;(set! *warn-on-reflection* true)
-(ns dungeon-crusade.core
-  (:use dungeon-crusade.main
+(ns robinson.core
+  (:use robinson.main
         clojure.stacktrace))
 
 (defn -main
   "Entry default point to application.
 
-   Uses `setup` and `tick` function from `dungeon-crusade.main`.
+   Uses `setup` and `tick` function from `robinson.main`.
 
    `setup` returns the initial state of the application.
   

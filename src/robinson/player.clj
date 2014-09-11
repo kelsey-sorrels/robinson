@@ -1,6 +1,6 @@
 ;; Functions for manipulating player state
-(ns dungeon-crusade.player
-  (:use     dungeon-crusade.common)
+(ns robinson.player
+  (:use     robinson.common)
   (:require [taoensso.timbre :as timbre]
             [pallet.thread-expr :as tx]))
 

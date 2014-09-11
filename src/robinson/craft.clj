@@ -1,5 +1,5 @@
 ;; Functions for crafting items.
-(ns dungeon-crusade.craft
+(ns robinson.craft
   (:require [clojure.math.combinatorics :as combo]))
 
 ;; item types

@@ -1,9 +1,9 @@
-(ns dungeon-crusade.quests.test-quest
+(ns robinson.quests.test-quest
   (:use 
-        dungeon-crusade.common
-        dungeon-crusade.quest
-        dungeon-crusade.npc
-        dungeon-crusade.update
+        robinson.common
+        robinson.quest
+        robinson.npc
+        robinson.update
         dorothy.core))
 
 

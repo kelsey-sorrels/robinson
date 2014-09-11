@@ -1,6 +1,6 @@
 ;; Utility functions and functions for manipulating state
-(ns dungeon-crusade.common
-  (:use [dungeon-crusade.mapgen :exclude [-main]])
+(ns robinson.common
+  (:use [robinson.mapgen :exclude [-main]])
   (:require [taoensso.timbre :as timbre]
             [pallet.thread-expr :as tx]))
 

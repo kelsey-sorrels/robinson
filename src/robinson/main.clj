@@ -1,14 +1,14 @@
-(ns dungeon-crusade.main
+(ns robinson.main
   (:use    clojure.pprint
-           dungeon-crusade.common
-           [dungeon-crusade.worldgen :exclude [-main]]
-           dungeon-crusade.dialog
-           dungeon-crusade.npc
-           dungeon-crusade.update
-           [dungeon-crusade.monstergen :exclude [-main]]
-           dungeon-crusade.render)
+           robinson.common
+           [robinson.worldgen :exclude [-main]]
+           robinson.dialog
+           robinson.npc
+           robinson.update
+           [robinson.monstergen :exclude [-main]]
+           robinson.render)
   (:require 
-            [dungeon-crusade.swingterminal :as swingterminal]
+            [robinson.swingterminal :as swingterminal]
             clojure.edn
             ;[lanterna.screen :as s]
             [taoensso.timbre :as timbre]
@@ -66,7 +66,7 @@
          ;; get a list of all the quests that have been loaded
          quests (map deref (flatten (map #(-> % ns-publics vals)
                                           (filter #(.contains (-> % ns-name str)
-                                                              "dungeon-crusade.quests")
+                                                              "robinson.quests")
                                                    (all-ns)))))
         quest-map (apply hash-map (mapcat (fn [i] [(i :id) i]) quests))
         _ (doall (map #(info "Loaded quest" (% :name)) quests))

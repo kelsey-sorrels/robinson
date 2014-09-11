@@ -1,20 +1,20 @@
 ;; Functions that manipulate state to do what the user commands.
-(ns dungeon-crusade.update
+(ns robinson.update
   (:use     
     clojure.pprint
     [clojure.string :only [lower-case]]
     clojure.contrib.core
-    dungeon-crusade.common
-    dungeon-crusade.player
-    [dungeon-crusade.dialog :exclude [-main]]
-    dungeon-crusade.npc
-    dungeon-crusade.combat
-    [dungeon-crusade.itemgen :exclude [-main]]
-    [dungeon-crusade.monstergen :exclude [-main]]
-    [dungeon-crusade.magic :only [do-magic magic-left magic-down     
+    robinson.common
+    robinson.player
+    [robinson.dialog :exclude [-main]]
+    robinson.npc
+    robinson.combat
+    [robinson.itemgen :exclude [-main]]
+    [robinson.monstergen :exclude [-main]]
+    [robinson.magic :only [do-magic magic-left magic-down     
                                   magic-up magic-right magic-inventory]]
-    [dungeon-crusade.worldgen :exclude [-main]]
-    dungeon-crusade.lineofsight)
+    [robinson.worldgen :exclude [-main]]
+    robinson.lineofsight)
   (:require clojure.pprint
             clojure.core.memoize
             clojure.edn

@@ -1,9 +1,9 @@
 ;; Functions for querying and manipulating npc state
-(ns dungeon-crusade.npc
+(ns robinson.npc
   (:use clojure.walk
-        dungeon-crusade.common
-        [dungeon-crusade.monstergen :exclude [-main]]
-        [dungeon-crusade.dialog :exclude [-main]])
+        robinson.common
+        [robinson.monstergen :exclude [-main]]
+        [robinson.dialog :exclude [-main]])
   (:require [taoensso.timbre :as timbre]))
 
 (timbre/refer-timbre)

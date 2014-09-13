@@ -756,6 +756,17 @@
             (transfer-items-from-player-to-npc (get npc :id) (partial = item))))
         state)))
 
+
+(defn craft-weapon
+  "Craft a weapon."
+  [state keyin]
+  state)
+
+(defn craft-survival
+  "Craft a survival item."
+  [state keyin]
+  state)
+
 (defn scroll-log
   [state keyin]
   (let [t (get-in state [:world :time])]
@@ -1203,6 +1214,7 @@
                            \S        [extended-search        :normal    true]
                            \Q        [identity               :quests    false]
                            \P        [next-party-member      :normal    false]
+                           \z        [identity               :craft     true]
                            \Z        [identity               :magic     true]
                            \T        [identity               :talk      true]
                            \?        [identity               :help      false]
@@ -1248,6 +1260,15 @@
                            :else     [buy                    :buy       true]}
                :sell      {:escape   [identity               :normal    false]
                            :else     [sell                   :sell      true]}
+               :craft     {\w        [identity               :craft-weapon false]
+                           \s        [identity               :craft-survival false]
+                           :escape   [identity               :normal    false]}
+               :craft-weapon
+                          {:escape   [identity               :craft     false]
+                           :else     [craft-weapon           identity   true]}
+               :craft-survival
+                          {:escape   [identity               :craft     false]
+                           :else     [craft-weapon           identity   true]}
                :magic     {:escape   [identity               :normal    false]
                            :else     [do-magic               identity   true]}
                :magic-direction

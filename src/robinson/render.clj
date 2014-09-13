@@ -355,6 +355,14 @@
       (render-multi-select (state :screen) "Sell:" [] options 32 17 68 5)
       (render-img state (get npc :image-path) 0 17))))
 
+(defn render-craft
+  "Render the craft menu if the world state is `:craft`."
+  [state]
+  (when (= (-> state :world :current-state) :craft)
+    (render-multi-select (state :screen) "Craft" [] [{:name "Weapons" :hotkey \w}
+                                                     {:name "Survival" :hotkey \s}]
+                                                    30 5 20 5)))
+
 (defn render-map
   "The big render function used during the normal game.
    This renders everything - the map, the menus, the log,
@@ -488,6 +496,8 @@
     (render-eat state)
     ;; maybe draw quests menu
     (render-quests state)
+    ;; maybe draw craft menu
+    (render-craft state)
     ;; draw status bar
     (put-string (state :screen) 0  23
       (format "Dgnlvl %s $%d HP:%d(%d) Pw:%d(%d) Amr:%d XP:%d/%d T%d %s %s                            "

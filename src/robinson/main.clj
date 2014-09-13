@@ -56,12 +56,12 @@
   (let [terminal  (swingterminal/make-terminal 80 24)
         world (if (.exists (clojure.java.io/file "save/world.edn"))
                 (->> (slurp "save/world.edn")
-                     (clojure.edn/read-string {:readers {'dungeon_crusade.monstergen.Monster map->Monster}}))
+                     (clojure.edn/read-string {:readers {'robinson.monstergen.Monster map->Monster}}))
                 (init-world))
          ;; load quests
          _ (doall (map #(load-file (.getPath %))
                         (filter (fn [file] (.endsWith (.getPath file) ".clj"))
-                                (.listFiles (clojure.java.io/file "src/dungeon_crusade/quests")))))
+                                (.listFiles (clojure.java.io/file "src/robinson/quests")))))
 
          ;; get a list of all the quests that have been loaded
          quests (map deref (flatten (map #(-> % ns-publics vals)

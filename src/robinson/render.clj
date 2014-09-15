@@ -6,6 +6,7 @@
   (:use     robinson.common
             robinson.player
             robinson.magic
+            robinson.crafting
             robinson.lineofsight
             [robinson.dialog :exclude [-main]]
             robinson.npc
@@ -137,24 +138,50 @@
   ([screen title selected-hotkeys items]
    (render-multi-select screen title selected-hotkeys items 40 0 40 22))
   ([screen title selected-hotkeys items x y width height]
-   (let [contents (take height
-                        (concat (map #(do (info %) (format (clojure.string/join ["%c%c%s%-" (- width 2)  "s"])
-                                              (or (% :hotkey)
+   (render-multi-select screen title selected-hotkeys items x y width height {}))
+  ([screen title selected-hotkeys items x y width height {:keys [use-applicable center border center-title]
+                                                          :or {:use-applicable false :border false :center false :center-title false}}]
+   ;; items is list of {:s "string" :fg :black :bg :white}
+   (let [items    (map (fn [item] {:s (format "%c%c%s%s"
+                                              (or (item :hotkey)
                                                   \ )
-                                              (if (contains? selected-hotkeys (% :hotkey))
+                                              (if (contains? selected-hotkeys (item :hotkey))
                                                 \+
                                                 \-)
-                                              (if (contains? % :count)
-                                                (format "%dx " (int (get % :count)))
+                                              (if (contains? item :count)
+                                                (format "%dx " (int (get item :count)))
                                                 "")
-                                              (get % :name)))
-                                     items)
-                               (repeat (clojure.string/join (repeat width " ")))))] 
-     (doseq [i (range (count contents))]
-       (let [line (nth contents i)]
-         (put-string screen x (+ y i 1) line :black :white #{:bold})))
+                                              (get item :name))
+                                   :fg (if (or (not use-applicable)
+                                               (get item :applicable))
+                                         :black
+                                         :gray)
+                                   :bg :white})
+                       items)
+         ;; if width is :auto calc width by using max item length
+         width    (if (= width :auto)
+                    (reduce max (map (fn [item] (count (get item :s))) items))
+                    width)
+         height   (if (= height :auto)
+                    (count items)
+                    height)
+         ;; pad to width
+         items    (if center
+                    ;; center justify
+                    (map (fn [item] (update-in item [:s] (fn [s] (clojure.pprint/cl-format nil (format "~%d<~;~A~;~>" width) s)))) items)
+                    ;; left justify
+                    (map (fn [item] (update-in item [:s] (fn [s] (clojure.string/join (concat [s] (repeat (- width (count s)) " "))))))
+                         items))
+         title    (if center-title
+                    (clojure.pprint/cl-format nil (format "~%d<~;~A~;~>" width) title)
+                    (format "  %s" title))]
+     (doseq [i (range height)]
+       (if (< i (count items))
+         (let [item (nth items i)]
+           (put-string screen x (+ y i 1) (get item :s) (get item :fg) (get item :bg) #{:bold}))
+         (put-string screen x (+ y i 1) (clojure.string/join (repeat width " ")) :black :white)))
      (put-string screen x y (apply str (repeat width " ")) :black :white)
-     (put-string screen (+ x 2) y title :black :white #{:underline :bold}))))
+     (put-string screen x y title :black :white #{:underline :bold}))))
 
 (defn render-img
   "Render an image using block element U+2584."
@@ -363,6 +390,20 @@
                                                      {:name "Survival" :hotkey \s}]
                                                     30 5 20 5)))
 
+(defn render-craft-weapon
+  "Render the craft weapon menu if the world state is `:craft-weapon`."
+  [state]
+  (when (= (-> state :world :current-state) :craft-weapon)
+    (let [recipes (get-recipes state)]
+      (render-multi-select (state :screen) "Craft Weapon" [] (get recipes :weapons)  30 5 :auto :auto {:use-applicable true}))))
+
+(defn render-craft-survival
+  "Render the craft menu if the world state is `:craft-survival`."
+  [state]
+  (when (= (-> state :world :current-state) :craft-survival)
+    (let [recipes (get-recipes state)]
+      (render-multi-select (state :screen) "Craft Survival" [] (get recipes :survival)  30 5 :auto :auto {:use-applicable true}))))
+
 (defn render-map
   "The big render function used during the normal game.
    This renders everything - the map, the menus, the log,
@@ -498,6 +539,10 @@
     (render-quests state)
     ;; maybe draw craft menu
     (render-craft state)
+    ;; maybe draw craft weapon menu
+    (render-craft-weapon state)
+    ;; maybe draw craft survival menu
+    (render-craft-survival state)
     ;; draw status bar
     (put-string (state :screen) 0  23
       (format "Dgnlvl %s $%d HP:%d(%d) Pw:%d(%d) Amr:%d XP:%d/%d T%d %s %s                            "

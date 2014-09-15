@@ -212,7 +212,7 @@
             :class :ranger
             :movement-policy :entourage
             :in-party? true
-            :inventory inventory-with-hotkeys
+            :inventory [(gen-plant-fibers 1)]
             :hp 10
             :max-hp 10
             :$ 50

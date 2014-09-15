@@ -182,6 +182,13 @@
             (recur (inc i) (inc j) (conj result (f i item)))
             (recur i (inc j) (conj result item)))))))))
 
+(defn remove-first
+  "Removes the first matching element from coll."
+  [e coll]
+  (if (not (fn? e))
+    (remove-first (partial = e) coll)
+    (let [[l1 l2] (split-with (complement e) coll)]
+      (concat l1 (rest l2)))))
 
 (defn with-xygrid
   "Inclue x y values alongside elements in a grid and preserve the structure
@@ -474,7 +481,7 @@
        result#)))
 
 (defn log-io
-  "Log function inputs and outputsi by wrapping an function f."
+  "Log function inputs and outputs by wrapping an function f."
   [msg f]
   (fn [& args]
     (let [result (apply f args)]

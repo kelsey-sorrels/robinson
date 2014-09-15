@@ -33,11 +33,6 @@
   [n]
   {:id :wood-log :name "wood log" :name-plural "wood logs" :count n})
 
-(defn gen-sticks
-  "Generate sticks"
-  [n]
-  {:id :stick :name "stick" :name-plural "sticks" :count n})
-
 (defn gen-rocks
   "Generate rocks"
   [n]
@@ -53,6 +48,30 @@
   [n]
   {:id :grass :name "grass" :name-plural "grass" :count n})
 
+(defn gen-obsidian-blades
+  "Generate obsidian-blades"
+  [n]
+  {:id :obsidian-blade :name "obsidian blade" :name-plural "obsidian blades" :count n})
+
+(defn gen-rope
+  "Generate rope"
+  [n]
+  {:id :rope :name "rope" :name-plural "ropes" :count n})
+
+(defn id->items
+  "Generate item from id."
+  [id n]
+  ((case id
+     :stick          gen-sticks
+     :plant-fiber    gen-plant-fibers
+     :coconut        gen-coconuts
+     :wood-log       gen-wood-logs
+     :rock           gen-rocks
+     :obsidian       gen-obsidian
+     :grass          gen-grass
+     :obsidian-blade gen-obsidian-blades
+     :rope           gen-rope)
+   n))
 
 (defn gen-food
   "Generate one random food item."

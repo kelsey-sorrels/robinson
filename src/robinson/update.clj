@@ -9,6 +9,7 @@
     [robinson.dialog :exclude [-main]]
     robinson.npc
     robinson.combat
+    robinson.crafting
     [robinson.itemgen :exclude [-main]]
     [robinson.monstergen :exclude [-main]]
     [robinson.magic :only [do-magic magic-left magic-down     
@@ -756,16 +757,28 @@
             (transfer-items-from-player-to-npc (get npc :id) (partial = item))))
         state)))
 
-
 (defn craft-weapon
   "Craft a weapon."
   [state keyin]
-  state)
+  (let [weapon-recipes   (get (get-recipes state) :weapons)
+        matching-recipes (filter (fn [recipe] (= (get recipe :hotkey) keyin)) weapon-recipes)]
+    (if (empty? matching-recipes)
+      (append-log state "Pick a valid recipe.")
+      (-> state
+        (craft-recipe (first matching-recipes))
+        (assoc-in [:world :current-state] :normal)))))
 
 (defn craft-survival
   "Craft a survival item."
   [state keyin]
-  state)
+  (let [survival-recipes (get (get-recipes state) :survival)
+        _ (info "survival recipes" survival-recipes)
+        matching-recipes (filter (fn [recipe] (= (get recipe :hotkey) keyin)) survival-recipes)]
+    (if (empty? matching-recipes)
+      (append-log state "Pick a valid recipe.")
+      (-> state
+        (craft-recipe (first matching-recipes))
+        (assoc-in [:world :current-state] :normal)))))
 
 (defn scroll-log
   [state keyin]
@@ -1268,7 +1281,7 @@
                            :else     [craft-weapon           identity   true]}
                :craft-survival
                           {:escape   [identity               :craft     false]
-                           :else     [craft-weapon           identity   true]}
+                           :else     [craft-survival         identity   true]}
                :magic     {:escape   [identity               :normal    false]
                            :else     [do-magic               identity   true]}
                :magic-direction

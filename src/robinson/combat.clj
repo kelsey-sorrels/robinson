@@ -246,7 +246,7 @@
     [:scorpion   :claw         :human      :*]   (uniform-rand 0.5 1.5)
     [:scorpion   :sting-venom  :human      :abdomen]   (uniform-rand 0.5 1.5)
     [:scorpion   :sting-venom  :human      :arm]       (uniform-rand 0.5 1.0)
-    [:scorpion   :sting-venom  :human      :face]      (uniform-rand 1.5 1.5)
+    [:scorpion   :sting-venom  :human      :face]      (uniform-rand 1.5 2.5)
     [:scorpion   :sting-venom  :human      :foot]      (uniform-rand 0.5 0.9)
     [:scorpion   :sting-venom  :human      :head]      (uniform-rand 1.0 1.5)
     [:scorpion   :sting-venom  :human      :leg]       (uniform-rand 0.8 1.4)

@@ -1263,7 +1263,8 @@
                            \j        [harvest-down           :normal    true]
                            \k        [harvest-up             :normal    true]
                            \l        [harvest-right          :normal    true]
-                           \.        [harvest-center         :normal    true]}
+                           \.        [harvest-center         :normal    true]
+                           :escape   [identity               :normal    false]}
                :talking   {:escape   [stop-talking           :normal    false]
                            :else     [talk                   identity   true]}
                :shopping  {\a        [identity               :buy       true]

@@ -58,6 +58,22 @@
   [n]
   {:id :rope :name "rope" :name-plural "ropes" :count n})
 
+(defn gen-obsidian-spears
+  "Generate obsidian-spears"
+  [n]
+  {:id :obsidian-spear :name "obsidian spear" :name-plural "obsidian spears" :count n})
+
+(defn gen-obsidian-axes
+  "Generate obsidian-axes"
+  [n]
+  {:id :obsidian-axe :name "obsidian axe" :name-plural "obsidian axes" :count n})
+
+(defn gen-obsidian-knives
+  "Generate obsidian-knives"
+  [n]
+  {:id :obsidian-knife :name "obsidian knife" :name-plural "obsidian knives" :count n})
+
+
 (defn id->items
   "Generate item from id."
   [id n]
@@ -70,7 +86,10 @@
      :obsidian       gen-obsidian
      :grass          gen-grass
      :obsidian-blade gen-obsidian-blades
-     :rope           gen-rope)
+     :rope           gen-rope
+     :obsidian-spear gen-obsidian-spears
+     :obsidian-axe   gen-obsidian-axes
+     :obsidian-knife gen-obsidian-knives)
    n))
 
 (defn gen-food

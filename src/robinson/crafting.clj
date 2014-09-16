@@ -10,9 +10,18 @@
 
 (def recipes
   {:weapons [
-     {:name "Rock + obsidian -> obsidian blade" :hotkey \a :recipe {:exhaust [:rock :obsidian] :add [:obsidian-blade]}}]
+     {:name "obsidian blade + stick + rope -> spear"    :hotkey \a :recipe {:exhaust [:rock :obsidian] :add [:obsidian-spear]}}
+     {:name "obsidian blade + stick + rope -> axe"      :hotkey \b :recipe {:exhaust [:rock :obsidian] :add [:obsidian-axe]}}
+     {:name "obsidian blade + stick + rope -> knife"    :hotkey \c :recipe {:exhaust [:rock :obsidian] :add [:obsidian-knife]}}]
    :survival [
-     {:name "Plant fibers -> rope" :hotkey \a :recipe {:exhaust [:plant-fiber] :add [:rope]}}]})
+     {:name "Rock + obsidian -> obsidian blade"         :hotkey \a :recipe {:exhaust [:rock :obsidian] :add [:obsidian-blade]}}
+     {:name "Plant fibers -> rope"                      :hotkey \b :recipe {:exhaust [:plant-fiber] :add [:rope]}}
+     {:name "rope + bamboo + sticks + knife -> water collector" :hotkey \c :recipe {:exhaust [:rope :bamboo :stick] :add [:bamboo-water-collector]}}]
+   :shelter [
+     {:name "rope + leaves + sticks + knife -> shelter" :hotkey \a :recipe {:exhaust [:rope :leaves :stick] :add [:shelter]}}]
+   :traps [
+     {:name "Sticks + rope -> snare"                    :hotkey \a :recipe {:exhaust [:rope :stick] :add [:snare]}}
+     {:name "Sticks + rope + rock -> deadfall trap"     :hotkey \b :recipe {:exhaust [:rope :stick :rock] :add [:deadfall-trap]}}]})
 
 (defn has-prerequisites?
   "Return true if the player has the ability to make the recipe."

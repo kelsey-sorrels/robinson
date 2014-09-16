@@ -404,6 +404,12 @@
     (let [recipes (get-recipes state)]
       (render-multi-select (state :screen) "Craft Survival" [] (get recipes :survival)  30 5 :auto :auto {:use-applicable true}))))
 
+(defn render-harvest
+  "Render the harvest prompt if the world state is `:harvest`."
+  [state]
+  (when (= (-> state :world :current-state) :harvest)
+    (put-string (state :screen) 0 0 "Pick a direction to harvest.")))
+
 (defn render-map
   "The big render function used during the normal game.
    This renders everything - the map, the menus, the log,
@@ -563,22 +569,25 @@
     (put-string (state :screen) 76 23 "@" (class->rgb (-> state :world :player :class)) :black)
     (put-string (state :screen) 77 23 "    " :white :black)
     ;; draw log
-    (let [logs-viewed (get-in state [:world :logs-viewed])
-          current-time (get-in state [:world :time])
-          cur-state (current-state state)]
-      (debug "current-state" cur-state)
-      (if (= cur-state :more-log)
-        (let [logs (vec (filter #(= (get % :time) current-time) (get-in state [:world :log])))
-              _ (info "logs-viewed" logs-viewed "current-time" current-time "logs" logs)
-              message (get logs (dec logs-viewed))]
-          ;(debug "message" message)
-          (put-string (state :screen) 0 0 (format "%s --More--" (message :text))))
-        (let [message (last (get-in state [:world :log]))]
-          (when (and message
-                     (< (- current-time (message :time)) 5))
-            (put-string (state :screen) 0 0 (get message :text))))))
+    (when (= (current-state state) :normal)
+      (let [logs-viewed (get-in state [:world :logs-viewed])
+            current-time (get-in state [:world :time])
+            cur-state (current-state state)]
+        (debug "current-state" cur-state)
+        (if (= cur-state :more-log)
+          (let [logs (vec (filter #(= (get % :time) current-time) (get-in state [:world :log])))
+                _ (info "logs-viewed" logs-viewed "current-time" current-time "logs" logs)
+                message (get logs (dec logs-viewed))]
+            ;(debug "message" message)
+            (put-string (state :screen) 0 0 (format "%s --More--" (message :text))))
+          (let [message (last (get-in state [:world :log]))]
+            (when (and message
+                       (< (- current-time (message :time)) 5))
+              (put-string (state :screen) 0 0 (get message :text)))))))
     ;; draw quit prompt
     (render-quit? state)
+    ;; maybe draw harvest prompt
+    (render-harvest state)
     ;; draw dialog menu
     (render-dialog state)
     ;; draw shopping menu

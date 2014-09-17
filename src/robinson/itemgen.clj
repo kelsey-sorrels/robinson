@@ -61,17 +61,17 @@
 (defn gen-obsidian-spears
   "Generate obsidian-spears"
   [n]
-  {:id :obsidian-spear :name "obsidian spear" :name-plural "obsidian spears" :count n})
+  {:id :obsidian-spear :name "obsidian spear" :name-plural "obsidian spears" :count n :attack :spear})
 
 (defn gen-obsidian-axes
   "Generate obsidian-axes"
   [n]
-  {:id :obsidian-axe :name "obsidian axe" :name-plural "obsidian axes" :count n})
+  {:id :obsidian-axe :name "obsidian axe" :name-plural "obsidian axes" :count n :attack :axe})
 
 (defn gen-obsidian-knives
   "Generate obsidian-knives"
   [n]
-  {:id :obsidian-knife :name "obsidian knife" :name-plural "obsidian knives" :count n})
+  {:id :obsidian-knife :name "obsidian knife" :name-plural "obsidian knives" :count n :attack :knife})
 
 
 (defn id->items
@@ -91,6 +91,13 @@
      :obsidian-axe   gen-obsidian-axes
      :obsidian-knife gen-obsidian-knives)
    n))
+
+(defn can-be-wielded?
+  [item]
+  (contains? #{:obsidian-spear
+               :obsidian-axe
+               :obsidian-knife}
+             (get item :id)))
 
 (defn gen-food
   "Generate one random food item."

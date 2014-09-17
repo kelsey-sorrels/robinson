@@ -7,6 +7,7 @@
             robinson.player
             robinson.magic
             robinson.crafting
+            [robinson.itemgen :only [can-be-wielded?]]
             robinson.lineofsight
             [robinson.dialog :exclude [-main]]
             robinson.npc
@@ -404,6 +405,12 @@
     (let [recipes (get-recipes state)]
       (render-multi-select (state :screen) "Craft Survival" [] (get recipes :survival)  30 5 :auto :auto {:use-applicable true}))))
 
+(defn render-wield
+  "Render the wield item menu if the world state is `:wield`."
+  [state]
+  (when (= (-> state :world :current-state) :wield)
+    (render-multi-select (state :screen) "Wield" [] (filter can-be-wielded? (-> state :world :player :inventory)))))
+
 (defn render-harvest
   "Render the harvest prompt if the world state is `:harvest`."
   [state]
@@ -549,6 +556,8 @@
     (render-craft-weapon state)
     ;; maybe draw craft survival menu
     (render-craft-survival state)
+    ;; maybe draw wield menu
+    (render-wield state)
     ;; draw status bar
     (put-string (state :screen) 0  23
       (format "Dgnlvl %s $%d HP:%d(%d) Pw:%d(%d) Amr:%d XP:%d/%d T%d %s %s                            "

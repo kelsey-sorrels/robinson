@@ -298,7 +298,8 @@
               ;; dup the item into cell
               (update-in [:world :places place y x :items]
                 (fn [prev-items]
-                  (conj prev-items (assoc item :hotkey keyin))))
+                  ;; wipe :wielded status from all dropped items
+                  (conj prev-items (dissoc item :wielded))))
               ;; remove the item from cell
               (assoc-in [:world :player :inventory]
                (vec (concat (subvec items 0 item-index)
@@ -568,6 +569,26 @@
 
 (defn harvest-center [state]
   (harvest state :center))
+
+(defn wield
+  "Wield the item from the player's inventory whose hotkey matches `keyin`."
+  [state keyin]
+  (let [items (-> state :world :player :inventory)
+        inventory-hotkeys (map #(% :hotkey) items)
+        item-index (.indexOf inventory-hotkeys keyin)]
+    (if (and (>= item-index 0) (< item-index (count items)))
+      (let [selected-item (nth items item-index)
+            new-state (-> state
+              (append-log (format "You wield the %s." (lower-case (get selected-item :name))))
+              ;; remove :wielded from all items
+              (update-in [:world :player :inventory]
+                (fn [items] (mapv (fn [item] (dissoc item :wielded)) items)))
+              (update-in [:world :player :inventory]
+                (fn [items] (mapv (fn [item] (if (= item selected-item)
+                                               (assoc item :wielded true)
+                                               item)) items))))]
+        new-state)
+        state)))
 
 (defn free-cursor
   "Dissassociate the cursor from the world."
@@ -1220,6 +1241,7 @@
                            \b        [move-down-left         :normal    true]
                            \n        [move-down-right        :normal    true]
                            \x        [identity               :harvest   false]
+                           \w        [identity               :wield     false]
                            \>        [use-stairs             :normal    true]
                            \<        [use-stairs             :normal    true]
                            \;        [init-cursor            :describe  false]
@@ -1265,6 +1287,8 @@
                            \l        [harvest-right          :normal    true]
                            \.        [harvest-center         :normal    true]
                            :escape   [identity               :normal    false]}
+               :wield     {:escape   [identity               :normal    false]
+                           :else     [wield                  :normal    true]}
                :talking   {:escape   [stop-talking           :normal    false]
                            :else     [talk                   identity   true]}
                :shopping  {\a        [identity               :buy       true]

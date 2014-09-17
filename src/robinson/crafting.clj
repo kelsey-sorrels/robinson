@@ -10,9 +10,9 @@
 
 (def recipes
   {:weapons [
-     {:name "obsidian blade + stick + rope -> spear"    :hotkey \a :recipe {:exhaust [:rock :obsidian] :add [:obsidian-spear]}}
-     {:name "obsidian blade + stick + rope -> axe"      :hotkey \b :recipe {:exhaust [:rock :obsidian] :add [:obsidian-axe]}}
-     {:name "obsidian blade + stick + rope -> knife"    :hotkey \c :recipe {:exhaust [:rock :obsidian] :add [:obsidian-knife]}}]
+     {:name "obsidian blade + stick + rope -> spear"    :hotkey \a :recipe {:exhaust [:obsidian-blade :stick :rope] :add [:obsidian-spear]}}
+     {:name "obsidian blade + stick + rope -> axe"      :hotkey \b :recipe {:exhaust [:obsidian-blade :stick :rope] :add [:obsidian-axe]}}
+     {:name "obsidian blade + stick + rope -> knife"    :hotkey \c :recipe {:exhaust [:obsidian-blade :stick :rope] :add [:obsidian-knife]}}]
    :survival [
      {:name "Rock + obsidian -> obsidian blade"         :hotkey \a :recipe {:exhaust [:rock :obsidian] :add [:obsidian-blade]}}
      {:name "Plant fibers -> rope"                      :hotkey \b :recipe {:exhaust [:plant-fiber] :add [:rope]}}

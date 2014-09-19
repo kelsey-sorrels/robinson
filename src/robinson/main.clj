@@ -51,6 +51,9 @@
 
    * a `:screen` to render the world
 
+   * a `:data` the contents of the `/data` folder with the filename (excluding
+   extention) as the key and the contents as the value.
+
    * `quests` that are loaded dynamically on startup."
   []
   (let [terminal  (swingterminal/make-terminal 80 24)
@@ -74,7 +77,15 @@
         dialog (apply merge (map (fn [[k v]]
                                    {k (dialog->fsm v)})
                                  (apply merge (map :dialog quests))))
-        state {:world world :screen terminal :quests quest-map :dialog dialog}
+        data  (apply hash-map
+                (mapcat (fn [file]
+                          [(keyword (.getName file))
+                           (->> (.getPath file)
+                             (slurp)
+                             (clojure.edn/read-string))])
+                        (.listFiles (clojure.java.io/file "data"))))
+        _ (info "loaded data" data)
+        state {:world world :screen terminal :quests quest-map :dialog dialog :data data}
         state (reduce (fn [state _] (add-npcs state 1)) state (range 5))]
 
     ;; tick once using the rest (.) command to update visibility

@@ -1,0 +1,4 @@
+{:windows-font "Courier New"
+ :else-font    "Monospaced"
+ :font-size 18
+}

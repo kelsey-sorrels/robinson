@@ -53,11 +53,11 @@
 
    * a `:data` the contents of the `/data` folder with the filename (excluding
    extention) as the key and the contents as the value.
+   * a `:settings` the contents of `/config/settings.edn`.
 
    * `quests` that are loaded dynamically on startup."
   []
-  (let [terminal  (swingterminal/make-terminal 80 24)
-        world (if (.exists (clojure.java.io/file "save/world.edn"))
+  (let [world (if (.exists (clojure.java.io/file "save/world.edn"))
                 (->> (slurp "save/world.edn")
                      (clojure.edn/read-string {:readers {'robinson.monstergen.Monster map->Monster}}))
                 (init-world))
@@ -85,7 +85,13 @@
                              (clojure.edn/read-string))])
                         (.listFiles (clojure.java.io/file "data"))))
         _ (info "loaded data" data)
-        state {:world world :screen terminal :quests quest-map :dialog dialog :data data}
+        settings (->> (slurp "config/settings.edn")
+                      (clojure.edn/read-string))
+        terminal  (swingterminal/make-terminal 80 24 [255 255 255] [0 0 0] nil
+                                               (get settings :windows-font)
+                                               (get settings :else-font)
+                                               (get settings :font-size))
+        state {:world world :screen terminal :quests quest-map :dialog dialog :data data :settings settings}
         state (reduce (fn [state _] (add-npcs state 1)) state (range 5))]
 
     ;; tick once using the rest (.) command to update visibility

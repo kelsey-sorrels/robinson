@@ -54,14 +54,21 @@
     (make-terminal columns rows [255 255 255] [0 0 0]))
   ([columns rows default-fg-color default-bg-color]
     (make-terminal columns rows default-fg-color default-bg-color nil))
-  ([columns rows [default-fg-color-r default-fg-color-g default-fg-color-b] [default-bg-color-r default-bg-color-g default-bg-color-b] on-key-fn]
+  ([columns rows default-fg-color default-bg-color on-key-fn]
+    (make-terminal columns rows default-fg-color default-bg-color on-key-fn "Courier New" "Monospaced" 14))
+  ([columns rows [default-fg-color-r default-fg-color-g default-fg-color-b]
+                 [default-bg-color-r default-bg-color-g default-bg-color-b]
+                 on-key-fn
+                 windows-font
+                 else-font
+                 font-size]
     (let [is-windows       (>= (.. System (getProperty "os.name" "") (toLowerCase) (indexOf "win")) 0)
           normal-font      (if is-windows
-                              (Font. "Courier New" Font/PLAIN 14)
-                              (Font. "Monospaced"  Font/PLAIN 14))
+                              (Font. windows-font Font/PLAIN font-size)
+                              (Font. else-font Font/PLAIN font-size))
           bold-font        (if is-windows
-                              (Font. "Courier New" Font/BOLD 14)
-                              (Font. "Monospaced"  Font/BOLD 14))
+                              (Font. windows-font Font/BOLD font-size)
+                              (Font. else-font  Font/BOLD font-size))
           default-fg-color (Color. (long default-fg-color-r) (long default-fg-color-g) (long default-fg-color-b))
           default-bg-color (Color. (long default-bg-color-g) (long default-bg-color-g) (long default-bg-color-b))
           character-map    (atom (vec (repeat rows (vec (repeat columns (TerminalCharacter. \space default-fg-color default-bg-color #{}))))))

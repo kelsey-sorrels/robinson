@@ -38,7 +38,7 @@
   (refresh [this])
   (clear [this]))
 
-(defrecord TerminalCharacter [character fg-color bg-color])
+(defrecord TerminalCharacter [character fg-color bg-color style])
 
 (defmacro for-loop [[sym init check change :as params] & steps]
  `(loop [~sym ~init value# nil]
@@ -64,7 +64,7 @@
                               (Font. "Monospaced"  Font/BOLD 14))
           default-fg-color (Color. (long default-fg-color-r) (long default-fg-color-g) (long default-fg-color-b))
           default-bg-color (Color. (long default-bg-color-g) (long default-bg-color-g) (long default-bg-color-b))
-          character-map    (atom (vec (repeat rows (vec (repeat columns (TerminalCharacter. \space default-fg-color default-bg-color))))))
+          character-map    (atom (vec (repeat rows (vec (repeat columns (TerminalCharacter. \space default-fg-color default-bg-color #{}))))))
           key-queue        (LinkedBlockingQueue.)
           on-key-fn        (or on-key-fn
                                (fn default-on-key-fn [k]
@@ -95,12 +95,13 @@
                                  ;  (println (apply str (map #(get % :character) (get @character-map row)))))
                                  (doseq [row (range rows)
                                          col (range columns)]
-                                   (let [c (get-in @character-map [row col])
-                                         x (long (* col char-width))
-                                         y (long (- (* (inc row) char-height) (.getDescent font-metrics)))
+                                   (let [c        (get-in @character-map [row col])
+                                         x        (long (* col char-width))
+                                         y        (long (- (* (inc row) char-height) (.getDescent font-metrics)))
                                          fg-color (get c :fg-color)
                                          bg-color (get c :bg-color)
-                                         s (str (get c :character))]
+                                         s        (str (get c :character))
+                                         style    (get c :style)]
                                      (when (not= bg-color default-bg-color)
                                        ;(println "filling rect" (* col char-width) (* row char-height) char-width char-height bg-color)
                                        (doto graphics-2d
@@ -110,7 +111,15 @@
                                        ;(println "drawing" s "@" x y fg-color bg-color)
                                        (doto graphics-2d
                                          (.setColor fg-color)
-                                         (.drawString s x y)))))
+                                         (.drawString s x y)))
+                                     (when (contains? style :underline)
+                                       (let [y (dec (* (inc row) char-height))]
+                                         (doto graphics-2d
+                                           (.setColor fg-color)
+                                           (.drawLine (* col char-width)
+                                                      y
+                                                      (* (inc col) char-width)
+                                                      y))))))
                                  (.dispose graphics-2d))))
           keyListener      (reify KeyListener
                              (keyPressed [this e]
@@ -136,7 +145,7 @@
                                    (if ctrlDown
                                        (on-key-fn (char (+ (int \a) -1 (int character))))
                                        (on-key-fn character))))))
-          frame            (doto (JFrame. "DungeonCrusade")
+          frame            (doto (JFrame. "Robinson")
                              (.. (getContentPane) (setLayout (BorderLayout.)))
                              (.. (getContentPane) (add terminal-renderer BorderLayout/CENTER))
                              (.addKeyListener keyListener)
@@ -162,7 +171,7 @@
               (for-loop [i 0 (< i string-length) (inc i)] 
                 (let [col (+ col i)]
                   (when (< -1 col columns)
-                    (let [character (TerminalCharacter. (.charAt s i) fg-color bg-color)]
+                    (let [character (TerminalCharacter. (.charAt s i) fg-color bg-color style)]
                       (reset! character-map (assoc-in @character-map [row col] character)))))))))
         (wait-for-key [this]
           (.take key-queue))
@@ -170,7 +179,7 @@
           (SwingUtilities/invokeLater
             (fn refresh-fn [] (.repaint terminal-renderer))))
         (clear [this]
-          (let [c (TerminalCharacter. \space default-fg-color default-bg-color)]
+          (let [c (TerminalCharacter. \space default-fg-color default-bg-color #{})]
           (doseq [row (range rows)
                   col (range columns)]
             (reset! character-map (assoc-in @character-map [row col] c)))))))))

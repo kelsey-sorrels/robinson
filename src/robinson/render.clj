@@ -184,6 +184,67 @@
      (put-string screen x y (apply str (repeat width " ")) :black :white)
      (put-string screen x y title :black :white #{:underline :bold}))))
 
+(defn render-atmo
+  [state x y]
+  (let [screen (get state :screen)
+        atmo   (get-in state [:data :atmo])
+        frames (count atmo)
+        t      (mod (get-in state [:world :time]) frames)
+        frame  (nth atmo t)
+        indexed-colors (map vector (partition 3 (mapv vec frame)) (range))]
+    (doseq [[column i] indexed-colors]
+      (info x i y column)
+      (put-string screen (+ x i) y       "\u2584" (nth column 0) :black #{:underline})
+      (put-string screen (+ x i) (inc y) "\u2584" (nth column 2) (nth column 1) #{:underline})))
+)
+
+(defn render-hud
+  [state]
+    ;; render atmo
+    (render-atmo state 37 21)
+    ;; render statuses
+    (let [screen (state :screen)]
+      (put-string screen 37 23 " "      :black :gray)
+      (put-string screen 38 23 "\u2665" :black :gray)
+      (put-string screen 39 23 " "      :black :gray)
+      (put-string screen 40 23 "\u2665" :black :gray)
+      (put-string screen 41 23 " "      :black :gray)
+      (put-string screen 42 23 "\u2665" :black :gray)
+      (put-string screen 43 23 " "      :black :gray)
+      ;; render will to live and hp
+      (let [wtl        20
+            max-wtl    100
+            hp         (get-in state [:world :player :hp])
+            max-hp     (get-in state [:world :player :max-hp])
+            hunger     (get-in state [:world :player :hunger])
+            max-hunger 400
+            thirst     10
+            max-thirst 100]
+        (doseq [x (range 37)]
+          (put-string screen x 23 "\u2584" (if (> (/ (- 37 x) 37)
+                                                  (/ wtl max-wtl))
+                                             :black
+                                             :yellow)
+                                           (if (> (/ (- 37 x) 37)
+                                                  (/ hp max-hp))
+                                             :black
+                                             :red)
+                                           #{:underline}))
+        (doseq [x (range (- 80 43))]
+          (put-string screen (+ 44 x) 23 "\u2584"
+                                           (if (> (/ x (- 80 44))
+                                                  (/ hunger max-hunger))
+                                             :black
+                                             :green)
+                                           (if (> (/ x (- 80 44))
+                                                  (/ thirst max-thirst))
+                                             :black
+                                             :blue)
+                                           #{:underline})))))
+    ;    (int (-> state :world :player :hp))
+    ;    (-> state :world :player :max-hp)
+    ;    (apply str (interpose " " (-> state :world :player :status)))
+
 (defn render-img
   "Render an image using block element U+2584."
   [state ^String path x y]
@@ -559,24 +620,7 @@
     ;; maybe draw wield menu
     (render-wield state)
     ;; draw status bar
-    (put-string (state :screen) 0  23
-      (format "Dgnlvl %s $%d HP:%d(%d) Pw:%d(%d) Amr:%d XP:%d/%d T%d %s %s                            "
-        (name (-> state :world :current-place))
-        (-> state :world :player :$)
-        (int (-> state :world :player :hp))
-        (-> state :world :player :max-hp)
-        0 0 10
-        (-> state :world :player :xp)
-        100
-        (-> state :world :time)
-        (apply str (interpose " " (-> state :world :player :status)))
-        (-> state :world :player :name))
-        :black :white)
-    (doall (map #(put-string (state :screen) (+ 73 %1) 23 " " :white (color->rgb %2))
-                (range)
-                [:dark-gray :gray :light-gray]))
-    (put-string (state :screen) 76 23 "@" (class->rgb (-> state :world :player :class)) :black)
-    (put-string (state :screen) 77 23 "    " :white :black)
+    (render-hud state)
     ;; draw log
     (when (= (current-state state) :normal)
       (let [logs-viewed (get-in state [:world :logs-viewed])

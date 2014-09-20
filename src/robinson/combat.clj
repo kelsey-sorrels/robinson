@@ -59,7 +59,7 @@
       ["Player" :*       :punch       :wing     :dead] (format "You %s the %s in the wing ripping it clean off and it dies." (rand-punch-verb) defender-name)
       ["Player" :*       :punch       :eye      :dead] (format "You %s the %s in the eye exploding it upon impact and it dies." (rand-punch-verb) defender-name)
       ["Player" :*       :punch       :snout    :dead] (format "You %s the %s in the snount crushing it and it dies." (rand-punch-verb) defender-name)
-      ["Player" :*       :punch       :arm      :dead] (format "You %s the %s in the arm crushing bones it and it dies." (rand-punch-verb) defender-name)
+      ["Player" :*       :punch       :arm      :dead] (format "You %s the %s in the arm crushing bones and it dies." (rand-punch-verb) defender-name)
       ["Player" :*       :punch       :beak     :dead] (format "You %s the %s in the beak ripping it from its face and it dies." (rand-punch-verb) defender-name)
       ["Player" :*       :punch       :shell    :dead] (format "You %s the %s in the shell ripping to peices and it dies." (rand-punch-verb) defender-name)
       ["Player" :*       :punch       :tentacle :dead] (format "You %s the %s in the tentacle shredding it and it dies." (rand-punch-verb) defender-name)

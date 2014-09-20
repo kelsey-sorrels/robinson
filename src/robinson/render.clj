@@ -191,12 +191,14 @@
         frames (count atmo)
         t      (mod (get-in state [:world :time]) frames)
         frame  (nth atmo t)
-        indexed-colors (map vector (partition 3 (mapv vec frame)) (range))]
+        indexed-colors (map vector (partition 3 frame) (range))]
     (doseq [[column i] indexed-colors]
       (info x i y column)
-      (put-string screen (+ x i) y       "\u2584" (nth column 0) :black #{:underline})
-      (put-string screen (+ x i) (inc y) "\u2584" (nth column 2) (nth column 1) #{:underline})))
-)
+      (put-string screen (+ x i) y       "\u2584" (if (contains? #{0 6} i)
+                                                    :black
+                                                    (nth column 0))
+                                                  :black #{:underline})
+      (put-string screen (+ x i) (inc y) "\u2584" (nth column 2) (nth column 1) #{:underline}))))
 
 (defn render-hud
   [state]
@@ -224,7 +226,7 @@
           (put-string screen x 23 "\u2584" (if (> (/ (- 37 x) 37)
                                                   (/ wtl max-wtl))
                                              :black
-                                             :yellow)
+                                             :green)
                                            (if (> (/ (- 37 x) 37)
                                                   (/ hp max-hp))
                                              :black
@@ -235,7 +237,7 @@
                                            (if (> (/ x (- 80 44))
                                                   (/ hunger max-hunger))
                                              :black
-                                             :green)
+                                             :yellow)
                                            (if (> (/ x (- 80 44))
                                                   (/ thirst max-thirst))
                                              :black

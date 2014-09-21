@@ -1,5 +1,6 @@
 ;; Functions for rendering state to screen
 (ns robinson.swingterminal
+  (:require [taoensso.timbre :as timbre])
   (:import  
             java.util.concurrent.LinkedBlockingQueue
             java.awt.Color
@@ -27,6 +28,7 @@
             javax.swing.Timer
             javax.swing.ImageIcon))
 
+(timbre/refer-timbre)
 (set! *warn-on-reflection* true)
 
 (defprotocol ATerminal
@@ -69,6 +71,7 @@
           bold-font        (if is-windows
                               (Font. windows-font Font/BOLD font-size)
                               (Font. else-font  Font/BOLD font-size))
+          _                (info "Using font" (.getFontName normal-font))
           default-fg-color (Color. (long default-fg-color-r) (long default-fg-color-g) (long default-fg-color-b))
           default-bg-color (Color. (long default-bg-color-g) (long default-bg-color-g) (long default-bg-color-b))
           character-map    (atom (vec (repeat rows (vec (repeat columns (TerminalCharacter. \space default-fg-color default-bg-color #{}))))))

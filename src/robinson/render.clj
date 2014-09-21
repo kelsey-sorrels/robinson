@@ -1,6 +1,6 @@
 ;; Functions for rendering state to screen
 (ns robinson.render
-  (:import  (java.awt Color)
+  (:import  (java.awt Color Image)
             (java.awt.image BufferedImage)
             (javax.swing ImageIcon))
   (:use     robinson.common
@@ -8,7 +8,7 @@
             robinson.magic
             robinson.crafting
             [robinson.itemgen :only [can-be-wielded?]]
-            robinson.lineofsight
+            [robinson.lineofsight :exclude [-main]]
             [robinson.dialog :exclude [-main]]
             robinson.npc
             tinter.core
@@ -250,7 +250,7 @@
 (defn render-img
   "Render an image using block element U+2584."
   [state ^String path x y]
-  (let [image ^java.awt.Image (-> (ImageIcon. path) .getImage)
+  (let [image ^Image (-> (ImageIcon. path) .getImage)
         width                 (.getWidth image)
         height                (.getHeight image)
         buffered-image        (BufferedImage. width height BufferedImage/TYPE_INT_RGB)
@@ -262,8 +262,14 @@
            px (range width)]
        (let [color1 (Color. (.getRGB buffered-image px py))
              color2 (Color. (.getRGB buffered-image px (inc py)))
-             rgb1 ((juxt #(.getRed %) #(.getGreen %) #(.getBlue %)) color1)
-             rgb2 ((juxt #(.getRed %) #(.getGreen %) #(.getBlue %)) color2)]
+             rgb1 ((juxt (fn [^Color c] (.getRed c)) 
+                         (fn [^Color c] (.getGreen c))
+                         (fn [^Color c] (.getBlue c)))
+                   color1)           
+             rgb2 ((juxt (fn [^Color c] (.getRed c))
+                         (fn [^Color c] (.getGreen c))
+                         (fn [^Color c] (.getBlue c)))
+                   color2)]
          (put-string (state :screen)
                        (+ x px)
                        (int (+ y (/ py 2)))
@@ -634,11 +640,12 @@
                 _ (info "logs-viewed" logs-viewed "current-time" current-time "logs" logs)
                 message (get logs (dec logs-viewed))]
             ;(debug "message" message)
-            (put-string (state :screen) 0 0 (format "%s --More--" (message :text))))
+            (put-string (state :screen) 0 0 (format "%s --More--" (message :text)) (get message :color) :black))
           (let [message (last (get-in state [:world :log]))]
+            (info "message" message)
             (when (and message
                        (< (- current-time (message :time)) 5))
-              (put-string (state :screen) 0 0 (get message :text)))))))
+              (put-string (state :screen) 0 0 (get message :text) (get message :color) :black))))))
     ;; draw quit prompt
     (render-quit? state)
     ;; maybe draw harvest prompt
@@ -684,6 +691,16 @@
                         help-contents))
     (refresh (state :screen))))
 
+(defn render-full-log
+  "Render the log as a full screen."
+  [state]
+  (let [log (get-in state [:world :log])]
+    (clear (state :screen))
+    (doall (map-indexed (fn [idx message]
+                          (put-string (state :screen) 0 idx (get message :text) (get message :color) :black))
+                        log))
+    (refresh (state :screen))))
+
 (defn render
   "Pick between the normal render function and the
    game over render function based on the dead state
@@ -696,6 +713,8 @@
       (render-game-over state)
     (= (get-in state [:world :current-state]) :help)
       (render-help state)
+    (= (get-in state [:world :current-state]) :log)
+      (render-full-log state)
     :else (render-map state)))
 
 

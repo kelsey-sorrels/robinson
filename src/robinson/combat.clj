@@ -406,7 +406,10 @@
         defender-body-part (rand-nth (vec (get defender :body-parts)))
         {x :x y :y}        (get defender :pos)
         hp                 (get defender :hp)
-        dmg                (calc-dmg (get attacker :race) attack (get defender :race) defender-body-part)
+        hit-or-miss        (rand-nth [:hit :miss])
+        dmg                (case hit-or-miss
+                             :hit (calc-dmg (get attacker :race) attack (get defender :race) defender-body-part)
+                             :miss 0)
         is-wound           (> dmg 1.5)]
     (debug "attack" attacker-path "is attacking defender" defender-path)
     (debug "attacker-detail" attacker)
@@ -422,7 +425,10 @@
                                           defender
                                           attack
                                           defender-body-part
-                                          :hit))
+                                          hit-or-miss)
+                      (case hit-or-miss
+                        :hit :red
+                        :miss :white))
           ;; chance of being envenomed by venomous attacks
           (update-in (conj defender-path :status) (fn [status] (if (and (re-find #"venom" (str attack))
                                                                         (= (rand-int 10) 0))
@@ -440,7 +446,7 @@
                                                     defender)))
           ((fn [state] (if (and is-wound
                                 (contains? (set defender-path) :player))
-                         (append-log state "You have been wounded.")
+                         (append-log state "You have been wounded." :red)
                          state))))
       ;; defender dead? (0 or less hp)
       (not (pos? (- hp dmg)))
@@ -459,7 +465,8 @@
                                             defender
                                             attack
                                             defender-body-part
-                                            :dead)))
+                                            :dead)
+                        :white))
           ;; defender is player
           (update-in state [:world :player :status]
             (fn [status] (conj status :dead)))))))

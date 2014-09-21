@@ -784,7 +784,7 @@
   (let [weapon-recipes   (get (get-recipes state) :weapons)
         matching-recipes (filter (fn [recipe] (= (get recipe :hotkey) keyin)) weapon-recipes)]
     (if (empty? matching-recipes)
-      (append-log state "Pick a valid recipe.")
+      (append-log state "Pick a valid recipe." :white)
       (-> state
         (craft-recipe (first matching-recipes))
         (assoc-in [:world :current-state] :normal)))))
@@ -796,7 +796,7 @@
         _ (info "survival recipes" survival-recipes)
         matching-recipes (filter (fn [recipe] (= (get recipe :hotkey) keyin)) survival-recipes)]
     (if (empty? matching-recipes)
-      (append-log state "Pick a valid recipe.")
+      (append-log state "Pick a valid recipe." :white)
       (-> state
         (craft-recipe (first matching-recipes))
         (assoc-in [:world :current-state] :normal)))))
@@ -875,7 +875,7 @@
         (update-in [:world :player :status]
           (fn [status]
               (conj status :infected)))
-        (append-log "Your wounds have become infected."))
+        (append-log "Your wounds have become infected." :green))
       state)))
 
 (defn if-infected-get-hurt
@@ -907,7 +907,7 @@
         (update-in [:world :player :status]
           (fn [status]
               (disj status :poisoned)))
-        (append-log "The poison wore off."))
+        (append-log "The poison wore off." :green))
     ;; chance of infection clearing up
     (arg-when-> [state]
       (and (contains? (get-in state [:world :player :status]) :infected)
@@ -915,7 +915,7 @@
         (update-in [:world :player :status]
           (fn [status]
               (disj status :infected)))
-        (append-log "The infection has cleared up."))))
+        (append-log "The infection has cleared up." :yellow))))
 
 ;; update visibility
 (defn update-visibility
@@ -1252,6 +1252,7 @@
                            \z        [identity               :craft     true]
                            \Z        [identity               :magic     true]
                            \T        [identity               :talk      true]
+                           \m        [identity               :log       false]
                            \?        [identity               :help      false]
                            :escape   [identity               :quit?     false]}
                :inventory {:escape   [identity               :normal    false]}
@@ -1323,6 +1324,7 @@
                            \k        [close-up               :normal    true]
                            \l        [close-right            :normal    true]}
                :more-log  {:else     [scroll-log             identity   false]}
+               :log       {:else     [(fn [s _] s)           :normal    false]}
                :dead      {\y        [reinit-world           :normal    false]
                            \n        [(constantly nil)       :normal    false]}
                :quit?     {\y        [(constantly nil)       :normal    false]

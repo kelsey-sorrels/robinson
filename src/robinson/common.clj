@@ -439,13 +439,14 @@
 (defn append-log
   "Append a message to the in-game log. The last five log messages are retained."
   ([state message]
-   (append-log state :log message))
-  ([state log message]
+   (append-log state message :gray))
+  ([state message color]
    (assoc-in state
-             [:world log]
-             (vec (take-last 5 (conj (-> state :world :log)
+             [:world :log]
+             (vec (take-last 23 (conj (-> state :world :log)
                                      {:text message
-                                      :time (-> state :world :time)}))))))
+                                      :time (-> state :world :time)
+                                      :color color}))))))
 
 (defn conj-in-cell-items
   "Adds an item to [x y] in the current place. Simple, right?"

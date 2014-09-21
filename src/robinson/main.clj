@@ -10,7 +10,6 @@
   (:require 
             [robinson.swingterminal :as swingterminal]
             clojure.edn
-            ;[lanterna.screen :as s]
             [taoensso.timbre :as timbre]
             [clojure.core.async :as async]))
 
@@ -53,6 +52,7 @@
 
    * a `:data` the contents of the `/data` folder with the filename (excluding
    extention) as the key and the contents as the value.
+
    * a `:settings` the contents of `/config/settings.edn`.
 
    * `quests` that are loaded dynamically on startup."
@@ -64,7 +64,7 @@
          ;; load quests
          _ (doall (map #(load-file (.getPath %))
                         (filter (fn [file] (.endsWith (.getPath file) ".clj"))
-                                (.listFiles (clojure.java.io/file "src/robinson/quests")))))
+                                (.listFiles (clojure.java.io/file "quests")))))
 
          ;; get a list of all the quests that have been loaded
          quests (map deref (flatten (map #(-> % ns-publics vals)
@@ -84,7 +84,7 @@
                              (slurp)
                              (clojure.edn/read-string))])
                         (.listFiles (clojure.java.io/file "data"))))
-        _ (info "loaded data" data)
+        _ (debug "loaded data" data)
         settings (->> (slurp "config/settings.edn")
                       (clojure.edn/read-string))
         terminal  (swingterminal/make-terminal 80 24 [255 255 255] [0 0 0] nil

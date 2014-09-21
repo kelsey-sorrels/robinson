@@ -6,7 +6,10 @@
         [robinson.mapgen :exclude [-main]]
         [robinson.itemgen :exclude [-main]])
   (:require [taoensso.timbre :as timbre]
-            [clisk.live :as clisk]))
+            [clisk.core :as clisk]
+            [clisk.patterns :as cliskp]
+            [clisk.node :as cliskn]
+            [clisk.functions :as cliskf]))
 
 (timbre/refer-timbre)
 
@@ -43,32 +46,32 @@
      [[7 19]         {:type :up-stairs :dest-place :0}]]))
 
 ;; clisk utils
-(defn invert [a] (clisk/v+ [1 1 1] (clisk/v* [-1 -1 -1] a)))
+(defn invert [a] (cliskf/v+ [1 1 1] (cliskf/v* [-1 -1 -1] a)))
 
 (defn center [f]
-  (clisk/offset [-0.5 -0.5] (clisk/scale 0.5 f)))
+  (cliskf/offset [-0.5 -0.5] (cliskf/scale 0.5 f)))
 
 (defn center-radius []
-  (clisk/radius (center [clisk/x clisk/y])))
+  (cliskf/radius (center [cliskf/x cliskf/y])))
 
 (defn init-island
   "Create an example place with an island, two items
    and a set of down stairs that lead to place `:1`"
   []
-  (let [_    (clisk/seed-simplex-noise!)
-        node (clisk/vectorize
-               (clisk/vlet [c (center (invert (clisk/offset (clisk/scale 0.43 (clisk/v* [0.5 0.5 0.5] clisk/vsnoise)) clisk/radius)))]
-                 (clisk/v+
-                   (clisk/vif (clisk/v+ [-0.7 -0.7 -0.7]  (clisk/v* c (clisk/v+ [0.4 0.4 0.4] (clisk/scale 0.05 clisk/noise))))
+  (let [_    (cliskp/seed-simplex-noise!)
+        node (cliskf/vectorize
+               (cliskf/vlet [c (center (invert (cliskf/offset (cliskf/scale 0.43 (cliskf/v* [0.5 0.5 0.5] cliskp/vsnoise)) cliskf/radius)))]
+                 (cliskf/v+
+                   (cliskf/vif (cliskf/v+ [-0.7 -0.7 -0.7]  (cliskf/v* c (cliskf/v+ [0.4 0.4 0.4] (cliskf/scale 0.05 cliskp/noise))))
                      [0 0 1]
                      [0 0 0])
-                   (clisk/vif (clisk/v+ [-0.6 -0.6 -0.6]  c)
+                   (cliskf/vif (cliskf/v+ [-0.6 -0.6 -0.6]  c)
                      [0 1 0]
                      [0 0 0])
-                   (clisk/vif (clisk/v+ [-0.5 -0.5 -0.5]  c)
+                   (cliskf/vif (cliskf/v+ [-0.5 -0.5 -0.5]  c)
                      [1 0 0]
                      [0 0 0]))))
-        fns  (vec (map clisk/compile-fn (:nodes node)))
+        fns  (vec (map cliskn/compile-fn (:nodes node)))
         max-x 55
         max-y 20]
     (add-extras
@@ -283,20 +286,20 @@
 ]}))
 
 (defn -main [& args]
-  (let [_ (clisk/seed-simplex-noise!)
-        node (clisk/vectorize
-               (clisk/vlet [c (center (invert (clisk/offset (clisk/scale 0.43 (clisk/v* [0.5 0.5 0.5] clisk/vsnoise)) clisk/radius)))]
-                 (clisk/v+
-                   (clisk/vif (clisk/v+ [-0.7 -0.7 -0.7]  (clisk/v* c (clisk/v+ [0.4 0.4 0.4] (clisk/scale 0.05 clisk/noise))))
+  (let [_ (cliskp/seed-simplex-noise!)
+        node (cliskf/vectorize
+               (cliskf/vlet [c (center (invert (cliskf/offset (cliskf/scale 0.43 (cliskf/v* [0.5 0.5 0.5] cliskp/vsnoise)) cliskf/radius)))]
+                 (cliskf/v+
+                   (cliskf/vif (cliskf/v+ [-0.7 -0.7 -0.7]  (cliskf/v* c (cliskf/v+ [0.4 0.4 0.4] (cliskf/scale 0.05 cliskp/noise))))
                      [0 0 1]
                      [0 0 0])
-                   (clisk/vif (clisk/v+ [-0.6 -0.6 -0.6]  c)
+                   (cliskf/vif (cliskf/v+ [-0.6 -0.6 -0.6]  c)
                      [0 1 0]
                      [0 0 0])
-                   (clisk/vif (clisk/v+ [-0.5 -0.5 -0.5]  c)
+                   (cliskf/vif (cliskf/v+ [-0.5 -0.5 -0.5]  c)
                      [1 0 0]
                      [0 0 0]))))
-        fns  (vec (map clisk/compile-fn (:nodes node)))]
+        fns  (vec (map cliskn/compile-fn (:nodes node)))]
     (dorun
       (map (comp (partial apply str) println)
         (partition 40

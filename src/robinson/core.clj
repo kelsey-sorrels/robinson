@@ -3,7 +3,8 @@
 ;(set! *warn-on-reflection* true)
 (ns robinson.core
   (:use robinson.main
-        clojure.stacktrace))
+        clojure.stacktrace)
+  (:gen-class))
 
 (defn -main
   "Entry default point to application.

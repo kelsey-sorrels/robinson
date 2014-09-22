@@ -73,24 +73,37 @@
   [n]
   {:id :obsidian-knife :name "obsidian knife" :name-plural "obsidian knives" :count n :attack :knife})
 
+(defn gen-bamboo-water-collectors
+  "Generate bamboo-water-collectors"
+  [n]
+  {:id :bamboo-water-collector :name "bamboo water collector" :name-plural "bamboo water collectors" :count n})
 
 (defn id->items
   "Generate item from id."
   [id n]
   ((case id
-     :stick          gen-sticks
-     :plant-fiber    gen-plant-fibers
-     :coconut        gen-coconuts
-     :wood-log       gen-wood-logs
-     :rock           gen-rocks
-     :obsidian       gen-obsidian
-     :grass          gen-grass
-     :obsidian-blade gen-obsidian-blades
-     :rope           gen-rope
-     :obsidian-spear gen-obsidian-spears
-     :obsidian-axe   gen-obsidian-axes
-     :obsidian-knife gen-obsidian-knives)
+     :stick                  gen-sticks
+     :plant-fiber            gen-plant-fibers
+     :coconut                gen-coconuts
+     :wood-log               gen-wood-logs
+     :rock                   gen-rocks
+     :obsidian               gen-obsidian
+     :grass                  gen-grass
+     :obsidian-blade         gen-obsidian-blades
+     :rope                   gen-rope
+     :obsidian-spear         gen-obsidian-spears
+     :obsidian-axe           gen-obsidian-axes
+     :obsidian-knife         gen-obsidian-knives
+     :bamboo-water-collector gen-bamboo-water-collectors)
    n))
+
+(defn id->item
+  [id]
+  (id->items id 1))
+
+(defn id->name
+  [id]
+  (get (id->item id) :name))
 
 (defn can-be-wielded?
   [item]

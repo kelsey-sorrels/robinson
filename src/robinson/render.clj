@@ -7,7 +7,8 @@
             robinson.player
             robinson.magic
             robinson.crafting
-            [robinson.itemgen :only [can-be-wielded?]]
+            [robinson.itemgen :only [can-be-wielded?
+                                     id->name]]
             [robinson.lineofsight :exclude [-main]]
             [robinson.dialog :exclude [-main]]
             robinson.npc
@@ -118,6 +119,59 @@
 (defn is-menu-state? [state]
   (contains? #{:inventory :describe-inventory :pickup :drop :eat} (get-in state [:world :current-state])))
 
+(defn render-line
+  [screen x y width line fg bg {:keys [underline center invert]
+                                :or   {:underline false :center false :invert false}}]
+  (let [width    (if (= width :auto)
+                   (count line)
+                   width)
+        ;; pad to width
+        s        (if center
+                   ;; center justify
+                   (clojure.pprint/cl-format nil (format "~%d<~;~A~;~>" width) line)
+                   ;; left justify
+                   (clojure.pprint/cl-format nil (format "~%d<~A~;~>" width) line))
+        [fg bg]  (if invert
+                   [bg fg]
+                   [fg bg])
+        style    (if underline
+                   #{:underline}
+                   #{})]
+    (info "put-string" (format "\"%s\"" line) "width" width)
+    (put-string screen x y s fg bg style)))
+
+
+(defn render-rect-border
+  [screen x y width height fg bg]
+  ;; render top and bottom
+  (doseq [dx (range (dec width))]
+    (put-string screen (+ x dx 1) y "\u2500" fg bg #{})
+    (put-string screen (+ x dx 1) (+ y height) "\u2500" fg bg #{}))
+  ;; render left and right
+  (doseq [dy (range (dec height))]
+    (put-string screen x (+ y dy 1) "\u2502" fg bg #{})
+    (put-string screen (+ x width) (+ y dy 1) "\u2502" fg bg #{}))
+  ;; render tl, tr, bl, br
+  (put-string screen x y "\u250C" fg bg #{})
+  (put-string screen (+ x width) y "\u2510" fg bg #{})
+  (put-string screen x (+ y height) "\u2514" fg bg #{})
+  (put-string screen (+ x width) (+ y height) "\u2518" fg bg #{}))
+
+(defn render-vertical-border
+  [screen x y height fg bg]
+  (doseq [dy (range (dec height))]
+    (put-string screen x (+ y dy) "\u2502" fg bg #{})))
+
+(defn render-list
+  "Render a sequence of lines padding to height if necessary.
+   Lines are maps containing the keys `:s :fg :bg :style`."
+  [screen x y width height items]
+  (doseq [i (range height)]
+    (if (< i (count items))
+      (let [item (nth items i)]
+        (render-line screen x (+ y i) width (get item :s) (get item :fg) (get item :bg) (get item :style)))
+      (render-line screen x (+ y i) width "" :white :white #{}))))
+
 (defn render-multi-select
   "Render a menu on the right side of the screen. It has a title, and selected items
    can be identitifed by hotkeys. If elements in `items` have a key whose value
@@ -157,7 +211,8 @@
                                                (get item :applicable))
                                          :black
                                          :gray)
-                                   :bg :white})
+                                   :bg :white
+                                   :style #{}})
                        items)
          ;; if width is :auto calc width by using max item length
          width    (if (= width :auto)
@@ -166,23 +221,15 @@
          height   (if (= height :auto)
                     (count items)
                     height)
-         ;; pad to width
-         items    (if center
-                    ;; center justify
-                    (map (fn [item] (update-in item [:s] (fn [s] (clojure.pprint/cl-format nil (format "~%d<~;~A~;~>" width) s)))) items)
-                    ;; left justify
-                    (map (fn [item] (update-in item [:s] (fn [s] (clojure.string/join (concat [s] (repeat (- width (count s)) " "))))))
-                         items))
-         title    (if center-title
+         title    (if (and title center-title)
                     (clojure.pprint/cl-format nil (format "~%d<~;~A~;~>" width) title)
-                    (format "  %s" title))]
-     (doseq [i (range height)]
-       (if (< i (count items))
-         (let [item (nth items i)]
-           (put-string screen x (+ y i 1) (get item :s) (get item :fg) (get item :bg) #{:bold}))
-         (put-string screen x (+ y i 1) (clojure.string/join (repeat width " ")) :black :white)))
-     (put-string screen x y (apply str (repeat width " ")) :black :white)
-     (put-string screen x y title :black :white #{:underline :bold}))))
+                    (when title
+                      (format "  %s" title)))
+         items    (if title
+                     (concat [{:s title :fg :black :bg :white :style #{:underline :bold}}]
+                              items)
+                     items)]
+     (render-list screen x y width height items))))
 
 (defn render-atmo
   [state x y]
@@ -455,24 +502,75 @@
 (defn render-craft
   "Render the craft menu if the world state is `:craft`."
   [state]
-  (when (= (-> state :world :current-state) :craft)
-    (render-multi-select (state :screen) "Craft" [] [{:name "Weapons" :hotkey \w}
-                                                     {:name "Survival" :hotkey \s}]
-                                                    30 5 20 5)))
+  (let [screen (state :screen)]
+    (when (= (-> state :world :current-state) :craft)
+      (render-multi-select screen nil [] [{:name "Weapons" :hotkey \w}
+                                              {:name "Survival" :hotkey \s}]
+                                              30 6 20 5)
+      (render-rect-border screen 29 5 20 5 :black :white)
+      (put-string screen 37 5 "Craft" :black :white))))
 
+(defn render-craft-submenu
+  "Render the craft submenu"
+  [state recipe-type]
+  (let [screen               (state :screen)
+        selected-recipe-path (get-in state [:world :craft-recipe-path])
+        hotkey               (when selected-recipe-path
+                               (last selected-recipe-path))
+        recipes              (get (get-recipes state) recipe-type)]
+  ;; render recipes
+  (render-list screen 11 6 29 15
+    (concat
+      [{:s (str recipe-type) :fg :black :bg :white :style #{:underline}}]
+       (map (fn [recipe]
+              {:s (format "%c-%s"
+                    (get recipe :hotkey)
+                    (clojure.string/join ","
+                      (map id->name (get-in recipe [:recipe :add]))))
+               :fg :black
+               :bg :white
+               :style (if (= (get recipe :hotkey) hotkey)
+                         #{:invert}
+                         #{})})
+            recipes)))
+  ;; render recipe-info
+  (if hotkey
+    (let [matching-recipes (filter (fn [recipe] (= (get recipe :hotkey) hotkey))
+                                   recipes)
+          recipe           (get (first matching-recipes) :recipe)
+          exhaust          (get recipe :exhaust [])
+          have             (get recipe :have [])]
+      (info "exhaust" exhaust "have" have)
+      (render-list screen 41 5 29 15
+      (concat
+        [{:s "" :fg :black :bg :white :style #{}}
+         {:s "Consumes" :fg :black :bg :white :style #{}}]
+        (if (empty? exhaust)
+          [{:s "N/A" :fg :black :bg :white :style #{}}]
+          (map (fn [id] {:s (id->name id) :fg :black :bg :white :style #{}}) exhaust))
+        [{:s "" :fg :black :bg :white :style #{}}
+         {:s "Requires" :fg :black :bg :white :style #{}}]
+        (if (empty? have)
+          [{:s "N/A" :fg :black :bg :white :style #{}}]
+          (map (fn [id] {:s (id->name id) :fg :black :bg :white :style #{}}) have)))))
+    (render-list screen 10 5 60 15
+        [{:s "Select a recipe" :fg :black :bg :white :style #{}}]))
+  (render-rect-border screen 10 5 60 15 :black :white)
+  (render-vertical-border screen 40 6 15 :black :white)
+  (put-string screen 40 20 "\u2534" :black :white)
+  (put-string screen 37 5 "Craft" :black :white)))
+          
 (defn render-craft-weapon
   "Render the craft weapon menu if the world state is `:craft-weapon`."
   [state]
   (when (= (-> state :world :current-state) :craft-weapon)
-    (let [recipes (get-recipes state)]
-      (render-multi-select (state :screen) "Craft Weapon" [] (get recipes :weapons)  30 5 :auto :auto {:use-applicable true}))))
+    (render-craft-submenu state :weapon)))
 
 (defn render-craft-survival
   "Render the craft menu if the world state is `:craft-survival`."
   [state]
   (when (= (-> state :world :current-state) :craft-survival)
-    (let [recipes (get-recipes state)]
-      (render-multi-select (state :screen) "Craft Survival" [] (get recipes :survival)  30 5 :auto :auto {:use-applicable true}))))
+    (render-craft-submenu state :survival)))
 
 (defn render-wield
   "Render the wield item menu if the world state is `:wield`."

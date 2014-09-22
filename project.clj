@@ -22,7 +22,7 @@
                  [org.clojars.folcon/clojure-lanterna "0.9.5"]]
   :main robinson.core
   :repl-init robinson.main
-  :aot :all
+  ;:aot :all
 ;[;robinson.common
         ;robinson.update
         ;robinson.render

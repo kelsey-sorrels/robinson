@@ -778,28 +778,32 @@
             (transfer-items-from-player-to-npc (get npc :id) (partial = item))))
         state)))
 
-(defn craft-weapon
-  "Craft a weapon."
+(defn craft-select-recipe
+  "Selects a craft recipe."
   [state keyin]
-  (let [weapon-recipes   (get (get-recipes state) :weapons)
-        matching-recipes (filter (fn [recipe] (= (get recipe :hotkey) keyin)) weapon-recipes)]
-    (if (empty? matching-recipes)
-      (append-log state "Pick a valid recipe." :white)
-      (-> state
-        (craft-recipe (first matching-recipes))
-        (assoc-in [:world :current-state] :normal)))))
+  (let [recipe-type      (case (current-state state)
+                           :craft-weapon    :weapon
+                           :craft-survival :survival)
+        matching-recipes (filter (fn [recipe] (= (get recipe :hotkey) keyin))
+                                 (get (get-recipes state) recipe-type))]
+  (if (empty? matching-recipes)
+    (append-log state "Pick a valid recipe." :white)
+    (assoc-in state [:world :craft-recipe-path] [recipe-type (get (first matching-recipes) :hotkey)]))))
 
-(defn craft-survival
-  "Craft a survival item."
-  [state keyin]
-  (let [survival-recipes (get (get-recipes state) :survival)
-        _ (info "survival recipes" survival-recipes)
-        matching-recipes (filter (fn [recipe] (= (get recipe :hotkey) keyin)) survival-recipes)]
-    (if (empty? matching-recipes)
-      (append-log state "Pick a valid recipe." :white)
+(defn craft
+  "Craft the selected recipe."
+  [state]
+  (let [[recipe-type hotkey] (get-in state [:world :craft-recipe-path])
+        recipes (get (get-recipes state) recipe-type)
+        recipe (first (filter #(= hotkey (get % :hotkey))
+                              recipes))]
+    (info "recipe-type" recipe-type "hotkey" hotkey "recipes" recipes "recipe" recipe)
+    (if recipe
       (-> state
-        (craft-recipe (first matching-recipes))
-        (assoc-in [:world :current-state] :normal)))))
+        (craft-recipe recipe)
+        (assoc-in [:world :current-state] :normal))
+      (append-log state "Pick a valid recipe." :white))))
+
 
 (defn scroll-log
   [state keyin]
@@ -1304,10 +1308,12 @@
                            :escape   [identity               :normal    false]}
                :craft-weapon
                           {:escape   [identity               :craft     false]
-                           :else     [craft-weapon           identity   true]}
+                           :enter    [craft                  :normal    true]
+                           :else     [craft-select-recipe    identity   false]}
                :craft-survival
                           {:escape   [identity               :craft     false]
-                           :else     [craft-survival         identity   true]}
+                           :enter    [craft                  :normal    true]
+                           :else     [craft-select-recipe    identity   false]}
                :magic     {:escape   [identity               :normal    false]
                            :else     [do-magic               identity   true]}
                :magic-direction

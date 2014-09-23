@@ -352,6 +352,7 @@
             new-state (-> state
               (append-log (format "The %s tastes %s." (lower-case (get item :name))
                                                       (rand-nth ["great" "foul" "greasy" "delicious" "burnt" "sweet" "salty"])))
+              (update-eaten item)
               ;; reduce hunger
               (update-in [:world :player :hunger]
                 (fn [hunger]
@@ -547,6 +548,7 @@
       (append-log state "You don't find anything.")
       (-> state
         (add-to-inventory harvest-items)
+        ((fn [state] (reduce update-harvested state harvest-items)))
         (append-log (format "You gather %s." (clojure.string/join ", " (map #(if (> (get % :count) 1)
                                                                                   (format "%d %s" (get % :count) (get % :name-plural))
                                                                                   (format "%s %s" (if (contains? #{\a \e \i \o} (first (get % :name)))
@@ -860,6 +862,53 @@
                                                   200 :starving
                                                   100 :hungry
                                                   nil))))))))))
+(defn decrease-will-to-live
+  "Decrease the player's will-to-live depending on circumstances."
+  [state]
+  (-> state
+    (update-in [:world :player :will-to-live]
+      (fn [will-to-live]
+        (let [dwtl       0.05 ;; you've been on the island. It sucks and you want to get off.
+              hp         (get-in state [:world :player :hp])
+              max-hp     (get-in state [:world :player :max-hp])
+              _          (info "hp" hp "max-hp" max-hp)
+              dwtl       (+ dwtl (if (> 0.5 (/ hp max-hp))
+                                   1
+                                   0))
+              hunger     (get-in state [:world :player :hunger])
+              max-hunger (get-in state [:world :player :max-hunger])
+              _          (info "hunger" hunger "max-hunger" max-hunger)
+              dwtl       (+ dwtl (if (> (/ hunger max-hunger) 0.5)
+                                   1
+                                   0))
+              thirst     (get-in state [:world :player :thirst])
+              max-thirst (get-in state [:world :player :max-thirst])
+              _          (info "thirst" thirst "max-thirst" max-thirst)
+              dwtl       (+ dwtl (if (> (/ thirst max-thirst) 0.5)
+                                   1
+                                   0))
+              wounded    (not-empty (get-in state [:world :player :wounds]))
+              _          (info "wounded" wounded)
+              dwtl       (+ dwtl (if wounded
+                                   1
+                                   0))
+              poisoned   (contains? (get-in state [:world :player :status]) :poisoned)
+              _          (info "poisoned" poisoned)
+              dwtl       (+ dwtl (if poisoned
+                                   1
+                                   0))
+              infected   (contains? (get-in state [:world :player :status]) :infected)
+              _          (info "infected" infected)
+              dwtl       (+ dwtl (if infected
+                                   1
+                                   0))]
+        (info "dwtl" dwtl "will-to-live" will-to-live)
+        (- will-to-live dwtl))))
+    (update-in [:world :player :status]
+               (fn [status]
+                 (set (if (neg? (get-in state [:world :player :will-to-live]))
+                        (conj status :dead)
+                        status))))))
 
 (defn if-poisoned-get-hurt
   "Decrease player's hp if they are poisoned."
@@ -1397,6 +1446,7 @@
               (heal)
               (if-wounded-get-infected)
               (if-infected-get-hurt)
+              (decrease-will-to-live)
               (update-npcs)
               ;; TODO: Add appropriate level
               (add-npcs-random 1)

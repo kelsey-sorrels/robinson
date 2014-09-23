@@ -3,6 +3,7 @@
   (:use     
     clojure.pprint
     robinson.common
+    robinson.player
     robinson.itemgen)
   (:require clojure.pprint
             clojure.contrib.core
@@ -100,11 +101,12 @@
       [:*       "Player" :bite-venom  :*        :miss] (format "The %s snaps at you its mouth but misses." (rand-punch-verb) attacker-name)
       [:*       "Player" :claw        :*        :miss] (format "The %s claws at you and narrowly misses." (rand-punch-verb) attacker-name)
       [:*       "Player" :punch       :*        :miss] (format "The %s punches you but misses." attacker-name)
+      [:*       "Player" :gore        :*        :miss] (format "The %s lunges at you with it's tusks.`" attacker-name)
       [:*       "Player" :sting       :*        :miss] (format "The %s tries to sting you but misses." attacker-name)
       [:*       "Player" :sting-venom :*        :miss] (format "The %s tries to sting you but misses." attacker-name)
       [:*       "Player" :squeeze     :*        :miss] (format "The %s starts to constrict around you but fumbles." attacker-name)
       [:*       "Player" :clamp       :*        :miss] (format "The %s tries to clamp onto you but isn't fast enough." attacker-name)
-      [:*       "Player" :spike       :*        :miss] (format "You almost get poked by the %'s spikes." attacker-name)
+      [:*       "Player" :spike       :*        :miss] (format "You almost get poked by the %s's spikes." attacker-name)
       [:*       "Player" :bite        :*        :hit]  (format "The %s sinks its teeth into your flesh." attacker-name)
       [:*       "Player" :bite-venom  :*        :hit]  (format "The %s buries its teeth into your body and starts pumping poison into you." attacker-name)
       [:*       "Player" :claw        :*        :hit]  (format "The %s claws into your flesh." attacker-name)
@@ -453,6 +455,8 @@
         (if (contains? (set defender-path) :npcs)
           ;; defender is npc
           (-> state
+            ;; update stats and will-to-live
+            (update-npc-killed defender attack)
             ;; remove defender
             (remove-in (butlast defender-path) (partial = defender))
             ;; maybe add corpse

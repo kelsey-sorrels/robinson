@@ -218,15 +218,26 @@
             :inventory [(gen-plant-fibers 1)]
             :hp 10
             :max-hp 10
+            :will-to-live 100
+            :max-will-to-live 100
             :$ 50
             :xp 0
             :level 0
             :hunger 0
+            :max-hunger 800
+            :thirst 0
+            :max-thirst 100
             :pos starting-pos
             :place :0
             :body-parts #{:head :neck :face :abdomen :arm :leg :foot}
             :attacks #{:punch}
             :status #{}
+            :stats {
+              :num-animals-killed       {}
+              :num-items-crafted        {}
+              :num-items-harvested      {}
+              :num-kills-by-attack-type {}
+              :num-items-eaten          {}}
             ;; map from body-part to {:time <int> :damage <float>}
             :wounds {}}
    :quests {}

@@ -261,8 +261,8 @@
       (put-string screen 42 23 "\u2665" :black :gray)
       (put-string screen 43 23 " "      :black :gray)
       ;; render will to live and hp
-      (let [wtl        20
-            max-wtl    100
+      (let [wtl        (get-in state [:world :player :will-to-live])
+            max-wtl    (get-in state [:world :player :max-will-to-live])
             hp         (get-in state [:world :player :hp])
             max-hp     (get-in state [:world :player :max-hp])
             hunger     (get-in state [:world :player :hunger])

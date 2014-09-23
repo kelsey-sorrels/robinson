@@ -73,7 +73,8 @@
     (if (has-prerequisites? state recipe)
       (let [state (-> state
                     (add-by-ids add)
-                    (exhaust-by-ids exhaust))]
+                    (exhaust-by-ids exhaust)
+                    ((fn [state] (reduce update-crafted state add))))]
         state)
       (append-log state "You don't have the necessary items to make this recipe."))))
 

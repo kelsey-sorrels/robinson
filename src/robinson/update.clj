@@ -973,33 +973,42 @@
 ;; update visibility
 (defn update-visibility
   [state]
-  (update-in state [:world :places (-> state :world :current-place)]
-    (fn [place]
-      (let [pos (-> state :world :player :pos)
-            sight-distance 3
-            get-cell (memoize (fn [x y] (get-in place [y x])))
-            new-time (get-in state [:world :time])]
-        (vec (pmap (fn [line y]
-                     (if (< sight-distance
-                            (Math/abs (- y (pos :y))))
-                       line
-                       (vec (map (fn [cell x]
-                                   (if (and (not (nil? cell))
-                                            (not (farther-than?
-                                                   pos
-                                                   {:x x :y y}
-                                                   sight-distance))
-                                            (visible?
-                                              get-cell
-                                              cell-blocking?
-                                              (pos :x)
-                                              (pos :y)
-                                              x
-                                              y))
-                                     (assoc cell :discovered new-time)
-                                     cell))
-                                 line (range)))))
-                    place (range)))))))
+  (let [pos              (-> state :world :player :pos)
+        sight-distance   3
+        will-to-live     (get-in state [:world :player :will-to-live])
+        max-will-to-live (get-in state [:world :player :max-will-to-live])
+        place            (get-in state [:world :places (current-place-id state)])
+        get-cell         (memoize (fn [x y] (get-in place [y x])))
+        new-time         (get-in state [:world :time])
+        test-cells       (for [x (range (- (get pos :x) sight-distance) (+ (get pos :x) sight-distance))
+                               y (range (- (get pos :y) sight-distance) (+ (get pos :y) sight-distance))]
+                            [x y])
+        visible-cells    (filter (fn [[x y]] (and (not (nil? (get-cell x y)))
+                                                  (not (farther-than? {:x (- (get pos :x) 0.5) :y (- (get pos :y) 0.5)}
+                                                                      {:x x :y y}
+                                                                      sight-distance))
+                                                  (visible?
+                                                    get-cell
+                                                    cell-blocking?
+                                                    (pos :x)
+                                                    (pos :y)
+                                                    x y)))
+                                 test-cells)
+        dwtl             (/ (reduce (fn [acc [x y]] (+ acc (- (dec new-time)
+                                                           (get (get-cell x y) :discovered (- new-time 10000)))))
+                                 0 visible-cells)
+                            48000)
+        _                (info "delta will-to-live" (float dwtl))
+        will-to-live     (min (+ will-to-live dwtl)
+                              max-will-to-live)]
+  (-> state
+    (update-in [:world :places (-> state :world :current-place)]
+      (fn [place]
+              (reduce (fn [place [x y]]
+                        (update-in place [y x] (fn [cell] (assoc cell :discovered new-time))))
+                      place
+                      visible-cells)))
+    (assoc-in [:world :player :will-to-live] will-to-live))))
 
 (defn next-party-member
   "Switch (-> state :world :player) with the next npc where (-> npc :in-party?) is equal to true.

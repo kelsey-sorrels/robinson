@@ -910,6 +910,17 @@
                         (conj status :dead)
                         status))))))
 
+(defn log-will-to-live-flavor
+  "Log a flavor message when will-to-live increases or decreases by a lot."
+  [state prev-will-to-live]
+  (let [dwtl (- prev-will-to-live (get-in state [:world :player :will-to-live]))]
+    (if (> (Math/abs dwtl) 1.5)
+      (if (neg? dwtl)
+        (append-log state (format "You feel %s." (rand-nth ["happy" "happier" "glad" "elated" "great" "good"])))
+        (append-log state (format "You feel %s." (rand-nth ["sad" "sadder" "down" "unhappy" "bummed" "bad"]))))
+      state)))
+  
+
 (defn if-poisoned-get-hurt
   "Decrease player's hp if they are poisoned."
   [state]
@@ -1443,7 +1454,8 @@
                         (new-state (get-in state [:world :current-state])))
             _ (assert (not (nil? new-state)))
             _ (info "player" (get-in state [:world :player]))
-            _ (info "new-state" new-state)]
+            _ (info "new-state" new-state)
+            wtl       (get-in state [:world :player :will-to-live])]
         (some-> state
             (assoc-in [:world :current-state] new-state)
             (tx/when-> advance-time
@@ -1460,7 +1472,9 @@
               ;; TODO: Add appropriate level
               (add-npcs-random 1)
               ;; update visibility
-              (update-visibility))
+              (update-visibility)
+              ;; add will-to-live flavor message
+              (log-will-to-live-flavor wtl))
             (update-quests)
             (arg-when-> [state] (contains? (-> state :world :player :status) :dead)
               ((fn [state]

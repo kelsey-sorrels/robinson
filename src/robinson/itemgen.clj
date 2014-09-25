@@ -105,6 +105,10 @@
   [id]
   (get (id->item id) :name))
 
+(defn id->name-plural
+  [id]
+  (get (id->item id) :name-plural))
+
 (defn can-be-wielded?
   [item]
   (contains? #{:obsidian-spear

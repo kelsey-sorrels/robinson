@@ -10,13 +10,14 @@
     robinson.npc
     robinson.combat
     robinson.crafting
-    [robinson.itemgen :exclude [-main]]
-    [robinson.monstergen :exclude [-main]]
     [robinson.magic :only [do-magic magic-left magic-down     
                                   magic-up magic-right magic-inventory]]
     [robinson.worldgen :exclude [-main]]
     robinson.lineofsight)
-  (:require clojure.pprint
+  (:require 
+            [robinson.itemgen  :as ig]
+            [robinson.monstergen :as mg]
+            clojure.pprint
             clojure.core.memoize
             clojure.edn
             clj-tiny-astar.path
@@ -389,7 +390,7 @@
             state             (assoc-in state [:world :places dest-place-id]
                                 (if (.exists (clojure.java.io/as-file (format "save/%s.place.edn" (str dest-place-id))))
                                   (->> (slurp (format "save/%s.place.edn" (str dest-place-id)))
-                                       (clojure.edn/read-string {:readers {'Monster map->Monster}}))
+                                       (clojure.edn/read-string {:readers {'Monster mg/map->Monster}}))
                                   (init-random-n (read-string (name dest-place-id)))))
  
             dest-place        (-> state :world :places dest-place-id)
@@ -514,33 +515,33 @@
                           (cond
                             (= (get target-cell :type) :tree)
                               [(if (= 0 (rand-int 10))
-                                 (gen-sticks (uniform-rand-int 1 2))
+                                 (ig/gen-sticks (uniform-rand-int 1 2))
                                  nil)
                                (if (= 0 (rand-int 10))
-                                 (gen-plant-fibers (uniform-rand-int 1 5))
+                                 (ig/gen-plant-fibers (uniform-rand-int 1 5))
                                  nil)]
                             (= (get target-cell :type) :palm-tree)
                               [(if (= 0 (rand-int 10))
-                                 (gen-coconuts (uniform-rand-int 1 2))
+                                 (ig/gen-coconuts (uniform-rand-int 1 2))
                                  nil)
                                (if (= 0 (rand-int 15))
-                                 (gen-plant-fibers (uniform-rand-int 1 2))
+                                 (ig/gen-plant-fibers (uniform-rand-int 1 2))
                                  nil)]
                             (and (= (get target-cell :type) :tall-grass)
                                  (= direction :center))
                               [(if (= 0 (rand-int 10))
-                                 (gen-grass (uniform-rand-int 1 5))
+                                 (ig/gen-grass (uniform-rand-int 1 5))
                                  nil)
                                (if (= 0 (rand-int 10))
-                                 (gen-plant-fibers (uniform-rand-int 1 5))
+                                 (ig/gen-plant-fibers (uniform-rand-int 1 5))
                                  nil)]
                             (and (= (get target-cell :type) :gravel)
                                  (= direction :center))
                               [(if (= 0 (rand-int 10))
-                                 (gen-rocks (uniform-rand-int 1 5))
+                                 (ig/gen-rocks (uniform-rand-int 1 5))
                                  nil)
                                (if (= 0 (rand-int 20))
-                                 (gen-obsidian (uniform-rand-int 1 5))
+                                 (ig/gen-obsidian (uniform-rand-int 1 5))
                                  nil)]
                             :else []))
                         [])]
@@ -1049,7 +1050,7 @@
           npc-pos                (get npc :pos)
           npc-pos-vec            [(npc-pos :x) (npc-pos :y)]
           threshold              (get npc :range-threshold)
-          npc-can-move-in-water  (can-move-in-water? (get npc :race))
+          npc-can-move-in-water  (mg/can-move-in-water? (get npc :race))
         
           player                 (-> state :world :player)
           player-pos-vec         [(-> player :pos :x) (-> player :pos :y)]
@@ -1110,7 +1111,7 @@
   (let [threshold (get npc :range-threshold)
         npc-pos  (get npc :pos)
         distance (distance npc-pos target)
-        navigable-types (if (can-move-in-water? (get npc :race))
+        navigable-types (if (mg/can-move-in-water? (get npc :race))
                           #{:water}
                           #{:floor
                             :corridor
@@ -1144,7 +1145,7 @@
    :post [(= (count %) 3)]}
   (let [policy (get npc :movement-policy)
         pos    (-> state :world :player :pos)
-        navigable-types (if (can-move-in-water? (get npc :race))
+        navigable-types (if (mg/can-move-in-water? (get npc :race))
                           #{:water}
                           #{:floor
                             :corridor

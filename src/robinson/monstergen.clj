@@ -6,7 +6,7 @@
   [race]
   (contains? #{:shark :fish :octopus :sea-snake :clam :urchin :squid} race))
 
-(defrecord Monster [race name hp energy speed body-parts attacks movement-policy range-threshold status]
+(defrecord Monster [race name name-plural hp energy speed body-parts attacks movement-policy range-threshold status]
   Object
   (toString [this] (str "#Monster" (into {} this))))
 
@@ -16,6 +16,7 @@
   (Monster.
    :rat
    "rat"
+   "rats"
    9
    0
    1.1
@@ -31,6 +32,7 @@
   (Monster.
    :spider
    "spider"
+   "spiders"
    4
    0
    0.9
@@ -46,6 +48,7 @@
   (Monster.
    :scorpion
    "scorpion"
+   "scorpions"
    3
    0
    1.1
@@ -61,6 +64,7 @@
   (Monster.
    :snake
    "snake"
+   "snakes"
    8
    0
    0.8
@@ -76,6 +80,7 @@
   (Monster.
    :bat
    "bat"
+   "bats"
    8
    0
    1.6
@@ -91,6 +96,7 @@
   (Monster.
    :boar
    "boar"
+   "boars"
    18
    0
    1.2
@@ -106,6 +112,7 @@
   (Monster.
    :gecko
    "gecko"
+   "geckos"
    2
    0
    0.9
@@ -121,6 +128,7 @@
   (Monster.
    :monkey
    "monkey"
+   "monkies"
    13
    0
    1.2
@@ -136,6 +144,7 @@
   (Monster.
    :bird
    "bird"
+   "birds"
    6
    0
    2.1
@@ -151,6 +160,7 @@
   (Monster.
    :centipede
    "centipede"
+   "centipedes"
    4
    0
    0.5
@@ -166,6 +176,7 @@
   (Monster.
    :turtle
    "turtle"
+   "turtles"
    4
    0
    0.5
@@ -181,6 +192,7 @@
   (Monster.
    :frog
    "frog"
+   "frogs"
    2
    0
    0.9
@@ -196,6 +208,7 @@
   (Monster.
    :parrot
    "parrot"
+   "parrots"
    7
    0
    2.1
@@ -211,6 +224,7 @@
   (Monster.
    :shark
    "shark"
+   "sharks"
    16
    0
    1.4
@@ -225,6 +239,7 @@
   []
   (Monster.
    :fish
+   "fish"
    "fish"
    4
    0
@@ -241,6 +256,7 @@
   (Monster.
    :octopus
    "octopus"
+   "octopodes"
    4
    0
    1.5
@@ -256,6 +272,7 @@
   (Monster.
    :sea-snake
    "sea snake"
+   "sea snakes"
    4
    0
    1.5
@@ -271,6 +288,7 @@
   (Monster.
    :clam
    "clam"
+   "clams"
    2
    0
    0.1
@@ -286,6 +304,7 @@
   (Monster.
    :urchin
    "urchin"
+   "urchins"
    2
    0
    0.1
@@ -301,6 +320,7 @@
   (Monster.
    :squid
    "squid"
+   "squids"
    4
    0
    1.5
@@ -343,6 +363,38 @@
   [n]
   (repeatedly n gen-monster 1 :floor))
 
+(defn id->monster
+  "Generate monster from id."
+  [id]
+  ((case id
+    :rat gen-rat
+    :spider gen-spider
+    :scorpion gen-scorpion
+    :snake gen-snake
+    :bat gen-bat
+    :boar gen-boar
+    :gecko gen-gecko
+    :monkey gen-monkey
+    :bird gen-bird
+    :centipede gen-centipede
+    :turtle gen-turtle
+    :frog gen-frog
+    :parrot gen-parrot
+    :shark gen-shark
+    :fish gen-fish
+    :octopus  gen-octopus 
+    :sea-snake  gen-sea-snake 
+    :clam  gen-clam 
+    :urchin  gen-urchin 
+    :squid gen-squid)))
+   
+(defn id->name
+  [id]
+  (get (id->monster id) :name))
+
+(defn id->name-plural
+  [id]
+  (get (id->monster id) :name-plural))
 
 (defn -main
   "Generate five random monsters and display them."

@@ -5,6 +5,7 @@
             (javax.swing ImageIcon))
   (:use     robinson.common
             robinson.player
+            robinson.endgame
             robinson.magic
             robinson.crafting
             [robinson.itemgen :only [can-be-wielded?
@@ -768,10 +769,18 @@
 (defn render-game-over
   "Render the game over screen."
   [state]
-  (let [points 0]
+  (let [points 0
+        player-name    (get-in state [:world :player :name])
+        death-madlib   (gen-death-madlib state)
+        hp             (get-in state [:world :player :hp])
+        will-to-live   (get-in state [:world :player :will-to-live])
+        cause-of-death (cond
+                         (<= hp 0)        "massive injuries"
+                         (<= will-to-live) "just giving up on live"
+                         :else            "other causes")]
     (clear (state :screen))
     ;; Title
-    (put-string (state :screen) 10 1 "You died")
+    (put-string (state :screen) 10 1 (format "%s: %s, died from %s." player-name death-madlib cause-of-death))
     (put-string (state :screen) 10 3 "Inventory:")
     (doall (map-indexed
       (fn [idx item] (put-string (state :screen) 10 (+ idx 5) (item :name)))

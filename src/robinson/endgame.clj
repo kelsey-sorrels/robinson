@@ -21,7 +21,7 @@
                            (let [max-stat (reduce (fn [[id1 n1] [id2 n2]] (if (> n1 n2)
                                                                             [id1 n1]
                                                                             [id2 n2]))
-                                                  (get-in state [:world :player :stats :num-animals-killed]))]
+                                                  [] (get-in state [:world :player :stats :num-animals-killed]))]
                              (if (empty? max-stat)
                                "A pacifist"
                                (let [[monster-id n] max-stat]
@@ -31,7 +31,7 @@
                            (let [max-stat (reduce (fn [[id1 n1] [id2 n2]] (if (> n1 n2)
                                                                             [id1 n1]
                                                                             [id2 n2]))
-                                                  (get-in state [:world :player :stats :num-items-crafted]))]
+                                                  [] (get-in state [:world :player :stats :num-items-crafted]))]
                              (if (empty? max-stat)
                                "Dainty-handed"
                                 (let [[item-id n] max-stat]
@@ -41,7 +41,7 @@
                            (let [max-stat (reduce (fn [[id1 n1] [id2 n2]] (if (> n1 n2)
                                                                             [id1 n1]
                                                                             [id2 n2]))
-                                                  (get-in state [:world :player :stats :num-items-harvested]))]
+                                                  [] (get-in state [:world :player :stats :num-items-harvested]))]
                              (if (empty? max-stat)
                                "Oblivious to nature's bounty"
                                (let [[item-id n] max-stat]
@@ -51,7 +51,7 @@
                            (let [max-stat (reduce (fn [[id1 n1] [id2 n2]] (if (> n1 n2)
                                                                             [id1 n1]
                                                                             [id2 n2]))
-                                         (get-in state [:world :player :stats :num-kills-by-attack-type]))]
+                                                  [] (get-in state [:world :player :stats :num-kills-by-attack-type]))]
                              (if (empty? max-stat)
                                "A pacifist"
                                (let [[attack-id n] max-stat]
@@ -63,7 +63,7 @@
                            (let [max-stat (reduce (fn [[id1 n1] [id2 n2]] (if (> n1 n2)
                                                                             [id1 n1]
                                                                             [id2 n2]))
-                                                  (get-in state [:world :player :stats :num-items-harvested]))]
+                                                  [] (get-in state [:world :player :stats :num-items-harvested]))]
                              (if (empty? max-stat)
                                "Too picky to eat"
                                (let [[item-id n] max-stat]

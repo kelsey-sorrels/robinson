@@ -776,7 +776,7 @@
         will-to-live   (get-in state [:world :player :will-to-live])
         cause-of-death (cond
                          (<= hp 0)        "massive injuries"
-                         (<= will-to-live) "just giving up on live"
+                         (<= will-to-live) "just giving up on life"
                          :else            "other causes")]
     (clear (state :screen))
     ;; Title

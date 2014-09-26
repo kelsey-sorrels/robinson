@@ -18,56 +18,67 @@
                                   :num-items-eaten])
         death-text     (case death-msg-type
                          :num-animals-killed
-                           (let [max-stat (reduce (fn [[id1 n1] [id2 n2]] (if (> n1 n2)
-                                                                            [id1 n1]
-                                                                            [id2 n2]))
-                                                  [] (get-in state [:world :player :stats :num-animals-killed]))]
-                             (if (empty? max-stat)
+                           (let [max-stat (reduce (fn [acc [id n]]
+                                                    (cond
+                                                      (nil? acc) [id n]
+                                                      (> (last acc) n) acc
+                                                      :else [id n]))
+                                                  nil (get-in state [:world :player :stats :num-animals-killed]))]
+                             (if (nil? max-stat)
                                "A pacifist"
                                (let [[monster-id n] max-stat]
                                  (format (rand-nth ["Slayer of %s" "Defeater of %s" "Eliminator of %s" "Dominator of %" "The nightmare of %s"])
                                          (mg/id->name-plural monster-id)))))
                          :num-items-crafted
-                           (let [max-stat (reduce (fn [[id1 n1] [id2 n2]] (if (> n1 n2)
-                                                                            [id1 n1]
-                                                                            [id2 n2]))
-                                                  [] (get-in state [:world :player :stats :num-items-crafted]))]
-                             (if (empty? max-stat)
-                               "Dainty-handed"
+                           (let [max-stat (reduce (fn [acc [id n]]
+                                                    (cond
+                                                      (nil? acc) [id n]
+                                                      (> (last acc) n) acc
+                                                      :else [id n]))
+                                                  nil (get-in state [:world :player :stats :num-items-crafted]))]
+                             (if (nil? max-stat)
+                               "The dainty-handed, who never made anything"
                                 (let [[item-id n] max-stat]
                                   (format (rand-nth ["Artisan of %s" "Maker of %s" "Crafter of %s"])
                                           (ig/id->name-plural item-id)))))
                          :num-items-harvested
-                           (let [max-stat (reduce (fn [[id1 n1] [id2 n2]] (if (> n1 n2)
-                                                                            [id1 n1]
-                                                                            [id2 n2]))
-                                                  [] (get-in state [:world :player :stats :num-items-harvested]))]
-                             (if (empty? max-stat)
+                           (let [max-stat (reduce (fn [acc [id n]]
+                                                    (cond
+                                                      (nil? acc) [id n]
+                                                      (> (last acc) n) acc
+                                                      :else [id n]))
+                                                  nil (get-in state [:world :player :stats :num-items-harvested]))]
+                             (if (nil? max-stat)
                                "Oblivious to nature's bounty"
                                (let [[item-id n] max-stat]
-                                 (format (rand-nth ["Gatherer of %s" "Farmer of %s" "Finder of %s"])
+                                 (format (rand-nth ["Gatherer of %s" "Farmer of %s" "Harvester of %s" "Finder of %s"])
                                          (ig/id->name-plural item-id)))))
                          :num-kills-by-attack-type
-                           (let [max-stat (reduce (fn [[id1 n1] [id2 n2]] (if (> n1 n2)
-                                                                            [id1 n1]
-                                                                            [id2 n2]))
-                                                  [] (get-in state [:world :player :stats :num-kills-by-attack-type]))]
-                             (if (empty? max-stat)
+                           (let [max-stat (reduce (fn [acc [id n]]
+                                                    (cond
+                                                      (nil? acc) [id n]
+                                                      (> (last acc) n) acc
+                                                      :else [id n]))
+                                                  nil (get-in state [:world :player :stats :num-kills-by-attack-type]))]
+                             (if (nil? max-stat)
                                "A pacifist"
                                (let [[attack-id n] max-stat]
                                   (rand-nth
                                     (case attack-id
                                       :punch (rand-nth ["Puncher of enemies." "Who fought with fists."])
-                                      :axe   (rand-nth ["Who axed enemies." "Axer of enemies."]))))))
+                                      :axe   (rand-nth ["Who speared enemies." "Spearer of enemies."])
+                                      :spear   (rand-nth ["Who axed enemies." "Axer of enemies."]))))))
                          :num-items-eaten
-                           (let [max-stat (reduce (fn [[id1 n1] [id2 n2]] (if (> n1 n2)
-                                                                            [id1 n1]
-                                                                            [id2 n2]))
-                                                  [] (get-in state [:world :player :stats :num-items-harvested]))]
-                             (if (empty? max-stat)
+                           (let [max-stat (reduce (fn [acc [id n]]
+                                                    (cond
+                                                      (nil? acc) [id n]
+                                                      (> (last acc) n) acc
+                                                      :else [id n]))
+                                                  nil (get-in state [:world :player :stats :num-items-harvested]))]
+                             (if (nil? max-stat)
                                "Too picky to eat"
                                (let [[item-id n] max-stat]
-                             (format (rand-nth ["Eater of %s" "Who gorged on %s" "Purveyor of %s"])
+                             (format (rand-nth ["Eater of %s" "Who gorged on %s" "Purveyor of %s" "Connoisseur of %s"])
                                      (ig/id->name-plural item-id))))))]
     death-text))
 

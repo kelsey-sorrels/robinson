@@ -1,17 +1,21 @@
 ;; Functions for generating random items.
 (ns robinson.itemgen
   (:use     robinson.common)
-  (:require [clojure.math.combinatorics :as combo]))
+  (:require [robinson.monstergen :as mg]
+            [clojure.math.combinatorics :as combo]))
 
 
 (defn gen-corpse
   "Generate a corpse from an npc."
   [npc]
-  {:type :food
-   :name (format "%s corpse" (name (get npc :race)))
+  {:id          (keyword (clojure.string/join (get npc :race) "-corpse"))
+   :type        :food
+   :name        (format "%s corpse" (name (get npc :race)))
    :name-plural (format "%s corpses" (name (get npc :race)))
    ;; TODO: base on type of monster by including a weight field in all monsters
-   :hunger (uniform-rand-int 5 10)})
+   :hunger      (uniform-rand-int 5 10)})
+
+(defn is-corpse-id? [id] (re-matches #"-corpse$" (name id)))
 
 (defn gen-sticks
   "Generate sticks."
@@ -81,21 +85,23 @@
 (defn id->items
   "Generate item from id."
   [id n]
-  ((case id
-     :stick                  gen-sticks
-     :plant-fiber            gen-plant-fibers
-     :coconut                gen-coconuts
-     :wood-log               gen-wood-logs
-     :rock                   gen-rocks
-     :obsidian               gen-obsidian
-     :grass                  gen-grass
-     :obsidian-blade         gen-obsidian-blades
-     :rope                   gen-rope
-     :obsidian-spear         gen-obsidian-spears
-     :obsidian-axe           gen-obsidian-axes
-     :obsidian-knife         gen-obsidian-knives
-     :bamboo-water-collector gen-bamboo-water-collectors)
-   n))
+  (if (is-corpse-id? id)
+    (mg/id->monster (keyword (first (clojure.string/split (name id) #"-"))))
+    ((case id
+       :stick                  gen-sticks
+       :plant-fiber            gen-plant-fibers
+       :coconut                gen-coconuts
+       :wood-log               gen-wood-logs
+       :rock                   gen-rocks
+       :obsidian               gen-obsidian
+       :grass                  gen-grass
+       :obsidian-blade         gen-obsidian-blades
+       :rope                   gen-rope
+       :obsidian-spear         gen-obsidian-spears
+       :obsidian-axe           gen-obsidian-axes
+       :obsidian-knife         gen-obsidian-knives
+       :bamboo-water-collector gen-bamboo-water-collectors)
+     n)))
 
 (defn id->item
   [id]

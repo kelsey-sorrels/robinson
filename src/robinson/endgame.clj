@@ -16,6 +16,7 @@
                                   :num-items-harvested
                                   :num-kills-by-attack-type
                                   :num-items-eaten])
+        _ (info "stats" (get-in state [:world :player :stats]))
         death-text     (case death-msg-type
                          :num-animals-killed
                            (let [max-stat (reduce (fn [acc [id n]]
@@ -39,6 +40,7 @@
                              (if (nil? max-stat)
                                "The dainty-handed, who never made anything"
                                 (let [[item-id n] max-stat]
+                                  (info "item-id" item-id)
                                   (format (rand-nth ["Artisan of %s" "Maker of %s" "Crafter of %s"])
                                           (ig/id->name-plural item-id)))))
                          :num-items-harvested
@@ -74,7 +76,7 @@
                                                       (nil? acc) [id n]
                                                       (> (last acc) n) acc
                                                       :else [id n]))
-                                                  nil (get-in state [:world :player :stats :num-items-harvested]))]
+                                                  nil (get-in state [:world :player :stats :num-items-eaten]))]
                              (if (nil? max-stat)
                                "Too picky to eat"
                                (let [[item-id n] max-stat]

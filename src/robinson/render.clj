@@ -15,11 +15,10 @@
             robinson.npc
             tinter.core
             [clojure.pprint :only [print-table]])
-  (:require ;[lanterna.screen :as s]
-            ;[lanterna.terminal :as t]
-            ;[lanterna.constants :as c]
+  (:require 
             [clojure.reflect :as r]
             [taoensso.timbre :as timbre]
+            [robinson.startgame :as sg]
             [robinson.swingterminal :as swingterminal])
   (:refer   clojure.set)
   (:import robinson.swingterminal.ATerminal))
@@ -330,73 +329,64 @@
 (defn render-pick-up
   "Render the pickup item menu if the world state is `:pickup`."
   [state]
-  ;; maybe draw pick up menu
-  (when (= (-> state :world :current-state) :pickup)
-    (let [player-x         (-> state :world :player :pos :x)
-          player-y         (-> state :world :player :pos :y)
-          cell             (get-cell (current-place state) player-x player-y)
-          cell-items       (or (cell :items) [])
-          hotkeys          (-> state :world :remaining-hotkeys)
-          selected-hotkeys (-> state :world :selected-hotkeys)
-          items            (fill-missing #(not (contains? % :hotkey))
-                                              #(assoc %1 :hotkey %2)
-                                              hotkeys
-                                              cell-items)]
-    (debug "player-x" player-x "player-y" player-y)
-    (trace "cell" cell)
-    (trace "cell-items" cell-items)
-    (render-multi-select (state :screen) "Pick up" selected-hotkeys items))))
+  (let [player-x         (-> state :world :player :pos :x)
+        player-y         (-> state :world :player :pos :y)
+        cell             (get-cell (current-place state) player-x player-y)
+        cell-items       (or (cell :items) [])
+        hotkeys          (-> state :world :remaining-hotkeys)
+        selected-hotkeys (-> state :world :selected-hotkeys)
+        items            (fill-missing #(not (contains? % :hotkey))
+                                            #(assoc %1 :hotkey %2)
+                                            hotkeys
+                                            cell-items)]
+  (debug "player-x" player-x "player-y" player-y)
+  (trace "cell" cell)
+  (trace "cell-items" cell-items)
+  (render-multi-select (state :screen) "Pick up" selected-hotkeys items)))
 
 (defn render-inventory
   "Render the pickup item menu if the world state is `:pickup`."
   [state]
-  (when (= (-> state :world :current-state) :inventory)
-    (render-multi-select (state :screen) "Inventory" [] (-> state :world :player :inventory))))
+  (render-multi-select (state :screen) "Inventory" [] (-> state :world :player :inventory)))
 
 (defn render-magic
   "Render the pickup item menu if the world state is `:magic`."
   [state]
-  (when (= (-> state :world :current-state) :magic)
-    (render-multi-select (state :screen) "Magic" [] (get-magical-abilities (-> state :world :player)))))
+  (render-multi-select (state :screen) "Magic" [] (get-magical-abilities (-> state :world :player))))
 
 (defn render-drop
   "Render the pickup item menu if the world state is `:pickup`."
   [state]
-  (when (= (-> state :world :current-state) :drop)
-    (render-multi-select (state :screen) "Drop Inventory" [] (-> state :world :player :inventory))))
+  (render-multi-select (state :screen) "Drop Inventory" [] (-> state :world :player :inventory)))
 
 (defn render-describe-inventory
   "Render the pickup item menu if the world state is `:pickup`."
   [state]
-  (when (= (-> state :world :current-state) :describe-inventory)
-    (render-multi-select (state :screen) "Describe" [] (-> state :world :player :inventory))))
+  (render-multi-select (state :screen) "Describe" [] (-> state :world :player :inventory)))
 
 (defn render-eat
   "Render the pickup item menu if the world state is `:pickup`."
   [state]
-  (when (= (-> state :world :current-state) :eat)
-    (render-multi-select (state :screen)
-                         "Eat Inventory"
-                         []
-                         (filter #(= (% :type) :food)
-                                 (-> state :world :player :inventory)))))
+  (render-multi-select (state :screen)
+                       "Eat Inventory"
+                       []
+                       (filter #(= (% :type) :food)
+                               (-> state :world :player :inventory))))
 
 (defn render-quests
   "Render the pickup item menu if the world state is `:pickup`."
   [state]
-  (when (= (-> state :world :current-state) :quests)
-    (render-multi-select (state :screen)
-                         "Quests"
-                         []
-                         (filter (fn [quest]
-                                   (not (nil? (get-in state [:world  :quests (quest :id) :stage] nil))))
-                                 (-> state :quests)))))
+  (render-multi-select (state :screen)
+                       "Quests"
+                       []
+                       (filter (fn [quest]
+                                 (not (nil? (get-in state [:world  :quests (quest :id) :stage] nil))))
+                               (-> state :quests))))
 
 (defn render-quit?
   "Render the pickup item menu if the world state is `:pickup`."
   [state]
-  (when (= (-> state :world :current-state) :quit?)
-    (put-string (state :screen) 1 0 "quit? [yn]")))
+  (put-string (state :screen) 1 0 "quit? [yn]"))
 
 (defn render-dialog
   "Render the dialog menu if the world state is `:talking`."
@@ -432,84 +422,80 @@
 (defn render-shopping
   "Render the shopping menu if the world state is `:shopping`."
   [state]
-  (when (= (get-in state [:world :current-state]) :shopping)
-    (let [npc           (first (talking-npcs state))
-          options       [{:hotkey \a
-                          :name "Buy"}
-                         {:hotkey \b
-                          :name "Sell"}]
-          last-response ((or (last (get-in state [:world :dialog-log])) {:text ""}) :text)
-          response-wrapped (wrap-line (- 30 17) last-response)
-          style {:fg :black :bg :white :styles #{:bold}}]
-      (put-string (state :screen) 0 16 (format "Doing business with %-69s" (get npc :name)) :black :white #{:bold})
-      (doall (map (fn [y] (put-string (state :screen) 12 y "                    " :black :white #{:bold}))
-                  (range 17 (+ 17 6))))
-      (doall (map-indexed (fn [idx line] (put-string (state :screen) 13 (+ 17 idx) line :black :white #{:bold}))
-                          response-wrapped))
-      (render-multi-select (state :screen) "Option:" [] options 32 17 68 5)
-      (render-img state (get npc :image-path) 0 17))))
+  (let [npc           (first (talking-npcs state))
+        options       [{:hotkey \a
+                        :name "Buy"}
+                       {:hotkey \b
+                        :name "Sell"}]
+        last-response ((or (last (get-in state [:world :dialog-log])) {:text ""}) :text)
+        response-wrapped (wrap-line (- 30 17) last-response)
+        style {:fg :black :bg :white :styles #{:bold}}]
+    (put-string (state :screen) 0 16 (format "Doing business with %-69s" (get npc :name)) :black :white #{:bold})
+    (doall (map (fn [y] (put-string (state :screen) 12 y "                    " :black :white #{:bold}))
+                (range 17 (+ 17 6))))
+    (doall (map-indexed (fn [idx line] (put-string (state :screen) 13 (+ 17 idx) line :black :white #{:bold}))
+                        response-wrapped))
+    (render-multi-select (state :screen) "Option:" [] options 32 17 68 5)
+    (render-img state (get npc :image-path) 0 17)))
 
 (defn render-buy
   "Render the dialog menu if the world state is `:buy`."
   [state]
-  (when (= (get-in state [:world :current-state]) :buy)
-    (let [npc           (first (talking-npcs state))
-          valid-input   (map (fn [item] (format "%s-$%d"  (item :name) (item :price)))
-                             (filter (fn [item] (contains? item :price))
-                                     (get npc :inventory [])))
-          options       (take (count valid-input)
-                              (map (fn [k v]
-                                     {:hotkey k
-                                      :name v})
-                                   [\a \b \c \d \e \f]
-                               valid-input))
-          last-response ((or (last (get-in state [:world :dialog-log])) {:text ""}) :text)
-          _ (debug "last-response" last-response)
-          response-wrapped (wrap-line (- 30 17) last-response)
-          _ (debug "response-wrapped" response-wrapped)
-          style {:fg :black :bg :white :styles #{:bold}}]
-      (put-string (state :screen) 0 16 (format "Doing business with %-69s" (get npc :name)) :black :white #{:bold})
-      (doall (map (fn [y] (put-string (state :screen) 12 y "                    " :black :white #{:bold}))
-                  (range 17 (+ 17 6))))
-      (doall (map-indexed (fn [idx line] (put-string (state :screen) 13 (+ 17 idx) line :black :white #{:bold}))
-                          response-wrapped))
-      (render-multi-select (state :screen) "Buy:" [] options 32 17 68 5)
-      (render-img state (get npc :image-path) 0 17))))
+  (let [npc           (first (talking-npcs state))
+        valid-input   (map (fn [item] (format "%s-$%d"  (item :name) (item :price)))
+                           (filter (fn [item] (contains? item :price))
+                                   (get npc :inventory [])))
+        options       (take (count valid-input)
+                            (map (fn [k v]
+                                   {:hotkey k
+                                    :name v})
+                                 [\a \b \c \d \e \f]
+                             valid-input))
+        last-response ((or (last (get-in state [:world :dialog-log])) {:text ""}) :text)
+        _ (debug "last-response" last-response)
+        response-wrapped (wrap-line (- 30 17) last-response)
+        _ (debug "response-wrapped" response-wrapped)
+        style {:fg :black :bg :white :styles #{:bold}}]
+    (put-string (state :screen) 0 16 (format "Doing business with %-69s" (get npc :name)) :black :white #{:bold})
+    (doall (map (fn [y] (put-string (state :screen) 12 y "                    " :black :white #{:bold}))
+                (range 17 (+ 17 6))))
+    (doall (map-indexed (fn [idx line] (put-string (state :screen) 13 (+ 17 idx) line :black :white #{:bold}))
+                        response-wrapped))
+    (render-multi-select (state :screen) "Buy:" [] options 32 17 68 5)
+    (render-img state (get npc :image-path) 0 17)))
 
 (defn render-sell
   "Render the dialog menu if the world state is `:sell`."
   [state]
-  (when (= (get-in state [:world :current-state]) :sell)
-    (let [npc           (first (talking-npcs state))
-          buy-fn        (get-in state (get npc :buy-fn-path) (fn [_] nil))
-          _ (debug "render-sell (npc :buy-fn-path)" (get npc :buy-fn-path))
-          _ (debug "render-sell buy-fn" buy-fn)
-          options       (filter #(not (nil? (buy-fn %)))
-                                 (get-in state [:world :player :inventory]))
-          _ (debug "options" options)
-          last-response ((or (last (get-in state [:world :dialog-log])) {:text ""}) :text)
-          _ (debug "last-response" last-response)
-          response-wrapped (wrap-line (- 30 17) last-response)
-          _ (debug "response-wrapped" response-wrapped)
-          style {:fg :black :bg :white :styles #{:bold}}]
-      (put-string (state :screen) 0 16 (format "Doing business with %-69s" (get npc :name)) :black :white #{:bold})
-      (doall (map (fn [y] (put-string (state :screen) 12 y "                    " :black :white #{:bold}))
-                  (range 17 (+ 17 6))))
-      (doall (map-indexed (fn [idx line] (put-string (state :screen) 13 (+ 17 idx) line :black :white #{:bold}))
-                          response-wrapped))
-      (render-multi-select (state :screen) "Sell:" [] options 32 17 68 5)
-      (render-img state (get npc :image-path) 0 17))))
+  (let [npc           (first (talking-npcs state))
+        buy-fn        (get-in state (get npc :buy-fn-path) (fn [_] nil))
+        _ (debug "render-sell (npc :buy-fn-path)" (get npc :buy-fn-path))
+        _ (debug "render-sell buy-fn" buy-fn)
+        options       (filter #(not (nil? (buy-fn %)))
+                               (get-in state [:world :player :inventory]))
+        _ (debug "options" options)
+        last-response ((or (last (get-in state [:world :dialog-log])) {:text ""}) :text)
+        _ (debug "last-response" last-response)
+        response-wrapped (wrap-line (- 30 17) last-response)
+        _ (debug "response-wrapped" response-wrapped)
+        style {:fg :black :bg :white :styles #{:bold}}]
+    (put-string (state :screen) 0 16 (format "Doing business with %-69s" (get npc :name)) :black :white #{:bold})
+    (doall (map (fn [y] (put-string (state :screen) 12 y "                    " :black :white #{:bold}))
+                (range 17 (+ 17 6))))
+    (doall (map-indexed (fn [idx line] (put-string (state :screen) 13 (+ 17 idx) line :black :white #{:bold}))
+                        response-wrapped))
+    (render-multi-select (state :screen) "Sell:" [] options 32 17 68 5)
+    (render-img state (get npc :image-path) 0 17)))
 
 (defn render-craft
   "Render the craft menu if the world state is `:craft`."
   [state]
   (let [screen (state :screen)]
-    (when (= (-> state :world :current-state) :craft)
-      (render-multi-select screen nil [] [{:name "Weapons" :hotkey \w}
-                                              {:name "Survival" :hotkey \s}]
-                                              30 6 20 5)
-      (render-rect-border screen 29 5 20 5 :black :white)
-      (put-string screen 37 5 "Craft" :black :white))))
+    (render-multi-select screen nil [] [{:name "Weapons" :hotkey \w}
+                                            {:name "Survival" :hotkey \s}]
+                                            30 6 20 5)
+    (render-rect-border screen 29 5 20 5 :black :white)
+    (put-string screen 37 5 "Craft" :black :white)))
 
 (defn render-craft-submenu
   "Render the craft submenu"
@@ -519,6 +505,8 @@
         hotkey               (when selected-recipe-path
                                (last selected-recipe-path))
         recipes              (get (get-recipes state) recipe-type)]
+  (info "recipe-type" recipe-type)
+  (info "recipes" (get-recipes state))
   ;; render recipes
   (render-list screen 11 6 29 15
     (concat
@@ -528,7 +516,9 @@
                     (get recipe :hotkey)
                     (clojure.string/join ","
                       (map id->name (get-in recipe [:recipe :add]))))
-               :fg :black
+               :fg (if (contains? recipe :applicable)
+                     :black
+                     :gray)
                :bg :white
                :style (if (= (get recipe :hotkey) hotkey)
                          #{:invert}
@@ -542,7 +532,7 @@
           exhaust          (get recipe :exhaust [])
           have             (get recipe :have [])]
       (info "exhaust" exhaust "have" have)
-      (render-list screen 41 5 29 15
+      (render-list screen 41 6 29 15
       (concat
         [{:s "" :fg :black :bg :white :style #{}}
          {:s "Consumes" :fg :black :bg :white :style #{}}]
@@ -554,7 +544,7 @@
         (if (empty? have)
           [{:s "N/A" :fg :black :bg :white :style #{}}]
           (map (fn [id] {:s (id->name id) :fg :black :bg :white :style #{}}) have)))))
-    (render-list screen 10 5 60 15
+    (render-list screen 41 6 29 15
         [{:s "Select a recipe" :fg :black :bg :white :style #{}}]))
   (render-rect-border screen 10 5 60 15 :black :white)
   (render-vertical-border screen 40 6 15 :black :white)
@@ -564,35 +554,32 @@
 (defn render-craft-weapon
   "Render the craft weapon menu if the world state is `:craft-weapon`."
   [state]
-  (when (= (-> state :world :current-state) :craft-weapon)
-    (render-craft-submenu state :weapon)))
+  (render-craft-submenu state :weapons))
 
 (defn render-craft-survival
   "Render the craft menu if the world state is `:craft-survival`."
   [state]
-  (when (= (-> state :world :current-state) :craft-survival)
-    (render-craft-submenu state :survival)))
+  (render-craft-submenu state :survival))
 
 (defn render-wield
   "Render the wield item menu if the world state is `:wield`."
   [state]
-  (when (= (-> state :world :current-state) :wield)
-    (render-multi-select (state :screen) "Wield" [] (filter can-be-wielded? (-> state :world :player :inventory)))))
+  (render-multi-select (state :screen) "Wield" [] (filter can-be-wielded? (-> state :world :player :inventory))))
 
 (defn render-harvest
   "Render the harvest prompt if the world state is `:harvest`."
   [state]
-  (when (= (-> state :world :current-state) :harvest)
-    (put-string (state :screen) 0 0 "Pick a direction to harvest.")))
+  (put-string (state :screen) 0 0 "Pick a direction to harvest."))
 
 (defn render-map
   "The big render function used during the normal game.
    This renders everything - the map, the menus, the log,
    the status bar. Everything."
   [state]
-  (let [[columns rows] (get-size (state :screen))
-         place         (current-place state)
-         current-time  (get-in state [:world :time])]
+  (let [screen (state :screen)
+        [columns rows] (get-size screen)
+        place         (current-place state)
+        current-time  (get-in state [:world :time])]
     ;(debug "begin-render")
     ;(clear (state :screen))
     (trace "rendering place" (current-place state))
@@ -602,8 +589,7 @@
                 (if (is-menu-state? state)
                   (- columns 40)
                   columns))]
-      (let [screen (get state :screen)
-            cell (get-cell place x y)]
+      (let [cell (get-cell place x y)]
         ;(trace "render-cell" cell x y)
         (if (or (nil? cell)
                 (not (cell :discovered)))
@@ -650,7 +636,7 @@
     ;; draw character
     ;(debug (-> state :world :player))
     (put-string
-      (state :screen)
+      screen
       (-> state :world :player :pos :x)
       (-> state :world :player :pos :y)
       "@"
@@ -677,7 +663,7 @@
                                                  y))]
                       ;(debug "npc@" x y "visible?" visible)
                       (when visible
-                        (apply put-string (state :screen)
+                        (apply put-string screen
                                             (-> npc :pos :x)
                                             (-> npc :pos :y)
                                             (case (get npc :race)
@@ -704,67 +690,92 @@
                                               :human ["@" (class->rgb (get npc :class)) :black]
                                               ["@"])))))
                    place-npcs)))
-    ;; maybe draw pick up menu
-    (render-pick-up state)
-    ;; maybe draw inventory
-    (render-inventory state)
-    ;; maybe draw magic menu
-    (render-magic state)
-    ;; maybe draw drop menu
-    (render-drop state)
-    ;; maybe draw describe menu
-    (render-describe-inventory state)
-    ;; maybe draw eat menu
-    (render-eat state)
-    ;; maybe draw quests menu
-    (render-quests state)
-    ;; maybe draw craft menu
-    (render-craft state)
-    ;; maybe draw craft weapon menu
-    (render-craft-weapon state)
-    ;; maybe draw craft survival menu
-    (render-craft-survival state)
-    ;; maybe draw wield menu
-    (render-wield state)
-    ;; draw status bar
     (render-hud state)
-    ;; draw log
-    (when (= (current-state state) :normal)
-      (let [logs-viewed (get-in state [:world :logs-viewed])
-            current-time (get-in state [:world :time])
-            cur-state (current-state state)]
-        (debug "current-state" cur-state)
-        (if (= cur-state :more-log)
-          (let [logs (vec (filter #(= (get % :time) current-time) (get-in state [:world :log])))
-                _ (info "logs-viewed" logs-viewed "current-time" current-time "logs" logs)
-                message (get logs (dec logs-viewed))]
-            ;(debug "message" message)
-            (put-string (state :screen) 0 0 (format "%s --More--" (message :text)) (get message :color) :black))
-          (let [message (last (get-in state [:world :log]))]
-            (info "message" message)
-            (when (and message
-                       (< (- current-time (message :time)) 5))
-              (put-string (state :screen) 0 0 (get message :text) (get message :color) :black))))))
-    ;; draw quit prompt
-    (render-quit? state)
-    ;; maybe draw harvest prompt
-    (render-harvest state)
-    ;; draw dialog menu
-    (render-dialog state)
-    ;; draw shopping menu
-    (render-shopping state)
-    ;; draw buying menu
-    (render-buy state)
-    ;; draw selling menu
-    (render-sell state)
+    (info "current-state" (current-state state))
+    (case (current-state state)
+      :pickup            (render-pick-up state)
+      :inventory          (render-inventory state)
+      :magic              (render-magic state)
+      :drop               (render-drop state)
+      :describe-inventory (render-describe-inventory state)
+      :eat                (render-eat state)
+      :quests             (render-quests state)
+      :craft              (render-craft state)
+      :craft-weapon       (render-craft-weapon state)
+      :craft-survival     (render-craft-survival state)
+      :wield              (render-wield state)
+      nil)
+    (if-not (nil? (get-in state [:world :ui-hint]))
+      (put-string screen 0 0 (get-in state [:world :ui-hint]) :white :black)
+      ;; draw log
+      (when (= (current-state state) :normal)
+        (let [logs-viewed (get-in state [:world :logs-viewed])
+              current-time (get-in state [:world :time])
+              cur-state (current-state state)]
+          (debug "current-state" cur-state)
+          (if (= cur-state :more-log)
+            (let [logs (vec (filter #(= (get % :time) current-time) (get-in state [:world :log])))
+                  _ (info "logs-viewed" logs-viewed "current-time" current-time "logs" logs)
+                  message (get logs (dec logs-viewed))]
+              ;(debug "message" message)
+              (put-string screen 0 0 (format "%s --More--" (message :text)) (get message :color) :black))
+            (let [message (last (get-in state [:world :log]))]
+              (info "message" message)
+              (when (and message
+                         (< (- current-time (message :time)) 5))
+                (put-string screen 0 0 (get message :text) (get message :color) :black)))))))
+    (case (current-state state)
+      :quit               (render-quit? state)
+      :harvest            (render-harvest state)
+      :dialog             (render-dialog state)
+      :shopping           (render-shopping state)
+      :buy                (render-buy state)
+      :sell               (render-sell state)
+      nil)
     ;; draw cursor
     (if-let [cursor-pos (-> state :world :cursor)]
-      (move-cursor (state :screen) (cursor-pos :x) (cursor-pos :y))
-      (let [[x y] (get-size (state :screen))]
-        (move-cursor (state :screen) (dec x) (dec y))))
-    (move-cursor (state :screen) nil)
-    (refresh (state :screen))))
+      (move-cursor screen (cursor-pos :x) (cursor-pos :y))
+      (let [[x y] (get-size screen)]
+        (move-cursor screen (dec x) (dec y))))
+    (move-cursor screen nil)
+    (refresh screen)))
     ;;(debug "end-render")))
+
+(defn render-start [state]
+  (let [screen (state :screen)
+        player-name (get-in state [:world :player :name])]
+    (clear (state :screen))
+    (put-string screen 30 5 "Robinson")
+    (put-string screen 20 7 "Name:___________________")
+    (put-string screen 25 7 (str player-name "\u2592"))
+    (refresh screen)))
+
+(defn render-start-inventory [state]
+  (let [screen (state :screen)
+        player-name (get-in state [:world :player :name])
+        selected-hotkeys (get-in state [:world :selected-hotkeys])]
+    (clear (state :screen))
+    (put-string screen 20 5 "Pick up to three things to take:")
+    (render-list screen 20 7 60 6 (map (fn [item] {:s (format "%c%c%s" (get item :hotkey)
+                                                                       (if (contains? selected-hotkeys (get item :hotkey))
+                                                                         \+
+                                                                         \-)
+                                                                       (get item :name))
+                                                    :fg :white
+                                                    :bg :black
+                                                    :style #{}})
+                                        (sg/start-inventory)))
+    (refresh screen)))
+
+
+(defn render-start-text [state]
+  (let [screen     (state :screen)
+        start-text (sg/start-text)]
+    (clear (state :screen))
+    (doall (map-indexed
+      (fn [idx line] (put-string screen 5 (+ idx 5) line))
+      (clojure.string/split-lines start-text)))
+    (refresh screen)))
 
 (defn render-game-over
   "Render the game over screen."
@@ -819,7 +830,14 @@
    game over render function based on the dead state
    of the player."
   [state]
+  (info "render current-state" (current-state state))
   (cond
+    (= (current-state state) :start)
+      (render-start state)
+    (= (current-state state) :start-inventory)
+      (render-start-inventory state)
+    (= (current-state state) :start-text)
+      (render-start-text state)
     ;; Is player dead?
     (player-dead? state)
       ;; Render game over

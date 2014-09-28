@@ -1,9 +1,9 @@
-(ns dungeon-crusade.player-test
+(ns robinson.player-test
   (:use clojure.test
-        dungeon-crusade.player))
+        robinson.player))
 
 ;; bind private fns
-(def merge-items #'dungeon-crusade.player/merge-items)
+(def merge-items #'robinson.player/merge-items)
 
 (deftest test-merge-items-0
   (let [item1 {:id :rock :count 2}

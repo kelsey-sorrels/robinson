@@ -1,6 +1,6 @@
-(ns dungeon-crusade.common-test
+(ns robinson.common-test
   (:use clojure.test
-        dungeon-crusade.common))
+        robinson.common))
 
 (deftest test-adjacent-to-player-0
   (is (false? (adjacent-to-player? {:world {:player {:pos {:x 26, :y 9}}}}

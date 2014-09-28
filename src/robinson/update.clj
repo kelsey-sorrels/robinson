@@ -17,6 +17,7 @@
   (:require 
             [robinson.itemgen  :as ig]
             [robinson.monstergen :as mg]
+            [robinson.startgame :as sg]
             clojure.pprint
             clojure.core.memoize
             clojure.edn
@@ -26,6 +27,62 @@
             [taoensso.timbre :as timbre]))
 
 (timbre/refer-timbre)
+
+(defn- pass-state
+  [state & more]
+  state)
+
+(defn backspace-name
+  [state]
+  (update-in state
+             [:world :player :name]
+             (fn [player-name]
+               (clojure.string/join (butlast player-name)))))
+
+(defn append-name
+  [state key-in]
+  (update-in state
+             [:world :player :name]
+             (fn [player-name]
+               (if (and (< (count player-name) 20)
+                        (or (<= (int \A) (int key-in) (int \Z))
+                        (<= (int \a) (int key-in) (int \z))
+                        (contains? #{\-} key-in)))
+                  (str player-name key-in)
+                  player-name))))
+
+(defn add-starting-inventory
+  [state]
+  (let [selected-hotkeys   (get-in state [:world :selected-hotkeys])
+        start-inventory    (sg/start-inventory)
+        start-inventory    (filter #(contains? selected-hotkeys (get % :hotkey))
+                                   start-inventory)
+        remaining-hotkeys (reduce disj (set (get-in state [:world :remaining-hotkeys])) selected-hotkeys)]
+    (-> state
+      (assoc-in [:world :player :inventory] start-inventory)
+      (assoc-in [:world :remaining-hotkeys] remaining-hotkeys)
+      (assoc-in [:world :selected-hotkeys] #{}))))
+
+(defn select-starting-inventory
+  [state key-in]
+  (if (and (char? key-in)
+           (or (<= (int \A) (int key-in) (int \Z))
+               (<= (int \a) (int key-in) (int \z))))
+    (let [selected-hotkeys (get-in state [:world :selected-hotkeys])
+          _ (info "selected-hotkeys" selected-hotkeys)
+          selected-hotkeys ((if (contains? selected-hotkeys key-in)
+                              disj
+                              conj)
+                            selected-hotkeys
+                            key-in)
+          _ (info "selected-hotkeys" selected-hotkeys)]
+      (info "count shk" (count selected-hotkeys))
+      (if (< (count selected-hotkeys) 4)
+        (assoc-in state
+                  [:world :selected-hotkeys]
+                  selected-hotkeys)
+        state))
+    state))
 
 (defn pick-up-gold
   "Vacuums up gold from the floor into player's inventory."
@@ -51,7 +108,7 @@
       state)))
 
 (defn move
-  "Move the player one space provided her/she is able. Else do combat. Else positions
+  "Move the player one space provided her/she is able. Else do combat. Else swap positions
    with party member."
   [state direction]
   {:pre  [(contains? #{:left :right :up :down :up-left :up-right :down-left :down-right} direction)
@@ -321,7 +378,7 @@
   [state]
   (update-in state [:world :player]
              (fn [player] (if (< (int (player :hp)) (player :max-hp))
-                            (assoc-in player [:hp] (+ (player :hp) 0.1))
+                            (assoc-in player [:hp] (+ (player :hp) 0.05))
                             player))))
 
 (defn toggle-hotkey
@@ -785,13 +842,22 @@
   "Selects a craft recipe."
   [state keyin]
   (let [recipe-type      (case (current-state state)
-                           :craft-weapon    :weapon
+                           :craft-weapon   :weapon
                            :craft-survival :survival)
         matching-recipes (filter (fn [recipe] (= (get recipe :hotkey) keyin))
                                  (get (get-recipes state) recipe-type))]
   (if (empty? matching-recipes)
-    (append-log state "Pick a valid recipe." :white)
+    (ui-hint state "Pick a valid recipe.")
     (assoc-in state [:world :craft-recipe-path] [recipe-type (get (first matching-recipes) :hotkey)]))))
+
+(defn craft-weapon
+  [state]
+  (craft-select-recipe (assoc-in state [:world :current-state] :craft-weapon) \a))
+
+(defn craft-survival
+  [state]
+  (craft-select-recipe (assoc-in state [:world :current-state] :craft-survival) \a))
+
 
 (defn craft
   "Craft the selected recipe."
@@ -841,11 +907,12 @@
                       logs-with-same-time)))
           (vals (group-by :time logs)))))
     ((fn [state]
-      (let [t (get-in state [:world :time])
-            c (count (filter #(= t (get % :time)) (get-in state [:world :log])))]
+      (let [t    (get-in state [:world :time])
+            logs (filter #(= t (get % :time)) (get-in state [:world :log]))]
+        (info "logs" logs)
         (-> state
           (assoc-in [:world :logs-viewed] 1)
-          (tx/when-> (> c 1)
+          (tx/when-> (> (count logs) 1)
             (assoc-in [:world :current-state] :more-log))))))))
 
 (defn get-hungrier
@@ -1297,114 +1364,124 @@
 ;; transtion table's states and the application state variable, but
 ;; they are indeed two different things.
 (def state-transition-table
-  ;;         starting      transition transition             new        advance
-  ;;         state         symbol     fn                     state      time?
-  (let [table {:normal    {\i        [identity               :inventory false]
-                           \d        [identity               :drop      false]
-                           \,        [identity               :pickup    false]
-                           \e        [identity               :eat       false]
-                           \o        [identity               :open      false]
-                           \c        [identity               :close     false]
-                           \.        [do-rest                :normal    true]
-                           \h        [move-left              :normal    true]
-                           \j        [move-down              :normal    true]
-                           \k        [move-up                :normal    true]
-                           \l        [move-right             :normal    true]
-                           \y        [move-up-left           :normal    true]
-                           \u        [move-up-right          :normal    true]
-                           \b        [move-down-left         :normal    true]
-                           \n        [move-down-right        :normal    true]
-                           \x        [identity               :harvest   false]
-                           \w        [identity               :wield     false]
-                           \>        [use-stairs             :normal    true]
-                           \<        [use-stairs             :normal    true]
-                           \;        [init-cursor            :describe  false]
-                           \s        [search                 :normal    true]
-                           \S        [extended-search        :normal    true]
-                           \Q        [identity               :quests    false]
-                           \P        [next-party-member      :normal    false]
-                           \z        [identity               :craft     true]
-                           \Z        [identity               :magic     true]
-                           \T        [identity               :talk      true]
-                           \m        [identity               :log       false]
-                           \?        [identity               :help      false]
-                           :escape   [identity               :quit?     false]}
-               :inventory {:escape   [identity               :normal    false]}
-               :describe  {:escape   [free-cursor            :normal    false]
-                           \i        [free-cursor            :describe-inventory false]
-                           \h        [move-cursor-left       :describe  false]
-                           \j        [move-cursor-down       :describe  false]
-                           \k        [move-cursor-up         :describe  false]
-                           \l        [move-cursor-right      :describe  false]
-                           :enter    [describe-at-cursor     :normal    false]}
-               :quests    {:escape   [identity               :normal    false]}
+  ;;         starting      transition transition             new              advance
+  ;;         state         symbol     fn                     state            time?
+  (let [table {:start     {:enter     [identity               :start-inventory false]
+                           :backspace [backspace-name         :start           false]
+                           :else      [append-name            :start           false]}
+               :start-inventory
+                          {:enter     [add-starting-inventory :start-text      false]
+                           :else      [select-starting-inventory
+                                                              :start-inventory false]}
+               :start-text
+                          {:else      [(fn [state _]
+                                         (do-rest state))     :normal          false]}
+               :normal    {\i         [identity               :inventory       false]
+                           \d         [identity               :drop            false]
+                           \,         [identity               :pickup          false]
+                           \e         [identity               :eat             false]
+                           \o         [identity               :open            false]
+                           \c         [identity               :close           false]
+                           \.         [do-rest                :normal          true]
+                           \h         [move-left              :normal          true]
+                           \j         [move-down              :normal          true]
+                           \k         [move-up                :normal          true]
+                           \l         [move-right             :normal          true]
+                           \y         [move-up-left           :normal          true]
+                           \u         [move-up-right          :normal          true]
+                           \b         [move-down-left         :normal          true]
+                           \n         [move-down-right        :normal          true]
+                           \x         [identity               :harvest         false]
+                           \w         [identity               :wield           false]
+                           \>         [use-stairs             :normal          true]
+                           \<         [use-stairs             :normal          true]
+                           \;         [init-cursor            :describe        false]
+                           \s         [search                 :normal          true]
+                           \S         [extended-search        :normal          true]
+                           \Q         [identity               :quests          false]
+                           \P         [next-party-member      :normal          false]
+                           \z         [identity               :craft           true]
+                           \Z         [identity               :magic           true]
+                           \T         [identity               :talk            true]
+                           \m         [identity               :log             false]
+                           \?         [identity               :help            false]
+                           :escape    [identity               :quit?           false]}
+               :inventory {:escape    [identity               :normal          false]}
+               :describe  {:escape    [free-cursor            :normal          false]
+                           \i         [free-cursor            :describe-inventory false]
+                           \h         [move-cursor-left       :describe        false]
+                           \j         [move-cursor-down       :describe        false]
+                           \k         [move-cursor-up         :describe        false]
+                           \l         [move-cursor-right      :describe        false]
+                           :enter     [describe-at-cursor     :normal          false]}
+               :quests    {:escape    [identity               :normal          false]}
                :describe-inventory
-                          {:escape   [identity               :normal    false]
-                           :else     [describe-inventory     :normal    false]}
-               :drop      {:escape   [identity               :normal    false]
-                           :else     [drop-item              :normal    true]}
-               :pickup    {:escape   [identity               :normal    false]
-                           :else     [toggle-hotkey          :pickup    false]
-                           :enter    [pick-up                :normal    true]}
-               :eat       {:escape   [identity               :normal    false]
-                           :else     [eat                    :normal    true]}
-               :open      {\h        [open-left              :normal    true]
-                           \j        [open-down              :normal    true]
-                           \k        [open-up                :normal    true]
-                           \l        [open-right             :normal    true]}
-               :talk      {\h        [talk-left              identity   false]
-                           \j        [talk-down              identity   false]
-                           \k        [talk-up                identity   false]
-                           \l        [talk-right             identity   false]}
-               :harvest   {\h        [harvest-left           :normal    true]
-                           \j        [harvest-down           :normal    true]
-                           \k        [harvest-up             :normal    true]
-                           \l        [harvest-right          :normal    true]
-                           \.        [harvest-center         :normal    true]
-                           :escape   [identity               :normal    false]}
-               :wield     {:escape   [identity               :normal    false]
-                           :else     [wield                  :normal    true]}
-               :talking   {:escape   [stop-talking           :normal    false]
-                           :else     [talk                   identity   true]}
-               :shopping  {\a        [identity               :buy       true]
-                           \b        [identity               :sell      true]
-                           :escape   [identity               :normal    false]}
-               :buy       {:escape   [identity               :normal    false]
-                           :else     [buy                    :buy       true]}
-               :sell      {:escape   [identity               :normal    false]
-                           :else     [sell                   :sell      true]}
-               :craft     {\w        [identity               :craft-weapon false]
-                           \s        [identity               :craft-survival false]
-                           :escape   [identity               :normal    false]}
+                          {:escape    [identity               :normal          false]
+                           :else      [describe-inventory     :normal          false]}
+               :drop      {:escape    [identity               :normal          false]
+                           :else      [drop-item              :normal          true]}
+               :pickup    {:escape    [identity               :normal          false]
+                           :else      [toggle-hotkey          :pickup          false]
+                           :enter     [pick-up                :normal          true]}
+               :eat       {:escape    [identity               :normal          false]
+                           :else      [eat                    :normal          true]}
+               :open      {\h         [open-left              :normal          true]
+                           \j         [open-down              :normal          true]
+                           \k         [open-up                :normal          true]
+                           \l         [open-right             :normal          true]}
+               :talk      {\h         [talk-left              identity         false]
+                           \j         [talk-down              identity         false]
+                           \k         [talk-up                identity         false]
+                           \l         [talk-right             identity         false]}
+               :harvest   {\h         [harvest-left           :normal          true]
+                           \j         [harvest-down           :normal          true]
+                           \k         [harvest-up             :normal          true]
+                           \l         [harvest-right          :normal          true]
+                           \.         [harvest-center         :normal          true]
+                           :escape    [identity               :normal          false]}
+               :wield     {:escape    [identity               :normal          false]
+                           :else      [wield                  :normal          true]}
+               :talking   {:escape    [stop-talking           :normal          false]
+                           :else      [talk                   identity         true]}
+               :shopping  {\a         [identity               :buy             true]
+                           \b         [identity               :sell            true]
+                           :escape    [identity               :normal          false]}
+               :buy       {:escape    [identity               :normal          false]
+                           :else      [buy                    :buy             true]}
+               :sell      {:escape    [identity               :normal          false]
+                           :else      [sell                   :sell            true]}
+               :craft     {\w         [craft-weapon           :craft-weapon    false]
+                           \s         [craft-survival         :craft-survival  false]
+                           :escape    [identity               :normal          false]}
                :craft-weapon
-                          {:escape   [identity               :craft     false]
-                           :enter    [craft                  :normal    true]
-                           :else     [craft-select-recipe    identity   false]}
+                          {:escape    [identity               :craft           false]
+                           :enter     [craft                  :normal          true]
+                           :else      [craft-select-recipe    identity         false]}
                :craft-survival
-                          {:escape   [identity               :craft     false]
-                           :enter    [craft                  :normal    true]
-                           :else     [craft-select-recipe    identity   false]}
-               :magic     {:escape   [identity               :normal    false]
-                           :else     [do-magic               identity   true]}
+                          {:escape    [identity               :craft           false]
+                           :enter     [craft                  :normal          true]
+                           :else      [craft-select-recipe    identity         false]}
+               :magic     {:escape    [identity               :normal          false]
+                           :else      [do-magic               identity         true]}
                :magic-direction
-                          {\h        [magic-left             identity   true]
-                           \j        [magic-down             identity   true]
-                           \k        [magic-up               identity   true]
-                           \l        [magic-right            identity   true]}
+                          {\h         [magic-left             identity         true]
+                           \j         [magic-down             identity         true]
+                           \k         [magic-up               identity         true]
+                           \l         [magic-right            identity         true]}
                :magic-inventory
-                          {:escape   [identity               :normal    false]
-                           :else     [magic-inventory        :normal    true]}
-               :help      {:else     [(fn [s _] s)           :normal    false]}
-               :close     {\h        [close-left             :normal    true]
-                           \j        [close-down             :normal    true]
-                           \k        [close-up               :normal    true]
-                           \l        [close-right            :normal    true]}
-               :more-log  {:else     [scroll-log             identity   false]}
-               :log       {:else     [(fn [s _] s)           :normal    false]}
-               :dead      {\y        [reinit-world           :normal    false]
-                           \n        [(constantly nil)       :normal    false]}
-               :quit?     {\y        [(constantly nil)       :normal    false]
-                           :else     [(fn [s _] s)           :normal    false]}}
+                          {:escape    [identity               :normal          false]
+                           :else      [magic-inventory        :normal          true]}
+               :help      {:else      [pass-state             :normal          false]}
+               :close     {\h         [close-left             :normal          true]
+                           \j         [close-down             :normal          true]
+                           \k         [close-up               :normal          true]
+                           \l         [close-right            :normal          true]}
+               :more-log  {:else      [scroll-log             identity         false]}
+               :log       {:else      [pass-state             :normal          false]}
+               :dead      {\y         [reinit-world           :normal          false]
+                           \n         [(constantly nil)       :normal          false]}
+               :quit?     {\y         [(constantly nil)       :normal          false]
+                           :else      [pass-state             :normal          false]}}
         expander-fn (fn [table] table)]
     (expander-fn table)))
 
@@ -1443,6 +1520,7 @@
                                           (transition-fn state keyin)))
             _ (debug "type of npcs" (type (get-in state [:world :npcs])))
             new-time  (inc (get-in state [:world :time]))
+            state     (clear-ui-hint state)
             state     (transition-fn
                         (if advance-time
                           (assoc-in state [:world :time] new-time)
@@ -1454,7 +1532,7 @@
                         new-state
                         (new-state (get-in state [:world :current-state])))
             _ (assert (not (nil? new-state)))
-            _ (info "player" (get-in state [:world :player]))
+            _ (trace "player" (get-in state [:world :player]))
             _ (info "new-state" new-state)
             wtl       (get-in state [:world :player :will-to-live])]
         (some-> state

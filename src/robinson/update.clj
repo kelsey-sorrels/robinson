@@ -55,8 +55,8 @@
   [state]
   (let [selected-hotkeys   (get-in state [:world :selected-hotkeys])
         start-inventory    (sg/start-inventory)
-        start-inventory    (filter #(contains? selected-hotkeys (get % :hotkey))
-                                   start-inventory)
+        start-inventory    (filterv #(contains? selected-hotkeys (get % :hotkey))
+                                    start-inventory)
         remaining-hotkeys (reduce disj (set (get-in state [:world :remaining-hotkeys])) selected-hotkeys)]
     (-> state
       (assoc-in [:world :player :inventory] start-inventory)

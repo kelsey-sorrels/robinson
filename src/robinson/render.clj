@@ -751,12 +751,14 @@
     (refresh screen)))
 
 (defn render-start-inventory [state]
-  (let [screen (state :screen)
-        player-name (get-in state [:world :player :name])
-        selected-hotkeys (get-in state [:world :selected-hotkeys])]
+  (let [screen           (state :screen)
+        player-name      (get-in state [:world :player :name])
+        selected-hotkeys (get-in state [:world :selected-hotkeys])
+        start-inventory  (sg/start-inventory)]
     (clear (state :screen))
     (put-string screen 20 5 "Pick up to three things to take:")
-    (render-list screen 20 7 60 6 (map (fn [item] {:s (format "%c%c%s" (get item :hotkey)
+    (render-list screen 20 7 60 (count start-inventory)
+                                (map (fn [item] {:s (format "%c%c%s" (get item :hotkey)
                                                                        (if (contains? selected-hotkeys (get item :hotkey))
                                                                          \+
                                                                          \-)
@@ -764,7 +766,7 @@
                                                     :fg :white
                                                     :bg :black
                                                     :style #{}})
-                                        (sg/start-inventory)))
+                                        start-inventory))
     (refresh screen)))
 
 

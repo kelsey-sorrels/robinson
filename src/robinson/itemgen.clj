@@ -87,33 +87,74 @@
   [n]
   {:id :bamboo-water-collector :name "bamboo water collector" :name-plural "bamboo water collectors" :count n})
 
+;; Starting items
+
+(defn gen-matches
+  "Generate matches"
+  [n]
+  {:id :matches :name "match" :plural-name "matches" :count n})
+
+(defn gen-knives
+  "Generate knife"
+  [n]
+  {:id :knife :name "knife" :plural-name "knives" :count n :attack :knife})
+
+(defn gen-plant-guides
+  "Generate plant-guides"
+  [n]
+  {:id :plant-guide :name "plant guide" :plural-name "plant-guides" :count n})
+
+(defn gen-bandages
+  "Generate bandages"
+  [n]
+  {:id :bandage :name "bandage" :plural-name "bandages" :count n})
+
+(defn gen-fishing-line-and-hooks
+  "Generate fishing line and hook"
+  [n]
+  {:id :fishing-line-and-hook :name "fishing line and hook" :plural-name "fishing lines and hooks" :count n})
+
 (defn gen-rations
   "Generate raions"
   [n]
   {:id :ration :type :food :name "ration" :plural-name "rations" :hunger 100 :count n})
+
+(defn gen-flashlights
+  "Generate flashlights"
+  [n]
+  {:id :flashlight :name "flashlight" :plural-name "flashlights" :count n :charge 500})
+
+(defn gen-bedrolls
+  "Generate bedrolls"
+  [n]
+  {:id :bedroll :name "bedroll" :plural-name "bedrolls" :count n})
+
+(defn gen-tarps
+  "Generate tarps"
+  [n]
+  {:id :tarp :name "tarp" :plural-name "tarps" :count n})
+
+(defn gen-saws
+  "Generate saws"
+  [n]
+  {:id :saw :name "saw" :plural-name "saws" :count n})
+
+
+(def id->gen-fn
+  (let [fns (map (fn [[k v]]
+                   (let [f (var-get v)
+                         id (get (f 1) :id)]
+                     [id f]))
+                  (filter (fn [[k v]] (.startsWith (name k) "gen-"))
+                          (ns-publics *ns*)))]
+    fns))
 
 (defn id->items
   "Generate item from id."
   [id n]
   (if (is-corpse-id? id)
     (mg/id->monster (keyword (first (clojure.string/split (name id) #"-"))))
-    ((case id
-       :stick                  gen-sticks
-       :plant-fiber            gen-plant-fibers
-       :coconut                gen-coconuts
-       :wood-log               gen-wood-logs
-       :rock                   gen-rocks
-       :obsidian               gen-obsidian
-       :grass                  gen-grass
-       :obsidian-blade         gen-obsidian-blades
-       :rope                   gen-rope
-       :bamboo                 gen-bamboo
-       :obsidian-spear         gen-obsidian-spears
-       :obsidian-axe           gen-obsidian-axes
-       :obsidian-knife         gen-obsidian-knives
-       :bamboo-water-collector gen-bamboo-water-collectors
-       :rations                gen-rations)
-     n)))
+    ((get id->gen-fn id) n)))
 
 (defn id->item
   [id]

@@ -22,6 +22,7 @@
             clojure.core.memoize
             clojure.edn
             clj-tiny-astar.path
+            [clojure.data.generators :as dg]
             [pallet.thread-expr :as tx]
             [clojure.stacktrace :as st]
             [taoensso.timbre :as timbre]))
@@ -66,8 +67,7 @@
 (defn select-starting-inventory
   [state key-in]
   (if (and (char? key-in)
-           (or (<= (int \A) (int key-in) (int \Z))
-               (<= (int \a) (int key-in) (int \z))))
+           (<= (int \a) (int key-in) (int \k)))
     (let [selected-hotkeys (get-in state [:world :selected-hotkeys])
           _ (info "selected-hotkeys" selected-hotkeys)
           selected-hotkeys ((if (contains? selected-hotkeys key-in)
@@ -409,7 +409,7 @@
       (let [item (nth items item-index)
             new-state (-> state
               (append-log (format "The %s tastes %s." (lower-case (get item :name))
-                                                      (rand-nth ["great" "foul" "greasy" "delicious" "burnt" "sweet" "salty"])))
+                                                      (dg/rand-nth ["great" "foul" "greasy" "delicious" "burnt" "sweet" "salty"])))
               (update-eaten item)
               ;; reduce hunger
               (update-in [:world :player :hunger]
@@ -571,34 +571,34 @@
                         (remove nil?
                           (cond
                             (= (get target-cell :type) :tree)
-                              [(if (= 0 (rand-int 10))
-                                 (ig/gen-sticks (uniform-rand-int 1 2))
+                              [(if (= 0 (uniform-int 10))
+                                 (ig/gen-sticks (uniform-int 1 2))
                                  nil)
-                               (if (= 0 (rand-int 10))
-                                 (ig/gen-plant-fibers (uniform-rand-int 1 5))
+                               (if (= 0 (uniform-int 10))
+                                 (ig/gen-plant-fibers (uniform-int 1 5))
                                  nil)]
                             (= (get target-cell :type) :palm-tree)
-                              [(if (= 0 (rand-int 10))
-                                 (ig/gen-coconuts (uniform-rand-int 1 2))
+                              [(if (= 0 (uniform-int 10))
+                                 (ig/gen-coconuts (uniform-int 1 2))
                                  nil)
-                               (if (= 0 (rand-int 15))
-                                 (ig/gen-plant-fibers (uniform-rand-int 1 2))
+                               (if (= 0 (uniform-int 15))
+                                 (ig/gen-plant-fibers (uniform-int 1 2))
                                  nil)]
                             (and (= (get target-cell :type) :tall-grass)
                                  (= direction :center))
-                              [(if (= 0 (rand-int 10))
-                                 (ig/gen-grass (uniform-rand-int 1 5))
+                              [(if (= 0 (uniform-int 10))
+                                 (ig/gen-grass (uniform-int 1 5))
                                  nil)
-                               (if (= 0 (rand-int 10))
-                                 (ig/gen-plant-fibers (uniform-rand-int 1 5))
+                               (if (= 0 (uniform-int 10))
+                                 (ig/gen-plant-fibers (uniform-int 1 5))
                                  nil)]
                             (and (= (get target-cell :type) :gravel)
                                  (= direction :center))
-                              [(if (= 0 (rand-int 10))
-                                 (ig/gen-rocks (uniform-rand-int 1 5))
+                              [(if (= 0 (uniform-int 10))
+                                 (ig/gen-rocks (uniform-int 1 5))
                                  nil)
-                               (if (= 0 (rand-int 20))
-                                 (ig/gen-obsidian (uniform-rand-int 1 5))
+                               (if (= 0 (uniform-int 20))
+                                 (ig/gen-obsidian (uniform-int 1 5))
                                  nil)]
                             :else []))
                         [])]
@@ -984,8 +984,8 @@
   (let [dwtl (- prev-will-to-live (get-in state [:world :player :will-to-live]))]
     (if (> (Math/abs dwtl) 1.5)
       (if (neg? dwtl)
-        (append-log state (format "You feel %s." (rand-nth ["happy" "happier" "glad" "elated" "great" "good"])))
-        (append-log state (format "You feel %s." (rand-nth ["sad" "sadder" "down" "unhappy" "bummed" "bad"]))))
+        (append-log state (format "You feel %s." (dg/rand-nth ["happy" "happier" "glad" "elated" "great" "good"])))
+        (append-log state (format "You feel %s." (dg/rand-nth ["sad" "sadder" "down" "unhappy" "bummed" "bad"]))))
       state)))
   
 
@@ -1002,7 +1002,7 @@
         max-hp              (get-in state [:world :player :max-hp])
         chance-of-infection (inc (/ -1 (inc (/ hp (* max-hp 20)))))] 
     (if (and (not-empty (get-in state [:world :player :wounds]))
-             (< (rand) chance-of-infection))
+             (< (dg/float) chance-of-infection))
       (-> state
         (update-in [:world :player :status]
           (fn [status]
@@ -1035,7 +1035,7 @@
     ;; chance of poison wearing off
     (arg-when-> [state]
       (and (contains? (get-in state [:world :player :status]) :poisoned)
-           (< (rand) 0.1))
+           (< (dg/float) 0.1))
         (update-in [:world :player :status]
           (fn [status]
               (disj status :poisoned)))
@@ -1043,7 +1043,7 @@
     ;; chance of infection clearing up
     (arg-when-> [state]
       (and (contains? (get-in state [:world :player :status]) :infected)
-           (< (rand) 0.1))
+           (< (dg/float) 0.1))
         (update-in [:world :player :status]
           (fn [status]
               (disj status :infected)))
@@ -1191,7 +1191,7 @@
     (if (> distance threshold)
       ;; outside of range, move randomly into an adjacent cell
       (let [target (first
-                     (shuffle
+                     (dg/shuffle
                        (adjacent-navigable-pos (current-place state)
                                                npc-pos
                                                navigable-types)))]
@@ -1228,7 +1228,7 @@
       :entourage (move-to-target state
                                  npc
                                  (first
-                                   (shuffle
+                                   (dg/shuffle
                                      (adjacent-navigable-pos (current-place state)
                                                              pos
                                                              navigable-types))))

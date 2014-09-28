@@ -1,6 +1,8 @@
 ;; Functions for randomly generating maps.
 (ns robinson.mapgen
+  (:use     robinson.common)
   (:require [clojure.math.combinatorics :as combo]
+            [clojure.data.generators :as dg]
             [algotools.algos.graph :as graph]
             [taoensso.timbre :as timbre]
             clojure.set))
@@ -22,10 +24,10 @@
   * a width a height"
   [min-x min-y max-x max-y room-idx]
   {:id     (keyword (str room-idx))
-   :x      (+ min-x (rand-int max-x))
-   :y      (+ min-y (rand-int max-y))
-   :width  (+ 2 (rand-int 5))
-   :height (+ 2 (rand-int 5))})
+   :x      (+ min-x (uniform-int max-x))
+   :y      (+ min-y (uniform-int max-y))
+   :width  (+ 2 (uniform-int 5))
+   :height (+ 2 (uniform-int 5))})
 
 (defn rooms-to-edges
   "Generate a random set of edges between rooms such that each room
@@ -36,7 +38,7 @@
         all-edges (combo/combinations nodes 2)
         _ (trace "all edges" all-edges)
         _ (trace "minimum-edges" minimum-edges)
-        random-edges (map vec (take (/ (count nodes) 2) (shuffle all-edges)))
+        random-edges (map vec (take (/ (count nodes) 2) (dg/shuffle all-edges)))
         union-edges  (distinct (concat minimum-edges random-edges))]
     (trace "union-edges" union-edges)
     union-edges))
@@ -189,8 +191,8 @@
         min-height 3
         max-width 10
         max-height 8
-        room-bounds  (loop [xl (shuffle (range width))
-                            yl (shuffle (range height))
+        room-bounds  (loop [xl (dg/shuffle (range width))
+                            yl (dg/shuffle (range height))
                             result []]
                        (if (>= (count result) num-rooms)
                          result
@@ -198,11 +200,11 @@
                                y1 (first (filter (partial > (- height max-height)) yl))
                                _ (debug "xl" xl)
                                _ (debug "yl" yl)
-                               x2-potential (map (partial + x1) (shuffle (range min-width max-width)))
+                               x2-potential (map (partial + x1) (dg/shuffle (range min-width max-width)))
                                x2 (first (filter #(and (contains? (set xl) %)
                                                        (contains? (set xl) (int (/ (+ x1 %) 2))))
                                                  x2-potential))
-                               y2-potential (map (partial + y1) (shuffle (range min-height max-height)))
+                               y2-potential (map (partial + y1) (dg/shuffle (range min-height max-height)))
                                y2 (first (filter #(and (contains? (set yl) %)
                                                        (contains? (set yl) (int (/ (+ y1 %) 2))))
                                                  y2-potential))
@@ -232,7 +234,7 @@
                           room-bounds)
         corridors    (map (fn [[[x1 y1] [x2 y2]]]
                             (points-to-corridor
-                              (edge-to-points x1 y1 x2 y2 (< (rand-int 2) 1))))
+                              (edge-to-points x1 y1 x2 y2 (< (uniform-int 2) 1))))
                           (rooms-to-edges room-centers))
         upstairs     (conj [(first room-centers)] {:type :up-stairs})
         downstairs   (conj [(last room-centers)] {:type :down-stairs})]

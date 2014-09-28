@@ -2,6 +2,7 @@
 (ns robinson.itemgen
   (:use     robinson.common)
   (:require [robinson.monstergen :as mg]
+            [clojure.data.generators :as dg]
             [clojure.math.combinatorics :as combo]))
 
 
@@ -13,7 +14,7 @@
    :name        (format "%s corpse" (name (get npc :race)))
    :name-plural (format "%s corpses" (name (get npc :race)))
    ;; TODO: base on type of monster by including a weight field in all monsters
-   :hunger      (uniform-rand-int 5 10)})
+   :hunger      (int (dg/uniform 5 10))})
 
 (defn is-corpse-id? [id] (re-matches #"-corpse$" (name id)))
 
@@ -184,8 +185,8 @@
               {:id :lemon        :type :food :name "lemon"         :plural-name "lemons"         :hunger 30}
               {:id :yogurt-leaf  :type :food :name "yogurt leaf"   :plural-name "yogurt leaves"  :hunger 20}
               {:id :lyrium-leaf  :type :food :name "lyrium leaf"   :plural-name "lyrium leaves"  :hunger 10}
-              {:id :mystery-meat :type :food :name "mystery meat"  :plural-name "mystery meats"  :hunger (rand-int 100)}]]
-    (rand-nth food)))
+              {:id :mystery-meat :type :food :name "mystery meat"  :plural-name "mystery meats"  :hunger (uniform-int 100)}]]
+    (dg/rand-nth food)))
 
 (defn gen-ring []
   "Generate one random ring."
@@ -194,7 +195,7 @@
                {:id :ancient-ring          :type :ring :name "ancient ring"           :plural-name "ancient rings"}
                {:id :ring-of-invisibility  :type :ring :name "ring of invisibility"   :plural-name "rings of invisibility"}
                {:id :mystery-ring          :type :ring :name "mystery ring"           :plural-name "mystery rings"}]]
-    (rand-nth rings)))
+    (dg/rand-nth rings)))
 
 (defn gen-scroll []
   "Generate one random scroll."
@@ -204,19 +205,19 @@
                  {:id :scroll-of-invisibility :type :scroll :name "scroll of invisibility" :plural-name "scrolls of invisibility"}
                  {:id :robot-plans            :type :scroll :name "robot plans"            :plural-name "robot plans"}
                  {:id :mystery-scroll         :type :scroll :name "mystery scroll"         :plural-name "mystery scrolls"}]]
-    (rand-nth scrolls)))
+    (dg/rand-nth scrolls)))
 
 (defn gen-cash
   [max-cash]
   "Generate a random amount of cash between [1 and max-cash]."
-  {:type :$ :amount (inc (rand-int max-cash))})
+  {:type :$ :amount (inc (uniform-int max-cash))})
 
 (defn gen-item []
   "Generate one random food, ring, or scroll item."
   (let [item-fns [gen-food
                   gen-ring
                   gen-scroll]]
-    ((rand-nth item-fns))))
+    ((dg/rand-nth item-fns))))
 
 (defn gen-items
   "Generate `n` random items using `gen-item`."

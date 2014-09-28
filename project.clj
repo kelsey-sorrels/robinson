@@ -10,6 +10,7 @@
                  [org.clojure/core.memoize "0.5.6"]
                  [org.clojure/tools.reader "0.8.9"]
                  [org.clojure/core.typed "0.2.44"]
+                 [org.clojure/data.generators "0.1.2"]
                  [org.clojure/math.combinatorics "0.0.8"]
                  [org.clojure/clojure-contrib "1.2.0"]
                  [org.clojars.vishk/algotools "0.1.0"]

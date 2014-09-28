@@ -7,6 +7,7 @@
     robinson.itemgen)
   (:require clojure.pprint
             clojure.contrib.core
+            [clojure.data.generators :as dg]
             [clojure.stacktrace :as st]
             [taoensso.timbre :as timbre]))
 
@@ -31,22 +32,22 @@
         defender-race      (get defender :race)
         attacker-name      (get attacker :name)
         defender-name      (get defender :name)
-        rand-punch-verb    (fn [] (rand-nth ["wack" "punch" "hit" "pummel" "batter"
+        rand-punch-verb    (fn [] (dg/rand-nth ["wack" "punch" "hit" "pummel" "batter"
                                              "pound" "beat" "strike" "slug"]))
-        rand-axe-verb      (fn [] (rand-nth ["hit" "strike" "slash" "tear into" "cleave" "cut"]))]
+        rand-axe-verb      (fn [] (dg/rand-nth ["hit" "strike" "slash" "tear into" "cleave" "cut"]))]
     (condp vec-match? [attacker-race defender-race attack defender-body-part damage-type]
       [:human :*       :punch :*       :miss] (format "You punch the %s but miss." defender-name)
-      [:human :*       :punch :*       :hit]  (rand-nth [(format "You %s the %s %s %s the %s."
+      [:human :*       :punch :*       :hit]  (dg/rand-nth [(format "You %s the %s %s %s the %s."
                                                              (rand-punch-verb)
                                                              defender-name
-                                                             (rand-nth ["solidly" "swiftly" "repeatedly"
+                                                             (dg/rand-nth ["solidly" "swiftly" "repeatedly"
                                                                         "perfectly" "competently"])
-                                                             (rand-nth ["on" "in" "across"])
+                                                             (dg/rand-nth ["on" "in" "across"])
                                                              (name defender-body-part))
                                                            (format "You %s the %s %s the %s."
                                                              (rand-punch-verb)
                                                              defender-name
-                                                             (rand-nth ["on" "in" "across"])
+                                                             (dg/rand-nth ["on" "in" "across"])
                                                              (name defender-body-part))
                                                            (format "You %s the %s."
                                                              (rand-punch-verb)
@@ -68,17 +69,17 @@
       [:human :*       :punch       :tentacle :dead] (format "You %s the %s in the tentacle shredding it and it dies." (rand-punch-verb) defender-name)
       [:human :*       :punch       :*        :dead] (format "You %s the %s causing massive injuries and it dies." (rand-punch-verb) defender-name)
       [:human :*       :axe :*       :miss] (format "You swing at the %s but miss." defender-name)
-      [:human :*       :axe :*       :hit]  (rand-nth [(format "You %s the %s %s %s the %s."
+      [:human :*       :axe :*       :hit]  (dg/rand-nth [(format "You %s the %s %s %s the %s."
                                                              (rand-axe-verb)
                                                              defender-name
-                                                             (rand-nth ["solidly" "swiftly"
+                                                             (dg/rand-nth ["solidly" "swiftly"
                                                                         "perfectly" "competently"])
-                                                             (rand-nth ["on" "in" "across"])
+                                                             (dg/rand-nth ["on" "in" "across"])
                                                              (name defender-body-part))
                                                            (format "You %s the %s %s the %s."
                                                              (rand-axe-verb)
                                                              defender-name
-                                                             (rand-nth ["on" "in" "across"])
+                                                             (dg/rand-nth ["on" "in" "across"])
                                                              (name defender-body-part))
                                                            (format "You %s the %s."
                                                              (rand-axe-verb)
@@ -123,274 +124,274 @@
 (defn calc-dmg
   [attacker-race attack defender-race defender-body-part]
   (condp vec-match? [attacker-race attack defender-race defender-body-part]
-    [:bat        :bite         :human      :abdomen]   (uniform-rand 1.5 2.5)
-    [:bat        :bite         :human      :arm]       (uniform-rand 1.5 2.5)
-    [:bat        :bite         :human      :face]      (uniform-rand 1.5 2.5)
-    [:bat        :bite         :human      :foot]      (uniform-rand 1.5 2.5)
-    [:bat        :bite         :human      :head]      (uniform-rand 1.5 2.5)
-    [:bat        :bite         :human      :leg]       (uniform-rand 1.5 2.5)
-    [:bat        :bite         :human      :neck]      (uniform-rand 1.9 2.9)
-    [:bird       :bite         :human      :*]         (uniform-rand 1.5 1.9)
-    [:bird       :claw         :human      :abdomen]   (uniform-rand 1.5 2.5)
-    [:bird       :claw         :human      :face]      (uniform-rand 1.8 2.8)
-    [:bird       :claw         :human      :neck]      (uniform-rand 1.7 2.7)
-    [:bird       :claw         :human      :*]         (uniform-rand 1.5 2.5)
-    [:boar       :bite         :human      :abdomen]   (uniform-rand 1.5 3.5)
-    [:boar       :bite         :human      :arm]       (uniform-rand 1.5 4.5)
-    [:boar       :bite         :human      :face]      (uniform-rand 1.5 3.5)
-    [:boar       :bite         :human      :foot]      (uniform-rand 1.5 2.5)
-    [:boar       :bite         :human      :head]      (uniform-rand 2.5 4.5)
-    [:boar       :bite         :human      :leg]       (uniform-rand 1.9 2.8)
-    [:boar       :bite         :human      :neck]      (uniform-rand 2.5 3.5)
-    [:boar       :gore         :human      :abdomen]   (uniform-rand 3.5 5.5)
-    [:boar       :gore         :human      :arm]       (uniform-rand 2.5 3.5)
-    [:boar       :gore         :human      :face]      (uniform-rand 4.5 5.5)
-    [:boar       :gore         :human      :foot]      (uniform-rand 2.5 3.5)
-    [:boar       :gore         :human      :head]      (uniform-rand 4.5 5.5)
-    [:boar       :gore         :human      :leg]       (uniform-rand 3.5 4.5)
-    [:boar       :gore         :human      :neck]      (uniform-rand 4.5 5.5)
-    [:centipede  :bite         :human      :*]         (uniform-rand 1.5 1.9)
-    [:clam       :clamp        :human      :*]         (uniform-rand 1.1 1.3)
-    [:fish       :bite         :human      :*]         (uniform-rand 1.2 2.7)
-    [:frog       :claw         :human      :*]         (uniform-rand 1.1 1.5)
-    [:gecko      :bite         :human      :*]         (uniform-rand 1.1 1.3)
-    [:human      :punch        :bat        :body]      (uniform-rand 1.5 2.5)
+    [:bat        :bite         :human      :abdomen]   (dg/uniform 1.5 2.5)
+    [:bat        :bite         :human      :arm]       (dg/uniform 1.5 2.5)
+    [:bat        :bite         :human      :face]      (dg/uniform 1.5 2.5)
+    [:bat        :bite         :human      :foot]      (dg/uniform 1.5 2.5)
+    [:bat        :bite         :human      :head]      (dg/uniform 1.5 2.5)
+    [:bat        :bite         :human      :leg]       (dg/uniform 1.5 2.5)
+    [:bat        :bite         :human      :neck]      (dg/uniform 1.9 2.9)
+    [:bird       :bite         :human      :*]         (dg/uniform 1.5 1.9)
+    [:bird       :claw         :human      :abdomen]   (dg/uniform 1.5 2.5)
+    [:bird       :claw         :human      :face]      (dg/uniform 1.8 2.8)
+    [:bird       :claw         :human      :neck]      (dg/uniform 1.7 2.7)
+    [:bird       :claw         :human      :*]         (dg/uniform 1.5 2.5)
+    [:boar       :bite         :human      :abdomen]   (dg/uniform 1.5 3.5)
+    [:boar       :bite         :human      :arm]       (dg/uniform 1.5 4.5)
+    [:boar       :bite         :human      :face]      (dg/uniform 1.5 3.5)
+    [:boar       :bite         :human      :foot]      (dg/uniform 1.5 2.5)
+    [:boar       :bite         :human      :head]      (dg/uniform 2.5 4.5)
+    [:boar       :bite         :human      :leg]       (dg/uniform 1.9 2.8)
+    [:boar       :bite         :human      :neck]      (dg/uniform 2.5 3.5)
+    [:boar       :gore         :human      :abdomen]   (dg/uniform 3.5 5.5)
+    [:boar       :gore         :human      :arm]       (dg/uniform 2.5 3.5)
+    [:boar       :gore         :human      :face]      (dg/uniform 4.5 5.5)
+    [:boar       :gore         :human      :foot]      (dg/uniform 2.5 3.5)
+    [:boar       :gore         :human      :head]      (dg/uniform 4.5 5.5)
+    [:boar       :gore         :human      :leg]       (dg/uniform 3.5 4.5)
+    [:boar       :gore         :human      :neck]      (dg/uniform 4.5 5.5)
+    [:centipede  :bite         :human      :*]         (dg/uniform 1.5 1.9)
+    [:clam       :clamp        :human      :*]         (dg/uniform 1.1 1.3)
+    [:fish       :bite         :human      :*]         (dg/uniform 1.2 2.7)
+    [:frog       :claw         :human      :*]         (dg/uniform 1.1 1.5)
+    [:gecko      :bite         :human      :*]         (dg/uniform 1.1 1.3)
+    [:human      :punch        :bat        :body]      (dg/uniform 1.5 2.5)
     [:human      :punch        :bat        #{:face
-                                             :head}]   (uniform-rand 1.8 2.8)
-    [:human      :punch        :bat        :leg]       (uniform-rand 1.2 1.5)
-    [:human      :punch        :bat        :wing]      (uniform-rand 1.8 2.8)
-    [:human      :punch        :bird       :beak]      (uniform-rand 1.5 2.5)
-    [:human      :punch        :bird       :body]      (uniform-rand 1.5 2.5)
-    [:human      :punch        :bird       :head]      (uniform-rand 1.5 2.5)
-    [:human      :punch        :bird       :leg]       (uniform-rand 1.5 2.0)
-    [:human      :punch        :bird       :tail]      (uniform-rand 1.5 2.5)
-    [:human      :punch        :bird       :wing]      (uniform-rand 2.5 3.5)
-    [:human      :punch        :boar       :body]      (uniform-rand 1.5 2.5)
-    [:human      :punch        :boar       :eye]       (uniform-rand 3.5 4.5)
-    [:human      :punch        :boar       :face]      (uniform-rand 1.9 2.9)
-    [:human      :punch        :boar       :head]      (uniform-rand 1.3 2.3)
-    [:human      :punch        :boar       :leg]       (uniform-rand 1.7 2.7)
-    [:human      :punch        :boar       :snout]     (uniform-rand 1.7 2.7)
-    [:human      :punch        :boar       :tail]      (uniform-rand 1.1 2.1)
+                                             :head}]   (dg/uniform 1.8 2.8)
+    [:human      :punch        :bat        :leg]       (dg/uniform 1.2 1.5)
+    [:human      :punch        :bat        :wing]      (dg/uniform 1.8 2.8)
+    [:human      :punch        :bird       :beak]      (dg/uniform 1.5 2.5)
+    [:human      :punch        :bird       :body]      (dg/uniform 1.5 2.5)
+    [:human      :punch        :bird       :head]      (dg/uniform 1.5 2.5)
+    [:human      :punch        :bird       :leg]       (dg/uniform 1.5 2.0)
+    [:human      :punch        :bird       :tail]      (dg/uniform 1.5 2.5)
+    [:human      :punch        :bird       :wing]      (dg/uniform 2.5 3.5)
+    [:human      :punch        :boar       :body]      (dg/uniform 1.5 2.5)
+    [:human      :punch        :boar       :eye]       (dg/uniform 3.5 4.5)
+    [:human      :punch        :boar       :face]      (dg/uniform 1.9 2.9)
+    [:human      :punch        :boar       :head]      (dg/uniform 1.3 2.3)
+    [:human      :punch        :boar       :leg]       (dg/uniform 1.7 2.7)
+    [:human      :punch        :boar       :snout]     (dg/uniform 1.7 2.7)
+    [:human      :punch        :boar       :tail]      (dg/uniform 1.1 2.1)
     [:human      :punch        :centipede  #{:body
-                                             :head}]   (uniform-rand 1.9 2.9)
-    [:human      :punch        :centipede  :leg]       (uniform-rand 1.1 1.5)
-    [:human      :punch        :clam       :shell]     (uniform-rand 1.5 2.5)
+                                             :head}]   (dg/uniform 1.9 2.9)
+    [:human      :punch        :centipede  :leg]       (dg/uniform 1.1 1.5)
+    [:human      :punch        :clam       :shell]     (dg/uniform 1.5 2.5)
     [:human      :punch        :fish       #{:body
-                                             :head}]   (uniform-rand 1.5 2.5)
+                                             :head}]   (dg/uniform 1.5 2.5)
     [:human      :punch        :fish       #{:fin
-                                             :tail}]   (uniform-rand 1.5 2.1)
-    [:human      :punch        :frog       :*]         (uniform-rand 1.5 2.5)
-    [:human      :punch        :gecko      :*]         (uniform-rand 1.5 2.5)
+                                             :tail}]   (dg/uniform 1.5 2.1)
+    [:human      :punch        :frog       :*]         (dg/uniform 1.5 2.5)
+    [:human      :punch        :gecko      :*]         (dg/uniform 1.5 2.5)
     [:human      :punch        :monkey     #{:arm
-                                             :leg}]    (uniform-rand 1.5 2.5)
+                                             :leg}]    (dg/uniform 1.5 2.5)
     [:human      :punch        :monkey     #{:body
                                              :face
                                              :head
-                                             :neck}]   (uniform-rand 1.5 2.5)
-    [:human      :punch        :monkey     :tail]      (uniform-rand 1.2 2.0)
+                                             :neck}]   (dg/uniform 1.5 2.5)
+    [:human      :punch        :monkey     :tail]      (dg/uniform 1.2 2.0)
     [:human      :punch        :octopus    #{:body
-                                             :head}]   (uniform-rand 2.5 3.9)
-    [:human      :punch        :octopus    :tentacle]  (uniform-rand 1.5 2.5)
+                                             :head}]   (dg/uniform 2.5 3.9)
+    [:human      :punch        :octopus    :tentacle]  (dg/uniform 1.5 2.5)
     [:human      :punch        :parrot     #{:body
                                              :face
-                                             :head}]   (uniform-rand 1.5 2.5)
+                                             :head}]   (dg/uniform 1.5 2.5)
     [:human      :punch        :parrot     #{:leg
-                                             :tail}]   (uniform-rand 1.5 2.3)
-    [:human      :punch        :parrot     :wing]      (uniform-rand 1.8 2.8)
+                                             :tail}]   (dg/uniform 1.5 2.3)
+    [:human      :punch        :parrot     :wing]      (dg/uniform 1.8 2.8)
     [:human      :punch        :rat        #{:body
                                              :face
                                              :head
-                                             :neck}]   (uniform-rand 1.5 2.5)
+                                             :neck}]   (dg/uniform 1.5 2.5)
     [:human      :punch        :rat        #{:leg
-                                             :tail}]   (uniform-rand 1.5 2.2)
+                                             :tail}]   (dg/uniform 1.5 2.2)
     [:human      :punch        :scorpion   #{:abdomen
                                              :head
-                                             :tail}]   (uniform-rand 1.9 2.9)
+                                             :tail}]   (dg/uniform 1.9 2.9)
     [:human      :punch        :scorpion   #{:claw
-                                             :leg}]    (uniform-rand 1.5 2.5)
+                                             :leg}]    (dg/uniform 1.5 2.5)
     [:human      :punch        :sea-snake  #{:body
-                                             :head}]   (uniform-rand 1.9 2.9)
+                                             :head}]   (dg/uniform 1.9 2.9)
     [:human      :punch        :shark      #{:body
                                              :head
-                                             :nose}]   (uniform-rand 1.5 2.5)
+                                             :nose}]   (dg/uniform 1.5 2.5)
     [:human      :punch        :shark      #{:fin
-                                             :tail}]   (uniform-rand 1.5 2.1)
+                                             :tail}]   (dg/uniform 1.5 2.1)
     [:human      :punch        :snake      #{:body
                                              :head
-                                             :tail}]   (uniform-rand 1.5 2.5)
+                                             :tail}]   (dg/uniform 1.5 2.5)
     [:human      :punch        :spider     #{:abdomen
-                                             :face}]   (uniform-rand 1.5 2.5)
-    [:human      :punch        :spider     #{:leg}]    (uniform-rand 1.5 2.5)
+                                             :face}]   (dg/uniform 1.5 2.5)
+    [:human      :punch        :spider     #{:leg}]    (dg/uniform 1.5 2.5)
     [:human      :punch        :squid      #{:body
                                              :head
-                                             :tentacle}] (uniform-rand 1.5 2.5)
+                                             :tentacle}] (dg/uniform 1.5 2.5)
     [:human      :punch        :turtle     #{:body
                                              :face
                                              :head
-                                             :neck}]   (uniform-rand 1.5 2.5)
-    [:human      :punch        :turtle     :leg]       (uniform-rand 1.5 2.5)
-    [:human      :punch        :turtle     :shell]     (uniform-rand 1.5 2.1)
-    [:human      :punch        :urchin     :body]      (uniform-rand 1.5 2.5)
-    [:human      :axe          :bat        :body]      (uniform-rand 2.5 3.5)
+                                             :neck}]   (dg/uniform 1.5 2.5)
+    [:human      :punch        :turtle     :leg]       (dg/uniform 1.5 2.5)
+    [:human      :punch        :turtle     :shell]     (dg/uniform 1.5 2.1)
+    [:human      :punch        :urchin     :body]      (dg/uniform 1.5 2.5)
+    [:human      :axe          :bat        :body]      (dg/uniform 2.5 3.5)
     [:human      :axe          :bat        #{:face
-                                             :head}]   (uniform-rand 1.9 3.8)
-    [:human      :axe          :bat        :leg]       (uniform-rand 1.9 2.5)
-    [:human      :axe          :bat        :wing]      (uniform-rand 1.8 2.2)
-    [:human      :axe          :bird       :beak]      (uniform-rand 2.5 3.5)
-    [:human      :axe          :bird       :body]      (uniform-rand 2.5 3.5)
-    [:human      :axe          :bird       :head]      (uniform-rand 2.5 3.5)
-    [:human      :axe          :bird       :leg]       (uniform-rand 2.5 3.0)
-    [:human      :axe          :bird       :tail]      (uniform-rand 2.5 3.5)
-    [:human      :axe          :bird       :wing]      (uniform-rand 2.5 3.5)
-    [:human      :axe          :boar       :body]      (uniform-rand 2.5 3.5)
-    [:human      :axe          :boar       :eye]       (uniform-rand 4.5 6.5)
-    [:human      :axe          :boar       :face]      (uniform-rand 1.9 5.9)
-    [:human      :axe          :boar       :head]      (uniform-rand 1.3 6.3)
-    [:human      :axe          :boar       :leg]       (uniform-rand 1.7 4.7)
-    [:human      :axe          :boar       :snout]     (uniform-rand 1.7 4.7)
-    [:human      :axe          :boar       :tail]      (uniform-rand 1.2 2.1)
+                                             :head}]   (dg/uniform 1.9 3.8)
+    [:human      :axe          :bat        :leg]       (dg/uniform 1.9 2.5)
+    [:human      :axe          :bat        :wing]      (dg/uniform 1.8 2.2)
+    [:human      :axe          :bird       :beak]      (dg/uniform 2.5 3.5)
+    [:human      :axe          :bird       :body]      (dg/uniform 2.5 3.5)
+    [:human      :axe          :bird       :head]      (dg/uniform 2.5 3.5)
+    [:human      :axe          :bird       :leg]       (dg/uniform 2.5 3.0)
+    [:human      :axe          :bird       :tail]      (dg/uniform 2.5 3.5)
+    [:human      :axe          :bird       :wing]      (dg/uniform 2.5 3.5)
+    [:human      :axe          :boar       :body]      (dg/uniform 2.5 3.5)
+    [:human      :axe          :boar       :eye]       (dg/uniform 4.5 6.5)
+    [:human      :axe          :boar       :face]      (dg/uniform 1.9 5.9)
+    [:human      :axe          :boar       :head]      (dg/uniform 1.3 6.3)
+    [:human      :axe          :boar       :leg]       (dg/uniform 1.7 4.7)
+    [:human      :axe          :boar       :snout]     (dg/uniform 1.7 4.7)
+    [:human      :axe          :boar       :tail]      (dg/uniform 1.2 2.1)
     [:human      :axe          :centipede  #{:body
-                                             :head}]   (uniform-rand 1.9 3.9)
-    [:human      :axe          :centipede  :leg]       (uniform-rand 1.2 1.6)
-    [:human      :axe          :clam       :shell]     (uniform-rand 3.5 5.5)
+                                             :head}]   (dg/uniform 1.9 3.9)
+    [:human      :axe          :centipede  :leg]       (dg/uniform 1.2 1.6)
+    [:human      :axe          :clam       :shell]     (dg/uniform 3.5 5.5)
     [:human      :axe          :fish       #{:body
-                                             :head}]   (uniform-rand 2.5 5.5)
+                                             :head}]   (dg/uniform 2.5 5.5)
     [:human      :axe          :fish       #{:fin
-                                             :tail}]   (uniform-rand 1.5 2.5)
-    [:human      :axe          :frog       :*]         (uniform-rand 1.5 4.5)
-    [:human      :axe          :gecko      :*]         (uniform-rand 1.5 4.5)
+                                             :tail}]   (dg/uniform 1.5 2.5)
+    [:human      :axe          :frog       :*]         (dg/uniform 1.5 4.5)
+    [:human      :axe          :gecko      :*]         (dg/uniform 1.5 4.5)
     [:human      :axe          :monkey     #{:arm
-                                             :leg}]    (uniform-rand 1.5 5.5)
+                                             :leg}]    (dg/uniform 1.5 5.5)
     [:human      :axe          :monkey     #{:body
                                              :face
                                              :head
-                                             :neck}]   (uniform-rand 2.5 7.5)
-    [:human      :axe          :monkey     :tail]      (uniform-rand 1.2 2.8)
+                                             :neck}]   (dg/uniform 2.5 7.5)
+    [:human      :axe          :monkey     :tail]      (dg/uniform 1.2 2.8)
     [:human      :axe          :octopus    #{:body
-                                             :head}]   (uniform-rand 2.5 6.9)
-    [:human      :axe          :octopus    :tentacle]  (uniform-rand 1.5 4.5)
+                                             :head}]   (dg/uniform 2.5 6.9)
+    [:human      :axe          :octopus    :tentacle]  (dg/uniform 1.5 4.5)
     [:human      :axe          :parrot     #{:body
                                              :face
-                                             :head}]   (uniform-rand 1.5 4.5)
+                                             :head}]   (dg/uniform 1.5 4.5)
     [:human      :axe          :parrot     #{:leg
-                                             :tail}]   (uniform-rand 1.5 3.3)
-    [:human      :axe          :parrot     :wing]      (uniform-rand 1.8 3.8)
+                                             :tail}]   (dg/uniform 1.5 3.3)
+    [:human      :axe          :parrot     :wing]      (dg/uniform 1.8 3.8)
     [:human      :axe          :rat        #{:body
                                              :face
                                              :head
-                                             :neck}]   (uniform-rand 1.5 5.5)
+                                             :neck}]   (dg/uniform 1.5 5.5)
     [:human      :axe          :rat        #{:leg
-                                             :tail}]   (uniform-rand 1.5 3.2)
+                                             :tail}]   (dg/uniform 1.5 3.2)
     [:human      :axe          :scorpion   #{:abdomen
                                              :head
-                                             :tail}]   (uniform-rand 1.9 4.9)
+                                             :tail}]   (dg/uniform 1.9 4.9)
     [:human      :axe          :scorpion   #{:claw
-                                             :leg}]    (uniform-rand 1.5 3.5)
+                                             :leg}]    (dg/uniform 1.5 3.5)
     [:human      :axe          :sea-snake  #{:body
-                                             :head}]   (uniform-rand 1.9 4.9)
+                                             :head}]   (dg/uniform 1.9 4.9)
     [:human      :axe          :shark      #{:body
                                              :head
-                                             :nose}]   (uniform-rand 1.5 5.5)
+                                             :nose}]   (dg/uniform 1.5 5.5)
     [:human      :axe          :shark      #{:fin
-                                             :tail}]   (uniform-rand 1.5 3.1)
+                                             :tail}]   (dg/uniform 1.5 3.1)
     [:human      :axe          :snake      #{:body
                                              :head
-                                             :tail}]   (uniform-rand 1.5 5.5)
+                                             :tail}]   (dg/uniform 1.5 5.5)
     [:human      :axe          :spider     #{:abdomen
-                                             :face}]   (uniform-rand 1.5 4.5)
-    [:human      :axe          :spider     #{:leg}]    (uniform-rand 1.5 4.5)
+                                             :face}]   (dg/uniform 1.5 4.5)
+    [:human      :axe          :spider     #{:leg}]    (dg/uniform 1.5 4.5)
     [:human      :axe          :squid      #{:body
                                              :head
-                                             :tentacle}] (uniform-rand 1.5 5.5)
+                                             :tentacle}] (dg/uniform 1.5 5.5)
     [:human      :axe          :turtle     #{:body
                                              :face
                                              :head
-                                             :neck}]   (uniform-rand 1.5 5.5)
-    [:human      :axe          :turtle     :leg]       (uniform-rand 1.5 4.5)
-    [:human      :axe          :turtle     :shell]     (uniform-rand 1.5 3.1)
-    [:human      :axe          :urchin     :body]      (uniform-rand 1.5 4.5)
+                                             :neck}]   (dg/uniform 1.5 5.5)
+    [:human      :axe          :turtle     :leg]       (dg/uniform 1.5 4.5)
+    [:human      :axe          :turtle     :shell]     (dg/uniform 1.5 3.1)
+    [:human      :axe          :urchin     :body]      (dg/uniform 1.5 4.5)
     [:monkey     :bite         :human      #{:abdomen
                                              :head
-                                             :face}]   (uniform-rand 1.5 2.5)
+                                             :face}]   (dg/uniform 1.5 2.5)
     [:monkey     :bite         :human      #{:arm
                                              :foot
-                                             :leg}]    (uniform-rand 1.5 2.5)
+                                             :leg}]    (dg/uniform 1.5 2.5)
     [:monkey     :bite         :human      #{:neck
                                              :abdomen
                                              :face
-                                             :head}]   (uniform-rand 1.5 2.9)
+                                             :head}]   (dg/uniform 1.5 2.9)
     [:monkey     :punch        :human      #{:arm
                                              :foot
-                                             :leg}]    (uniform-rand 1.5 2.1)
-    [:monkey     :punch        :human      :neck]      (uniform-rand 1.5 2.8)
+                                             :leg}]    (dg/uniform 1.5 2.1)
+    [:monkey     :punch        :human      :neck]      (dg/uniform 1.5 2.8)
     [:octopus    :bite         :human      #{:abdomen
                                              :head
                                              :neck
-                                             :face}]   (uniform-rand 1.5 2.5)
+                                             :face}]   (dg/uniform 1.5 2.5)
     [:octopus    :bite         :human      #{:foot
                                              :arm
-                                             :leg}]    (uniform-rand 1.5 2.5)
+                                             :leg}]    (dg/uniform 1.5 2.5)
     [:octopus    :bite-venom   :human      #{:abdomen
                                              :face
                                              :neck
-                                             :head}]   (uniform-rand 1.5 2.5)
+                                             :head}]   (dg/uniform 1.5 2.5)
     [:octopus    :bite-venom   :human      #{:arm
                                              :foot
-                                             :leg}]    (uniform-rand 1.5 2.5)
-    [:octopus    :squeeze      :human      :neck]      (uniform-rand 2.5 4.5)
-    [:octopus    :squeeze      :human      :*]         (uniform-rand 1.5 2.5)
+                                             :leg}]    (dg/uniform 1.5 2.5)
+    [:octopus    :squeeze      :human      :neck]      (dg/uniform 2.5 4.5)
+    [:octopus    :squeeze      :human      :*]         (dg/uniform 1.5 2.5)
     [:parrot     :bite         :human      #{:abdomen
                                              :head
                                              :face
-                                             :neck}]   (uniform-rand 1.5 2.5)
+                                             :neck}]   (dg/uniform 1.5 2.5)
     [:parrot     :bite         :human      #{:arm
                                              :foot
-                                             :leg}]    (uniform-rand 1.5 2.0)
-    [:parrot     :claw         :human      :*]         (uniform-rand 1.2 1.7)
+                                             :leg}]    (dg/uniform 1.5 2.0)
+    [:parrot     :claw         :human      :*]         (dg/uniform 1.2 1.7)
     [:rat        :bite         :human      #{:abdomen
                                              :face
                                              :head
-                                             :neck}]      (uniform-rand 1.5 2.5)
+                                             :neck}]      (dg/uniform 1.5 2.5)
     [:rat        :bite         :human      #{:arm
                                              :foot
-                                             :leg}]       (uniform-rand 1.5 2.5)
-    [:rat        :claw         :human      :*]   (uniform-rand 1.5 2.5)
-    [:scorpion   :bite         :human      :face]      (uniform-rand 1.5 2.5)
-    [:scorpion   :bite         :human      :*]   (uniform-rand 1.5 2.5)
-    [:scorpion   :claw         :human      :*]   (uniform-rand 1.5 2.5)
-    [:scorpion   :sting-venom  :human      :abdomen]   (uniform-rand 1.5 2.5)
-    [:scorpion   :sting-venom  :human      :arm]       (uniform-rand 1.5 2.0)
-    [:scorpion   :sting-venom  :human      :face]      (uniform-rand 2.5 3.5)
-    [:scorpion   :sting-venom  :human      :foot]      (uniform-rand 1.5 1.9)
-    [:scorpion   :sting-venom  :human      :head]      (uniform-rand 2.0 2.5)
-    [:scorpion   :sting-venom  :human      :leg]       (uniform-rand 1.8 2.4)
-    [:scorpion   :sting-venom  :human      :neck]      (uniform-rand 2.0 2.5)
-    [:sea-snake  :bite         :human      :*]         (uniform-rand 1.5 2.1)
-    [:sea-snake  :bite-venom   :human      :abdomen]   (uniform-rand 1.6 2.5)
-    [:sea-snake  :bite-venom   :human      :arm]       (uniform-rand 1.6 2.3)
-    [:sea-snake  :bite-venom   :human      :face]      (uniform-rand 1.5 2.6)
-    [:sea-snake  :bite-venom   :human      :foot]      (uniform-rand 1.5 2.2)
-    [:sea-snake  :bite-venom   :human      :head]      (uniform-rand 1.7 2.5)
-    [:sea-snake  :bite-venom   :human      :leg]       (uniform-rand 1.5 2.2)
-    [:sea-snake  :bite-venom   :human      :neck]      (uniform-rand 1.8 2.5)
-    [:shark      :bite         :human      :abdomen]   (uniform-rand 3.5 5.5)
-    [:shark      :bite         :human      :arm]       (uniform-rand 2.5 4.5)
-    [:shark      :bite         :human      :face]      (uniform-rand 3.5 5.5)
-    [:shark      :bite         :human      :foot]      (uniform-rand 3.5 5.5)
-    [:shark      :bite         :human      :head]      (uniform-rand 3.5 6.5)
-    [:shark      :bite         :human      :leg]       (uniform-rand 3.5 5.5)
-    [:shark      :bite         :human      :neck]      (uniform-rand 2.5 4.5)
-    [:snake      :bite         :human      :*]         (uniform-rand 2.1 2.6)
-    [:snake      :bite-venom   :human      :*]         (uniform-rand 1.6 2.2)
-    [:squid      :bite         :human      :*]         (uniform-rand 1.5 3.5)
-    [:squid      :squeeze      :human      :neck]      (uniform-rand 2.5 3.5)
-    [:squid      :squeeze      :human      :*]         (uniform-rand 1.5 3.5)
-    [:turtle     :bite         :human      :*]         (uniform-rand 1.5 2.5)
+                                             :leg}]       (dg/uniform 1.5 2.5)
+    [:rat        :claw         :human      :*]   (dg/uniform 1.5 2.5)
+    [:scorpion   :bite         :human      :face]      (dg/uniform 1.5 2.5)
+    [:scorpion   :bite         :human      :*]   (dg/uniform 1.5 2.5)
+    [:scorpion   :claw         :human      :*]   (dg/uniform 1.5 2.5)
+    [:scorpion   :sting-venom  :human      :abdomen]   (dg/uniform 1.5 2.5)
+    [:scorpion   :sting-venom  :human      :arm]       (dg/uniform 1.5 2.0)
+    [:scorpion   :sting-venom  :human      :face]      (dg/uniform 2.5 3.5)
+    [:scorpion   :sting-venom  :human      :foot]      (dg/uniform 1.5 1.9)
+    [:scorpion   :sting-venom  :human      :head]      (dg/uniform 2.0 2.5)
+    [:scorpion   :sting-venom  :human      :leg]       (dg/uniform 1.8 2.4)
+    [:scorpion   :sting-venom  :human      :neck]      (dg/uniform 2.0 2.5)
+    [:sea-snake  :bite         :human      :*]         (dg/uniform 1.5 2.1)
+    [:sea-snake  :bite-venom   :human      :abdomen]   (dg/uniform 1.6 2.5)
+    [:sea-snake  :bite-venom   :human      :arm]       (dg/uniform 1.6 2.3)
+    [:sea-snake  :bite-venom   :human      :face]      (dg/uniform 1.5 2.6)
+    [:sea-snake  :bite-venom   :human      :foot]      (dg/uniform 1.5 2.2)
+    [:sea-snake  :bite-venom   :human      :head]      (dg/uniform 1.7 2.5)
+    [:sea-snake  :bite-venom   :human      :leg]       (dg/uniform 1.5 2.2)
+    [:sea-snake  :bite-venom   :human      :neck]      (dg/uniform 1.8 2.5)
+    [:shark      :bite         :human      :abdomen]   (dg/uniform 3.5 5.5)
+    [:shark      :bite         :human      :arm]       (dg/uniform 2.5 4.5)
+    [:shark      :bite         :human      :face]      (dg/uniform 3.5 5.5)
+    [:shark      :bite         :human      :foot]      (dg/uniform 3.5 5.5)
+    [:shark      :bite         :human      :head]      (dg/uniform 3.5 6.5)
+    [:shark      :bite         :human      :leg]       (dg/uniform 3.5 5.5)
+    [:shark      :bite         :human      :neck]      (dg/uniform 2.5 4.5)
+    [:snake      :bite         :human      :*]         (dg/uniform 2.1 2.6)
+    [:snake      :bite-venom   :human      :*]         (dg/uniform 1.6 2.2)
+    [:squid      :bite         :human      :*]         (dg/uniform 1.5 3.5)
+    [:squid      :squeeze      :human      :neck]      (dg/uniform 2.5 3.5)
+    [:squid      :squeeze      :human      :*]         (dg/uniform 1.5 3.5)
+    [:turtle     :bite         :human      :*]         (dg/uniform 1.5 2.5)
     [:urchin     :spike        :human      #{:head
-                                             :neck}]   (uniform-rand 1.9 2.5)
-    [:urchin     :spike        :human      :*]         (uniform-rand 1.5 2.2)
-    [:* :* :* :*] (+ (rand) 1.5)))
+                                             :neck}]   (dg/uniform 1.9 2.5)
+    [:urchin     :spike        :human      :*]         (dg/uniform 1.5 2.2)
+    [:* :* :* :*] (+ (dg/float) 1.5)))
 
 (defn attack
   "Perform combat. The attacker fights the defender, but not vice-versa.
@@ -406,11 +407,11 @@
         attack             (or (get (first (filter (fn [item] (contains? item :wielded))
                                            (get-in state (conj attacker-path :inventory) [])))
                                     :attack)
-                               (rand-nth (vec (get attacker :attacks))))
-        defender-body-part (rand-nth (vec (get defender :body-parts)))
+                               (dg/rand-nth (vec (get attacker :attacks))))
+        defender-body-part (dg/rand-nth (vec (get defender :body-parts)))
         {x :x y :y}        (get defender :pos)
         hp                 (get defender :hp)
-        hit-or-miss        (rand-nth (concat (repeat (get attacker :speed) :hit)
+        hit-or-miss        (dg/rand-nth (concat (repeat (get attacker :speed) :hit)
                                              (repeat (get defender :speed) :miss)))
         dmg                (case hit-or-miss
                              :hit (calc-dmg (get attacker :race) attack (get defender :race) defender-body-part)
@@ -436,7 +437,7 @@
                         :miss :white))
           ;; chance of being envenomed by venomous attacks
           (update-in (conj defender-path :status) (fn [status] (if (and (re-find #"venom" (str attack))
-                                                                        (= (rand-int 10) 0))
+                                                                        (= (uniform-int 10) 0))
                                                                  (conj status :poisioned)
                                                                  status)))
           ;; chance of being wounded
@@ -465,7 +466,7 @@
             ;; maybe add corpse
             (update-in [:world :places (current-place-id state) y x :items]
                        (fn [items]
-                         (if (> (rand) 0.2)
+                         (if (> (dg/float) 0.2)
                            (conj items (gen-corpse defender))
                            items)))
             (append-log (gen-attack-message attacker

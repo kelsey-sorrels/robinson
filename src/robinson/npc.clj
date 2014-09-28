@@ -4,7 +4,8 @@
         robinson.common
         [robinson.monstergen :exclude [-main]]
         [robinson.dialog :exclude [-main]])
-  (:require [taoensso.timbre :as timbre]))
+  (:require [clojure.data.generators :as dg]
+            [taoensso.timbre :as timbre]))
 
 (timbre/refer-timbre)
 
@@ -143,7 +144,7 @@
 (defn add-npcs
   "Randomly add monsters to the current place's in floor cells."
   [state level]
-  (let [[cell x y] (first (shuffle (filter (fn [[cell x y]] (not (collide? state x y {:include-npcs? true
+  (let [[cell x y] (first (dg/shuffle (filter (fn [[cell x y]] (not (collide? state x y {:include-npcs? true
                                                                                        :collide-water? false})))
                                            (with-xy (current-place state)))))]
     (add-npc state (-> state :world :current-place)
@@ -154,7 +155,7 @@
 (defn add-npcs-random
   "Randomly add monsters to the current place."
   [state level]
-  (if (and (< (rand-int 100) 2)
+  (if (and (< (uniform-int 100) 2)
            (< (count (filter (fn [npc] (= (-> state :world :current-place)
                                           (get npc :place)))
                              (-> state :world :npcs)))

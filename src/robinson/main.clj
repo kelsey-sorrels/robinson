@@ -93,7 +93,6 @@
                                                (get settings :font-size))
         state {:world world :screen terminal :quests quest-map :dialog dialog :data data :settings settings}
         state (reduce (fn [state _] (add-npcs state 1)) state (range 5))]
-
-    ;; tick once using the rest (.) command to update visibility
+    ;; tick once to render frame
     (tick state \.)))
 

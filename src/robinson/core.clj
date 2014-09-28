@@ -6,6 +6,9 @@
         clojure.stacktrace)
   (:gen-class))
 
+;; Conveinience ref for accessing the last state when in repl.
+(defonce state-ref (atom nil))
+
 (defn -main
   "Entry default point to application.
 
@@ -18,6 +21,7 @@
   []
   ; start with initial state from setup-fn
   (loop [state (setup)]
+    (reset! state-ref state)
     (if (nil? state)
       (System/exit 0))
     ; tick the old state through the tick-fn to get the new state

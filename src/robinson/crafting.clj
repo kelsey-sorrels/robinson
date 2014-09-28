@@ -76,5 +76,5 @@
                     (exhaust-by-ids exhaust)
                     ((fn [state] (reduce update-crafted state (map (fn [id] {:id id}) add)))))]
         state)
-      (append-log state "You don't have the necessary items to make this recipe."))))
+      (ui-hint state "You don't have the necessary items to make this recipe."))))
 

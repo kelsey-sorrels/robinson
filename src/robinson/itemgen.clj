@@ -8,7 +8,7 @@
 (defn gen-corpse
   "Generate a corpse from an npc."
   [npc]
-  {:id          (keyword (clojure.string/join (get npc :race) "-corpse"))
+  {:id          (keyword (str (name (get npc :race)) "-corpse"))
    :type        :food
    :name        (format "%s corpse" (name (get npc :race)))
    :name-plural (format "%s corpses" (name (get npc :race)))
@@ -62,6 +62,11 @@
   [n]
   {:id :rope :name "rope" :name-plural "ropes" :count n})
 
+(defn gen-bamboo
+  "Generate bamboo"
+  [n]
+  {:id :bamboo :name "bamboo" :name-plural "bamboo" :count n})
+
 (defn gen-obsidian-spears
   "Generate obsidian-spears"
   [n]
@@ -82,6 +87,11 @@
   [n]
   {:id :bamboo-water-collector :name "bamboo water collector" :name-plural "bamboo water collectors" :count n})
 
+(defn gen-rations
+  "Generate raions"
+  [n]
+  {:id :ration :type :food :name "ration" :plural-name "rations" :hunger 100 :count n})
+
 (defn id->items
   "Generate item from id."
   [id n]
@@ -97,10 +107,12 @@
        :grass                  gen-grass
        :obsidian-blade         gen-obsidian-blades
        :rope                   gen-rope
+       :bamboo                 gen-bamboo
        :obsidian-spear         gen-obsidian-spears
        :obsidian-axe           gen-obsidian-axes
        :obsidian-knife         gen-obsidian-knives
-       :bamboo-water-collector gen-bamboo-water-collectors)
+       :bamboo-water-collector gen-bamboo-water-collectors
+       :rations                gen-rations)
      n)))
 
 (defn id->item

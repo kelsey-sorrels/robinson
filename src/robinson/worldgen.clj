@@ -13,38 +13,6 @@
 
 (timbre/refer-timbre)
 
-(defn init-place-0
-  "Create an example place with two rooms, some doors, two items
-   and a set of down stairs that lead to place `:1`"
-  []
-  (add-extras (ascii-to-place
-    ["----   ----"
-     "|..+## |..|"
-     "|..| ##+..|"
-     "----   ----"])
-    [[[1 9 :items] [{:type :ring   :name "Ring of Power"}]]
-     [[1 1 :items] [{:type :scroll :name "Scroll of Power"}]]
-     [[2 9]        {:type :down-stairs :dest-place :1}]]))
-
-(defn init-place-1
-  "Create an example place with two rooms, a door, two items
-   and a set of up stairs to place `:0`"
-  []
-  (add-extras (ascii-to-place
-    ["-----------            "
-     "|.........|            "
-     "|.........|            "
-     "--------+--            "
-     "        #              "
-     "        ##   --------  "
-     "         #   |......|  "
-     "         ####.......|  "
-     "             --------  "
-     "                       "])
-    [[[6 15  :items] [{:type :ring   :name "Ring of Power"}]]
-     [[6 14  :items] [{:type :scroll :name "Scroll of Power"}]]
-     [[7 19]         {:type :up-stairs :dest-place :0}]]))
-
 ;; clisk utils
 (defn invert [a] (cliskf/v+ [1 1 1] (cliskf/v* [-1 -1 -1] a)))
 
@@ -152,11 +120,6 @@
         _ (debug "place" place)]
     (add-extras place (concat [down-stairs up-stairs] drops cash-drops))))
 
-(defn test-inventory
-  "Make five random items for the player to have when creating a new world."
-  []
-  (gen-items 5))
-
 (defn init-world
   "Create a randomly generated world.
 
@@ -185,7 +148,7 @@
    added during the course of the game."
   []
   ;; Assign hotkeys to inventory and remove from remaining hotkeys
-  (let [inventory              (test-inventory)
+  (let [inventory              [(gen-plant-fibers 1)]
         remaining-hotkeys      (vec (seq "abcdefghijklmnopqrstuvwxyzABCdEFGHIJKLMNOPQRSTUVWQYZ"))
         hotkey-groups          (split-at (count inventory) remaining-hotkeys)
         inventory-with-hotkeys (vec (map #(assoc %1 :hotkey %2) inventory (first hotkey-groups)))
@@ -203,10 +166,11 @@
             ;:1 (init-place-1)}
    :current-place :0
    :time 0
-   :current-state :normal
+   :current-state :start
    :selected-hotkeys #{}
    :remaining-hotkeys remaining-hotkeys
    :log []
+   :ui-hint nil
    :dialog-log []
    :player {
             :id :player
@@ -215,8 +179,9 @@
             :class :ranger
             :movement-policy :entourage
             :in-party? true
-            :inventory [(gen-plant-fibers 1)]
-            :hp 1
+            :inventory inventory-with-hotkeys
+            :speed 1
+            :hp 10
             :max-hp 10
             :will-to-live 100
             :max-will-to-live 100
@@ -241,60 +206,7 @@
             ;; map from body-part to {:time <int> :damage <float>}
             :wounds {}}
    :quests {}
-   :npcs [
-;{
-;     :id :helga
-;     :name "Helga"
-;     :race :human
-;     :class :rogue
-;     :movement-policy :entourage
-;     :in-party? true
-;     :inventory []
-;     :hp 10
-;     :max-hp 10
-;     :$ 0
-;     :xp 0
-;     :level 0
-;     :hunger 0
-;     :pos (nth party-pos 0)
-;     :place :0
-;     :state #{}
-;     :image-path "./images/helga.png"}{
-;     :id :cronk
-;     :name "Cronk"
-;     :race :human
-;     :class :wizard
-;     :movement-policy :entourage
-;     :in-party? true
-;     :inventory []
-;     :hp 10
-;     :max-hp 10
-;     :$ 0
-;     :xp 0
-;     :level 0
-;     :hunger 0
-;     :pos (nth party-pos 1)
-;     :place :0
-;     :state #{}
-;     :image-path "./images/cronk.png"}{
-;     :id :hans
-;     :name "Hans"
-;     :race :human
-;     :class :fighter
-;     :movement-policy :entourage
-;     :in-party? true
-;     :inventory []
-;     :hp 10
-;     :max-hp 10
-;     :$ 0
-;     :xp 0
-;     :level 0
-;     :hunger 0
-;     :pos (nth party-pos 2)
-;     :place :0
-;     :state #{}
-;     :image-path "./images/hans.png"}
-]}))
+   :npcs []}))
 
 (defn -main [& args]
   (let [_ (cliskp/seed-simplex-noise!)

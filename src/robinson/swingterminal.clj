@@ -135,8 +135,9 @@
                              (keyPressed [this e]
                                ;(println "keyPressed keyCode" (.getKeyCode e) "escape" KeyEvent/VK_ESCAPE "escape?" (= (.getKeyCode e) KeyEvent/VK_ESCAPE))
                                (when-let [k (cond
-                                              (= (.getKeyCode e) KeyEvent/VK_ENTER)  :enter
-                                              (= (.getKeyCode e) KeyEvent/VK_ESCAPE) :escape
+                                              (= (.getKeyCode e) KeyEvent/VK_ENTER)      :enter
+                                              (= (.getKeyCode e) KeyEvent/VK_ESCAPE)     :escape
+                                              (= (.getKeyCode e) KeyEvent/VK_BACK_SPACE) :backspace
                                               true (let [altDown (not= (bit-and (.getModifiersEx e) InputEvent/ALT_DOWN_MASK) 0)
                                                          ctrlDown (not= (bit-and (.getModifiersEx e) InputEvent/CTRL_DOWN_MASK) 0)]
                                                      ;(println "processing non-enter non-escape keypress")
@@ -150,7 +151,7 @@
                                (let [character (.getKeyChar e)
                                      altDown   (not= (bit-and (.getModifiersEx e) InputEvent/ALT_DOWN_MASK) 0)
                                      ctrlDown  (not= (bit-and (.getModifiersEx e) InputEvent/CTRL_DOWN_MASK) 0)
-                                     ignore    #{(char 33) (char 27)}]
+                                     ignore    #{(char 10) (char 33) (char 27)}]
                                  (when-not (contains? ignore character)
                                    (if ctrlDown
                                        (on-key-fn (char (+ (int \a) -1 (int character))))

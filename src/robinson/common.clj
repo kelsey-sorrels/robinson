@@ -79,9 +79,9 @@
   (distance (-> state :world :player :pos) pos))
 
 (defn adjacent-to-player?
-  "Return true is pos is adjacent to the player's pos."
+  "Return true is pos is adjacent to the player's pos including diagonals."
   [state pos]
-  (<= (distance-from-player state pos) 1))
+  (<= (distance-from-player state pos) 1.5))
  
 
 (defn fill-missing
@@ -447,6 +447,14 @@
                                      {:text message
                                       :time (-> state :world :time)
                                       :color color}))))))
+
+(defn ui-hint
+  [state msg]
+  (assoc-in state [:world :ui-hint] msg))
+
+(defn clear-ui-hint
+  [state]
+  (ui-hint state nil))
 
 (defn conj-in-cell-items
   "Adds an item to [x y] in the current place. Simple, right?"

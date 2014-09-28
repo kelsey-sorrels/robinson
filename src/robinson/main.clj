@@ -8,6 +8,7 @@
            [robinson.monstergen :exclude [-main]]
            robinson.render)
   (:require 
+            [clojure.data.generators :as dg]
             [robinson.swingterminal :as swingterminal]
             clojure.edn
             [taoensso.timbre :as timbre]
@@ -57,33 +58,35 @@
 
    * `quests` that are loaded dynamically on startup."
   []
-  (let [world (if (.exists (clojure.java.io/file "save/world.edn"))
-                (->> (slurp "save/world.edn")
-                     (clojure.edn/read-string {:readers {'robinson.monstergen.Monster map->Monster}}))
-                (init-world))
-         ;; load quests
-         _ (doall (map #(load-file (.getPath %))
-                        (filter (fn [file] (.endsWith (.getPath file) ".clj"))
-                                (.listFiles (clojure.java.io/file "quests")))))
-
-         ;; get a list of all the quests that have been loaded
-         quests (map deref (flatten (map #(-> % ns-publics vals)
-                                          (filter #(.contains (-> % ns-name str)
-                                                              "robinson.quests")
-                                                   (all-ns)))))
-        quest-map (apply hash-map (mapcat (fn [i] [(i :id) i]) quests))
-        _ (doall (map #(info "Loaded quest" (% :name)) quests))
-        _ (info "dialogs" (apply merge (map :dialog quests)))
-        dialog (apply merge (map (fn [[k v]]
-                                   {k (dialog->fsm v)})
-                                 (apply merge (map :dialog quests))))
-        data  (apply hash-map
+  (let [data  (apply hash-map
                 (mapcat (fn [file]
                           [(keyword (.getName file))
                            (->> (.getPath file)
                              (slurp)
                              (clojure.edn/read-string))])
                         (.listFiles (clojure.java.io/file "data"))))
+        _     (when (get data :seed)
+                (alter-var-root #'dg/*rnd* (constantly (java.util.Random. (get data :seed)))))
+        world (if (.exists (clojure.java.io/file "save/world.edn"))
+                (->> (slurp "save/world.edn")
+                     (clojure.edn/read-string {:readers {'robinson.monstergen.Monster map->Monster}}))
+                (init-world (dg/long)))
+        ;; load quests
+        _ (doall (map #(load-file (.getPath %))
+                       (filter (fn [file] (.endsWith (.getPath file) ".clj"))
+                               (.listFiles (clojure.java.io/file "quests")))))
+
+        ;; get a list of all the quests that have been loaded
+        quests (map deref (flatten (map #(-> % ns-publics vals)
+                                         (filter #(.contains (-> % ns-name str)
+                                                             "robinson.quests")
+                                                  (all-ns)))))
+        quest-map (apply hash-map (mapcat (fn [i] [(i :id) i]) quests))
+        _ (doall (map #(info "Loaded quest" (% :name)) quests))
+        _ (info "dialogs" (apply merge (map :dialog quests)))
+        dialog (apply merge (map (fn [[k v]]
+                                   {k (dialog->fsm v)})
+                                 (apply merge (map :dialog quests))))
         _ (debug "loaded data" data)
         settings (->> (slurp "config/settings.edn")
                       (clojure.edn/read-string))

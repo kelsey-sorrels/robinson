@@ -3,6 +3,7 @@
   (:use     robinson.common)
   (:require [robinson.monstergen :as mg]
             [robinson.itemgen :as ig]
+            [clojure.data.generators :as dg]
             [taoensso.timbre :as timbre]
             [pallet.thread-expr :as tx]))
 
@@ -25,8 +26,8 @@
     inventory-with-hotkeys))
 
 (defn start-text []
-  (let [mode-of-transport (rand-nth ["boat" "airplane" "train" "blimp" "hovercraft" "bicycle"])
-        natural-disaster  (rand-nth ["hurricane" "tornado" "dark storm"])]
+  (let [mode-of-transport (dg/rand-nth ["boat" "airplane" "train" "blimp" "hovercraft" "bicycle"])
+        natural-disaster  (dg/rand-nth ["hurricane" "tornado" "dark storm"])]
     (format "While traveling by %s, a %s engulfs you.\nYou awake on an island."
              mode-of-transport
              natural-disaster)))

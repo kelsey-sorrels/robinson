@@ -1,10 +1,15 @@
 ;; Utility functions and functions for manipulating state
 (ns robinson.common
-  (:use [robinson.mapgen :exclude [-main]])
-  (:require [taoensso.timbre :as timbre]
+  ;;(:use [robinson.mapgen :exclude [-main]])
+  (:require [ clojure.data.generators :as dg]
+            [taoensso.timbre :as timbre]
             [pallet.thread-expr :as tx]))
 
 (timbre/refer-timbre)
+
+(defn uniform-int
+ ([hi] (uniform-int 0 hi))
+ ([lo hi] (int (dg/uniform lo hi))))
 
 (letfn [(arg-when- [threader arg sym condition body]
   `(let [~sym ~arg
@@ -42,17 +47,6 @@
     {:indent 1}
     [arg [sym] condition form else-form]
     (arg-if- 'clojure.core/-> arg sym condition form else-form)))
-
-(defn uniform-rand
-  [minimum maximum]
-  {:pre [(< minimum maximum)]}
-  (+ (rand (- maximum minimum)) minimum))
-
-(defn uniform-rand-int
-  [minimum maximum]
-  {:pre [(< minimum maximum)]}
-  (+ (rand-int (- maximum minimum)) minimum))
-
 
 (defn chebyshev-distance
   "Chebyshev/chessboard distance between 2 points"

@@ -1,6 +1,7 @@
 ;; Functions for generating random monsters
 (ns robinson.monstergen
-  (:require [clojure.math.combinatorics :as combo]))
+  (:require [clojure.math.combinatorics :as combo]
+            [clojure.data.generators :as dg]))
 
 (defn can-move-in-water?
   [race]
@@ -355,8 +356,8 @@
                            gen-urchin 
                            gen-squid]]
     (case cell-type
-      :water ((rand-nth water-monster-fns))
-      ((rand-nth land-monster-fns)))))
+      :water ((dg/rand-nth water-monster-fns))
+      ((dg/rand-nth land-monster-fns)))))
 
 (defn gen-monsters
   "Generate `n` random monsters using `gen-monster`."

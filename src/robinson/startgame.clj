@@ -10,13 +10,18 @@
 
 (defn start-inventory []
   (let [inventory              [(ig/gen-rope 1)
-                                (ig/gen-obsidian-axes 1)
-                                (ig/gen-obsidian-knives 1)
-                                (ig/gen-obsidian-spears 1)
-                                (ig/gen-bamboo 10)
-                                (ig/gen-rations 2)]
+                                (ig/gen-matches 1)
+                                (ig/gen-knives 1)
+                                (ig/gen-plant-guides 1)
+                                (ig/gen-bandages 10)
+                                (ig/gen-fishing-line-and-hooks 2)
+                                (ig/gen-rations 2)
+                                (ig/gen-flashlights 1)
+                                (ig/gen-bedrolls 1)
+                                (ig/gen-tarps 1)
+                                (ig/gen-saws 1)]
         hotkeys                (vec (seq "abcdefghijklmnopqrstuvwxyzABCdEFGHIJKLMNOPQRSTUVWQYZ"))
-        inventory-with-hotkeys (vec (map #(assoc %1 :hotkey %2) inventory hotkeys))]
+        inventory-with-hotkeys (mapv #(assoc %1 :hotkey %2) inventory hotkeys)]
     inventory-with-hotkeys))
 
 (defn start-text []

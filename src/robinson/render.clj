@@ -628,8 +628,12 @@
                               :tree            ["T"  :dark-green :black]
                               :palm-tree       ["7"  :dark-green :black]
                               :fruit-tree      ["\u2648"  :dark-green :black] ;; ♈
-                              :freshwater-hole ["O"]
-                              :saltwater-hole  ["O"]
+                              :freshwater-hole (if (< 10 (get cell :water 0))
+                                                 ["~" (rand-nth [:blue :light-blue :dark-blue]) :black]
+                                                 ["O"])
+                              :saltwater-hole  (if (< 10 (get cell :water 0))
+                                                 ["~" (rand-nth [:blue :light-blue :dark-blue]) :black]
+                                                 ["O"])
                               :dry-hole        ["O"]
                               ["?"])))
                 shaded-out-char (if (= (cell :discovered) current-time)

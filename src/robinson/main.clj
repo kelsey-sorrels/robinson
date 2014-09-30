@@ -61,7 +61,8 @@
    * a `:settings` the contents of `/config/settings.edn`.
 
    * `quests` that are loaded dynamically on startup."
-  []
+  ([] (setup nil))
+  ([screen]
   (let [data  (apply hash-map
                 (mapcat (fn [file]
                           [(keyword (.getName file))
@@ -94,12 +95,13 @@
         _ (debug "loaded data" data)
         settings (->> (slurp "config/settings.edn")
                       (clojure.edn/read-string))
-        terminal  (swingterminal/make-terminal 80 24 [255 255 255] [0 0 0] nil
+        terminal  (or screen
+                      (swingterminal/make-terminal 80 24 [255 255 255] [0 0 0] nil
                                                (get settings :windows-font)
                                                (get settings :else-font)
-                                               (get settings :font-size))
+                                               (get settings :font-size)))
         state {:world world :screen terminal :quests quest-map :dialog dialog :data data :settings settings}
         state (reduce (fn [state _] (add-npcs state 1)) state (range 5))]
     ;; tick once to render frame
-    (tick state \.)))
+    (tick state \.))))
 

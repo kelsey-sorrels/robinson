@@ -222,6 +222,18 @@
   [grid]
   (mapcat concat (map-indexed (fn [y line] (map-indexed (fn [x cell] [cell x y]) line)) grid)))
 
+
+(defn update-matching-cells
+  "Update the cells in place for which (p cell) returns true
+   by replacing it with (f cell). Nil cells are skipped."
+  [place p f]
+  (mapv (fn [line] (mapv (fn [cell] (if (and (not (nil? cell))
+                                             (p cell))
+                                        (f cell)
+                                        cell))
+                         line))
+        place))
+
 (defn ascii-to-place
   "Convert an acscii representation of a grid into a grid of cells.
    Each character mapps to a cell. A cell is a map that contains a key `:type`
@@ -397,7 +409,10 @@
                                                                      :close-door
                                                                      :tree
                                                                      :palm-tree
-                                                                     :fruit-tree])
+                                                                     :fruit-tree
+                                                                     :dry-hole
+                                                                     :freshwater-hole
+                                                                     :saltwater-hole])
         ;; water collides?
         (and collide-water?
              (= (cell :type) :water))

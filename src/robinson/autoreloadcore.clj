@@ -25,16 +25,20 @@
         get-setup-fn     (fn [] (if-let [f (resolve 'robinson.main/setup)] f default-setup-fn))
         get-tick-fn      (fn [] (if-let [f (resolve 'robinson.main/tick)] f default-tick-fn))]
     (start-nstracker)
-    ; up setup fn changes, this loop will restart
-    (loop [setup-fn (get-setup-fn)]
-      (let [setup-fn-var (var-get setup-fn)]
-        (println "(Re)starting loop with new setup-fn")
-        ; start with initial state from setup-fn
-        (loop [state ((get-setup-fn))]
-          ; setup function changed? stop ticking
-          (when (identical? (var-get (get-setup-fn)) setup-fn-var)
-            ; tick the old state through the tick-fn to get the new state
-            (recur ((get-tick-fn) state)))))
-        ; setup function changed, start outer loop over again
-      (recur (get-setup-fn)))))
+    ; on ticks, this loop will restart. If setup-fn changes,
+    ; the state will be reset through setup-fn but the screen will cary over.
+    (loop [setup-fn     (get-setup-fn)
+           setup-fn-var (var-get setup-fn)
+           state        (setup-fn nil)]
+      ; start with initial state from setup-fn
+      ; setup function changed? restart with new setup
+      (if (identical? (var-get (get-setup-fn)) setup-fn-var)
+        ; tick the old state through the tick-fn to get the new state
+        (recur setup-fn setup-fn-var ((get-tick-fn) state))
+        ; setup function changed, restart with new setup
+        (let [setup-fn  (get-setup-fn)
+              setup-var (var-get setup-fn)
+              state     (setup-fn (get state :screen))]
+          (println "(Re)starting loop with new setup-fn")
+          (recur setup-fn setup-var state))))))
 

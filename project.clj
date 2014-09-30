@@ -3,8 +3,10 @@
   :plugins      [[lein-ancient "0.5.5"]
                  [lein-autoreload "0.1.0"]
                  [lein-bikeshed "0.1.8"]
+                 [lein-idefiles "0.2.1"]
                  [lein-marginalia "0.7.1"]
-                 [lein-kibit "0.0.8"]]
+                 [lein-kibit "0.0.8"]
+                 [lein-tarsier "0.10.0"]]
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [org.clojure/core.async "0.1.303.0-886421-alpha"]
                  [org.clojure/core.memoize "0.5.6"]
@@ -16,13 +18,14 @@
                  [org.clojars.vishk/algotools "0.1.0"]
                  [net.mikera/clisk "0.10.0"]
                  [com.palletops/thread-expr "1.3.0"]
+                 [ns-tracker "0.2.2"]
                  [tinter "0.1.1-SNAPSHOT"]
                  [clj-tiny-astar "0.1.1-SNAPSHOT"]
                  [dorothy "0.0.6"]
                  [com.taoensso/timbre "3.3.1"]
                  [org.clojars.folcon/clojure-lanterna "0.9.5"]]
   :main robinson.core
-  :repl-init robinson.main
+  :repl-init robinson.core
   ;:aot :all
 ;[;robinson.common
         ;robinson.update

@@ -32,14 +32,18 @@
        (tick state keyin)
        state)))
   ([state keyin]
-    (do
+    (try
       (info "got " (str keyin) " type " (type keyin))
       (log-time "tick"
         (let [new-state (log-time "update-state" (update-state state keyin))]
           (log-time "render" (render new-state))
           (async/thread (spit "save/world.edn" (prn-str (new-state :world))))
           ;(async/thread (spit "save/world.edn" (with-out-str (pprint (new-state :world)))))
-          new-state)))))
+          new-state))
+      (catch Exception e
+        (do
+          (println e)
+          state)))))
 
 ;; Example setup and tick fns
 (defn setup

@@ -9,6 +9,10 @@
 ;; Conveinience ref for accessing the last state when in repl.
 (defonce state-ref (atom nil))
 
+;; (clojure.core.async/thread (robinson.core/-main))
+;; (robinson.core/-main)
+
+
 (defn -main
   "Entry default point to application.
 

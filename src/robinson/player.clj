@@ -11,6 +11,12 @@
   [state]
   (contains? (-> state :world :player :status) :dead))
 
+(defn player-pos-xy
+  "Return `[x y]` position of player."
+  [state]
+  (let [pos (get-in state [:world :player :pos])]
+    [(get pos :x) (get pos :y)]))
+
 (defn- merge-items
   [item1 item2]
   ;(info "merging" item1 item2)

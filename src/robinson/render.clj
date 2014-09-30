@@ -628,6 +628,9 @@
                               :tree            ["T"  :dark-green :black]
                               :palm-tree       ["7"  :dark-green :black]
                               :fruit-tree      ["\u2648"  :dark-green :black] ;; ♈
+                              :freshwater-hole ["O"]
+                              :saltwater-hole  ["O"]
+                              :dry-hole        ["O"]
                               ["?"])))
                 shaded-out-char (if (= (cell :discovered) current-time)
                                   out-char
@@ -695,6 +698,7 @@
     (case (current-state state)
       :pickup            (render-pick-up state)
       :inventory          (render-inventory state)
+      :apply              (render-inventory state)
       :magic              (render-magic state)
       :drop               (render-drop state)
       :describe-inventory (render-describe-inventory state)

@@ -26,8 +26,10 @@
     inventory-with-hotkeys))
 
 (defn start-text []
-  (let [mode-of-transport (dg/rand-nth ["boat" "airplane" "train" "blimp" "hovercraft" "bicycle"])
-        natural-disaster  (dg/rand-nth ["hurricane" "tornado" "dark storm"])]
-    (format "While traveling by %s, a %s engulfs you.\nYou awake on an island."
+  (let [mode-of-transport (dg/rand-nth ["boat" "airplane" "train" "blimp" "hovercraft" "bicycle"
+                                        "sailboat" "steamboat" "barge" "oceanliner" "ferry" "helicopter"
+                                        "biplane"])
+        natural-disaster  (dg/rand-nth ["hurricane" "tornado" "dark storm" "cyclone" "squall"])]
+    (format "While traveling by %s, a %s engulfs you.\n        You awake on an island."
              mode-of-transport
              natural-disaster)))

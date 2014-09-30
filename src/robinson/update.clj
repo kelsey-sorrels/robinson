@@ -372,6 +372,28 @@
         new-state)
         state)))
 
+(defn apply-item
+  "Apply the item from the player's inventory whose hotkey matches `keyin`."
+  [state keyin]
+  (let [items (-> state :world :player :inventory)
+        inventory-hotkeys (map #(% :hotkey) items)
+        item-index (.indexOf inventory-hotkeys keyin)]
+    (if (and (>= item-index 0) (< item-index (count items)))
+      (let [item (nth items item-index)
+            id   (get item :id)]
+        (case id
+          :stick (assoc-in state [:world :current-state] :apply-stick)
+          state))
+        state)))
+
+(defn apply-stick-to-ground
+  "Apply the stick to the ground, creating a hole."
+  [state]
+  (assoc-in state
+            (concat [:world :places (current-place-id state)]
+                    (reverse (player-pos-xy state))
+                    [:type])
+            (dg/rand-nth [:freshwater-hole :saltwater-hole :dry-hole])))
 
 (defn do-rest
   "NOP action. Player's hp increases a little."
@@ -1393,6 +1415,7 @@
                            \n         [move-down-right        :normal          true]
                            \x         [identity               :harvest         false]
                            \w         [identity               :wield           false]
+                           \a         [identity               :apply           false]
                            \>         [use-stairs             :normal          true]
                            \<         [use-stairs             :normal          true]
                            \;         [init-cursor            :describe        false]
@@ -1420,6 +1443,11 @@
                            :else      [describe-inventory     :normal          false]}
                :drop      {:escape    [identity               :normal          false]
                            :else      [drop-item              :normal          true]}
+               :apply     {:escape    [identity               :normal          false]
+                           :else      [apply-item             identity         true]}
+               :apply-stick
+                          {:escape    [identity               :normal          false]
+                           \>         [apply-stick-to-ground  :normal          true]}
                :pickup    {:escape    [identity               :normal          false]
                            :else      [toggle-hotkey          :pickup          false]
                            :enter     [pick-up                :normal          true]}

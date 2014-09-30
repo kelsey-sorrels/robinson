@@ -382,7 +382,9 @@
       (let [item (nth items item-index)
             id   (get item :id)]
         (case id
-          :stick (assoc-in state [:world :current-state] :apply-stick)
+          :stick (-> state
+                   (assoc-in [:world :current-state] :apply-stick)
+                   (ui-hint "Pick a direction to use the stick."))
           state))
         state)))
 
@@ -417,7 +419,7 @@
    dies and a new game is started."
   [state]
   (reduce (fn [state _] (add-npcs state 1))
-          (assoc state :world (init-world))
+          (assoc state :world (init-world (System/currentTimeMillis)))
           (range 5)))
 
 (defn eat
@@ -1356,6 +1358,16 @@
               ;_ (trace "count remaining npcs" (count remaining-npcs))]
         (recur state remaining-npcs (dec i)))))))
 
+(defn fill-holes
+  "Fill holes with a small amount of water."
+  [state]
+  (info "filling holes")
+  (update-in state [:world :places (current-place-id state)]
+    (fn [place]
+      (update-matching-cells place
+                             (fn [cell] (contains? #{:freshwater-hole :saltwater-hole} (get cell :type)))
+                             (fn [cell] (assoc cell :water (+ 0.3 (* (dg/float) 0.5) (get cell :water 0.0))))))))
+
 (defn update-quests
   "Execute the `pred` function for the current stage of each quest. If 
   `(pred state)` returns `true` then execute the quest's update fn as
@@ -1576,6 +1588,7 @@
               (if-infected-get-hurt)
               (decrease-will-to-live)
               (update-npcs)
+              (fill-holes)
               ;; TODO: Add appropriate level
               (add-npcs-random 1)
               ;; update visibility

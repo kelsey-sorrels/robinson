@@ -48,6 +48,14 @@
     [arg [sym] condition form else-form]
     (arg-if- 'clojure.core/-> arg sym condition form else-form)))
 
+(defn pos->xy
+  [{x :x y :y}]
+  [x y])
+
+(defn xy->pos
+  [x y]
+  {:x x :y y})
+
 (defn chebyshev-distance
   "Chebyshev/chessboard distance between 2 points"
   [p1 p2]
@@ -141,6 +149,12 @@
   (fn-in (fn [coll _] (if (vector? coll)
                         (vec (filter f coll))
                         (filter f coll))) m ks nil))
+
+(defn some-in
+  [m ks f]
+  (fn-in (fn [coll _] (if (vector? coll)
+                        (vec (some f coll))
+                        (some f coll))) m ks nil))
 
 (defn remove-in
   [m ks f]
@@ -322,6 +336,10 @@
   [state]
   (get-in state [:world :current-state]))
 
+(defn assoc-current-state
+  [state new-state]
+  (assoc-in state [:world :current-state] new-state))
+
 (defn map-with-xy
   "Non-lazily call `(f cell x y)` for each cell in the grid."
   [f grid]
@@ -350,6 +368,19 @@
   (let [x (-> state :world :player :pos :x)
         y (-> state :world :player :pos :y)]
     [(get-cell (current-place state) x y) x y]))
+
+(defn adjacent-cells
+  "Return a collection of adjacent cells (diagonals not-included) around pos.
+   Pos is a map with the keys `:x` and `:y`.
+
+   Ex: `(adjacent-cells [...] {:x 0 :y 0})`
+   `[{:type :floor} {:type :water}...]`"
+  [place {x :x y :y}]
+  (map (partial get-in place)
+    [{:x (dec x) :y y}
+     {:x (inc x) :y y}
+     {:x x :y (dec y)}
+     {:x x :y (inc y)}]))
 
 (defn direction->cells
   [state direction]

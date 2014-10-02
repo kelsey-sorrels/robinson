@@ -393,10 +393,65 @@
   [state]
   (assoc-in state
             (concat [:world :places (current-place-id state)]
-                    (reverse (player-pos-xy state))
+                    (reverse (player-xy state))
                     [:type])
             (dg/rand-nth [:freshwater-hole :saltwater-hole :dry-hole])))
 
+(defn quaff-only-adjacent-cell
+  [state]
+  state)
+
+(defn quaff-select
+  "Select the next state depending on what quaffable items are available."
+  [state]
+  (let [num-adjacent-quaffable-cells  (count
+                                        (filter (fn [cell] (and (not (nil? cell))
+                                                                (contains? #{:freshwater-hole :saltwater-hole} (get cell :type))
+                                                                (> (get cell :water) 10)))
+                                                (player-adjacent-cells state)))
+        quaffable-inventory-item? (some (fn [item] (contains? item :thirst)) (player-inventory state))]
+    (cond
+      (and (pos? num-adjacent-quaffable-cells)
+           quaffable-inventory-item?)
+        (assoc-current-state state :quaff-adj-or-inv)
+      (= num-adjacent-quaffable-cells 1)
+        (quaff-only-adjacent-cell state)
+      (> num-adjacent-quaffable-cells 1)
+        (assoc-current-state state :quaff-adj)
+      quaffable-inventory-item?
+        (assoc-current-state state :quaff-inv)
+      :else
+        (-> state
+          (ui-hint "There is nothing to drink.")
+          (assoc-current-state :normal)))))
+
+(defn quaff-cell-at-pos
+  [state {x :x y :y}]
+  (let [water (get (get-cell-at-current-place state x y) :water)]
+    (-> state
+      (assoc-in [:world :places (current-place-id state) y x :water] 0)
+      (update-in [:world :player :thirst] (fn [thirst] (min 0 (- thirst water)))))))
+
+(defn quaff-up
+  [state]
+  (quaff-cell-at-pos state (player-adjacent-pos state :up)))
+
+(defn quaff-down
+  [state]
+  (quaff-cell-at-pos state (player-adjacent-pos state :down)))
+
+(defn quaff-left
+  [state]
+  (quaff-cell-at-pos state (player-adjacent-pos state :left)))
+
+(defn quaff-right
+  [state]
+  (quaff-cell-at-pos state (player-adjacent-pos state :right)))
+
+(defn quaff-inventory
+  [state keyin]
+  state)
+     
 (defn do-rest
   "NOP action. Player's hp increases a little."
   [state]
@@ -1425,8 +1480,9 @@
                            \u         [move-up-right          :normal          true]
                            \b         [move-down-left         :normal          true]
                            \n         [move-down-right        :normal          true]
-                           \x         [identity               :harvest         false]
+                           \q         [quaff-select           identity         false]
                            \w         [identity               :wield           false]
+                           \x         [identity               :harvest         false]
                            \a         [identity               :apply           false]
                            \>         [use-stairs             :normal          true]
                            \<         [use-stairs             :normal          true]

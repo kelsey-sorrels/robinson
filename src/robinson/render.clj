@@ -349,6 +349,11 @@
   [state]
   (render-multi-select (state :screen) "Inventory" [] (-> state :world :player :inventory)))
 
+(defn render-apply
+  "Render the inventory menu with `Apply` as the title."
+  [state]
+  (render-multi-select (state :screen) "Apply Inventory" [] (-> state :world :player :inventory)))
+
 (defn render-magic
   "Render the pickup item menu if the world state is `:magic`."
   [state]
@@ -702,7 +707,7 @@
     (case (current-state state)
       :pickup            (render-pick-up state)
       :inventory          (render-inventory state)
-      :apply              (render-inventory state)
+      :apply              (render-apply state)
       :magic              (render-magic state)
       :drop               (render-drop state)
       :describe-inventory (render-describe-inventory state)

@@ -6,7 +6,7 @@
  (try
    (doseq [ns-sym (track)]
      (println "Reloading namespace:" ns-sym)
-     (require ns-sym :reload))
+     (require ns-sym :reload-all))
    (catch Throwable e (.printStackTrace e)))
    (Thread/sleep 500))
 

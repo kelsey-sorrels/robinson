@@ -176,6 +176,10 @@
                :obsidian-knife}
              (get item :id)))
 
+(defn is-drinkable?
+  [item]
+  (get item :drinkable false))
+
 (defn gen-food
   "Generate one random food item."
   []

@@ -11,11 +11,37 @@
   [state]
   (contains? (-> state :world :player :status) :dead))
 
-(defn player-pos-xy
+(defn player-pos
+  "Return the position of the player."
+  [state]
+  (get-in state [:world :player :pos]))
+
+(defn player-xy
   "Return `[x y]` position of player."
   [state]
-  (let [pos (get-in state [:world :player :pos])]
-    [(get pos :x) (get pos :y)]))
+  (pos->xy (player-pos state)))
+
+(defn player-adjacent-cells
+  "Return a collection of cells adjacent to the player. Does not include diagonals."
+  [state]
+  (adjacent-cells (current-place state) (player-pos state)))
+
+(defn player-adjacent-pos
+  [state direction]
+  (let [{x :x y :y} (player-pos state)
+        x           (case direction
+                      :left  (dec x)
+                      :right (inc x)
+                      x)
+        y           (case direction
+                      :up   (dec y)
+                      :down (inc y)
+                      y)]
+    {:x x :y y}))
+
+(defn player-adjacent-cell
+  [state direction]
+  (apply get-cell-at-current-place state (pos->xy (player-adjacent-pos state direction))))
 
 (defn- merge-items
   [item1 item2]
@@ -33,6 +59,11 @@
     (and (contains? item1 :count)
          (contains? item2 :count))
       (update-in item1 [:count] (partial + (get item2 :count)))))
+
+(defn player-inventory
+  "Gets the player's inventory."
+  [state]
+  (get-in state [:world :player :inventory]))
 
 (defn add-to-inventory
   "Adds `item` to player's inventory assigning hotkeys as necessary."

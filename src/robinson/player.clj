@@ -26,6 +26,14 @@
   [state]
   (adjacent-cells (current-place state) (player-pos state)))
 
+(defn player-adjacent-xys
+  [state]
+  (let [[x y] (player-xy state)]
+    [[(dec x) y]
+     [(inc x) y]
+     [x (dec y)]
+     [x (inc y)]]))
+
 (defn player-adjacent-pos
   [state direction]
   (let [{x :x y :y} (player-pos state)

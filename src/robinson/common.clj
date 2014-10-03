@@ -248,6 +248,10 @@
                          line))
         place))
 
+(defn update-in-xy
+  [place x y f]
+  (update-in place [y x] f))
+
 (defn ascii-to-place
   "Convert an acscii representation of a grid into a grid of cells.
    Each character mapps to a cell. A cell is a map that contains a key `:type`
@@ -376,11 +380,11 @@
    Ex: `(adjacent-cells [...] {:x 0 :y 0})`
    `[{:type :floor} {:type :water}...]`"
   [place {x :x y :y}]
-  (map (partial get-in place)
-    [{:x (dec x) :y y}
-     {:x (inc x) :y y}
-     {:x x :y (dec y)}
-     {:x x :y (inc y)}]))
+  (map (fn [[x y]] (get-in place [y x]))
+    [[(dec x) y]
+     [(inc x) y]
+     [x (dec y)]
+     [x (inc y)]]))
 
 (defn direction->cells
   [state direction]

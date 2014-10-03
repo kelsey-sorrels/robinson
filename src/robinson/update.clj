@@ -398,8 +398,21 @@
             (dg/rand-nth [:freshwater-hole :saltwater-hole :dry-hole])))
 
 (defn quaff-only-adjacent-cell
+  "Drink all adjacent cells."
   [state]
-  state)
+  (let [place (get-in state [:world :places (current-place-id state)])
+        [place water] 
+        (reduce (fn [[place water] [x y]]
+                  (info "testing cell for water:" (get-cell place x y))
+                  (if (contains? (get-cell place x y) :water)
+                    [(update-in-xy place x y (fn [cell] (assoc cell :water 0))) (+ water (get (get-cell place x y) :water 0))]
+                    [place water]))
+                [place 0]
+                (player-adjacent-xys state))]
+    (info "player-adj-xys" (player-adjacent-xys state))
+    (-> state
+      (assoc-in [:world :places (current-place-id state)] place)
+      (update-in [:world :player :thirst] (fn [thirst] (min 0 (- thirst water)))))))
 
 (defn quaff-select
   "Select the next state depending on what quaffable items are available."
@@ -409,6 +422,7 @@
                                                                 (contains? #{:freshwater-hole :saltwater-hole} (get cell :type))
                                                                 (> (get cell :water) 10)))
                                                 (player-adjacent-cells state)))
+        _ (info "player-adj-cells" (player-adjacent-cells state))
         quaffable-inventory-item? (some (fn [item] (contains? item :thirst)) (player-inventory state))]
     (cond
       (and (pos? num-adjacent-quaffable-cells)
@@ -994,16 +1008,18 @@
           (tx/when-> (> (count logs) 1)
             (assoc-in [:world :current-state] :more-log))))))))
 
-(defn get-hungrier
+(defn get-hungrier-and-thirstier
   "Increase player's hunger."
   [state]
   (-> state
     (update-in [:world :player :hunger] inc)
+    (update-in [:world :player :thirst] inc)
     ((fn [state] (update-in state
                             [:world :player :status]
                             (fn [status]
                               (set (remove nil?
-                                   (conj status (condp <= (-> state :world :player :hunger)
+                                   (conj status (condp <= (max (-> state :world :player :hunger)
+                                                               (-> state :world :player :thirst))
                                                   400 :dead
                                                   300 :dying
                                                   200 :starving
@@ -1421,7 +1437,7 @@
     (fn [place]
       (update-matching-cells place
                              (fn [cell] (contains? #{:freshwater-hole :saltwater-hole} (get cell :type)))
-                             (fn [cell] (assoc cell :water (+ 0.3 (* (dg/float) 0.5) (get cell :water 0.0))))))))
+                             (fn [cell] (assoc cell :water (min 20 (+ 0.3 (* (dg/float) 0.5) (get cell :water 0.0)))))))))
 
 (defn update-quests
   "Execute the `pred` function for the current stage of each quest. If 
@@ -1636,7 +1652,7 @@
             (tx/when-> advance-time
               ;; do updates that don't deal with keyin
               ;; Get hungrier
-              (get-hungrier)
+              (get-hungrier-and-thirstier)
               ;; if poisoned, damage player, else heal
               (if-poisoned-get-hurt)
               (heal)

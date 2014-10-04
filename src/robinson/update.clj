@@ -1539,6 +1539,10 @@
                            :enter     [pick-up                :normal          true]}
                :eat       {:escape    [identity               :normal          false]
                            :else      [eat                    :normal          true]}
+               :quaff-adj {\h         [quaff-left             :normal          true]
+                           \j         [quaff-down             :normal          true]
+                           \k         [quaff-up               :normal          true]
+                           \l         [quaff-right            :normal          true]}
                :open      {\h         [open-left              :normal          true]
                            \j         [open-down              :normal          true]
                            \k         [open-up                :normal          true]

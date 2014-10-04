@@ -383,7 +383,7 @@
             id   (get item :id)]
         (case id
           :stick (-> state
-                   (assoc-in [:world :current-state] :apply-stick)
+                   (assoc-current-state :apply-stick)
                    (ui-hint "Pick a direction to use the stick."))
           state))
         state)))
@@ -431,7 +431,9 @@
       (= num-adjacent-quaffable-cells 1)
         (quaff-only-adjacent-cell state)
       (> num-adjacent-quaffable-cells 1)
-        (assoc-current-state state :quaff-adj)
+        (-> state
+          (assoc-current-state :quaff-adj)
+          (ui-hint "Pick a direction to drink."))
       quaffable-inventory-item?
         (assoc-current-state state :quaff-inv)
       :else
@@ -820,7 +822,7 @@
       ;; store update the npc and world state with talking
       (let [state (-> state
                       (update-npc-at-xy target-x target-y #(assoc % :talking true))
-                      (assoc-in [:world :current-state] :talking))
+                      (assoc-current-state :talking))
             fsm (get-in state [:dialog (target-npc :id)])
             ;; get the dialog input options for the npc
             valid-input (get-valid-input fsm)]
@@ -829,7 +831,7 @@
         (if (nil? (first valid-input))
           (step-fsm state fsm nil)
           state))
-      (assoc-in state [:world :current-state] :normal))))
+      (assoc-current-state state :normal))))
 
 (defn talk-left [state]
   (start-talking state :left))
@@ -860,7 +862,7 @@
   (debug "stop-talking")
   (-> state
       (map-in [:world :npcs] (fn [npc] (dissoc npc :talking)))
-      (assoc-in [:world :current-state] :normal)))
+      (assoc-current-state :normal)))
 
 (defn describe-inventory
   "Add to the log, a message describing the item with the `:hotkey` value
@@ -886,14 +888,14 @@
     ;; store update the npc and world state with talking
     (-> state
         (update-npc npc #(assoc % :shopping true))
-        (assoc-in [:world :current-state] :shopping)))
+        (assoc-current-state :shopping)))
     
 (defn shop
   "Start shopping. Allows the player to select \\a -buy or \\b - sell."
   [state keyin]
   (case keyin
-    \a (assoc-in state [:world :current-state] :buy)
-    \b (assoc-in state [:world :current-state] :sell)
+    \a (assoc-current-state state :buy)
+    \b (assoc-current-state state :sell)
     :else state))
 
 (defn buy
@@ -945,11 +947,11 @@
 
 (defn craft-weapon
   [state]
-  (craft-select-recipe (assoc-in state [:world :current-state] :craft-weapon) \a))
+  (craft-select-recipe (assoc-current-state state :craft-weapon) \a))
 
 (defn craft-survival
   [state]
-  (craft-select-recipe (assoc-in state [:world :current-state] :craft-survival) \a))
+  (craft-select-recipe (assoc-current-state state :craft-survival) \a))
 
 
 (defn craft
@@ -963,7 +965,7 @@
     (if recipe
       (-> state
         (craft-recipe recipe)
-        (assoc-in [:world :current-state] :normal))
+        (assoc-current-state :normal))
       (append-log state "Pick a valid recipe." :white))))
 
 
@@ -976,7 +978,7 @@
         (let [c (count (filter #(= t (get % :time)) (get-in state [:world :log])))
               logs-viewed (get-in state [:world :logs-viewed])]
           (if (>= logs-viewed c)
-            (assoc-in state [:world :current-state] :normal)
+            (assoc-current-state state :normal)
             state)))))))
 
 (defn init-log-scrolling
@@ -1006,7 +1008,7 @@
         (-> state
           (assoc-in [:world :logs-viewed] 1)
           (tx/when-> (> (count logs) 1)
-            (assoc-in [:world :current-state] :more-log))))))))
+            (assoc-current-state :more-log))))))))
 
 (defn get-hungrier-and-thirstier
   "Increase player's hunger."
@@ -1020,10 +1022,10 @@
                               (set (remove nil?
                                    (conj status (condp <= (max (-> state :world :player :hunger)
                                                                (-> state :world :player :thirst))
-                                                  400 :dead
-                                                  300 :dying
-                                                  200 :starving
-                                                  100 :hungry
+                                                  100 :dead
+                                                   80 :dying
+                                                   60 :starving
+                                                   40 :hungry
                                                   nil))))))))))
 (defn decrease-will-to-live
   "Decrease the player's will-to-live depending on circumstances."
@@ -1648,7 +1650,7 @@
             _ (info "new-state" new-state)
             wtl       (get-in state [:world :player :will-to-live])]
         (some-> state
-            (assoc-in [:world :current-state] new-state)
+            (assoc-current-state new-state)
             (tx/when-> advance-time
               ;; do updates that don't deal with keyin
               ;; Get hungrier
@@ -1672,7 +1674,7 @@
               ((fn [state]
                 (.delete (clojure.java.io/file "save/world.edn"))
                 state))
-              (assoc-in [:world :current-state] :dead))
+              (assoc-current-state :dead))
               ;; delete the save game on player death
             ;; only try to start log scrolling if the state we were just in was not more-log
             (tx/when-> (not= current-state :more-log)

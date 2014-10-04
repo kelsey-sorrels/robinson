@@ -266,9 +266,9 @@
             hp         (get-in state [:world :player :hp])
             max-hp     (get-in state [:world :player :max-hp])
             hunger     (get-in state [:world :player :hunger])
-            max-hunger 400
-            thirst     10
-            max-thirst 100]
+            max-hunger (get-in state [:world :player :max-hunger])
+            thirst     (get-in state [:world :player :thirst])
+            max-thirst (get-in state [:world :player :max-thirst])]
         (doseq [x (range 37)]
           (put-string screen x 23 "\u2584" (if (> (/ (- 37 x) 37)
                                                   (/ wtl max-wtl))

@@ -190,7 +190,7 @@
             :xp 0
             :level 0
             :hunger 0
-            :max-hunger 800
+            :max-hunger 100
             :thirst 0
             :max-thirst 100
             :pos starting-pos

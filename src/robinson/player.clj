@@ -53,7 +53,7 @@
 
 (defn- merge-items
   [item1 item2]
-  ;(info "merging" item1 item2)
+  (info "merging" item1 item2)
   (cond 
     (and (not (contains? item1 :count))
          (not (contains? item2 :count)))
@@ -90,6 +90,7 @@
                                     (reduce merge-items items))
                                   (vals (group-by :id  (concat inventory items))))
         _                       (trace "new inventory hotkeys" (set (map :hotkey inventory)))
+        _                       (info "new inventory" inventory)
         ;; find the hotkeys that were previously used in inventory that are no longer in use
         freed-inventory-hotkeys (clojure.set/difference inventory-hotkeys (set (map :hotkey inventory)))
         ;; find the hotkeys that were used in the added items that are no longer in use
@@ -102,6 +103,7 @@
                                                    #(assoc %1 :hotkey %2)
                                                    remaining-hotkeys
                                                    inventory))
+        _                       (info "new inventory with hotkeys" inventory)
         ;; find all the free hotkeys after filling in missing hotkeys into the newly added inventory items
         remaining-hotkeys       (vec (sort (vec (clojure.set/difference (set remaining-hotkeys) (set (map :hotkey inventory))))))
         newly-assigned-hotkeys  (vec (sort (vec (clojure.set/difference (set original-remaining-hotkeys) (set remaining-hotkeys)))))

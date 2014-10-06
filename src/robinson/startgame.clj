@@ -10,17 +10,17 @@
 (timbre/refer-timbre)
 
 (defn start-inventory []
-  (let [inventory              [(ig/gen-rope 1)
-                                (ig/gen-matches 1)
-                                (ig/gen-knives 1)
-                                (ig/gen-plant-guides 1)
-                                (ig/gen-bandages 10)
-                                (ig/gen-fishing-line-and-hooks 2)
-                                (ig/gen-rations 2)
-                                (ig/gen-flashlights 1)
-                                (ig/gen-bedrolls 1)
-                                (ig/gen-tarps 1)
-                                (ig/gen-saws 1)]
+  (let [inventory              [(ig/gen-rope)
+                                (repeat 10 (ig/gen-match))
+                                (ig/gen-knife)
+                                (ig/gen-plant-guide)
+                                (repeat 10 (ig/gen-bandage))
+                                (repeat 2 (ig/gen-fishing-line-and-hook))
+                                (repeat 2 (ig/gen-ration))
+                                (ig/gen-flashlight)
+                                (ig/gen-bedroll)
+                                (ig/gen-tarp)
+                                (ig/gen-saw)]
         hotkeys                (vec (seq "abcdefghijklmnopqrstuvwxyzABCdEFGHIJKLMNOPQRSTUVWQYZ"))
         inventory-with-hotkeys (mapv #(assoc %1 :hotkey %2) inventory hotkeys)]
     inventory-with-hotkeys))

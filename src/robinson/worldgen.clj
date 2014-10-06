@@ -3,9 +3,10 @@
   (:use 
         robinson.common
         robinson.npc
-        [robinson.mapgen :exclude [-main]]
-        [robinson.itemgen :exclude [-main]])
-  (:require [clojure.data.generators :as dg]
+        [robinson.mapgen :exclude [-main]])
+  (:require 
+            [robinson.itemgen :as ig]
+            [clojure.data.generators :as dg]
             [taoensso.timbre :as timbre]
             [clisk.core :as clisk]
             [clisk.patterns :as cliskp]
@@ -105,13 +106,13 @@
         down-stairs (assoc-in (place :down-stairs) [1 :dest-place] (keyword (str (inc level))))
         place       (place :place)
         drops       (map (fn [pos]
-                           [pos {:type :floor :items [(gen-item)]}])
+                           [pos {:type :floor :items [(ig/gen-item)]}])
                            (take 5 (dg/shuffle
                               (map (fn [[_ x y]] [x y]) (filter (fn [[cell x y]] (and (not (nil? cell))
                                                                                       (= (cell :type) :floor)))
                                                                 (with-xy place))))))
         cash-drops  (map (fn [pos]
-                           [pos {:type :floor :items [(gen-cash (* level 10))]}])
+                           [pos {:type :floor :items [(ig/gen-cash (* level 10))]}])
                            (take 5 (dg/shuffle
                               (map (fn [[_ x y]] [x y]) (filter (fn [[cell x y]] (and (not (nil? cell))
                                                                                       (= (cell :type) :floor)))
@@ -149,7 +150,7 @@
    added during the course of the game."
   [seed]
   ;; Assign hotkeys to inventory and remove from remaining hotkeys
-  (let [inventory              [(gen-plant-fibers 1)]
+  (let [inventory              [(ig/gen-plant-fiber)]
         remaining-hotkeys      (vec (seq "abcdefghijklmnopqrstuvwxyzABCdEFGHIJKLMNOPQRSTUVWQYZ"))
         hotkey-groups          (split-at (count inventory) remaining-hotkeys)
         inventory-with-hotkeys (vec (map #(assoc %1 :hotkey %2) inventory (first hotkey-groups)))

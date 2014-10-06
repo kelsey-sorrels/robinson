@@ -1,5 +1,6 @@
 (ns robinson.autoreloadcore
-  (:use ns-tracker.core)
+  (:use ns-tracker.core
+        clojure.stacktrace)
   (:require robinson.main))
 
 (defn check-namespace-changes [track]
@@ -35,7 +36,11 @@
       ; setup function changed? restart with new setup
       (if (identical? (var-get (get-setup-fn)) setup-fn-var)
         ; tick the old state through the tick-fn to get the new state
-        (recur setup-fn setup-fn-var ((get-tick-fn) state))
+        (recur setup-fn setup-fn-var (try
+                                       ((get-tick-fn) state)
+                                       (catch Exception ex
+                                         (print-stack-trace ex)
+                                         state)))
         ; setup function changed, restart with new setup
         (let [setup-fn  (get-setup-fn)
               setup-var (var-get setup-fn)

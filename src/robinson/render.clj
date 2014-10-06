@@ -512,6 +512,7 @@
         recipes              (get (get-recipes state) recipe-type)]
   (info "recipe-type" recipe-type)
   (info "recipes" (get-recipes state))
+  (info "selected recipes" recipes)
   ;; render recipes
   (render-list screen 11 6 29 15
     (concat
@@ -519,8 +520,7 @@
        (map (fn [recipe]
               {:s (format "%c-%s"
                     (get recipe :hotkey)
-                    (clojure.string/join ","
-                      (map id->name (get-in recipe [:recipe :add]))))
+                    (get recipe :name))
                :fg (if (contains? recipe :applicable)
                      :black
                      :gray)
@@ -535,7 +535,7 @@
                                    recipes)
           recipe           (get (first matching-recipes) :recipe)
           exhaust          (get recipe :exhaust [])
-          have             (get recipe :have [])]
+          have             (get recipe :have-or [])]
       (info "exhaust" exhaust "have" have)
       (render-list screen 41 6 29 15
       (concat
@@ -545,7 +545,7 @@
           [{:s "N/A" :fg :black :bg :white :style #{}}]
           (map (fn [id] {:s (id->name id) :fg :black :bg :white :style #{}}) exhaust))
         [{:s "" :fg :black :bg :white :style #{}}
-         {:s "Requires" :fg :black :bg :white :style #{}}]
+         {:s "Required tools" :fg :black :bg :white :style #{}}]
         (if (empty? have)
           [{:s "N/A" :fg :black :bg :white :style #{}}]
           (map (fn [id] {:s (id->name id) :fg :black :bg :white :style #{}}) have)))))

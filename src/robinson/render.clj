@@ -137,7 +137,7 @@
         style    (if underline
                    #{:underline}
                    #{})]
-    (info "put-string" (format "\"%s\"" line) "width" width)
+    #_(info "put-string" (format "\"%s\"" line) "width" width)
     (put-string screen x y s fg bg style)))
 
 

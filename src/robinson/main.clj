@@ -1,5 +1,6 @@
 (ns robinson.main
   (:use    clojure.pprint
+           clojure.stacktrace
            robinson.common
            [robinson.worldgen :exclude [-main]]
            robinson.dialog
@@ -42,7 +43,7 @@
           new-state))
       (catch Exception e
         (do
-          (println e)
+          (print-stack-trace e)
           state)))))
 
 ;; Example setup and tick fns

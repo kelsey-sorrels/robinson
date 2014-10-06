@@ -10,29 +10,42 @@
 
 (def recipes
   {:weapons [
-     {:name "obsidian blade + stick + rope -> spear"    :hotkey \a :recipe {:exhaust [:obsidian-blade :stick :rope] :add [:obsidian-spear]}}
-     {:name "obsidian blade + stick + rope -> axe"      :hotkey \b :recipe {:exhaust [:obsidian-blade :stick :rope] :add [:obsidian-axe]}}
-     {:name "obsidian blade + stick + rope -> knife"    :hotkey \c :recipe {:exhaust [:obsidian-blade :stick :rope] :add [:obsidian-knife]}}]
+     {:name "obsidian spear"         :hotkey \a :recipe {:exhaust [:obsidian-blade :stick :rope] :add [:obsidian-spear]}}
+     {:name "obsidian axe"           :hotkey \b :recipe {:exhaust [:obsidian-blade :stick :rope] :add [:obsidian-axe]}}
+     {:name "obsidian knife"         :hotkey \c :recipe {:exhaust [:obsidian-blade :stick :rope] :add [:obsidian-knife]}}]
    :survival [
-     {:name "Rock + obsidian -> obsidian blade"         :hotkey \a :recipe {:exhaust [:rock :obsidian] :add [:obsidian-blade]}}
-     {:name "Plant fibers -> rope"                      :hotkey \b :recipe {:exhaust [:plant-fiber] :add [:rope]}}
-     {:name "rope + bamboo + sticks + knife -> water collector" :hotkey \c :recipe {:exhaust [:rope :bamboo :stick] :add [:bamboo-water-collector]}}]
+     {:name "obsidian blade"         :hotkey \a :recipe {:exhaust [:rock :obsidian]              :add [:obsidian-blade]}}
+     {:name "rope"                   :hotkey \b :recipe {:exhaust [:plant-fiber]                 :add [:rope]}}
+     {:name "sharpened stick"        :hotkey \c :recipe {:exhaust [:stick]
+                                                         :have-or [:obsidian-knife
+                                                                   :obsidian-spear
+                                                                   :obsidian-axe
+                                                                   :knife]
+                                                         :add     [:sharpened-stick]}}
+     {:name "bamboo water collector" :hotkey \d :recipe {:exhaust [:rope :bamboo :stick]         :add [:bamboo-water-collector]}}]
    :shelter [
-     {:name "rope + leaves + sticks + knife -> shelter" :hotkey \a :recipe {:exhaust [:rope :leaves :stick] :add [:shelter]}}]
+     {:name "shelter"                :hotkey \a :recipe {:exhaust [:rope :leaves :stick]         :add [:shelter]}}]
    :traps [
-     {:name "Sticks + rope -> snare"                    :hotkey \a :recipe {:exhaust [:rope :stick] :add [:snare]}}
-     {:name "Sticks + rope + rock -> deadfall trap"     :hotkey \b :recipe {:exhaust [:rope :stick :rock] :add [:deadfall-trap]}}]})
+     {:name "snare"                  :hotkey \a :recipe {:exhaust [:rope :stick]                 :add [:snare]}}
+     {:name "deadfall trap"          :hotkey \b :recipe {:exhaust [:rope :stick :rock]           :add [:deadfall-trap]}}]})
 
 (defn has-prerequisites?
   "Return true if the player has the ability to make the recipe."
   [state recipe]
-  (let [inventory (get-in state [:world :player :inventory])
-        requirements (frequencies (concat (get-in recipe [:recipe :exhaust] [])
-                                          (get-in recipe [:recipe :have] [])))]
-    (every? (fn [[requirement n]] (some (fn [item] (and (= (get item :id) requirement)
-                                                        (>= (get item :count 1) n)))
-                                        inventory))
-            requirements)))
+  (let [inventory        (get-in state [:world :player :inventory])
+        and-requirements (frequencies (concat (get-in recipe [:recipe :exhaust] [])
+                                              (get-in recipe [:recipe :have-and] [])))
+        or-requirements  (get-in recipe [:recipe :have-or] [])]
+    (and
+      (every? (fn [[requirement n]] (some (fn [item]
+                                            (and (= (get item :id) requirement)
+                                              (>= (get item :count 1) n)))
+                                          inventory))
+              and-requirements)
+      (or (some   (fn [requirement] (some requirement
+                                          (map :id inventory)))
+                  or-requirements)
+          (empty? or-requirements)))))
                                                 
 (defn get-recipes
   "Return recipes tagged with :applicable true if the recipe has the required pre-requisites."
@@ -58,7 +71,7 @@
 (defn- add-by-ids
   [state ids]
   (reduce (fn [state id]
-            (let [item (id->items id 1)]
+            (let [item (id->item id)]
             (info "adding" item)
             (add-to-inventory state [item])))
           state

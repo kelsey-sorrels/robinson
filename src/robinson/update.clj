@@ -663,46 +663,50 @@
                                0))
         target-cell (get-cell-at-current-place state target-x target-y)
         harvest-items (if (not= target-cell nil)
-                        (remove nil?
-                          (cond
-                            (= (get target-cell :type) :tree)
-                              [(if (= 0 (uniform-int 10))
-                                 (ig/gen-sticks (uniform-int 1 2))
-                                 nil)
-                               (if (= 0 (uniform-int 10))
-                                 (ig/gen-plant-fibers (uniform-int 1 5))
-                                 nil)]
-                            (= (get target-cell :type) :palm-tree)
-                              [(if (= 0 (uniform-int 10))
-                                 (ig/gen-coconuts (uniform-int 1 2))
-                                 nil)
-                               (if (= 0 (uniform-int 15))
-                                 (ig/gen-plant-fibers (uniform-int 1 2))
-                                 nil)]
-                            (and (= (get target-cell :type) :tall-grass)
-                                 (= direction :center))
-                              [(if (= 0 (uniform-int 10))
-                                 (ig/gen-grass (uniform-int 1 5))
-                                 nil)
-                               (if (= 0 (uniform-int 10))
-                                 (ig/gen-plant-fibers (uniform-int 1 5))
-                                 nil)]
-                            (and (= (get target-cell :type) :gravel)
-                                 (= direction :center))
-                              [(if (= 0 (uniform-int 10))
-                                 (ig/gen-rocks (uniform-int 1 5))
-                                 nil)
-                               (if (= 0 (uniform-int 20))
-                                 (ig/gen-obsidian (uniform-int 1 5))
-                                 nil)]
-                            :else []))
+                        (cond
+                          (= (get target-cell :type) :tree)
+                            (concat
+                              (if (<= 2 (uniform-int 10))
+                                (repeat (uniform-int 1 2) (ig/gen-stick))
+                                [])
+                              (if (= 0 (uniform-int 10))
+                                (repeat (uniform-int 1 5) (ig/gen-plant-fiber))
+                                []))
+                          (= (get target-cell :type) :palm-tree)
+                            (concat
+                              (if (= 0 (uniform-int 10))
+                                (repeat (uniform-int 1 2) (ig/gen-coconut))
+                                [])
+                              (if (= 0 (uniform-int 15))
+                                (repeat (uniform-int 1 2) (ig/gen-plant-fiber))
+                                []))
+                          (and (= (get target-cell :type) :tall-grass)
+                               (= direction :center))
+                            (concat
+                              (if (= 0 (uniform-int 10))
+                                (repeat (uniform-int 1 5) (ig/gen-grass))
+                                [])
+                              (if (= 0 (uniform-int 10))
+                                (repeat (uniform-int 1 5) (ig/gen-plant-fiber))
+                                []))
+                          (and (= (get target-cell :type) :gravel)
+                               (= direction :center))
+                            (concat
+                              (if (= 0 (uniform-int 10))
+                                (repeat (uniform-int 1 5) (ig/gen-rock))
+                                [])
+                              (if (= 0 (uniform-int 20))
+                                (repeat (uniform-int 1 5) (ig/gen-obsidian))
+                                []))
+                          :else [])
                         [])]
+    (info "harvested" harvest-items)
     (if (empty? harvest-items)
       (append-log state "You don't find anything.")
       (-> state
         (add-to-inventory harvest-items)
         ((fn [state] (reduce update-harvested state harvest-items)))
-        (append-log (format "You gather %s." (clojure.string/join ", " (map #(if (> (get % :count) 1)
+        (append-log (format "You gather %s." (clojure.string/join ", " (map #(if (> (get % :count 1) 1)
                                                                                   (format "%d %s" (get % :count) (get % :name-plural))
                                                                                   (format "%s %s" (if (contains? #{\a \e \i \o} (first (get % :name)))
                                                                                                      "an"
@@ -1014,8 +1018,8 @@
   "Increase player's hunger."
   [state]
   (-> state
-    (update-in [:world :player :hunger] inc)
-    (update-in [:world :player :thirst] inc)
+    (update-in [:world :player :hunger] (partial + 0.4))
+    (update-in [:world :player :thirst] (partial + 0.3))
     ((fn [state] (update-in state
                             [:world :player :status]
                             (fn [status]
@@ -1539,10 +1543,18 @@
                            :enter     [pick-up                :normal          true]}
                :eat       {:escape    [identity               :normal          false]
                            :else      [eat                    :normal          true]}
+               :quaff-adj-or-inv
+                          {\i         [identity               :quaff-inv       false]
+                           \h         [quaff-left             :normal          true]
+                           \j         [quaff-down             :normal          true]
+                           \k         [quaff-up               :normal          true]
+                           \l         [quaff-right            :normal          true]}
                :quaff-adj {\h         [quaff-left             :normal          true]
                            \j         [quaff-down             :normal          true]
                            \k         [quaff-up               :normal          true]
                            \l         [quaff-right            :normal          true]}
+               :quaff-inv {:escape    [identity               :normal          false]
+                           :else      [quaff-inventory        :normal          true]}
                :open      {\h         [open-left              :normal          true]
                            \j         [open-down              :normal          true]
                            \k         [open-up                :normal          true]

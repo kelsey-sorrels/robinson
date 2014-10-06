@@ -941,13 +941,16 @@
   "Selects a craft recipe."
   [state keyin]
   (let [recipe-type      (case (current-state state)
-                           :craft-weapon   :weapon
+                           :craft-weapon   :weapons
                            :craft-survival :survival)
         matching-recipes (filter (fn [recipe] (= (get recipe :hotkey) keyin))
                                  (get (get-recipes state) recipe-type))]
-  (if (empty? matching-recipes)
-    (ui-hint state "Pick a valid recipe.")
-    (assoc-in state [:world :craft-recipe-path] [recipe-type (get (first matching-recipes) :hotkey)]))))
+    (info "selecting matching recipe" matching-recipes)
+    (if (empty? matching-recipes)
+      (ui-hint state "Pick a valid recipe.")
+      (let [recipe-path [recipe-type (get (first matching-recipes) :hotkey)]]
+        (info "selecting recipe path" recipe-path)
+        (assoc-in state [:world :craft-recipe-path] recipe-path)))))
 
 (defn craft-weapon
   [state]

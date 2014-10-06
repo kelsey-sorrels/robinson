@@ -9,7 +9,7 @@
 (timbre/refer-timbre)
 
 (def recipes
-  {:weapons [
+  {:weapons  [
      {:name "obsidian spear"         :hotkey \a :recipe {:exhaust [:obsidian-blade :stick :rope] :add [:obsidian-spear]}}
      {:name "obsidian axe"           :hotkey \b :recipe {:exhaust [:obsidian-blade :stick :rope] :add [:obsidian-axe]}}
      {:name "obsidian knife"         :hotkey \c :recipe {:exhaust [:obsidian-blade :stick :rope] :add [:obsidian-knife]}}]
@@ -35,18 +35,22 @@
   (let [inventory        (get-in state [:world :player :inventory])
         and-requirements (frequencies (concat (get-in recipe [:recipe :exhaust] [])
                                               (get-in recipe [:recipe :have-and] [])))
-        or-requirements  (get-in recipe [:recipe :have-or] [])]
-    (and
-      (every? (fn [[requirement n]] (some (fn [item]
-                                            (and (= (get item :id) requirement)
-                                              (>= (get item :count 1) n)))
-                                          inventory))
-              and-requirements)
-      (or (some   (fn [requirement] (some requirement
-                                          (map :id inventory)))
-                  or-requirements)
-          (empty? or-requirements)))))
-                                                
+        or-requirements  (get-in recipe [:recipe :have-or] [])
+        have-and-reqs    (every? (fn [[requirement n]] (some (fn [item]
+                                                               (and (= (get item :id) requirement)
+                                                                 (>= (get item :count 1) n)))
+                                                             inventory))
+                                 and-requirements)
+        have-or-reqs    (or (some (set or-requirements) (set (map :id inventory)))
+                            (empty? or-requirements))]
+    (when (= (get recipe :name) "sharpened stick")
+      (info "recipe" (get recipe :name))
+      (info "inventory" inventory)
+      (info "or-requirements" or-requirements)
+      (info "have and reqs?" have-and-reqs)
+      (info "have or reqs?" have-or-reqs))
+    (and have-and-reqs have-or-reqs)))
+
 (defn get-recipes
   "Return recipes tagged with :applicable true if the recipe has the required pre-requisites."
   [state]
@@ -89,5 +93,5 @@
                     (exhaust-by-ids exhaust)
                     ((fn [state] (reduce update-crafted state (map (fn [id] {:id id}) add)))))]
         state)
-      (ui-hint state "You don't have the necessary items to make this recipe."))))
+      (ui-hint state (format "You don't have the necessary items to make %s recipe." (get recipe :name))))))
 

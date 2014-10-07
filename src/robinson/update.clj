@@ -52,9 +52,18 @@
                   (str player-name key-in)
                   player-name))))
 
+(defn reinit-world
+  "Re-initialize the value of `:world` within `state`. Used when the player
+   dies and a new game is started."
+  [state]
+  (reduce (fn [state _] (add-npcs state 1))
+          (assoc state :world (init-world (System/currentTimeMillis)))
+          (range 5)))
+
 (defn add-starting-inventory
   [state]
-  (let [selected-hotkeys   (get-in state [:world :selected-hotkeys])
+  (let [state              (reinit-world state)
+        selected-hotkeys   (get-in state [:world :selected-hotkeys])
         start-inventory    (sg/start-inventory)
         start-inventory    (filterv #(contains? selected-hotkeys (get % :hotkey))
                                     start-inventory)
@@ -358,7 +367,7 @@
                 (fn [prev-items]
                   ;; wipe :wielded status from all dropped items
                   (conj prev-items (dissoc item :wielded))))
-              ;; remove the item from cell
+              ;; remove the item from inventory
               (assoc-in [:world :player :inventory]
                (vec (concat (subvec items 0 item-index)
                             (subvec items (inc item-index) (count items))))))]
@@ -372,30 +381,66 @@
         new-state)
         state)))
 
-(defn apply-item
+(defn assoc-apply-item-id
+  [state id]
+  (assoc-in state [:world :apply-item-id] id))
+
+(defn get-apply-item-id
+  [state]
+  (get-in state [:world :apply-item-id]))
+
+(defn select-apply-item
   "Apply the item from the player's inventory whose hotkey matches `keyin`."
   [state keyin]
-  (let [items (-> state :world :player :inventory)
-        inventory-hotkeys (map #(% :hotkey) items)
-        item-index (.indexOf inventory-hotkeys keyin)]
-    (if (and (>= item-index 0) (< item-index (count items)))
-      (let [item (nth items item-index)
-            id   (get item :id)]
-        (case id
-          :stick (-> state
-                   (assoc-current-state :apply-stick)
-                   (ui-hint "Pick a direction to use the stick."))
-          state))
+  (let [item (inventory-hotkey->item state keyin)]
+    (if item
+      (let [id (get item :id)]
+        (-> state
+          (assoc-apply-item-id id)
+          ((fn [state]
+            (case id
+              :stick
+                (-> state
+                  (assoc-current-state :apply-item-normal)
+                  (ui-hint "Pick a direction to use the stick."))
+              :sharpened-stick
+                (-> state
+                  (assoc-current-state :apply-item-inventory)
+                  (ui-hint "Pick an item to use the sharpened stick on."))
+              state)))))
         state)))
 
-(defn apply-stick-to-ground
-  "Apply the stick to the ground, creating a hole."
+(defn dig-hole
+  "Dig in the ground, creating a hole."
   [state]
   (assoc-in state
             (concat [:world :places (current-place-id state)]
                     (reverse (player-xy state))
                     [:type])
             (dg/rand-nth [:freshwater-hole :saltwater-hole :dry-hole])))
+
+(defn apply-sharp-item
+  "Apply a sharp item to the inventory item."
+  [state item]
+  (info "applying sharp item to" item)
+  (case (get item :id)
+    :unhusked-coconut
+    (-> state
+      (dec-item-count (get item :id))
+      (add-to-inventory [(ig/gen-coconut)]))
+    :else
+    state))
+
+(defn apply-item
+  "Applies the selected item."
+  [state keyin]
+  (info "apply-item" [(get-apply-item-id state) keyin])
+  (first-vec-match [(get-apply-item-id state) keyin]
+    [:stick       \>] (dig-hole state)
+    [ig/id-is-sharp? :*] (if-let [item (inventory-hotkey->item state keyin)]
+                        (apply-sharp-item state item)
+                        state)
+    [:*           :*] (ui-hint state "You're not sure how to apply it to that.")))
 
 (defn quaff-only-adjacent-cell
   "Drink all adjacent cells."
@@ -484,14 +529,6 @@
              (fn [hotkeys] (if (contains? hotkeys keyin)
                              (disj hotkeys keyin)
                              (conj hotkeys keyin)))))
-
-(defn reinit-world
-  "Re-initialize the value of `:world` within `state`. Used when the player
-   dies and a new game is started."
-  [state]
-  (reduce (fn [state _] (add-npcs state 1))
-          (assoc state :world (init-world (System/currentTimeMillis)))
-          (range 5)))
 
 (defn eat
   "Remove the item whose `:hotkey` equals `keyin` and subtract from the player's
@@ -675,7 +712,7 @@
                           (= (get target-cell :type) :palm-tree)
                             (concat
                               (if (= 0 (uniform-int 10))
-                                (repeat (uniform-int 1 2) (ig/gen-coconut))
+                                (repeat (uniform-int 1 2) (ig/gen-unhusked-coconut))
                                 [])
                               (if (= 0 (uniform-int 15))
                                 (repeat (uniform-int 1 2) (ig/gen-plant-fiber))
@@ -1537,10 +1574,13 @@
                :drop      {:escape    [identity               :normal          false]
                            :else      [drop-item              :normal          true]}
                :apply     {:escape    [identity               :normal          false]
-                           :else      [apply-item             identity         true]}
-               :apply-stick
+                           :else      [select-apply-item      identity         false]}
+               :apply-item-normal
                           {:escape    [identity               :normal          false]
-                           \>         [apply-stick-to-ground  :normal          true]}
+                           :else      [apply-item             :normal          true]}
+               :apply-item-inventory
+                          {:escape    [identity               :normal          false]
+                           :else      [apply-item             :normal          true]}
                :pickup    {:escape    [identity               :normal          false]
                            :else      [toggle-hotkey          :pickup          false]
                            :enter     [pick-up                :normal          true]}
@@ -1611,7 +1651,7 @@
                            \l         [close-right            :normal          true]}
                :more-log  {:else      [scroll-log             identity         false]}
                :log       {:else      [pass-state             :normal          false]}
-               :dead      {\y         [reinit-world           :normal          false]
+               :dead      {\y         [identity               :start-inventory false]
                            \n         [(constantly nil)       :normal          false]}
                :quit?     {\y         [(constantly nil)       :normal          false]
                            :else      [pass-state             :normal          false]}}
@@ -1692,8 +1732,8 @@
             (arg-when-> [state] (contains? (-> state :world :player :status) :dead)
               ((fn [state]
                 (.delete (clojure.java.io/file "save/world.edn"))
-                state))
-              (assoc-current-state :dead))
+                state)))
+              ;(assoc-current-state :dead))
               ;; delete the save game on player death
             ;; only try to start log scrolling if the state we were just in was not more-log
             (tx/when-> (not= current-state :more-log)

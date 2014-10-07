@@ -240,7 +240,7 @@
         frame  (nth atmo t)
         indexed-colors (map vector (partition 3 frame) (range))]
     (doseq [[column i] indexed-colors]
-      (info x i y column)
+      #_(info x i y column)
       (put-string screen (+ x i) y       "\u2584" (if (contains? #{0 6} i)
                                                     :black
                                                     (nth column 0))
@@ -353,6 +353,11 @@
   "Render the inventory menu with `Apply` as the title."
   [state]
   (render-multi-select (state :screen) "Apply Inventory" [] (-> state :world :player :inventory)))
+
+(defn render-apply-to
+  "Render the inventory menu with `Apply To` as the title."
+  [state]
+  (render-multi-select (state :screen) "Apply To" [] (-> state :world :player :inventory)))
 
 (defn render-magic
   "Render the pickup item menu if the world state is `:magic`."
@@ -705,9 +710,11 @@
     (render-hud state)
     (info "current-state" (current-state state))
     (case (current-state state)
-      :pickup            (render-pick-up state)
+      :pickup             (render-pick-up state)
       :inventory          (render-inventory state)
       :apply              (render-apply state)
+      :apply-item-inventory
+                          (render-apply-to state)
       :magic              (render-magic state)
       :drop               (render-drop state)
       :describe-inventory (render-describe-inventory state)

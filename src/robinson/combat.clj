@@ -13,16 +13,6 @@
 
 (timbre/refer-timbre)
 
-(defn- vec-match?
-  [v0 v1]
-  (let [arg-match? (fn [[arg0 arg1]]
-    (cond
-      (fn? arg0)  (arg0 arg1)
-      (= :* arg0) true
-      (set? arg0) (contains? arg0 arg1)
-      :else       (= arg0 arg1)))]
-  (every? arg-match? (map vector v0 v1))))
-
 (defn- gen-attack-message
   "Logs an attack message to the global state.
    `attack` is one of :bite :claws :punch.
@@ -35,7 +25,7 @@
         rand-punch-verb    (fn [] (dg/rand-nth ["wack" "punch" "hit" "pummel" "batter"
                                              "pound" "beat" "strike" "slug"]))
         rand-axe-verb      (fn [] (dg/rand-nth ["hit" "strike" "slash" "tear into" "cleave" "cut"]))]
-    (condp vec-match? [attacker-race defender-race attack defender-body-part damage-type]
+    (first-vec-match [attacker-race defender-race attack defender-body-part damage-type]
       [:human :*       :punch :*       :miss] (format "You punch the %s but miss." defender-name)
       [:human :*       :punch :*       :hit]  (dg/rand-nth [(format "You %s the %s %s %s the %s."
                                                              (rand-punch-verb)

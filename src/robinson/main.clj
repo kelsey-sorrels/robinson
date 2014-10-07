@@ -43,6 +43,9 @@
           new-state))
       (catch Exception e
         (do
+          (error "Caught exception" e)
+          (error (.getCause e))
+          (.printStackTrace e)
           (print-stack-trace e)
           state)))))
 

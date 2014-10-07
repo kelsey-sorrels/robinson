@@ -24,11 +24,20 @@
      (and (= id :coconut)
           (pos? (get item :water 0))))))
 
+(defn id-is-sharp? [id]
+  (contains? #{:knife
+               :obsidian-knife
+               :obsidian-axe
+               :obsidian-spear
+               :sharpened-stick}
+             id))
+
 (def ^:private items
   [
    {:id  :stick                   :name  "stick"                      :name-plural "sticks"}
    {:id  :sharpened-stick         :name  "sharpened stick"            :name-plural "sharpened sticks" :attack :spear}
    {:id  :plant-fiber             :name  "plant fiber"                :name-plural "plant fibers"}
+   {:id  :unhusked-coconut        :name  "unhusked coconut"           :name-plural "husked coconuts"}
    {:id  :coconut                 :name  "coconut"                    :name-plural "coconuts"}
    {:id  :wood-log                :name  "wood log"                   :name-plural "wood logs"}
    {:id  :rock                    :name  "rock"                       :name-plural "rocks"}

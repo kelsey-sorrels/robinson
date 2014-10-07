@@ -117,9 +117,20 @@
                                                (append-log state (format "%s-%c" (get item :name) (get item :hotkey)))))
                            state
                            items))))))
-        
+(defn inventory-hotkey->item
+  [state hotkey]
+  (first (filter (fn [item] (= hotkey (get item :hotkey))) (player-inventory state))))
+
+(defn inventory-hotkey->item-id
+  [state hotkey]
+  (get (inventory-hotkey->item state hotkey) :id))
+
+(defn inventory-id->item
+  [state id]
+  (first (filter (fn [item] (= id (get item :id))) (player-inventory state))))
+
 (defn remove-from-inventory
-  "Removes item with `id` from player's inventory freeing hotkeys as necessary."
+  "Removes item with `id` from player's inventory freeing hotkeys as necessary. Effectively destroys the item."
   [state id]
   (let [item   (first (filter (fn [item] (= (get item :id) id)) (get-in state [:world :player :inventory])))
         hotkey (get item :hotkey)
@@ -130,6 +141,21 @@
                                                                       (vec (remove-first (fn [item] (= (get item :id) id))
                                                                                          inventory)))))
       (conj-in [:world :remaining-hotkeys] hotkey))))
+
+(defn dec-item-count
+  "Decreses the count of an item in inventory."
+  [state id]
+  (let [item       (inventory-id->item state id)
+        item-count (get item :count 1)]
+    (cond
+      (zero? item-count)
+        state
+      (= 1 item-count)
+        (remove-from-inventory state (get item :id))
+      :else
+        (map-in state [:world :player :inventory] (fn [item] (if (= id (get item :id))
+                                                               (update-in item [:count] dec)
+                                                               item))))))
 
 
 (defn update-npc-killed

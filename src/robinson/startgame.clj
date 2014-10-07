@@ -11,16 +11,17 @@
 
 (defn start-inventory []
   (let [inventory              [(ig/gen-rope)
-                                (repeat 10 (ig/gen-match))
+                                (assoc (ig/gen-match) :count 10)
                                 (ig/gen-knife)
                                 (ig/gen-plant-guide)
-                                (repeat 10 (ig/gen-bandage))
-                                (repeat 2 (ig/gen-fishing-line-and-hook))
-                                (repeat 2 (ig/gen-ration))
+                                (assoc (ig/gen-bandage) :count 4)
+                                (assoc (ig/gen-fishing-line-and-hook) :count 2)
+                                (assoc (ig/gen-ration) :count 2)
                                 (ig/gen-flashlight)
                                 (ig/gen-bedroll)
                                 (ig/gen-tarp)
                                 (ig/gen-saw)]
+        _ (info "start-inventory" inventory)
         hotkeys                (vec (seq "abcdefghijklmnopqrstuvwxyzABCdEFGHIJKLMNOPQRSTUVWQYZ"))
         inventory-with-hotkeys (mapv #(assoc %1 :hotkey %2) inventory hotkeys)]
     inventory-with-hotkeys))

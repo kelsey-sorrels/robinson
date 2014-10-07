@@ -48,6 +48,24 @@
     [arg [sym] condition form else-form]
     (arg-if- 'clojure.core/-> arg sym condition form else-form)))
 
+
+(defn vec-match?
+  [v0 v1]
+  (let [arg-match? (fn [[arg0 arg1]]
+    (cond
+      (fn? arg0)  (arg0 arg1)
+      (= :* arg0) true
+      (set? arg0) (contains? arg0 arg1)
+      :else       (= arg0 arg1)))]
+  (every? arg-match? (map vector v0 v1))))
+
+(defmacro first-vec-match
+  [match & body]
+  `(condp vec-match? ~match
+     ~@body))
+
+
+
 (defn pos->xy
   [{x :x y :y}]
   [x y])

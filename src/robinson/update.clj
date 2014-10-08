@@ -522,7 +522,11 @@
           (let [new-thirst (- thirst (item :thirst))]
             (max 0 new-thirst))))
       ;; remove the item from inventory
-      (remove-from-inventory (get item :id)))
+      (remove-from-inventory (get item :id))
+      ((fn [state]
+        (case (get item :id)
+          :coconut (add-to-inventory state [(ig/gen-coconut-empty)])
+          state))))
      state))
      
 (defn do-rest

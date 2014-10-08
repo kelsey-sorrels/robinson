@@ -387,7 +387,7 @@
   (render-multi-select (state :screen)
                        "Eat Inventory"
                        []
-                       (filter #(= (% :type) :food)
+                       (filter #(contains? % :hunger)
                                (-> state :world :player :inventory))))
 
 (defn render-quests

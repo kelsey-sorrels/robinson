@@ -461,6 +461,7 @@
                                                                      :horizontal-wall
                                                                      :close-door
                                                                      :tree
+                                                                     :bamboo
                                                                      :palm-tree
                                                                      :fruit-tree
                                                                      :dry-hole

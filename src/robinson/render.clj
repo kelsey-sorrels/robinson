@@ -624,6 +624,13 @@
                                :wand           ["/"]
                                :spellbook      ["+"]
                                :scroll         ["?"]
+                               :rock           ["*"]
+                               :coconut        ["*" :brown :black]
+                               :unhusked-coconut
+                                               ["*" :brown :black]
+                               :empty-coconut  ["*" :brown :black]
+                               :bamboo         ["/" :green :black]
+                               :stick          ["/" :brown :black]
                                :$              ["$"  :yellow :black #{:bold}]
                                :amulet         ["\"" :blue   :black #{:bold}]
                                ["?"])
@@ -643,6 +650,11 @@
                               :short-grass     ["."  :green      :black]
                               :tall-grass      ["\"" :dark-green :black]
                               :tree            ["T"  :dark-green :black]
+                              :bamboo          ["\u2225" :dark-green :black] ;; ∥ 
+                              :bamboo-water-collector
+                                               (if (< 10 (get cell :water 0))
+                                                 ["O" (rand-nth [:blue :light-blue :dark-blue]) :black]
+                                                 ["O"])
                               :palm-tree       ["7"  :dark-green :black]
                               :fruit-tree      ["\u2648"  :dark-green :black] ;; ♈
                               :freshwater-hole (if (< 10 (get cell :water 0))

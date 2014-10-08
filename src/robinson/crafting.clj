@@ -22,7 +22,12 @@
                                                                    :obsidian-axe
                                                                    :knife]
                                                          :add     [:sharpened-stick]}}
-     {:name "bamboo water collector" :hotkey \d :recipe {:exhaust [:rope :bamboo :stick]         :add [:bamboo-water-collector]}}]
+     {:name "bamboo water collector" :hotkey \d :recipe {:exhaust [:rope :bamboo :stick]
+                                                         :have-or [:obsidian-knife
+                                                                   :obsidian-spear
+                                                                   :obsidian-axe
+                                                                   :knife]
+                                                         :add [:bamboo-water-collector]} :place :immediate}]
    :shelter [
      {:name "shelter"                :hotkey \a :recipe {:exhaust [:rope :leaves :stick]         :add [:shelter]}}]
    :traps [
@@ -73,11 +78,14 @@
           ids))
 
 (defn- add-by-ids
-  [state ids]
+  [state ids place-immediate]
   (reduce (fn [state id]
-            (let [item (id->item id)]
+            (let [item (id->item id)
+                  [x y] (player-xy state)]
             (info "adding" item)
-            (add-to-inventory state [item])))
+            (if place-immediate
+              (assoc-in state [:world :places (current-place-id state) y x :type] id)
+              (add-to-inventory state [item]))))
           state
           ids))
   
@@ -89,7 +97,7 @@
         _ (info "crafting" recipe)]
     (if (has-prerequisites? state recipe)
       (let [state (-> state
-                    (add-by-ids add)
+                    (add-by-ids add (= (get recipe :place) :immediate))
                     (exhaust-by-ids exhaust)
                     ((fn [state] (reduce update-crafted state (map (fn [id] {:id id}) add)))))]
         state)

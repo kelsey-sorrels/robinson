@@ -41,6 +41,7 @@
    {:id  :coconut                 :name  "coconut"                    :name-plural "coconuts" :thirst 30}
    {:id  :coconut-empty           :name  "coconut (empty)"            :name-plural "coconuts (empty)" :hunger 30}
    {:id  :coconut-shell           :name  "coconut shell"              :name-plural "coconut shells"}
+   {:id  :bamboo                  :name  "bamboo"                     :name-plural "bamboo"}
    {:id  :wood-log                :name  "wood log"                   :name-plural "wood logs"}
    {:id  :rock                    :name  "rock"                       :name-plural "rocks"}
    {:id  :obsidian                :name  "obsidian stone"             :name-plural "obsidian stones"}

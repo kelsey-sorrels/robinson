@@ -60,14 +60,15 @@
                                 1 {:type :gravel}
                                 2 {:type :floor})
                 [1.0 0.0 1.0] {:type :gravel}
-                [1.0 1.0 1.0] (case (uniform-int 7)
+                [1.0 1.0 1.0] (case (uniform-int 8)
                                 0 {:type :tree}
                                 1 {:type :palm-tree}
                                 2 {:type :fruit-tree}
                                 3 {:type :tall-grass}
                                 4 {:type :short-grass}
                                 5 {:type :floor}
-                                6 {:type :gravel})))))))
+                                6 {:type :gravel}
+                                7 {:type :bamboo})))))))
     [[[(int (/ max-x 2)) (int (/ max-y 2))]      {:type :dirt :starting-location true}]
      [[(int (inc (/ max-x 2))) (int (inc (/ max-y 2)))]      {:type :down-stairs :dest-place :1}]])))
 

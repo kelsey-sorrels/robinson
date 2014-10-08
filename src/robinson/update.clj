@@ -725,6 +725,10 @@
                               (if (= 0 (uniform-int 10))
                                 (repeat (uniform-int 1 5) (ig/gen-plant-fiber))
                                 []))
+                          (= (get target-cell :type) :bamboo)
+                              (if (= 0 (uniform-int 10))
+                                (repeat (uniform-int 1 2) (ig/gen-bamboo))
+                                [])
                           (= (get target-cell :type) :palm-tree)
                             (concat
                               (if (= 0 (uniform-int 10))

@@ -480,7 +480,7 @@
           (assoc-current-state :quaff-adj)
           (ui-hint "Pick a direction to drink."))
       quaffable-inventory-item?
-        (assoc-current-state state :quaff-inv)
+        (assoc-current-state state :quaff-inventory)
       :else
         (-> state
           (ui-hint "There is nothing to drink.")
@@ -511,7 +511,19 @@
 
 (defn quaff-inventory
   [state keyin]
-  state)
+  (if-let [item (inventory-hotkey->item state keyin)]
+    (-> state
+      (append-log (format "The %s tastes %s." (lower-case (get item :name))
+                                              (dg/rand-nth ["great" "foul" "greasy" "delicious" "burnt" "sweet" "salty"])))
+      (update-eaten item)
+      ;; reduce hunger
+      (update-in [:world :player :thirst]
+        (fn [thirst]
+          (let [new-thirst (- thirst (item :thirst))]
+            (max 0 new-thirst))))
+      ;; remove the item from inventory
+      (remove-from-inventory (get item :id)))
+     state))
      
 (defn do-rest
   "NOP action. Player's hp increases a little."
@@ -1596,7 +1608,8 @@
                            \j         [quaff-down             :normal          true]
                            \k         [quaff-up               :normal          true]
                            \l         [quaff-right            :normal          true]}
-               :quaff-inv {:escape    [identity               :normal          false]
+               :quaff-inventory
+                          {:escape    [identity               :normal          false]
                            :else      [quaff-inventory        :normal          true]}
                :open      {\h         [open-left              :normal          true]
                            \j         [open-down              :normal          true]

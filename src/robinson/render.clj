@@ -19,6 +19,7 @@
             [clojure.reflect :as r]
             [taoensso.timbre :as timbre]
             [robinson.startgame :as sg]
+            [robinson.itemgen :as ig]
             [robinson.swingterminal :as swingterminal])
   (:refer   clojure.set)
   (:import robinson.swingterminal.ATerminal))
@@ -358,6 +359,12 @@
   "Render the inventory menu with `Apply To` as the title."
   [state]
   (render-multi-select (state :screen) "Apply To" [] (-> state :world :player :inventory)))
+
+(defn render-quaff-inventory
+  "Render the inventory menu with `Quaff` as the title."
+  [state]
+  (render-multi-select (state :screen) "Quaff To" [] (filter ig/is-quaffable?
+                                                             (-> state :world :player :inventory))))
 
 (defn render-magic
   "Render the pickup item menu if the world state is `:magic`."
@@ -715,6 +722,8 @@
       :apply              (render-apply state)
       :apply-item-inventory
                           (render-apply-to state)
+      :quaff-inventory
+                          (render-quaff-inventory state)
       :magic              (render-magic state)
       :drop               (render-drop state)
       :describe-inventory (render-describe-inventory state)

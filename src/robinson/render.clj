@@ -861,7 +861,7 @@
     (= (current-state state) :start-text)
       (render-start-text state)
     ;; Is player dead?
-    (player-dead? state)
+    (= (current-state state) :dead)
       ;; Render game over
       (render-game-over state)
     (= (get-in state [:world :current-state]) :help)

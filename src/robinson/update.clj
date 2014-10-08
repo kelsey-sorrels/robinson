@@ -398,16 +398,16 @@
         (-> state
           (assoc-apply-item-id id)
           ((fn [state]
-            (case id
-              :stick
+            (cond
+              (= id :stick)
                 (-> state
                   (assoc-current-state :apply-item-normal)
                   (ui-hint "Pick a direction to use the stick."))
-              :sharpened-stick
+              (ig/is-sharp? item)
                 (-> state
                   (assoc-current-state :apply-item-inventory)
                   (ui-hint "Pick an item to use the sharpened stick on."))
-              state)))))
+              :else state)))))
         state)))
 
 (defn dig-hole
@@ -1732,8 +1732,11 @@
             (arg-when-> [state] (contains? (-> state :world :player :status) :dead)
               ((fn [state]
                 (.delete (clojure.java.io/file "save/world.edn"))
-                state)))
-              ;(assoc-current-state :dead))
+                state))
+              (update-in [:world :player :status]
+               (fn [status]
+                 (disj status :dead)))
+              (assoc-current-state :dead))
               ;; delete the save game on player death
             ;; only try to start log scrolling if the state we were just in was not more-log
             (tx/when-> (not= current-state :more-log)

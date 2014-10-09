@@ -49,8 +49,11 @@
    :fushia      (vec (hex-str-to-dec "D30094"))
    :beige       (vec (hex-str-to-dec "C8B464"))})
 
-(defn darken-rgb [rgb]
+(defn darken-rgb
+  ([rgb]
   (vec (map #(/ % 3) rgb)))
+  ([rgb d]
+  (vec (map #(* % d) rgb))))
 
 (defn color->rgb
   [color]
@@ -424,7 +427,7 @@
                                       :name v})
                                    [\a \b \c \d \e \f]
                                valid-input))
-          last-response ((or (last (get-in state [:world :dialog-log])) {:text ""}) :text)
+          last-response ((or (last (get-in state [:world :dialog*log])) {:text ""}) :text)
           _ (debug "last-response" last-response)
           response-wrapped (wrap-line (- 30 17) last-response)
           _ (debug "response-wrapped" response-wrapped)]
@@ -768,7 +771,11 @@
             (info "message" message)
             (when (and message
                        (< (- current-time (message :time)) 5))
-              (put-string screen 0 0 (get message :text) (get message :color) :black))))))
+              (let [darken-factor (inc  (* -1/5 (- current-time (message :time))))
+                    log-color (darken-rgb (color->rgb (get message :color)) darken-factor)]
+                (info "darken-factor" darken-factor)
+                (info "log color" log-color)
+                (put-string screen 0 0 (get message :text) log-color :black)))))))
     (case (current-state state)
       :quit               (render-quit? state)
       :harvest            (render-harvest state)

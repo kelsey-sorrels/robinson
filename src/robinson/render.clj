@@ -655,6 +655,10 @@
                                                (if (< 10 (get cell :water 0))
                                                  ["O" (rand-nth [:blue :light-blue :dark-blue]) :black]
                                                  ["O"])
+                              :solar-still
+                                               (if (< 10 (get cell :water 0))
+                                                 ["O" (rand-nth [:blue :light-blue :dark-blue]) :black]
+                                                 ["O"])
                               :palm-tree       ["7"  :dark-green :black]
                               :fruit-tree      ["\u2648"  :dark-green :black] ;; ♈
                               :freshwater-hole (if (< 10 (get cell :water 0))

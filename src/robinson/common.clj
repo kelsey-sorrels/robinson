@@ -462,6 +462,8 @@
                                                                      :close-door
                                                                      :tree
                                                                      :bamboo
+                                                                     :bamboo-water-collector
+                                                                     :solar-still
                                                                      :palm-tree
                                                                      :fruit-tree
                                                                      :dry-hole

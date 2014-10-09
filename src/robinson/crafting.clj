@@ -27,6 +27,9 @@
                                                                    :obsidian-spear
                                                                    :obsidian-axe
                                                                    :knife]
+                                                         :add [:bamboo-water-collector]} :place :immediate}
+     {:name "solar still"            :hotkey \e :recipe {:exhaust [:rock :tarp :stick :coconut-shell]
+                                                         :have-or [:stick]
                                                          :add [:bamboo-water-collector]} :place :immediate}]
    :shelter [
      {:name "shelter"                :hotkey \a :recipe {:exhaust [:rope :leaves :stick]         :add [:shelter]}}]

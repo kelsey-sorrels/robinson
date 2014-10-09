@@ -49,6 +49,11 @@
    :fushia      (vec (hex-str-to-dec "D30094"))
    :beige       (vec (hex-str-to-dec "C8B464"))})
 
+(defn rgb->mono
+  [rbg]
+  (let [avg (/ (reduce + rbg) 3)]
+   [avg avg avg]))
+
 (defn darken-rgb
   ([rgb]
   (vec (map #(/ % 3) rgb)))
@@ -674,7 +679,7 @@
                               ["?"])))
                 shaded-out-char (if (= (cell :discovered) current-time)
                                   out-char
-                                  (update-in out-char [1] darken-rgb))]
+                                  (update-in out-char [1] (comp rgb->mono darken-rgb)))]
               (apply put-string screen x y shaded-out-char)))))
     ;; draw character
     ;(debug (-> state :world :player))

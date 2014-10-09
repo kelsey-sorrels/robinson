@@ -1504,12 +1504,12 @@
       (fn [place]
         (update-matching-cells place
                                (fn [cell] (contains? #{:freshwater-hole :saltwater-hole} (get cell :type)))
-                               (fn [cell] (assoc cell :water (min 20 (+ 0.1 (* (dg/float) 0.1) (get cell :water 0.0)))))))))
+                               (fn [cell] (assoc cell :water (min 20 (+ 0.1 (* (dg/float) 0.1) (get cell :water 0.0))))))))
     (update-in [:world :places (current-place-id state)]
       (fn [place]
         (update-matching-cells place
                                (fn [cell] (contains? #{:solar-still} (get cell :type)))
-                               (fn [cell] (assoc cell :water (min 20 (+ 0.2 (* (dg/float) 0.1) (get cell :water 0.0)))))))))
+                               (fn [cell] (assoc cell :water (min 20 (+ 0.2 (* (dg/float) 0.1) (get cell :water 0.0))))))))))
 
 (defn update-quests
   "Execute the `pred` function for the current stage of each quest. If 

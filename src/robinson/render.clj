@@ -751,24 +751,24 @@
       :wield              (render-wield state)
       nil)
     (if-not (nil? (get-in state [:world :ui-hint]))
-      (put-string screen 0 0 (get-in state [:world :ui-hint]) :white :black)
-      ;; draw log
-      (when (= (current-state state) :normal)
-        (let [logs-viewed (get-in state [:world :logs-viewed])
-              current-time (get-in state [:world :time])
-              cur-state (current-state state)]
-          (debug "current-state" cur-state)
-          (if (= cur-state :more-log)
-            (let [logs (vec (filter #(= (get % :time) current-time) (get-in state [:world :log])))
-                  _ (info "logs-viewed" logs-viewed "current-time" current-time "logs" logs)
-                  message (get logs (dec logs-viewed))]
-              ;(debug "message" message)
-              (put-string screen 0 0 (format "%s --More--" (message :text)) (get message :color) :black))
-            (let [message (last (get-in state [:world :log]))]
-              (info "message" message)
-              (when (and message
-                         (< (- current-time (message :time)) 5))
-                (put-string screen 0 0 (get message :text) (get message :color) :black)))))))
+      (put-string screen 0 0 (get-in state [:world :ui-hint]) :white :black))
+    ;; draw log
+    (when (contains? #{:normal :more-log} (current-state state))
+      (let [logs-viewed (get-in state [:world :logs-viewed])
+            current-time (get-in state [:world :time])
+            cur-state (current-state state)]
+        (debug "current-state" cur-state)
+        (if (= cur-state :more-log)
+          (let [logs (vec (filter #(= (get % :time) current-time) (get-in state [:world :log])))
+                _ (info "logs-viewed" logs-viewed "current-time" current-time "logs" logs)
+                message (get logs (dec logs-viewed))]
+            ;(debug "message" message)
+            (put-string screen 0 0 (format "%s --More--" (message :text)) (get message :color) :black))
+          (let [message (last (get-in state [:world :log]))]
+            (info "message" message)
+            (when (and message
+                       (< (- current-time (message :time)) 5))
+              (put-string screen 0 0 (get message :text) (get message :color) :black))))))
     (case (current-state state)
       :quit               (render-quit? state)
       :harvest            (render-harvest state)

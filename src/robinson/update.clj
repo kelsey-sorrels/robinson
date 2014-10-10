@@ -1116,7 +1116,7 @@
               dwtl       (+ dwtl (if (> (/ thirst max-thirst) 0.5)
                                    1
                                    0))
-              wounded    (not-empty (get-in state [:world :player :wounds]))
+              wounded    (not (empty? (get-in state [:world :player :wounds])))
               _          (info "wounded" wounded)
               dwtl       (+ dwtl (if wounded
                                    1
@@ -1209,6 +1209,16 @@
           (fn [status]
               (disj status :infected)))
         (append-log "The infection has cleared up." :yellow))))
+
+
+;; forward declaration because update-state and repeat-cmmands are mutually recursive.
+(declare update-state)
+
+(defn repeat-commands
+  [state]
+  (let [command-seq (get-in state [:world :command-seq] [])]
+    (info "repeating commands" command-seq)
+    (reduce update-state state command-seq)))
 
 ;; update visibility
 (defn update-visibility
@@ -1584,6 +1594,7 @@
                            \T         [identity               :talk            true]
                            \m         [identity               :log             false]
                            \?         [identity               :help            false]
+                           \r         [repeat-commands        identity         false]
                            :escape    [identity               :quit?           false]}
                :inventory {:escape    [identity               :normal          false]}
                :describe  {:escape    [free-cursor            :normal          false]
@@ -1718,6 +1729,7 @@
                                         transition-fn
                                         (fn [state]
                                           (transition-fn state keyin)))
+            command-seq (get-in state [:world :command-seq] [])
             _ (debug "type of npcs" (type (get-in state [:world :npcs])))
             new-time  (inc (get-in state [:world :time]))
             state     (clear-ui-hint state)
@@ -1732,6 +1744,16 @@
                         new-state
                         (new-state (get-in state [:world :current-state])))
             _ (assert (not (nil? new-state)))
+            state     (if-not (= keyin \r)
+                        (cond
+                          (= current-state :normal)
+                            (assoc-in state [:world  :command-seq] [keyin])
+                          (contains? (hash-set current-state new-state) :more-log)
+                            state
+                          :else
+                            (conj-in state [:world :command-seq] keyin))
+                        (assoc-in state [:world :command-seq] command-seq))
+            _ (info "command-seq" (get-in state [:world :command-seq] :none))
             _ (trace "player" (get-in state [:world :player]))
             _ (info "new-state" new-state)
             wtl       (get-in state [:world :player :will-to-live])]

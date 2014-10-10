@@ -601,10 +601,10 @@
    This renders everything - the map, the menus, the log,
    the status bar. Everything."
   [state]
-  (let [screen (state :screen)
+  (let [screen         (state :screen)
         [columns rows] (get-size screen)
-        place         (current-place state)
-        current-time  (get-in state [:world :time])]
+        place          (current-place state)
+        current-time   (get-in state [:world :time])]
     ;(debug "begin-render")
     ;(clear (state :screen))
     (trace "rendering place" (current-place state))

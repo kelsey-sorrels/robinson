@@ -50,14 +50,14 @@
 
 
 (defn vec-match?
-  [v0 v1]
-  (let [arg-match? (fn [[arg0 arg1]]
+  [test-expr expr]
+  (let [arg-match? (fn [[test-term term]]
     (cond
-      (fn? arg0)  (arg0 arg1)
-      (= :* arg0) true
-      (set? arg0) (contains? arg0 arg1)
-      :else       (= arg0 arg1)))]
-  (every? arg-match? (map vector v0 v1))))
+      (fn? test-term)  (test-term term)
+      (= :* test-term) true
+      (set? test-term) (contains? test-term term)
+      :else       (= test-term term)))]
+  (every? arg-match? (map vector test-expr expr))))
 
 (defmacro first-vec-match
   [match & body]

@@ -1505,8 +1505,8 @@
               ;_ (trace "count remaining npcs" (count remaining-npcs))]
         (recur state remaining-npcs (dec i)))))))
 
-(defn fill-holes
-  "Fill holes with a small amount of water."
+(defn update-cells
+  "Fill holes with a small amount of water. Drop fruit."
   [state]
   (info "filling holes")
   (-> state
@@ -1770,7 +1770,7 @@
               (if-infected-get-hurt)
               (decrease-will-to-live)
               (update-npcs)
-              (fill-holes)
+              (update-cells)
               ;; TODO: Add appropriate level
               (add-npcs-random 1)
               ;; update visibility

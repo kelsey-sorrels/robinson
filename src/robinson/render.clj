@@ -517,8 +517,9 @@
   [state]
   (let [screen (state :screen)]
     (render-multi-select screen nil [] [{:name "Weapons" :hotkey \w}
-                                            {:name "Survival" :hotkey \s}]
-                                            30 6 20 5)
+                                        {:name "Survival" :hotkey \s}
+                                        {:name "Shelter" :hotkey \c}]
+                                        30 6 20 5)
     (render-rect-border screen 29 5 20 5 :black :white)
     (put-string screen 37 5 "Craft" :black :white)))
 
@@ -585,6 +586,11 @@
   "Render the craft menu if the world state is `:craft-survival`."
   [state]
   (render-craft-submenu state :survival))
+
+(defn render-craft-shelter
+  "Render the craft menu if the world state is `:craft-shelter`."
+  [state]
+  (render-craft-submenu state :shelter))
 
 (defn render-wield
   "Render the wield item menu if the world state is `:wield`."
@@ -659,6 +665,7 @@
                               :tall-grass      ["\"" :dark-green :black]
                               :tree            ["T"  :dark-green :black]
                               :bamboo          ["\u2225" :dark-green :black] ;; ∥ 
+                              :palisade        ["#" :brown :black]
                               :bamboo-water-collector
                                                (if (< 10 (get cell :water 0))
                                                  ["O" (rand-nth [:blue :light-blue :dark-blue]) :black]
@@ -756,6 +763,7 @@
       :craft              (render-craft state)
       :craft-weapon       (render-craft-weapon state)
       :craft-survival     (render-craft-survival state)
+      :craft-shelter      (render-craft-shelter state)
       :wield              (render-wield state)
       nil)
     (if-not (nil? (get-in state [:world :ui-hint]))

@@ -466,6 +466,7 @@
                                                                      :solar-still
                                                                      :palm-tree
                                                                      :fruit-tree
+                                                                     :palisade
                                                                      :dry-hole
                                                                      :freshwater-hole
                                                                      :saltwater-hole])

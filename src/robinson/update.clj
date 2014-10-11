@@ -65,13 +65,8 @@
   (let [state              (reinit-world state)
         selected-hotkeys   (get-in state [:world :selected-hotkeys])
         start-inventory    (sg/start-inventory)
-        start-inventory    (filterv #(contains? selected-hotkeys (get % :hotkey))
-                                    start-inventory)
-        remaining-hotkeys (reduce disj (set (get-in state [:world :remaining-hotkeys])) selected-hotkeys)]
-    (-> state
-      (assoc-in [:world :player :inventory] start-inventory)
-      (assoc-in [:world :remaining-hotkeys] remaining-hotkeys)
-      (assoc-in [:world :selected-hotkeys] #{}))))
+        state              (add-to-inventory state start-inventory)]
+    state))
 
 (defn select-starting-inventory
   [state key-in]
@@ -428,7 +423,10 @@
     (-> state
       (dec-item-count (get item :id))
       (add-to-inventory [(ig/gen-coconut)]))
-    :else
+    :stick
+    (-> state
+      (dec-item-count (get item :id))
+      (add-to-inventory [(ig/gen-sharpened-stick)]))
     state))
 
 (defn apply-item
@@ -999,7 +997,8 @@
   [state keyin]
   (let [recipe-type      (case (current-state state)
                            :craft-weapon   :weapons
-                           :craft-survival :survival)
+                           :craft-survival :survival
+                           :craft-shelter :shelter)
         matching-recipes (filter (fn [recipe] (= (get recipe :hotkey) keyin))
                                  (get (get-recipes state) recipe-type))]
     (info "selecting matching recipe" matching-recipes)
@@ -1016,6 +1015,10 @@
 (defn craft-survival
   [state]
   (craft-select-recipe (assoc-current-state state :craft-survival) \a))
+
+(defn craft-shelter
+  [state]
+  (craft-select-recipe (assoc-current-state state :craft-shelter) \a))
 
 
 (defn craft
@@ -1663,12 +1666,17 @@
                            :else      [sell                   :sell            true]}
                :craft     {\w         [craft-weapon           :craft-weapon    false]
                            \s         [craft-survival         :craft-survival  false]
+                           \c         [craft-shelter          :craft-shelter   false]
                            :escape    [identity               :normal          false]}
                :craft-weapon
                           {:escape    [identity               :craft           false]
                            :enter     [craft                  :normal          true]
                            :else      [craft-select-recipe    identity         false]}
                :craft-survival
+                          {:escape    [identity               :craft           false]
+                           :enter     [craft                  :normal          true]
+                           :else      [craft-select-recipe    identity         false]}
+               :craft-shelter
                           {:escape    [identity               :craft           false]
                            :enter     [craft                  :normal          true]
                            :else      [craft-select-recipe    identity         false]}

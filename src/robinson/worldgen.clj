@@ -63,7 +63,7 @@
                 [1.0 1.0 1.0] (case (uniform-int 8)
                                 0 {:type :tree}
                                 1 {:type :palm-tree}
-                                2 {:type :fruit-tree}
+                                2 {:type :fruit-tree :fruit-type (dg/rand-nth [:red :orange :yellow :green :blue :purple :white :black])}
                                 3 {:type :tall-grass}
                                 4 {:type :short-grass}
                                 5 {:type :floor}

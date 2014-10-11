@@ -391,6 +391,13 @@
         y (-> state :world :player :pos :y)]
     [(get-cell (current-place state) x y) x y]))
 
+(defn adjacent-xys
+  [x y]
+  [[(dec x) y]
+   [(inc x) y]
+   [x (dec y)]
+   [x (inc y)]])
+
 (defn adjacent-cells
   "Return a collection of adjacent cells (diagonals not-included) around pos.
    Pos is a map with the keys `:x` and `:y`.
@@ -399,10 +406,7 @@
    `[{:type :floor} {:type :water}...]`"
   [place {x :x y :y}]
   (map (fn [[x y]] (get-in place [y x]))
-    [[(dec x) y]
-     [(inc x) y]
-     [x (dec y)]
-     [x (inc y)]]))
+    (adjacent-xys x y)))
 
 (defn direction->cells
   [state direction]
@@ -442,6 +446,21 @@
                                 (= (-> npc :pos :y) y)))
                  (get-in state [:world :npcs]))))
 
+(defn type->collide?
+  [t]
+  (contains? #{:vertical-wall
+               :horizontal-wall
+               :close-door
+               :tree
+               :bamboo
+               :bamboo-water-collector
+               :solar-still
+               :palm-tree
+               :fruit-tree
+               :palisade
+               :dry-hole
+               :freshwater-hole
+               :saltwater-hole} t))
 
 (defn collide?
   "Return `true` if the cell at `[x y]` is non-traverable. Ie: a wall, closed door or simply does
@@ -457,19 +476,7 @@
       (or
         (nil? cell)
         ;; check the cell to see if it is a wall or closed door
-        (some (fn [collision-type] (= (cell :type) collision-type)) [:vertical-wall
-                                                                     :horizontal-wall
-                                                                     :close-door
-                                                                     :tree
-                                                                     :bamboo
-                                                                     :bamboo-water-collector
-                                                                     :solar-still
-                                                                     :palm-tree
-                                                                     :fruit-tree
-                                                                     :palisade
-                                                                     :dry-hole
-                                                                     :freshwater-hole
-                                                                     :saltwater-hole])
+        (type->collide? (get cell :type))
         ;; water collides?
         (and collide-water?
              (= (cell :type) :water))

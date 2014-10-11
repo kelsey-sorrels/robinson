@@ -628,7 +628,8 @@
           (let [cell-items (cell :items)
                 out-char (apply fill-put-string-color-style-defaults
                            (if (and cell-items (not (empty? cell-items)))
-                             (case (-> cell-items first :type)
+                             (case (or (-> cell-items first :type)
+                                       (-> cell-items first :id))
                                :ring           ["="]
                                :food           ["%"]
                                :bow            [")"]
@@ -641,10 +642,18 @@
                                :rock           ["*"]
                                :coconut        ["*" :brown :black]
                                :unhusked-coconut
-                                               ["*" :brown :black]
-                               :empty-coconut  ["*" :brown :black]
-                               :bamboo         ["/" :green :black]
-                               :stick          ["/" :brown :black]
+                                               ["*" :brown  :black]
+                               :empty-coconut  ["*" :brown  :black]
+                               :red-fruit      ["*" :red    :black]
+                               :orange-fruit   ["*" :orange :black]
+                               :yellow-fruit   ["*" :yellow :black]
+                               :green-fruit    ["*" :green  :black]
+                               :blue-fruit     ["*" :blue   :black]
+                               :purple-fruit   ["*" :purple :black]
+                               :white-fruit    ["*" :white  :black]
+                               :black-fruit    ["*" :gray   :black]
+                               :bamboo         ["/" :green  :black]
+                               :stick          ["/" :brown  :black]
                                :$              ["$"  :yellow :black #{:bold}]
                                :amulet         ["\"" :blue   :black #{:bold}]
                                ["?"])

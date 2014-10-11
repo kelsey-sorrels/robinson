@@ -41,6 +41,14 @@
    {:id  :coconut                 :name  "coconut"                    :name-plural "coconuts" :thirst 30}
    {:id  :coconut-empty           :name  "coconut (empty)"            :name-plural "coconuts (empty)" :hunger 30}
    {:id  :coconut-shell           :name  "coconut shell"              :name-plural "coconut shells"}
+   {:id  :red-fruit               :name  "red fruit"                  :name-plural "red fruits" :hunger 30}
+   {:id  :orange-fruit            :name  "orange fruit"               :name-plural "orange fruits" :hunger 30}
+   {:id  :yellow-fruit            :name  "yellow fruit"               :name-plural "yellow fruits" :hunger 30}
+   {:id  :green-fruit             :name  "green fruit"                :name-plural "green fruits" :hunger 30}
+   {:id  :blue-fruit              :name  "blue fruit"                 :name-plural "blue fruits" :hunger 30}
+   {:id  :purple-fruit            :name  "purple fruit"               :name-plural "purple fruits" :hunger 30}
+   {:id  :white-fruit             :name  "white fruit"                :name-plural "white fruits" :hunger 30}
+   {:id  :black-fruit             :name  "black fruit"                :name-plural "black fruits" :hunger 30}
    {:id  :bamboo                  :name  "bamboo"                     :name-plural "bamboo"}
    {:id  :wood-log                :name  "wood log"                   :name-plural "wood logs"}
    {:id  :rock                    :name  "rock"                       :name-plural "rocks"}

@@ -64,7 +64,7 @@
   [state]
   (let [state              (reinit-world state)
         selected-hotkeys   (get-in state [:world :selected-hotkeys])
-        start-inventory    (sg/start-inventory)
+        start-inventory    (filter #(contains? selected-hotkeys (get % :hotkey)) (sg/start-inventory))
         state              (add-to-inventory state start-inventory)]
     state))
 
@@ -136,6 +136,7 @@
                                :down-left 1
                                :down-right 1
                                0))]
+    (info "moving to" (get (get-cell-at-current-place state target-x target-y) :type))
     (cond
       (not (collide? state target-x target-y))
         (-> state
@@ -1511,18 +1512,43 @@
 (defn update-cells
   "Fill holes with a small amount of water. Drop fruit."
   [state]
-  (info "filling holes")
+  (info "updating cells")
   (-> state
+    ;; update holes
     (update-in [:world :places (current-place-id state)]
       (fn [place]
         (update-matching-cells place
                                (fn [cell] (contains? #{:freshwater-hole :saltwater-hole} (get cell :type)))
                                (fn [cell] (assoc cell :water (min 20 (+ 0.1 (* (dg/float) 0.1) (get cell :water 0.0))))))))
+    ;; update solar stills
     (update-in [:world :places (current-place-id state)]
       (fn [place]
         (update-matching-cells place
                                (fn [cell] (contains? #{:solar-still} (get cell :type)))
-                               (fn [cell] (assoc cell :water (min 20 (+ 0.2 (* (dg/float) 0.1) (get cell :water 0.0))))))))))
+                               (fn [cell] (assoc cell :water (min 20 (+ 0.2 (* (dg/float) 0.1) (get cell :water 0.0))))))))
+    ;; update fruit trees
+    ((fn [state]
+      (reduce (fn [state [cell x y]]
+              ;; chance of dropped a fruit
+              (if (= (uniform-int 0 10) 0)
+                ;; make the fruit item and find an adjacent free cell to drop it into
+                (let [item    (ig/id->item (get cell :fruit-type))
+                      adj-xys (remove (fn [[x y]] (type->collide?
+                                                           (get (get-cell-at-current-place state x y) :type)))
+                                      (adjacent-xys x y))]
+                  (info "dropping fruit" item "at [" x y "]" adj-xys)
+                  (if (not (empty? adj-xys))
+                  ;; drop the fruit into the cell
+                  (apply conj-in-cell-items state item (dg/rand-nth adj-xys))
+                    state))
+                state))
+            state
+            ;; [x y]s of fruit tree cells in the current place
+            (filter (fn filter-fruit-tree-cells
+                      [[cell _ _]]
+                      (= (get cell :type) :fruit-tree))
+                    (with-xy (current-place state))))))))
+            
 
 (defn update-quests
   "Execute the `pred` function for the current stage of each quest. If 

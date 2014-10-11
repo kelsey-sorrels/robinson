@@ -32,7 +32,8 @@
                                                          :have-or [:stick]
                                                          :add [:bamboo-water-collector]} :place :immediate}]
    :shelter [
-     {:name "shelter"                :hotkey \a :recipe {:exhaust [:rope :leaves :stick]         :add [:shelter]}}]
+     {:name "palisade"               :hotkey \a :recipe {:exhaust [:rope :sharpened-stick]       :add [:palisade]} :place :immediate}
+     {:name "shelter"                :hotkey \b :recipe {:exhaust [:rope :leaves :stick]         :add [:shelter]}  :place :immediate}]
    :traps [
      {:name "snare"                  :hotkey \a :recipe {:exhaust [:rope :stick]                 :add [:snare]}}
      {:name "deadfall trap"          :hotkey \b :recipe {:exhaust [:rope :stick :rock]           :add [:deadfall-trap]}}]})
@@ -76,7 +77,7 @@
   (reduce (fn [state id]
             (do 
               (info "removing" id)
-              (remove-from-inventory state id)))
+              (dec-item-count state id)))
           state
           ids))
 

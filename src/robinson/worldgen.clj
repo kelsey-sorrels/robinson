@@ -71,8 +71,7 @@
                                 5 {:type :floor}
                                 6 {:type :gravel}
                                 7 {:type :bamboo})))))))
-    [[[(int (/ max-x 2)) (int (/ max-y 2))]      {:type :dirt :starting-location true}]
-     [[(int (inc (/ max-x 2))) (int (inc (/ max-y 2)))]      {:type :down-stairs :dest-place :1}]])))
+    [[[(int (/ max-x 2)) (int (/ max-y 2))]      {:type :dirt :starting-location true}]])))
 
 
 (defn init-random-0

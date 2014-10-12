@@ -165,6 +165,7 @@
                              (.setLocationByPlatform true)
                              (.setVisible true)
                              (.setFocusTraversalKeysEnabled false)
+                             (.setResizable false)
                              (.pack))]
       (reify ATerminal
         (get-size [this]

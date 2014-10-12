@@ -31,6 +31,10 @@
 (timbre/refer-timbre)
 (set! *warn-on-reflection* true)
 
+(defn mac-os?
+  []
+  (not (nil? (re-find #"[Mm]ac" (System/getProperty "os.name")))))
+
 (defprotocol ATerminal
   (get-size [this])
   (put-string [this x y string]
@@ -156,6 +160,7 @@
                                    (if ctrlDown
                                        (on-key-fn (char (+ (int \a) -1 (int character))))
                                        (on-key-fn character))))))
+          icon            (.getImage (java.awt.Toolkit/getDefaultToolkit) "images/icon.png")
           frame            (doto (JFrame. "Robinson")
                              (.. (getContentPane) (setLayout (BorderLayout.)))
                              (.. (getContentPane) (add terminal-renderer BorderLayout/CENTER))
@@ -164,6 +169,7 @@
                              (.setDefaultCloseOperation JFrame/EXIT_ON_CLOSE)
                              (.setLocationByPlatform true)
                              (.setVisible true)
+                             (.setIconImage icon)
                              (.setFocusTraversalKeysEnabled false)
                              (.setResizable false)
                              (.pack))]

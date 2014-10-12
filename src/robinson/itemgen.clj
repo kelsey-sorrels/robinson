@@ -32,6 +32,29 @@
 (defn is-sharp? [item]
   (id-is-sharp? (get item :id)))
 
+(defn id-is-fruit?
+  [id]
+  (contains? #{:red-fruit :orange-fruit :yellow-fruit
+               :green-fruit :blue-fruit :purple-fruit
+               :white-fruit :black-fruit}
+             id))
+
+(defn is-fruit?
+  [item]
+  (id-is-fruit? (get item :id)))
+
+(defn is-poisonous?
+  [state item]
+  (contains? (get-in state [:world :fruit :poisonous]) (get item :id)))
+
+(defn skin-identifiable?
+  [state item]
+  (contains? (get-in state [:world :fruit :skin-identifiable]) (get item :id)))
+
+(defn tongue-identifiable?
+  [state item]
+  (contains? (get-in state [:world :fruit :tongue-identifiable]) (get item :id)))
+
 (def ^:private items
   [
    {:id  :stick                   :name  "stick"                      :name-plural "sticks"}
@@ -128,13 +151,6 @@
 (defn is-drinkable?
   [item]
   (get item :drinkable false))
-
-(defn is-fruit?
-  [item]
-  (contains? #{:red-fruit :orange-fruit :yellow-fruit
-               :green-fruit :blue-fruit :purple-fruit
-               :white-fruit :black-fruit}
-             (get item :id)))
 
 (defn gen-food
   "Generate one random food item."

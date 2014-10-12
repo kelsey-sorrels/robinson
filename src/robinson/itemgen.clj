@@ -129,6 +129,13 @@
   [item]
   (get item :drinkable false))
 
+(defn is-fruit?
+  [item]
+  (contains? #{:red-fruit :orange-fruit :yellow-fruit
+               :green-fruit :blue-fruit :purple-fruit
+               :white-fruit :black-fruit}
+             (get item :id)))
+
 (defn gen-food
   "Generate one random food item."
   []

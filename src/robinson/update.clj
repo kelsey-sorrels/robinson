@@ -549,31 +549,32 @@
   "Remove the item whose `:hotkey` equals `keyin` and subtract from the player's
    hunger the item's `:hunger` value."
   [state keyin]
-  (let [items (-> state :world :player :inventory)
-        inventory-hotkeys (map #(% :hotkey) items)
-        item-index (.indexOf inventory-hotkeys keyin)]
-    (if (and (>= item-index 0) (< item-index (count items)))
-      (let [item (nth items item-index)
-            new-state (-> state
-              (append-log (format "The %s tastes %s." (lower-case (get item :name))
-                                                      (dg/rand-nth ["great" "foul" "greasy" "delicious" "burnt" "sweet" "salty"])))
-              (update-eaten item)
-              ;; reduce hunger
-              (update-in [:world :player :hunger]
-                (fn [hunger]
-                  (let [new-hunger (- hunger (item :hunger))]
-                    (max 0 new-hunger))))
-              ;; remove the item from inventory
-              (assoc-in [:world :player :inventory]
-               (vec (concat (subvec items 0 item-index)
-                            (subvec items (inc item-index) (count items))))))]
-              ;;;; hotkey is now  available
-              ;(assoc-in [:world :remaining-hotkeys]
-              ;  (vec (concat (subvec remaining-hotkeys 0 item-index)
-              ;               (subvec remaining-hotkeys (inc item-index) (count remaining-hotkeys))))))]
-        (debug "new-state" new-state)
-        new-state)
-        state)))
+  (info "poisoned fruit" (get-in state [:world :fruit :poisonous]))
+  (if-let [item (inventory-hotkey->item state keyin)]
+    (-> state
+      (append-log (format "The %s tastes %s." (lower-case (get item :name))
+                                              (dg/rand-nth ["great" "foul" "greasy" "delicious" "burnt" "sweet" "salty"])))
+      (update-eaten item)
+      ;; reduce hunger
+      (update-in [:world :player :hunger]
+        (fn [hunger]
+          (let [new-hunger (- hunger (item :hunger))]
+            (max 0 new-hunger))))
+      ;; remove the item from inventory
+      (dec-item-count (get item :id))
+      ;; if the item was a poisonous fruit, set a poisoned timebomb
+      ((fn [state]
+        (if (and (ig/is-fruit? item)
+                 (contains? (set (get-in state [:world :fruit :poisonous])) (get item :id)))
+          (do
+            (info "Ate poisoned fruit." item)
+            (assoc-in state
+                      [:world :player :poisoned-time]
+                      (apply min (remove nil?
+                                         [(get-in state [:world :player :poisoned-time])
+                                          (+ (get-time state) (uniform-int 100 200))]))))
+          state))))
+    state))
 
 (defn use-stairs
   "If there are stairs in the player's cell, change the world's `:current-place`
@@ -1157,10 +1158,24 @@
 (defn if-poisoned-get-hurt
   "Decrease player's hp if they are poisoned."
   [state]
-  (update-in state [:world :player :hp] (fn [hp] (if (contains? (get-in state [:world :player :status]) :poisoned)
-                                                   (- hp 0.1)
-                                                   (min (get-in state [:world :player :max-hp])
-                                                        (+ hp 0.2))))))
+  (-> state
+    ((fn [state] (let [poisoned-time (get-in state [:world :player :poisoned-time])]
+                   (if (and poisoned-time
+                            (< poisoned-time (get-time state)))
+                     (-> state
+                       (conj-in [:world :player :status] :poisoned)
+                       (append-log "You vomit.")
+                       (update-in [:world :player :hunger] (fn [thirst] (min (+ thirst 30)
+                                                                             (get-in state [:world :player :max-hunger]))))
+                       (update-in [:world :player :thirst] (fn [thirst] (min (+ thirst 30)
+                                                                             (get-in state [:world :player :max-thirst]))))
+                       (dissoc-in [:world :player :poisoned-time]))
+                     state))))
+    (update-in [:world :player :hp] (fn [hp] (if (contains? (get-in state [:world :player :status]) :poisoned)
+                                               (- hp 0.1)
+                                               (min (get-in state [:world :player :max-hp])
+                                                    (+ hp 0.2)))))))
+
 (defn if-wounded-get-infected
   [state]
   (let [hp                  (get-in state [:world :player :hp])
@@ -1526,13 +1541,22 @@
         (update-matching-cells place
                                (fn [cell] (contains? #{:solar-still} (get cell :type)))
                                (fn [cell] (assoc cell :water (min 20 (+ 0.2 (* (dg/float) 0.1) (get cell :water 0.0))))))))
+    ;; rot fruit
+    (update-in [:world :places (current-place-id state)]
+      (fn [place]
+        (update-matching-cells place
+                               (fn [cell] (not (empty? (get cell :items []))))
+                               (fn [cell] (update-in cell [:items] (fn [items] (vec
+                                                                                 (remove (fn [item] (< (get item :rot-time (get-time state))
+                                                                                                       (get-time state)))
+                                                                                          items))))))))
     ;; update fruit trees
     ((fn [state]
       (reduce (fn [state [cell x y]]
               ;; chance of dropped a fruit
-              (if (= (uniform-int 0 10) 0)
+              (if (= (uniform-int 0 20) 0)
                 ;; make the fruit item and find an adjacent free cell to drop it into
-                (let [item    (ig/id->item (get cell :fruit-type))
+                (let [item    (assoc (ig/id->item (get cell :fruit-type)) :rot-time (+ (get-time state) (uniform-int 10 30)))
                       adj-xys (remove (fn [[x y]] (type->collide?
                                                            (get (get-cell-at-current-place state x y) :type)))
                                       (adjacent-xys x y))]

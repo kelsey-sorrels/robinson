@@ -358,6 +358,10 @@
   [state]
   (get-in state [:world :current-state]))
 
+(defn get-time
+  [state]
+  (get-in state [:world :time]))
+
 (defn assoc-current-state
   [state new-state]
   (assoc-in state [:world :current-state] new-state))

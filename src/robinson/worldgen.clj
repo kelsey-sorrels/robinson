@@ -165,7 +165,9 @@
         starting-pos           {:x starting-x :y starting-y}
         party-pos              (adjacent-navigable-pos place-0 starting-pos #{:corridor :open-door :floor})
         _ (debug "starting-pos" starting-pos)
-        _ (debug "party-pos" party-pos)]
+        _ (debug "party-pos" party-pos)
+       fruit-ids               [:red-fruit :orange-fruit :yellow-fruit :green-fruit :blue-fruit :purple-fruit :white-fruit :black-fruit]
+       poisoned-fruit          (set (take (/ (count fruit-ids) 2) (dg/shuffle fruit-ids)))]
 
   {:places {:0 place-0}
             ;:1 (init-place-1)}
@@ -210,6 +212,9 @@
               :num-items-eaten          {}}
             ;; map from body-part to {:time <int> :damage <float>}
             :wounds {}}
+   :fruit {
+     :poisonous poisoned-fruit
+   }
    :quests {}
    :npcs []}))
 

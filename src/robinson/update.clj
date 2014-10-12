@@ -377,13 +377,13 @@
         new-state)
         state)))
 
-(defn assoc-apply-item-id
-  [state id]
-  (assoc-in state [:world :apply-item-id] id))
+(defn assoc-apply-item
+  [state item]
+  (assoc-in state [:world :apply-item] item))
 
-(defn get-apply-item-id
+(defn get-apply-item
   [state]
-  (get-in state [:world :apply-item-id]))
+  (get-in state [:world :apply-item]))
 
 (defn select-apply-item
   "Apply the item from the player's inventory whose hotkey matches `keyin`."
@@ -392,7 +392,7 @@
     (if item
       (let [id (get item :id)]
         (-> state
-          (assoc-apply-item-id id)
+          (assoc-apply-item item)
           ((fn [state]
             (cond
               (= id :stick)
@@ -403,6 +403,10 @@
                 (-> state
                   (assoc-current-state :apply-item-inventory)
                   (ui-hint "Pick an item to use the sharpened stick on."))
+              (ig/is-fruit? item)
+                (-> state
+                  (assoc-current-state :apply-item-body)
+                  (ui-hint "a-apply to skin, b-apply to tongue"))
               :else state)))))
         state)))
 
@@ -430,16 +434,45 @@
       (add-to-inventory [(ig/gen-sharpened-stick)]))
     state))
 
+
+(defn apply-fruit-to-skin
+  "Apply fruit to the skin. If it is poisonous, display a message in the future."
+  [state item]
+  (info "skin-identifiable" (get-in state [:world :fruit]))
+  (-> state
+    (append-log (format "You touch the %s to your skin." (get item :name)))
+    (arg-when-> [state] (ig/skin-identifiable? state item)
+      (assoc-in [:world :player :skin-identify-activate-time]
+                (apply min (remove nil?
+                                   [(get-in state [:world :player :skin-identify-activate-time])
+                                    (+ (get-time state) (uniform-int 5 10))]))))))
+
+(defn apply-fruit-to-tongue
+  "Apply fruit to the tongue If it is poisonous, display a message in the future."
+  [state item]
+  (info "skin-identifiable" (get-in state [:world :fruit]))
+  (-> state
+    (append-log (format "You touch the %s to your tongue." (get item :name)))
+    (arg-when-> [state] (ig/tongue-identifiable? state item)
+      (assoc-in [:world :player :tongue-identify-activate-time]
+                (apply min (remove nil?
+                                   [(get-in state [:world :player :tongue-identify-activate-time])
+                                    (+ (get-time state) (uniform-int 5 10))]))))))
+
 (defn apply-item
   "Applies the selected item."
   [state keyin]
-  (info "apply-item" [(get-apply-item-id state) keyin])
-  (first-vec-match [(get-apply-item-id state) keyin]
-    [:stick       \>] (dig-hole state)
-    [ig/id-is-sharp? :*] (if-let [item (inventory-hotkey->item state keyin)]
-                        (apply-sharp-item state item)
-                        state)
-    [:*           :*] (ui-hint state "You're not sure how to apply it to that.")))
+  (let [item (get-apply-item state)]
+    (info "apply-item" [item keyin])
+    (first-vec-match [(get item :id) keyin]
+      [:stick       \>] (dig-hole state)
+      [ig/id-is-sharp? :*] (if-let [item (inventory-hotkey->item state keyin)]
+                             (apply-sharp-item state item)
+                             state)
+      ;; apply fruit to body
+      [ig/id-is-fruit? \a] (apply-fruit-to-skin state item)
+      [ig/id-is-fruit? \b] (apply-fruit-to-tongue state item)
+      [:*           :*] (ui-hint state "You're not sure how to apply it to that."))))
 
 (defn quaff-only-adjacent-cell
   "Drink all adjacent cells."
@@ -1153,24 +1186,48 @@
         (append-log state (format "You feel %s." (dg/rand-nth ["happy" "happier" "glad" "elated" "great" "good"])))
         (append-log state (format "You feel %s." (dg/rand-nth ["sad" "sadder" "down" "unhappy" "bummed" "bad"]))))
       state)))
-  
+
+(defn fruit-identify-activate
+  "Display a message if the fruit being identified is poisonous."
+  [state]
+  (info "time" (get-time state))
+  (info "skin-id-time" (get-in state [:world :player :skin-identify-activate-time]))
+  (info "tongue-id-time" (get-in state [:world :player :tongue-identify-activate-time]))
+  (-> state
+    (arg-when-> [state]
+      (let [activate-time (get-in state [:world :player :skin-identify-activate-time])]
+        (and activate-time
+             (< activate-time (get-time state))))
+      (append-log (dg/rand-nth ["Your skin feels burning."
+                                "Your skin is numb."
+                                "Your skin is has a rash."
+                                "Your skin hurts."]))
+      (dissoc-in [:world :player :skin-identify-activate-time]))
+    (arg-when-> [state]
+      (let [activate-time (get-in state [:world :player :tongue-identify-activate-time])]
+        (and activate-time
+             (< activate-time (get-time state))))
+      (append-log (dg/rand-nth ["Your tongue feels burning."
+                                "Your tongue is numb."
+                                "Your tongue hurts."]))
+      (dissoc-in [:world :player :tongue-identify-activate-time]))))
 
 (defn if-poisoned-get-hurt
   "Decrease player's hp if they are poisoned."
   [state]
   (-> state
-    ((fn [state] (let [poisoned-time (get-in state [:world :player :poisoned-time])]
-                   (if (and poisoned-time
-                            (< poisoned-time (get-time state)))
-                     (-> state
-                       (conj-in [:world :player :status] :poisoned)
-                       (append-log "You vomit.")
-                       (update-in [:world :player :hunger] (fn [thirst] (min (+ thirst 30)
-                                                                             (get-in state [:world :player :max-hunger]))))
-                       (update-in [:world :player :thirst] (fn [thirst] (min (+ thirst 30)
-                                                                             (get-in state [:world :player :max-thirst]))))
-                       (dissoc-in [:world :player :poisoned-time]))
-                     state))))
+    (arg-when-> [state]
+      (let [poisoned-time (get-in state [:world :player :poisoned-time])]
+        (and poisoned-time
+             (< poisoned-time (get-time state))))
+      (-> state
+        (conj-in [:world :player :status] :poisoned)
+        (append-log "You vomit.")
+        (update-in [:world :player :hunger] (fn [thirst] (min (+ thirst 30)
+                                                              (get-in state [:world :player :max-hunger]))))
+        (update-in [:world :player :thirst] (fn [thirst] (min (+ thirst 30)
+                                                              (get-in state [:world :player :max-thirst]))))
+        (dissoc-in [:world :player :poisoned-time])))
     (update-in [:world :player :hp] (fn [hp] (if (contains? (get-in state [:world :player :status]) :poisoned)
                                                (- hp 0.1)
                                                (min (get-in state [:world :player :max-hp])
@@ -1671,6 +1728,13 @@
                :apply-item-inventory
                           {:escape    [identity               :normal          false]
                            :else      [apply-item             :normal          true]}
+               :apply-item-body
+                          {:escape    [identity               :normal          false]
+                           \a         [(fn [state]
+                                       (apply-item state \a)) :normal          true]
+                           \b         [(fn [state]
+                                       (apply-item state \b))
+                                                              :normal          true]}
                :pickup    {:escape    [identity               :normal          false]
                            :else      [toggle-hotkey          :pickup          false]
                            :enter     [pick-up                :normal          true]}
@@ -1821,6 +1885,8 @@
               ;; do updates that don't deal with keyin
               ;; Get hungrier
               (get-hungrier-and-thirstier)
+              ;; Show fruit identify messages if applicable
+              (fruit-identify-activate)
               ;; if poisoned, damage player, else heal
               (if-poisoned-get-hurt)
               (heal)

@@ -167,7 +167,9 @@
         _ (debug "starting-pos" starting-pos)
         _ (debug "party-pos" party-pos)
        fruit-ids               [:red-fruit :orange-fruit :yellow-fruit :green-fruit :blue-fruit :purple-fruit :white-fruit :black-fruit]
-       poisoned-fruit          (set (take (/ (count fruit-ids) 2) (dg/shuffle fruit-ids)))]
+       poisoned-fruit          (set (take (/ (count fruit-ids) 2) (dg/shuffle fruit-ids)))
+       skin-identifiable       (set (take (/ (count poisoned-fruit) 2) (dg/shuffle poisoned-fruit)))
+       tongue-identifiable     (set (take (/ (count poisoned-fruit) 2) (dg/shuffle poisoned-fruit)))]
 
   {:places {:0 place-0}
             ;:1 (init-place-1)}
@@ -214,6 +216,8 @@
             :wounds {}}
    :fruit {
      :poisonous poisoned-fruit
+     :skin-identifiable skin-identifiable
+     :tongue-identifiable tongue-identifiable
    }
    :quests {}
    :npcs []}))

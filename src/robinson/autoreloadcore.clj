@@ -41,7 +41,6 @@
                           (catch Exception ex
                             (print-stack-trace ex)
                             state))]
-          (println "Core new-state" new-state)
           (if (nil? new-state)
             (System/exit 0)
             (recur setup-fn setup-fn-var new-state)))

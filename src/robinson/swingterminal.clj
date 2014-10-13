@@ -41,6 +41,7 @@
               [this x y string fg bg]
               [this x y string fg bg style])
   (wait-for-key [this])
+  (set-cursor [this xy])
   (refresh [this])
   (clear [this]))
 
@@ -79,6 +80,7 @@
           default-fg-color (Color. (long default-fg-color-r) (long default-fg-color-g) (long default-fg-color-b))
           default-bg-color (Color. (long default-bg-color-g) (long default-bg-color-g) (long default-bg-color-b))
           character-map    (atom (vec (repeat rows (vec (repeat columns (TerminalCharacter. \space default-fg-color default-bg-color #{}))))))
+          cursor-xy        (atom nil)
           key-queue        (LinkedBlockingQueue.)
           on-key-fn        (or on-key-fn
                                (fn default-on-key-fn [k]
@@ -112,8 +114,12 @@
                                    (let [c        (get-in @character-map [row col])
                                          x        (long (* col char-width))
                                          y        (long (- (* (inc row) char-height) (.getDescent font-metrics)))
-                                         fg-color (get c :fg-color)
-                                         bg-color (get c :bg-color)
+                                         fg-color (if (= @cursor-xy [col row])
+                                                    (get c :bg-color)
+                                                    (get c :fg-color))
+                                         bg-color (if  (= @cursor-xy [col row])
+                                                    (get c :fg-color)
+                                                    (get c :bg-color))
                                          s        (str (get c :character))
                                          style    (get c :style)]
                                      (when (not= bg-color default-bg-color)
@@ -193,6 +199,8 @@
                       (reset! character-map (assoc-in @character-map [row col] character)))))))))
         (wait-for-key [this]
           (.take key-queue))
+        (set-cursor [this xy]
+          (reset! cursor-xy xy))
         (refresh [this]
           (SwingUtilities/invokeLater
             (fn refresh-fn [] (.repaint terminal-renderer))))

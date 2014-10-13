@@ -1959,15 +1959,17 @@
                         new-state
                         (new-state (get-in state [:world :current-state])))
             _ (assert (not (nil? new-state)))
-            state     (if-not (= keyin \r)
-                        (cond
-                          (= current-state :normal)
-                            (assoc-in state [:world  :command-seq] [keyin])
-                          (contains? (hash-set current-state new-state) :more-log)
-                            state
-                          :else
-                            (conj-in state [:world :command-seq] keyin))
-                        (assoc-in state [:world :command-seq] command-seq))
+            state     (if state
+                        (if-not (= keyin \r)
+                          (cond
+                            (= current-state :normal)
+                              (assoc-in state [:world  :command-seq] [keyin])
+                            (contains? (hash-set current-state new-state) :more-log)
+                              state
+                            :else
+                              (conj-in state [:world :command-seq] keyin))
+                          (assoc-in state [:world :command-seq] command-seq))
+                        state)
             _ (info "command-seq" (get-in state [:world :command-seq] :none))
             _ (trace "player" (get-in state [:world :player]))
             _ (info "new-state" new-state)
@@ -2005,7 +2007,8 @@
               (assoc-current-state :dead))
               ;; delete the save game on player death
             ;; only try to start log scrolling if the state we were just in was not more-log
-            (tx/when-> (not= current-state :more-log)
+            (tx/when-> (and current-state
+                            (not= current-state :more-log))
               (init-log-scrolling))))
       state)))
 

@@ -66,9 +66,10 @@
 
 (defn move-cursor
   ([screen x y]
-  nil)
+  (info "moving cursor to" x y)
+  (.set-cursor screen [x y]))
   ([screen o]
-  nil))
+  (.set-cursor screen o)))
 
 (defn fill-put-string-color-style-defaults
   ([string]
@@ -811,9 +812,7 @@
     ;; draw cursor
     (if-let [cursor-pos (-> state :world :cursor)]
       (move-cursor screen (cursor-pos :x) (cursor-pos :y))
-      (let [[x y] (get-size screen)]
-        (move-cursor screen (dec x) (dec y))))
-    (move-cursor screen nil)
+      (move-cursor screen nil))
     (refresh screen)))
     ;;(debug "end-render")))
 

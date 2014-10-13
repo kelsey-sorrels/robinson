@@ -663,7 +663,9 @@
   "Initialize the selection cursor at the player's current location."
   [state]
   (let [player-pos (get-in state [:world :player :pos])]
-    (assoc-in state [:world :cursor] player-pos)))
+    (-> state
+      (assoc-in [:world :cursor] player-pos)
+      (ui-hint "ijkl to move cursor, enter to select."))))
 
 (defn search
   "Search the Moore neighborhood for hidden things and make them visible."
@@ -849,28 +851,36 @@
   [state]
   (let [cursor-pos (get-in state [:world :cursor])
         cursor-pos (assoc cursor-pos :x (max 0 (dec (cursor-pos :x))))]
-    (assoc-in state [:world :cursor] cursor-pos)))
+    (-> state
+      (assoc-in [:world :cursor] cursor-pos)
+      (ui-hint "ijkl to move cursor, enter to select."))))
 
 (defn move-cursor-right
   "Move the cursor pos one space to the right keeping in mind the bounds of the current place."
   [state]
   (let [cursor-pos (get-in state [:world :cursor])
         cursor-pos (assoc cursor-pos :x (min (count (first (current-place state))) (inc (cursor-pos :x))))]
-    (assoc-in state [:world :cursor] cursor-pos)))
+    (-> state
+      (assoc-in [:world :cursor] cursor-pos)
+      (ui-hint "ijkl to move cursor, enter to select."))))
 
 (defn move-cursor-up
   "Move the cursor pos one space up keeping in mind the bounds of the current place."
   [state]
   (let [cursor-pos (get-in state [:world :cursor])
         cursor-pos (assoc cursor-pos :y (max 0 (dec (cursor-pos :y))))]
-    (assoc-in state [:world :cursor] cursor-pos)))
+    (-> state
+      (assoc-in [:world :cursor] cursor-pos)
+      (ui-hint "ijkl to move cursor, enter to select."))))
 
 (defn move-cursor-down
   "Move the cursor pos one space down keeping in mind the bounds of the current place."
   [state]
   (let [cursor-pos (get-in state [:world :cursor])
-        cursor-pos (assoc cursor-pos :y (min (count (current-place state)) (dec (cursor-pos :y))))]
-    (assoc-in state [:world :cursor] cursor-pos)))
+        cursor-pos (assoc cursor-pos :y (min (count (current-place state)) (inc (cursor-pos :y))))]
+    (-> state
+      (assoc-in [:world :cursor] cursor-pos)
+      (ui-hint "ijkl to move cursor, enter to select."))))
 
 (defn describe-at-cursor
   "Add to the log, a message describing the scene at the cell indicated by the

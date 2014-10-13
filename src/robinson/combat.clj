@@ -9,7 +9,8 @@
             clojure.contrib.core
             [clojure.data.generators :as dg]
             [clojure.stacktrace :as st]
-            [taoensso.timbre :as timbre]))
+            [taoensso.timbre :as timbre]
+            [robinson.monstergen :as mg]))
 
 (timbre/refer-timbre)
 
@@ -470,6 +471,10 @@
                                             :dead)
                         :white))
           ;; defender is player
-          (update-in state [:world :player :status]
-            (fn [status] (conj status :dead)))))))
+          (-> state
+            (assoc-in [:world :cause-of-death] (format "%s %s %s" (noun->indefinite-article (get attacker :name))
+                                                                 (get attacker :name)
+                                                                 (name attack)))
+            (update-in [:world :player :status]
+              (fn [status] (conj status :dead))))))))
 

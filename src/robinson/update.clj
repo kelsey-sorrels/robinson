@@ -1374,11 +1374,12 @@
           get-type               (memoize (fn [x y] (do
                                                       ;(debug "traversable?" x y "type" (get-in place [y x :type]))
                                                       (get-in place [y x :type]))))
-          water-traversable?     (fn [[x y]]
+          water-traversable?     (fn water-traversable? [[x y]]
                                    (and (< 0 x width)
                                         (< 0 y height)
                                         (not (farther-than? npc-pos {:x x :y y} threshold))
-                                        (= (get-type x y) :water)))
+                                        (= (get-type x y) :water)
+                                        (every? water-traversable? (adjacent-xys-ext x y))))
           land-traversable?      (fn [[x y]]
                                    (and (< 0 x width)
                                         (< 0 y height)
@@ -1420,6 +1421,66 @@
         ]
       [{:x (first new-pos) :y (second new-pos)} new-npc npc]))
 
+(defn
+  move-away-from-target
+  "Move `npc` one space closer to the target position if there is a path
+   from the npc to the target. Returns the moved npc and not the updated state.
+   `target` is a map with the keys `:x` and `:y`."
+  [state npc target]
+    (let [npcs                   (npcs-at-current-place state)
+          npc-pos                (get npc :pos)
+          npc-pos-vec            [(npc-pos :x) (npc-pos :y)]
+          [npc-x npc-y]          [(npc-pos :x) (npc-pos :y)]
+          threshold              (get npc :range-threshold)
+          npc-can-move-in-water  (mg/can-move-in-water? (get npc :race))
+        
+          player                 (-> state :world :player)
+          player-pos-vec         [(-> player :pos :x) (-> player :pos :y)]
+          place                  (current-place state)
+          width                  (count (first place))
+          height                 (count place)
+          get-type               (memoize (fn [x y] (do
+                                                      ;(debug "traversable?" x y "type" (get-in place [y x :type]))
+                                                      (get-in place [y x :type]))))
+          water-traversable?     (fn water-traversable? [[x y]]
+                                   (and (< 0 x width)
+                                        (< 0 y height)
+                                        (not (farther-than? npc-pos {:x x :y y} threshold))
+                                        (= (get-type x y) :water)
+                                        (every? water-traversable? (adjacent-xys-ext x y))))
+          land-traversable?      (fn [[x y]]
+
+                                        (not (farther-than? npc-pos {:x x :y y} threshold))
+                                        (contains? #{:floor
+                                                     :open-door
+                                                     :corridor
+                                                     :sand
+                                                     :dirt
+                                                     :gravel
+                                                     :tall-grass
+                                                     :short-grass}
+                                                   (get-type x y)))
+      
+          traversable?           (if npc-can-move-in-water
+                                     water-traversable?
+                                     land-traversable?)
+          ;; TODO: calc new-pos based on adj-navigable space (8-dir) that is farthest away from player
+          ;_                      (debug "path to target" path)
+          new-pos                (first
+                                   (sort-by (fn [[x y]] (distance (xy->pos npc-x npc-y) (xy->pos x y)))
+                                            (filter (fn [xy] (traversable? xy))
+                                                    (adjacent-xys-ext npc-x npc-y))))
+          new-pos                (or new-pos
+                                     [npc-x npc-y])
+
+          ;_                      (debug "new-pos" new-pos)
+          new-npc                (-> npc
+                                     (assoc-in [:pos :x] (first new-pos))
+                                     (assoc-in [:pos :y] (second new-pos)))
+          ;_                      (debug "new-npc" new-npc)
+        ]
+      [{:x (first new-pos) :y (second new-pos)} new-npc npc]))
+
 (defn move-to-target-in-range-or-random
   [state npc target]
   (let [threshold (get npc :range-threshold)
@@ -1451,11 +1512,42 @@
       ;; inside range, move toward player
       (move-to-target state npc target))))
 
+(defn move-away-from-target-in-range-or-random
+  [state npc target]
+  (let [threshold (get npc :range-threshold)
+        npc-pos  (get npc :pos)
+        distance (distance npc-pos target)
+        navigable-types (if (mg/can-move-in-water? (get npc :race))
+                          #{:water}
+                          #{:floor
+                            :corridor
+                            :open-door
+                            :sand
+                            :dirt
+                            :gravel
+                            :tall-grass
+                            :short-grass})]
+    (if (> distance threshold)
+      ;; outside of range, move randomly into an adjacent cell
+      (let [target (first
+                     (dg/shuffle
+                       (adjacent-navigable-pos (current-place state)
+                                               npc-pos
+                                               navigable-types)))]
+        ;(debug "distance > threshold, move randomly. target" target)
+        [target
+         (-> npc
+           (assoc-in [:pos :x] (get target :x))
+           (assoc-in [:pos :y] (get target :y)))
+         npc])
+      ;; inside range, move toward player
+      (move-away-from-target state npc target))))
+
 (defn calc-npc-next-step
   "Returns the moved npc and not the updated state. New npc pos will depend on
    the npc's `:movement-policy which is one of `:constant` `:entourage` `:follow-player` `:follow-player-in-range-or-random`."
   [state npc]
-  {:pre  [(contains? #{:constant :entourage :follow-player :follow-player-in-range-or-random} (get npc :movement-policy))]
+  {:pre  [(contains? #{:constant :entourage :follow-player :follow-player-in-range-or-random :hide-from-player-in-range-or-random} (get npc :movement-policy))]
    :post [(= (count %) 3)]}
   (let [policy (get npc :movement-policy)
         pos    (-> state :world :player :pos)
@@ -1481,6 +1573,7 @@
                                                              navigable-types))))
       :follow-player (move-to-target state npc pos)
       :follow-player-in-range-or-random (move-to-target-in-range-or-random state npc pos)
+      :hide-from-player-in-range-or-random (move-away-from-target-in-range-or-random state npc pos)
       [nil nil npc])))
  
 (defn update-npcs

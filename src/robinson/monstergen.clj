@@ -23,7 +23,7 @@
    1.1
    #{:face :head :neck :body :leg :tail}
    #{:bite :claw}
-   :follow-player-in-range-or-random
+   :hide-from-player-in-range-or-random
    5
    #{:hostile}))
 
@@ -39,7 +39,7 @@
    0.9
    #{:face :leg :abdomen}
    #{:bite-venom}
-   :follow-player-in-range-or-random
+   :hide-from-player-in-range-or-random
    5
    #{:hostile}))
 
@@ -55,7 +55,7 @@
    1.1
    #{:head :claw :leg :abdomen :tail}
    #{:bite :claw :sting-venom}
-   :follow-player-in-range-or-random
+   :hide-from-player-in-range-or-random
    4
    #{:hostile}))
 
@@ -71,7 +71,7 @@
    0.8
    #{:head :body :tail}
    #{:bite :bite-venom}
-   :follow-player-in-range-or-random
+   :hide-from-player-in-range-or-random
    5
    #{:hostile}))
 
@@ -87,7 +87,7 @@
    1.6
    #{:head :body :wing :leg :face}
    #{:bite}
-   :follow-player-in-range-or-random
+   :hide-from-player-in-range-or-random
    7
    #{:hostile}))
 
@@ -103,7 +103,7 @@
    1.2
    #{:head :body :tail :snout :face :eye :leg}
    #{:bite :gore}
-   :follow-player-in-range-or-random
+   :hide-from-player-in-range-or-random
    7
    #{:hostile}))
 
@@ -119,7 +119,7 @@
    0.9
    #{:head :face :body :tail :leg}
    #{:bite}
-   :follow-player-in-range-or-random
+   :hide-from-player-in-range-or-random
    4
    #{:hostile}))
 
@@ -135,7 +135,7 @@
    1.2
    #{:head :neck :body :tail :leg :face :arm}
    #{:bite :punch}
-   :follow-player-in-range-or-random
+   :hide-from-player-in-range-or-random
    10
    #{:hostile}))
 
@@ -151,7 +151,7 @@
    2.1
    #{:head :body :tail :leg :beak :wing}
    #{:bite :claw}
-   :follow-player-in-range-or-random
+   :hide-from-player-in-range-or-random
    8
    #{:hostile}))
 
@@ -167,7 +167,7 @@
    0.5
    #{:head :body :leg}
    #{:bite}
-   :follow-player-in-range-or-random
+   :hide-from-player-in-range-or-random
    3
    #{:hostile}))
 
@@ -183,7 +183,7 @@
    0.5
    #{:head :neck :body :leg :face :shell}
    #{:bite}
-   :follow-player-in-range-or-random
+   :hide-from-player-in-range-or-random
    5
    #{:hostile}))
 
@@ -199,7 +199,7 @@
    0.9
    #{:head :body :leg :face}
    #{:claw}
-   :follow-player-in-range-or-random
+   :hide-from-player-in-range-or-random
    4
    #{:hostile}))
 
@@ -215,7 +215,7 @@
    2.1
    #{:head :body :leg :face :wing :tail}
    #{:claw :bite}
-   :follow-player-in-range-or-random
+   :hide-from-player-in-range-or-random
    10
    #{:hostile}))
 
@@ -231,7 +231,7 @@
    1.4
    #{:head :body :fin :nose :tail}
    #{:bite}
-   :follow-player-in-range-or-random
+   :hide-from-player-in-range-or-random
    10
    #{:hostile}))
 
@@ -247,7 +247,7 @@
    1.2
    #{:head :body :fin :tail}
    #{:bite}
-   :follow-player-in-range-or-random
+   :hide-from-player-in-range-or-random
    4
    #{:hostile}))
 
@@ -263,7 +263,7 @@
    1.5
    #{:head :body :tentacle}
    #{:bite :bite-venom :squeeze}
-   :follow-player-in-range-or-random
+   :hide-from-player-in-range-or-random
    2
    #{:hostile}))
 
@@ -279,7 +279,7 @@
    1.5
    #{:head :body}
    #{:bite :bite-venom}
-   :follow-player-in-range-or-random
+   :hide-from-player-in-range-or-random
    2
    #{:hostile}))
 
@@ -327,7 +327,7 @@
    1.5
    #{:head :body :tentacle}
    #{:bite :squeeze}
-   :follow-player-in-range-or-random
+   :hide-from-player-in-range-or-random
    2
    #{:hostile}))
 

@@ -627,7 +627,9 @@
           (put-string screen x y " ")
           (let [cell-items (cell :items)
                 out-char (apply fill-put-string-color-style-defaults
-                           (if (and cell-items (not (empty? cell-items)))
+                           (if (and cell-items
+                                    (not (empty? cell-items))
+                                    (= (cell :discovered) current-time))
                              (case (or (-> cell-items first :type)
                                        (-> cell-items first :id))
                                :ring           ["="]

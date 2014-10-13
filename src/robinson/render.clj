@@ -865,18 +865,21 @@
         thirst         (get-in state [:world :player :thirst])
         max-thirst     (get-in state [:world :player :max-thirst])
         will-to-live   (get-in state [:world :player :will-to-live])
-        cause-of-death (cond
-                         (<= hp 0)             "massive injuries"
-                         (> hunger max-hunger) "literall starving to death"
-                         (> thirst max-thirst) "not drinking enough water"
-                         (<= will-to-live)     "just giving up on life"
-                         :else                 "mysterious causes")]
+        cause-of-death (or
+                         (get-in state [:world :cause-of-death])
+                         (cond
+                           (<= hp 0)             "massive injuries"
+                           (> hunger max-hunger) "literall starving to death"
+                           (> thirst max-thirst) "not drinking enough water"
+                           (<= will-to-live 0)   "just giving up on life"
+                           :else                 "mysterious causes"))]
     (clear (state :screen))
     ;; Title
-    (put-string (state :screen) 10 1 (format "%s: %s, died from %s." player-name death-madlib cause-of-death))
-    (put-string (state :screen) 10 3 "Inventory:")
+    (put-string (state :screen) 10 1 (format "%s: %s." player-name death-madlib))
+    (put-string (state :screen) 18 2 (format "Died from %s." cause-of-death))
+    (put-string (state :screen) 10 4 "Inventory:")
     (doall (map-indexed
-      (fn [idx item] (put-string (state :screen) 10 (+ idx 5) (item :name)))
+      (fn [idx item] (put-string (state :screen) 18 (+ idx 5) (item :name)))
       (-> state :world :player :inventory)))
     (put-string (state :screen) 10 22 "Play again? [yn]")
     (refresh (state :screen))))

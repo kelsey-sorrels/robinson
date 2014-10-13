@@ -64,7 +64,9 @@
   `(condp vec-match? ~match
      ~@body))
 
-
+(defn noun->indefinite-article [noun] (if (contains? #{\a \e \i \o \u} (first noun))
+                                        "an"
+                                        "a"))
 
 (defn pos->xy
   [{x :x y :y}]
@@ -401,6 +403,17 @@
    [(inc x) y]
    [x (dec y)]
    [x (inc y)]])
+
+(defn adjacent-xys-ext
+  [x y]
+  [[(dec x) y]
+   [(inc x) y]
+   [x (dec y)]
+   [x (inc y)]
+   [(dec x) (inc y)]
+   [(inc x) (inc y)]
+   [(dec x) (dec y)]
+   [(inc x) (dec y)]])
 
 (defn adjacent-cells
   "Return a collection of adjacent cells (diagonals not-included) around pos.

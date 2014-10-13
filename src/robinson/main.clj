@@ -37,8 +37,10 @@
       (info "got " (str keyin) " type " (type keyin))
       (log-time "tick"
         (let [new-state (log-time "update-state" (update-state state keyin))]
-          (log-time "render" (render new-state))
-          (async/thread (spit "save/world.edn" (prn-str (new-state :world))))
+          (info "tick-new-state" new-state)
+          (when new-state
+            (log-time "render" (render new-state))
+            (async/thread (spit "save/world.edn" (prn-str (new-state :world)))))
           ;(async/thread (spit "save/world.edn" (with-out-str (pprint (new-state :world)))))
           new-state))
       (catch Exception e

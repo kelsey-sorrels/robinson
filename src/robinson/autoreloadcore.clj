@@ -36,15 +36,20 @@
       ; setup function changed? restart with new setup
       (if (identical? (var-get (get-setup-fn)) setup-fn-var)
         ; tick the old state through the tick-fn to get the new state
-        (recur setup-fn setup-fn-var (try
-                                       ((get-tick-fn) state)
-                                       (catch Exception ex
-                                         (print-stack-trace ex)
-                                         state)))
+        (let [new-state (try
+                          ((get-tick-fn) state)
+                          (catch Exception ex
+                            (print-stack-trace ex)
+                            state))]
+          (println "Core new-state" new-state)
+          (if (nil? new-state)
+            (System/exit 0)
+            (recur setup-fn setup-fn-var new-state)))
         ; setup function changed, restart with new setup
         (let [setup-fn  (get-setup-fn)
               setup-var (var-get setup-fn)
               state     (setup-fn (get state :screen))]
           (println "(Re)starting loop with new setup-fn")
-          (recur setup-fn setup-var state))))))
+          (recur setup-fn setup-var state))))
+    (println "Core exiting")))
 

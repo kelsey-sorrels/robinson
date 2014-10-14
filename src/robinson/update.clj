@@ -627,8 +627,8 @@
             ;; load the place into state. From file if exists or gen a new random place.
             state             (assoc-in state [:world :places dest-place-id]
                                 (if (.exists (clojure.java.io/as-file (format "save/%s.place.edn" (str dest-place-id))))
-                                  (->> (slurp (format "save/%s.place.edn" (str dest-place-id)))
-                                       (clojure.edn/read-string {:readers {'Monster mg/map->Monster}}))
+                                  (clojure.edn/read-string {:readers {'Monster mg/map->Monster}}
+                                    (slurp (format "save/%s.place.edn" (str dest-place-id))))
                                   (init-random-n (read-string (name dest-place-id)))))
  
             dest-place        (-> state :world :places dest-place-id)
@@ -1164,7 +1164,7 @@
               dwtl       (+ dwtl (if (> (/ thirst max-thirst) 0.5)
                                    1
                                    0))
-              wounded    (not (empty? (get-in state [:world :player :wounds])))
+              wounded    (seq (get-in state [:world :player :wounds]))
               _          (info "wounded" wounded)
               dwtl       (+ dwtl (if wounded
                                    1
@@ -1461,7 +1461,7 @@
           width                  (count (first place))
           height                 (count place)
           get-type               (memoize (fn [x y] (do
-                                                      ;(debug "traversable?" x y "type" (get-in place [y x :type]))
+                                                      #_(debug "traversable?" x y "type" (get-in place [y x :type]))
                                                       (get-in place [y x :type]))))
           water-traversable?     (fn water-traversable? [[x y]]
                                    (and (< 0 x width)
@@ -1489,7 +1489,7 @@
           ;_                      (debug "path to target" path)
           new-pos                (first
                                    (sort-by (fn [[x y]] (distance (xy->pos npc-x npc-y) (xy->pos x y)))
-                                            (filter (fn [xy] (traversable? xy))
+                                            (filter traversable?
                                                     (adjacent-xys-ext npc-x npc-y))))
           new-pos                (or new-pos
                                      [npc-x npc-y])
@@ -1716,7 +1716,7 @@
     (update-in [:world :places (current-place-id state)]
       (fn [place]
         (update-matching-cells place
-                               (fn [cell] (not (empty? (get cell :items []))))
+                               (fn [cell] (seq (get cell :items [])))
                                (fn [cell] (update-in cell [:items] (fn [items] (vec
                                                                                  (remove (fn [item] (< (get item :rot-time (get-time state))
                                                                                                        (get-time state)))
@@ -1732,9 +1732,9 @@
                                                            (get (get-cell-at-current-place state x y) :type)))
                                       (adjacent-xys x y))]
                   (info "dropping fruit" item "at [" x y "]" adj-xys)
-                  (if (not (empty? adj-xys))
-                  ;; drop the fruit into the cell
-                  (apply conj-in-cell-items state item (dg/rand-nth adj-xys))
+                  (if (seq adj-xys)
+                    ;; drop the fruit into the cell
+                    (apply conj-in-cell-items state item (dg/rand-nth adj-xys))
                     state))
                 state))
             state

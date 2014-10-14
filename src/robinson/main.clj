@@ -78,8 +78,8 @@
         _     (when (get data :seed)
                 (alter-var-root #'dg/*rnd* (constantly (java.util.Random. (get data :seed)))))
         world (if (.exists (clojure.java.io/file "save/world.edn"))
-                (->> (slurp "save/world.edn")
-                     (clojure.edn/read-string {:readers {'robinson.monstergen.Monster map->Monster}}))
+                (clojure.edn/read-string {:readers {'robinson.monstergen.Monster map->Monster}}
+                  (slurp "save/world.edn"))
                 (init-world (dg/long)))
         ;; load quests
         _ (doall (map #(load-file (.getPath %))
@@ -98,8 +98,8 @@
                                    {k (dialog->fsm v)})
                                  (apply merge (map :dialog quests))))
         _ (debug "loaded data" data)
-        settings (->> (slurp "config/settings.edn")
-                      (clojure.edn/read-string))
+        settings (clojure.edn/read-string
+                   (slurp "config/settings.edn"))
         terminal  (or screen
                       (swingterminal/make-terminal 80 24 [255 255 255] [0 0 0] nil
                                                (get settings :windows-font)

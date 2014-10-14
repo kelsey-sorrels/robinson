@@ -307,7 +307,7 @@
 (defn render-img
   "Render an image using block element U+2584."
   [state ^String path x y]
-  (let [image ^Image (-> (ImageIcon. path) .getImage)
+  (let [image ^Image          (.getImage (ImageIcon. path))
         width                 (.getWidth image)
         height                (.getHeight image)
         buffered-image        (BufferedImage. width height BufferedImage/TYPE_INT_RGB)
@@ -407,7 +407,7 @@
                        []
                        (filter (fn [quest]
                                  (not (nil? (get-in state [:world  :quests (quest :id) :stage] nil))))
-                               (-> state :quests))))
+                               (:quests state))))
 
 (defn render-quit?
   "Render the pickup item menu if the world state is `:pickup`."
@@ -629,7 +629,7 @@
           (let [cell-items (cell :items)
                 out-char (apply fill-put-string-color-style-defaults
                            (if (and cell-items
-                                    (not (empty? cell-items))
+                                    (seq cell-items)
                                     (= (cell :discovered) current-time))
                              (case (or (-> cell-items first :type)
                                        (-> cell-items first :id))

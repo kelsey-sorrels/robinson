@@ -216,7 +216,7 @@
 (defn remove-first
   "Removes the first matching element from coll."
   [e coll]
-  (if (not (fn? e))
+  (if-not (fn? e)
     (remove-first (partial = e) coll)
     (let [[l1 l2] (split-with (complement e) coll)]
       (concat l1 (rest l2)))))

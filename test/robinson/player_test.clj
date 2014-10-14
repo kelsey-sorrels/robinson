@@ -35,7 +35,8 @@
         items [{:id :rock :count 2} {:id :rock :count 2}]]
     (is (= (add-to-inventory state items)
            {:world {:player {:inventory [{:id :rock :count 4 :hotkey \a}]}
-                    :remaining-hotkeys [\b \c]}}))))
+                    :remaining-hotkeys [\b \c]
+                    :log [{:text "null-a", :time nil, :color :gray} {:text "null-a", :time nil, :color :gray}]}}))))
 
 (deftest test-add-to-inventory-1
   (let [state {:world {:player {:inventory []}
@@ -43,7 +44,8 @@
         items [{:id :rock :count 2 :hotkey \a} {:id :rock :count 2}]]
     (is (= (add-to-inventory state items)
            {:world {:player {:inventory [{:id :rock :count 4 :hotkey \a}]}
-                    :remaining-hotkeys [\b \c]}}))))
+                    :remaining-hotkeys [\b \c]
+                    :log [{:text "null-a", :time nil, :color :gray} {:text "null-a", :time nil, :color :gray}]}}))))
 
 (deftest test-add-to-inventory-2
   (let [state {:world {:player {:inventory []}
@@ -51,7 +53,8 @@
         items [{:id :rock :count 2} {:id :rock :count 2 :hotkey \a}]]
     (is (= (add-to-inventory state items)
            {:world {:player {:inventory [{:id :rock :count 4 :hotkey \a}]}
-                    :remaining-hotkeys [\b \c]}}))))
+                    :remaining-hotkeys [\b \c]
+                    :log [{:text "null-a", :time nil, :color :gray} {:text "null-a", :time nil, :color :gray}]}}))))
 
 (deftest test-add-to-inventory-3
   (let [state {:world {:player {:inventory [{:id :rock :count 2 :hotkey \a}]}
@@ -59,5 +62,6 @@
         items [{:id :rock :count 2} {:id :rock :count 2 :hotkey \b}]]
     (is (= (add-to-inventory state items)
            {:world {:player {:inventory [{:id :rock :count 6 :hotkey \a}]}
-                    :remaining-hotkeys [\b \c]}}))))
+                    :remaining-hotkeys [\b \c]
+                    :log [{:text "null-a", :time nil, :color :gray} {:text "null-a", :time nil, :color :gray}]}}))))
 

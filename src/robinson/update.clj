@@ -1306,21 +1306,32 @@
     (info "repeating commands" command-seq)
     (reduce update-state state command-seq)))
 
+(defn sight-distance
+  [state]
+  (let [atmo   (get-in state [:data :atmo])
+        frames (count atmo)
+        t      (mod (get-in state [:world :time]) frames)
+        frame  (nth atmo t)
+        values (flatten frame)]
+    (+ 1.5 (* 8 (/ (reduce + values) (* 255 (count values)))))))
+      
 ;; update visibility
 (defn update-visibility
   [state]
   (let [pos              (-> state :world :player :pos)
-        sight-distance   3
+        sight-distance   (float (sight-distance state))
+        _ (info "player-pos" pos)
+        _ (info "sight-distance" sight-distance)
         will-to-live     (get-in state [:world :player :will-to-live])
         max-will-to-live (get-in state [:world :player :max-will-to-live])
         place            (get-in state [:world :places (current-place-id state)])
         get-cell         (memoize (fn [x y] (get-in place [y x])))
         new-time         (get-in state [:world :time])
-        test-cells       (for [x (range (- (get pos :x) sight-distance) (+ (get pos :x) sight-distance))
-                               y (range (- (get pos :y) sight-distance) (+ (get pos :y) sight-distance))]
+        test-cells       (for [x (range (- (get pos :x) (int (Math/ceil sight-distance))) (+ (get pos :x) (int (Math/ceil sight-distance))))
+                               y (range (- (get pos :y) (int (Math/ceil sight-distance))) (+ (get pos :y) (int (Math/ceil sight-distance))))]
                             [x y])
         visible-cells    (filter (fn [[x y]] (and (not (nil? (get-cell x y)))
-                                                  (not (farther-than? {:x (- (get pos :x) 0.5) :y (- (get pos :y) 0.5)}
+                                                  (not (farther-than? pos
                                                                       {:x x :y y}
                                                                       sight-distance))
                                                   (visible?

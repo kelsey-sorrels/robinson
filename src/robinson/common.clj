@@ -82,18 +82,21 @@
   (max (Math/abs (- (:x p1) (:x p2)))
        (Math/abs (- (:y p1) (:y p2)))))
 
+(defn distance-sq
+  [p1 p2]
+  (let [sq (fn [x] (* x x))]
+  (+ (sq (- (:x p1) (:x p2)))
+     (sq (- (:y p1) (:y p2))))))
+
 (defn distance
   "Euclidean distance between 2 points"
   [p1 p2]
-  (let [sq (fn [x] (* x x))]
-  (Math/sqrt(+ (sq (- (:x p1) (:x p2)))
-               (sq (- (:y p1) (:y p2)))))))
+  (Math/sqrt (distance-sq p1 p2)))
 
 (defn farther-than?
   "Are the two points farther in distance than l?"
   [p1 p2 l]
-  (or (> (chebyshev-distance p1 p2) l)
-      (> (distance p1 p2) l)))
+  (> (distance-sq p1 p2) (* l l)))
 
 (defn distance-from-player
   "Calculate the distance between the player and pos."

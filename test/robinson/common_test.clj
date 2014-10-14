@@ -70,3 +70,14 @@
          (let [state first-collidable-cells-state] 
            (first-collidable-object state :up)))))
 
+(deftest farther-than
+  (are [p1 p2 d r] (= (farther-than? p1 p2 d) r)
+  {:x 0 :y 0}  {:x 1 :y 1}  1 true
+  {:x 0 :y 0}  {:x 1 :y 1}  1.1 true
+  {:x 0 :y 0}  {:x 1 :y 1}  2 false
+  {:x 1 :y 1}  {:x 0 :y 0}  1 true
+  {:x 1 :y 1}  {:x 0 :y 0}  2 false
+  {:x 1 :y 1}  {:x 2 :y 2}  1 true
+  {:x -1 :y -1} {:x 1 :y 1} 2 true
+  {:x -1 :y -1} {:x 1 :y 1} 3 false))
+

@@ -37,13 +37,14 @@
    :gray        [128 128 128]
    :light-gray  [64 64 64]
    :dark-gray   [192 192 192]
-   :red         (vec (hex-str-to-dec "D31C00"))
-   :orange      (vec (hex-str-to-dec "D36C00"))
-   :yellow      (vec (hex-str-to-dec "D3B100"))
-   :green       (vec (hex-str-to-dec "81D300"))
+   :red         [190 38 51];(vec (hex-str-to-dec "D31C00"))
+   :orange      [235 137 49];(vec (hex-str-to-dec "D36C00"))
+   :yellow      [247 226 107];(vec (hex-str-to-dec "D3B100"))
+   :light-green [163 206 39]
+   :green       [68 137 26];(vec (hex-str-to-dec "81D300"))
    :dark-green  (vec (hex-str-to-dec "406900"))
-   :blue        (vec (hex-str-to-dec "00ACD3"))
-   :light-blue  (vec (hex-str-to-dec "19B4D7"))
+   :blue        [0 87 132];(vec (hex-str-to-dec "00ACD3"))
+   :light-blue  [49 162 242];(vec (hex-str-to-dec "19B4D7"))
    :dark-blue   (vec (hex-str-to-dec "009ABD"))
    :purple      (vec (hex-str-to-dec "8500D3"))
    :fushia      (vec (hex-str-to-dec "D30094"))
@@ -655,7 +656,7 @@
                                :purple-fruit   ["*" :purple :black]
                                :white-fruit    ["*" :white  :black]
                                :black-fruit    ["*" :gray   :black]
-                               :bamboo         ["/" :green  :black]
+                               :bamboo         ["/" :light-green  :black]
                                :stick          ["/" :brown  :black]
                                :$              ["$"  :yellow :black #{:bold}]
                                :amulet         ["\"" :blue   :black #{:bold}]
@@ -676,7 +677,7 @@
                               :short-grass     ["."  :green      :black]
                               :tall-grass      ["\"" :dark-green :black]
                               :tree            ["T"  :dark-green :black]
-                              :bamboo          ["\u2225" :dark-green :black] ;; ∥ 
+                              :bamboo          ["\u2225" :light-green :black] ;; ∥ 
                               :palisade        ["#" :brown :black]
                               :bamboo-water-collector
                                                (if (< 10 (get cell :water 0))
@@ -687,7 +688,7 @@
                                                  ["O" (rand-nth [:blue :light-blue :dark-blue]) :black]
                                                  ["O"])
                               :palm-tree       ["7"  :dark-green :black]
-                              :fruit-tree      ["\u2648"  :dark-green :black] ;; ♈
+                              :fruit-tree      ["\u2648"  :light-green :black] ;; ♈
                               :freshwater-hole (if (< 10 (get cell :water 0))
                                                  ["~" (rand-nth [:blue :light-blue :dark-blue]) :black]
                                                  ["O"])

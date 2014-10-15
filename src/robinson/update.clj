@@ -1126,7 +1126,7 @@
   "Increase player's hunger."
   [state]
   (-> state
-    (update-in [:world :player :hunger] (partial + 0.4))
+    (update-in [:world :player :hunger] (partial + 0.1 (* 0.2 (count (player-inventory state)))))
     (update-in [:world :player :thirst] (partial + 0.3))
     ((fn [state] (update-in state
                             [:world :player :status]

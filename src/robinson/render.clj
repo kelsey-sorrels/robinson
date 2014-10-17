@@ -735,27 +735,27 @@
                                             (-> npc :pos :x)
                                             (-> npc :pos :y)
                                             (case (get npc :race)
-                                              :rat ["r"]
-                                              :spider ["S"]
-                                              :scorpion ["\u03C2"] ;;ς
-                                              :snake ["\u00A7"] ;;§
-                                              :bat ["B"]
-                                              :boar ["b"]
-                                              :gecko ["g"]
-                                              :monkey ["y"]
-                                              :bird ["a"]
+                                              :rat       ["r"]
+                                              :spider    ["S"]
+                                              :scorpion  ["\u03C2"] ;;ς
+                                              :snake     ["\u00A7"] ;;§
+                                              :bat       ["B"]
+                                              :boar      ["b"]
+                                              :gecko     ["g"]
+                                              :monkey    ["y"]
+                                              :bird      ["a"]
                                               :centipede ["c"]
-                                              :turtle ["t"]
-                                              :frog ["\u03B1"] ;;α
-                                              :parrot ["p"]
-                                              :shark ["\u039B"] ;;Λ
-                                              :fish ["f"]
-                                              :octopus ["#" :orange :black]
+                                              :turtle    ["t"]
+                                              :frog      ["\u03B1"] ;;α
+                                              :parrot    ["p"]
+                                              :shark     ["\u039B"] ;;Λ
+                                              :fish      ["f"]
+                                              :octopus   ["#" :orange :black]
                                               :sea-snake ["\u00A7"]
-                                              :clam ["c"]
-                                              :urchin ["u"]
-                                              :squid ["q" :orange :black]
-                                              :human ["@" (class->rgb (get npc :class)) :black]
+                                              :clam      ["c"]
+                                              :urchin    ["u"]
+                                              :squid     ["q" :orange :black]
+                                              :human     ["@" (class->rgb (get npc :class)) :black]
                                               ["@"])))))
                    place-npcs)))
     (render-hud state)

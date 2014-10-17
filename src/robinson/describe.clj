@@ -13,103 +13,85 @@
 
 (timbre/refer-timbre)
 
-(defn describe-cell
+(defn describe-cell-type
   [cell]
-  "")
+  (and cell
+       (case (get cell :type)
+         :water                  "water"
+         :sand                   "sand"
+         :dirt                   "dirt"
+         :gravel                 "gravel"
+         :tree                   "a tree"
+         :palm-tree              "a palm tree"
+         :fruit-tree             "a fruit tree"
+         :tall-grass             "tall grass"
+         :short-grass            "short grass"
+         :bamboo                 "a bamboo grove"
+         :freshwater-hole        (if (> (get cell :water 0) 10)
+                                   "a hole full of water"
+                                   "an empty hole")
+         :saltwater-hole         (if (> (get cell :water 0) 10)
+                                    "a hole full of water"
+                                    "an empty hole")
+         :palisade               "a palisade"
+         :bamboo-water-collector "a bamboo water collector")))
 
 (defn describe-npc
   [npc]
-  "")
+  (clojure.string/join " " [(noun->indefinite-article (get npc :name)) (get npc :name)]))
 
 (defn describe-items
   [items]
-  "")
+  (clojure.string/join ", " (map (fn [[item-id num-items]]
+                                   (clojure.string/join " "
+                                                        [(if (= num-items 1)
+                                                           (noun->indefinite-article (ig/id->name item-id))
+                                                           num-items)
+                                                         (if (= num-items 1)
+                                                           (ig/id->name item-id)
+                                                           (ig/id->name-plural item-id))]))
+                                (frequencies (map :id items)))))
+(defn describe-cell-at-xy
+  [state x y]
+  (let [cell (get-cell-at-current-place state x y)
+        npc  (npc-at-xy state x y)
+        items (get cell :items)]
+    (cond
+      (and npc (seq items))
+        (format "there is %s, and %s" (describe-npc npc) (describe-items items))
+      npc
+        (format "there is %s, on %s" (describe-npc npc) (describe-cell-type cell))
+      (seq items)
+        (format "on the %s, there %s %s" (describe-cell-type cell)
+                                         (if (> (count items) 1)
+                                           "are"
+                                           "is")
+                                         (describe-items items))
+      :else
+        (format "there is %s" (describe-cell-type cell)))))
 
 (defn search
-  "Search the Moore neighborhood for hidden things and make them visible."
+  "Describe the player's cell."
   [state]
-  state)
+  (let [xy (player-xy state)]
+    (append-log state (format "Here %s." (apply describe-cell-at-xy state xy)))))
 
 (defn extended-search
   "Search the Moore neighborhood for hidden things and make them visible. Describe interesting items in the log."
   [state]
-  (let [directions       [["To the north-west" -1 -1] ["To the north" 0 -1] ["To the north-east" 1 -1]
+  (let [[x y]            (player-xy state)
+        directions       [["To the north-west" -1 -1] ["To the north" 0 -1] ["To the north-east" 1 -1]
                           ["To the west" -1 0]        ["At your feet" 0 0]  ["To the east" 1 0]
                           ["To the south-west" -1 1]  ["To the south" 0 1]  ["To the south-east" 1 1]]
-        describe-cell-fn (fn [state direction cell]
-                           (let [items     (get cell :items [])
-                                 cell-type (get cell :type)]
-                             (info "describing" direction items cell-type)
-                             (cond
-                               (and (empty? items)
-                                    (= :tall-grass cell-type))
-                                 (append-log state (format "%s is tall grass." direction))
-                               (and (empty? items)
-                                    (= :tree cell-type))
-                                 (append-log state (format "%s is a tree." direction))
-                               (empty? items)
-                                 state
-                               (and (= (count items) 1)
-                                    (= :tall-grass cell-type))
-                                 (append-log state (format "%s is a %s and tall grass." direction (get (first items) :name)))                       (and (= (count items) 1)
-                                    (= :tree cell-type))
-                                 (append-log state (format "%s is a %s and a tree." direction (get (first items) :name)))
-                               (and (> (count items) 1)
-                                    (= :tall-grass cell-type))
-                                 (append-log state (format "%s there are %s, and tall grass."
-                                                           direction (clojure.string/join ", "
-                                                                                          (map (fn [[item-name item-count]]
-                                                                                                 (format "%s x%d" item-name item-count))
-                                                                                               (frequencies (map :name items))))))
-                               (and (> (count items) 1)
-                                    (= :tree cell-type))
-                                 (append-log state (format "%s there are %s, and a tree."
-                                                           direction (clojure.string/join ", "
-                                                                                          (map (fn [[item-name item-count]]
-                                                                                                 (format "%s x%d" item-name item-count))
-                                                                                               (frequencies (map :name items))))))
-                               (= (count items) 1)
-                                 (append-log state (format "%s there is a %s."
-                                                           direction (clojure.string/join ", "
-                                                                                          (map (fn [[item-name item-count]]
-                                                                                                 (format "%s x%d" item-name item-count))
-                                                                                               (frequencies (map :name items))))))
-                               (> (count items) 1)
-                                 (append-log state (format "%s there are %s."
-                                                           direction (clojure.string/join ", "
-                                                                                          (map (fn [[item-name item-count]]
-                                                                                                 (format "%s x%d" item-name item-count))
-                                                                                               (frequencies (map :name items))))))
-                                       :else
-                                 state)))]
+        describe-cell-fn (fn [state direction x y]
+                           (if (get-cell-at-current-place state x y)
+                             (append-log state (format "%s %s." direction (describe-cell-at-xy state x y)))
+                             state))]
     (-> state
       (search)
       ((fn [state]
-        (reduce
-          (fn [state [direction dx dy]]
-            (let [{x :x y :y} (get-in state [:world :player :pos])]
-              (describe-cell-fn state direction (get-cell-at-current-place state (+ x dx) (+ y dy)))))
-          state
-          directions))))))
-
-(defn describe-cell-at-xy
-  "Add to the log, a message describing the scene at the cell indicated by the
-   cursor's position."
-  [state x y]
-  (let [cell       (or (get-in (current-place state) [y x])
-                       {:type :nil})
-        npc        (first (filter (fn [npc] (and (= x
-                                                    (-> npc :pos :x))
-                                                 (= y
-                                                    (-> npc :pos :y))))
-                                  (npcs-at-current-place state)))
-        message   (case (cell :type)
-                    :floor "There is a floor here. You could put things on it if you wanted."
-                    :vertical-wall "There is a wall here."
-                    :horizontal-wall "There is a wall here."
-                    :close-door "There is a closed door here."
-                    :open-door "There is an open-door here."
-                    :corridor "There is a passageway here."
-                    "There is nothing here. Nothing I can tell you anyway.")]
-    message))
+        (reduce (fn [state [direction dx dy]]
+                  (describe-cell-fn state direction (+ x dx) (+ y dy)))
+                state
+                directions))))))
 

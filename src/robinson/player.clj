@@ -11,6 +11,19 @@
   [state]
   (contains? (-> state :world :player :status) :dead))
 
+(defn player-wounded?
+  [state]
+  (seq (get-in state [:world :player :wounds])))
+
+(defn player-poisoned?
+  [state]
+  (contains? (get-in state [:world :player :status]) :poisoned))
+
+(defn player-infected?
+  [state]
+  (contains? (get-in state [:world :player :status]) :infected))
+
+
 (defn player-pos
   "Return the position of the player."
   [state]

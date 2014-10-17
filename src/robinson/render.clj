@@ -265,11 +265,11 @@
     ;; render statuses
     (let [screen (state :screen)]
       (put-string screen 37 23 " "      :black :gray)
-      (put-string screen 38 23 "\u2665" :black :gray)
+      (put-string screen 38 23 "\u2665" (if (player-wounded? state) :red :black) :gray)
       (put-string screen 39 23 " "      :black :gray)
-      (put-string screen 40 23 "\u2665" :black :gray)
+      (put-string screen 40 23 "\u2665" (if (player-poisoned? state) :green :black) :gray)
       (put-string screen 41 23 " "      :black :gray)
-      (put-string screen 42 23 "\u2665" :black :gray)
+      (put-string screen 42 23 "\u2665" (if (player-infected? state) :yellow :black) :gray)
       (put-string screen 43 23 " "      :black :gray)
       ;; render will to live and hp
       (let [wtl        (get-in state [:world :player :will-to-live])

@@ -1088,17 +1088,17 @@
               dwtl       (+ dwtl (if (> (/ thirst max-thirst) 0.5)
                                    1
                                    0))
-              wounded    (seq (get-in state [:world :player :wounds]))
+              wounded    (player-wounded? state)
               _          (info "wounded" wounded)
               dwtl       (+ dwtl (if wounded
                                    1
                                    0))
-              poisoned   (contains? (get-in state [:world :player :status]) :poisoned)
+              poisoned   (player-poisoned? state)
               _          (info "poisoned" poisoned)
               dwtl       (+ dwtl (if poisoned
                                    1
                                    0))
-              infected   (contains? (get-in state [:world :player :status]) :infected)
+              infected   (player-infected? state)
               _          (info "infected" infected)
               dwtl       (+ dwtl (if infected
                                    1

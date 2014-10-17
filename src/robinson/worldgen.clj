@@ -55,12 +55,11 @@
               (case s
                 [0.0 0.0 0.0] {:type :water}
                 [1.0 0.0 0.0] {:type :sand}
-                [1.0 1.0 0.0] (case (uniform-int 3)
+                [1.0 1.0 0.0] (case (uniform-int 2)
                                 0 {:type :dirt}
-                                1 {:type :gravel}
-                                2 {:type :floor})
+                                1 {:type :gravel})
                 [1.0 0.0 1.0] {:type :gravel}
-                [1.0 1.0 1.0] (case (uniform-int 8)
+                [1.0 1.0 1.0] (case (uniform-int 7)
                                 0 {:type :tree}
                                 1 {:type :palm-tree}
                                 2 {:type :fruit-tree :fruit-type (dg/rand-nth [:red-fruit :orange-fruit :yellow-fruit
@@ -68,9 +67,8 @@
                                                                                :white-fruit :black-fruit])}
                                 3 {:type :tall-grass}
                                 4 {:type :short-grass}
-                                5 {:type :floor}
-                                6 {:type :gravel}
-                                7 {:type :bamboo})))))))
+                                5 {:type :gravel}
+                                6 {:type :bamboo})))))))
     [[[(int (/ max-x 2)) (int (/ max-y 2))]      {:type :dirt :starting-location true}]])))
 
 

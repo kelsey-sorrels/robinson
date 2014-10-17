@@ -143,6 +143,12 @@
         (-> state
             (assoc-in [:world :player :pos :x] target-x)
             (assoc-in [:world :player :pos :y] target-y)
+            ((fn [state]
+               (let [cell  (get-cell-at-current-place state target-x target-y)
+                     items (get cell :items)]
+                 (if (seq items)
+                   (search state)
+                   state))))
             (pick-up-gold))
       (= (get (npc-at-xy state target-x target-y) :in-party?) true)
         (-> state
@@ -1143,15 +1149,16 @@
 (defn if-poisoned-get-hurt
   "Decrease player's hp if they are poisoned."
   [state]
+  (info "player" (get-in state [:world :player]))
   (-> state
     (arg-when-> [state]
       (let [poisoned-time (get-in state [:world :player :poisoned-time])]
         (and poisoned-time
              (< poisoned-time (get-time state))))
-      (-> state
+      (->
         (conj-in [:world :player :status] :poisoned)
         (append-log "You vomit.")
-        (update-in [:world :player :hunger] (fn [thirst] (min (+ thirst 30)
+        (update-in [:world :player :hunger] (fn [hunger] (min (+ hunger 30)
                                                               (get-in state [:world :player :max-hunger]))))
         (update-in [:world :player :thirst] (fn [thirst] (min (+ thirst 30)
                                                               (get-in state [:world :player :max-thirst]))))

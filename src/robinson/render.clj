@@ -392,13 +392,13 @@
   (render-multi-select (state :screen) "Describe" [] (-> state :world :player :inventory)))
 
 (defn render-eat
-  "Render the pickup item menu if the world state is `:pickup`."
+  "Render the eat item menu if the world state is `:pickup`."
   [state]
   (render-multi-select (state :screen)
                        "Eat Inventory"
                        []
                        (filter #(contains? % :hunger)
-                               (-> state :world :player :inventory))))
+                               (inventory-and-player-cell-items state))))
 
 (defn render-quests
   "Render the pickup item menu if the world state is `:pickup`."

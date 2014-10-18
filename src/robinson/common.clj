@@ -34,8 +34,7 @@
          arg# ~arg]
     (if ~condition
       (~threader arg# ~form)
-      (~threader arg# ~else-form)
-      arg#)))]
+      (~threader arg# ~else-form))))]
   (defmacro arg-if->
     "Lexically assign the threaded argument to the specified symbol
     and conditionally execute the body statements.
@@ -172,6 +171,12 @@
   (fn-in (fn [coll _] (if (vector? coll)
                         (vec (filter f coll))
                         (filter f coll))) m ks nil))
+
+(defn remove-in
+  [m ks f]
+  (fn-in (fn [coll _] (if (vector? coll)
+                        (vec (remove f coll))
+                        (remove f coll))) m ks nil))
 
 (defn some-in
   [m ks f]
@@ -392,6 +397,10 @@
 (defn get-cell-at-current-place
   [state x y]
   (get-cell (current-place state) x y))
+
+(defn update-cell-xy
+  [state x y f]
+  (update-in state [:world :places (current-place-id state) y x] f))
 
 (defn player-cellxy
   "Retrieve the cell at which the player is located."

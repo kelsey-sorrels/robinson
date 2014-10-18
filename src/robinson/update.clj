@@ -600,7 +600,7 @@
         (fn [hunger]
           (let [new-hunger (- hunger (item :hunger))]
             (max 0 new-hunger))))
-      (arg-if-> [state] (contains? (map :hotkey (player-inventory state)) keyin)
+      (arg-if-> [state] (contains? (set (map :hotkey (player-inventory state))) keyin)
         ;; remove the item from inventory
         (dec-item-count (get item :id))
         ;; remove the item from the current-cell

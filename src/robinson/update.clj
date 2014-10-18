@@ -590,7 +590,7 @@
    hunger the item's `:hunger` value."
   [state keyin]
   (info "poisoned fruit" (get-in state [:world :fruit :poisonous]))
-  (if-let [item (inventory-hotkey->item state keyin)]
+  (if-let [item (inventory-and-player-cell-hotkey->item state keyin)]
     (-> state
       (append-log (format "The %s tastes %s." (lower-case (get item :name))
                                               (dg/rand-nth ["great" "foul" "greasy" "delicious" "burnt" "sweet" "salty"])))
@@ -600,8 +600,11 @@
         (fn [hunger]
           (let [new-hunger (- hunger (item :hunger))]
             (max 0 new-hunger))))
-      ;; remove the item from inventory
-      (dec-item-count (get item :id))
+      (arg-if-> [state] (contains? (map :hotkey (player-inventory state)) keyin)
+        ;; remove the item from inventory
+        (dec-item-count (get item :id))
+        ;; remove the item from the current-cell
+        (dec-cell-item-count (get item :id)))
       ;; if the item was a poisonous fruit, set a poisoned timebomb
       ((fn [state]
         (if (and (ig/is-fruit? item)

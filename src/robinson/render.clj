@@ -43,9 +43,10 @@
    :light-green [163 206 39]
    :green       [68 137 26];(vec (hex-str-to-dec "81D300"))
    :dark-green  (vec (hex-str-to-dec "406900"))
+   :blue-green  [55 148 110];(vec (hex-str-to-dec "19B4D7"))
    :blue        [0 87 132];(vec (hex-str-to-dec "00ACD3"))
-   :light-blue  [49 162 242];(vec (hex-str-to-dec "19B4D7"))
-   :dark-blue   (vec (hex-str-to-dec "009ABD"))
+   :light-blue  [203 219 252];(vec (hex-str-to-dec "19B4D7"))
+   :dark-blue   [0 63 116]
    :purple      (vec (hex-str-to-dec "8500D3"))
    :fushia      (vec (hex-str-to-dec "D30094"))
    :beige       (vec (hex-str-to-dec "C8B464"))})
@@ -670,7 +671,8 @@
                               :corridor        ["#"] 
                               :down-stairs     [">"] 
                               :up-stairs       ["<"] 
-                              :water           ["~"  (rand-nth [:blue :light-blue :dark-blue]) :black]
+                              :water           ["\u2248"  (rand-nth [:blue :dark-blue]) :black] ;; ≈ 
+                              :surf            ["~"  (rand-nth [:white :light-blue :blue-green]) :black]
                               :sand            ["."  :beige      :black]
                               :dirt            ["."  :brown      :black]
                               :gravel          ["."  :gray       :black]

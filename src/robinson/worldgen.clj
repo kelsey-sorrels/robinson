@@ -31,13 +31,14 @@
   other tests or exprs. (cond) returns nil."
   {:added "1.0"}
   [& clauses]
-  (when clauses
+  (if clauses
     (list 'cliskf/vif (first clauses)
       (if (next clauses)
         (second clauses)
         (throw (IllegalArgumentException.
           "vcond requires an even number of forms")))
-      (cons 'vcond (next (next clauses))))))
+      (cons 'vcond (next (next clauses))))
+    [0 0 0]))
 
 (defn init-island
   "Create an example place with an island, two items
@@ -46,16 +47,22 @@
   (let [_    (cliskp/seed-simplex-noise! seed)
         node (cliskf/vectorize
                (cliskf/vlet [c (center (invert (cliskf/offset (cliskf/scale 0.43 (cliskf/v* [0.5 0.5 0.5] cliskp/vsnoise)) cliskf/radius)))]
-                 (cliskf/v+
-                   (cliskf/vif (cliskf/v+ [-0.7 -0.7 -0.7]  (cliskf/v* c (cliskf/v+ [0.4 0.4 0.4] (cliskf/scale 0.05 cliskp/noise))))
-                     [0 0 1]
-                     [0 0 0])
-                   (cliskf/vif (cliskf/v+ [-0.6 -0.6 -0.6]  c)
-                     [0 1 0]
-                     [0 0 0])
-                   (cliskf/vif (cliskf/v+ [-0.5 -0.5 -0.5]  c)
-                     [1 0 0]
-                     [0 0 0]))))
+                 (vcond
+                   ;; interior trees/green
+                   (cliskf/v+ [-0.7 -0.7 -0.7]  (cliskf/v* c (cliskf/v+ [0.4 0.4 0.4] (cliskf/scale 0.05 cliskp/noise))))
+                     [0 0.5 0]
+                   ;; interior dirt/brown
+                   (cliskf/v+ [-0.6 -0.6 -0.6]  c)
+                     [0.3 0.2 0.1]
+                   ;; shore/yellow
+                   (cliskf/v+ [-0.5 -0.5 -0.5]  c)
+                     [0.7 0.6 0.0]
+                   ;; surf/light blue
+                   (cliskf/v+ [-0.37 -0.37 -0.37]  c)
+                     [0 0.5 0.6]
+                   ;; else ocean
+                   [1 1 1]
+                     [0 0.4 0.5])))
         fns  (vec (map cliskn/compile-fn (:nodes node)))
         max-x 55
         max-y 20]
@@ -68,13 +75,13 @@
                   :let [s (vec (map #(.calc ^clisk.IFunction % (double (/ x max-x)) (double (/ y max-y)) (double 0.0) (double 0.0))
                                fns))]]
               (case s
-                [0.0 0.0 0.0] {:type :water}
-                [1.0 0.0 0.0] {:type :sand}
-                [1.0 1.0 0.0] (case (uniform-int 2)
+                [0.0 0.4 0.5] {:type :water}
+                [0.0 0.5 0.6] {:type :surf}
+                [0.7 0.6 0.0] {:type :sand}
+                [0.3 0.2 0.1] (case (uniform-int 2)
                                 0 {:type :dirt}
                                 1 {:type :gravel})
-                [1.0 0.0 1.0] {:type :gravel}
-                [1.0 1.0 1.0] (case (uniform-int 7)
+                [0.0 0.5 0.0] (case (uniform-int 7)
                                 0 {:type :tree}
                                 1 {:type :palm-tree}
                                 2 {:type :fruit-tree :fruit-type (dg/rand-nth [:red-fruit :orange-fruit :yellow-fruit
@@ -238,14 +245,22 @@
   (let [_ (cliskp/seed-simplex-noise!)
         node (cliskf/vectorize
                (cliskf/vlet [c (center (invert (cliskf/offset (cliskf/scale 0.43 (cliskf/v* [0.5 0.5 0.5] cliskp/vsnoise)) cliskf/radius)))]
-                 (vcond [1 0 0] [1 0 0])
-                 #_(vcond
-                   (cliskf/v- [-0.7 -0.7 -0.7]  (cliskf/v* c (cliskf/v+ [0.4 0.4 0.4] (cliskf/scale 0.05 cliskp/noise))))
-                     [0 0 1]
-                   (cliskf/v- [-0.6 -0.6 -0.6]  c)
-                     [0 1 0]
-                   (cliskf/v- [-0.5 -0.5 -0.5]  c)
-                     [1 0 0])))
+                 (vcond
+                   ;; interior trees/green
+                   (cliskf/v+ [-0.7 -0.7 -0.7]  (cliskf/v* c (cliskf/v+ [0.4 0.4 0.4] (cliskf/scale 0.05 cliskp/noise))))
+                     [0 0.5 0]
+                   ;; interior dirt/brown
+                   (cliskf/v+ [-0.6 -0.6 -0.6]  c)
+                     [0.3 0.2 0.1]
+                   ;; shore/yellow
+                   (cliskf/v+ [-0.5 -0.5 -0.5]  c)
+                     [0.7 0.6 0.0]
+                   ;; surf/light blue
+                   (cliskf/v+ [-0.37 -0.37 -0.37]  c)
+                     [0 0.5 0.6]
+                   ;; else ocean
+                   [1 1 1]
+                     [0 0.4 0.5])))
 
         fns  (vec (map cliskn/compile-fn (:nodes node)))]
     (clisk/show node)

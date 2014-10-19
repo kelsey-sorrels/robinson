@@ -1327,8 +1327,8 @@
                                    (and (< 0 x width)
                                         (< 0 y height)
                                         (not (farther-than? npc-pos {:x x :y y} threshold))
-                                        (= (get-type x y) :water)
-                                        (every? water-traversable? (adjacent-xys-ext x y))))
+                                        (contains? #{:water :surf} (get-type x y))
+                                        #_(every? water-traversable? (adjacent-xys-ext x y))))
           land-traversable?      (fn [[x y]]
                                    (and (< 0 x width)
                                         (< 0 y height)
@@ -1395,8 +1395,8 @@
                                    (and (< 0 x width)
                                         (< 0 y height)
                                         (not (farther-than? npc-pos {:x x :y y} threshold))
-                                        (= (get-type x y) :water)
-                                        (every? water-traversable? (adjacent-xys-ext x y))))
+                                        (contains? #{:water :surf} (get-type x y))
+                                        #_(every? water-traversable? (adjacent-xys-ext x y))))
           land-traversable?      (fn [[x y]]
 
                                         (not (farther-than? npc-pos {:x x :y y} threshold))
@@ -1436,7 +1436,7 @@
         npc-pos  (get npc :pos)
         distance (distance npc-pos target)
         navigable-types (if (mg/can-move-in-water? (get npc :race))
-                          #{:water}
+                          #{:water :surf}
                           #{:floor
                             :corridor
                             :open-door
@@ -1467,7 +1467,7 @@
         npc-pos  (get npc :pos)
         distance (distance npc-pos target)
         navigable-types (if (mg/can-move-in-water? (get npc :race))
-                          #{:water}
+                          #{:water :surf}
                           #{:floor
                             :corridor
                             :open-door
@@ -1501,7 +1501,7 @@
   (let [policy (get npc :movement-policy)
         pos    (-> state :world :player :pos)
         navigable-types (if (mg/can-move-in-water? (get npc :race))
-                          #{:water}
+                          #{:water :surf}
                           #{:floor
                             :corridor
                             :open-door

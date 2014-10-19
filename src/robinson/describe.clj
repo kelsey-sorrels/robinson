@@ -18,6 +18,7 @@
   (and cell
        (case (get cell :type)
          :water                  "water"
+         :surf                   "surf"
          :sand                   "sand"
          :dirt                   "dirt"
          :gravel                 "gravel"

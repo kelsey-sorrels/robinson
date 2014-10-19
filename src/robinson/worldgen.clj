@@ -24,6 +24,21 @@
 (defn center-radius []
   (cliskf/radius (center [cliskf/x cliskf/y])))
 
+(defmacro vcond
+  "Takes a set of test/expr pairs. It evaluates each test one at a
+  time. If a test returns logical true, cond evaluates and returns
+  the value of the corresponding expr and doesn't evaluate any of the
+  other tests or exprs. (cond) returns nil."
+  {:added "1.0"}
+  [& clauses]
+  (when clauses
+    (list 'cliskf/vif (first clauses)
+      (if (next clauses)
+        (second clauses)
+        (throw (IllegalArgumentException.
+          "vcond requires an even number of forms")))
+      (cons 'vcond (next (next clauses))))))
+
 (defn init-island
   "Create an example place with an island, two items
    and a set of down stairs that lead to place `:1`"
@@ -223,38 +238,30 @@
   (let [_ (cliskp/seed-simplex-noise!)
         node (cliskf/vectorize
                (cliskf/vlet [c (center (invert (cliskf/offset (cliskf/scale 0.43 (cliskf/v* [0.5 0.5 0.5] cliskp/vsnoise)) cliskf/radius)))]
-                 (cliskf/v+
-                   (cliskf/vif (cliskf/v+ [-0.7 -0.7 -0.7]  (cliskf/v* c (cliskf/v+ [0.4 0.4 0.4] (cliskf/scale 0.05 cliskp/noise))))
+                 (vcond [1 0 0] [1 0 0])
+                 #_(vcond
+                   (cliskf/v- [-0.7 -0.7 -0.7]  (cliskf/v* c (cliskf/v+ [0.4 0.4 0.4] (cliskf/scale 0.05 cliskp/noise))))
                      [0 0 1]
-                     [0 0 0])
-                   (cliskf/vif (cliskf/v+ [-0.6 -0.6 -0.6]  c)
+                   (cliskf/v- [-0.6 -0.6 -0.6]  c)
                      [0 1 0]
-                     [0 0 0])
-                   (cliskf/vif (cliskf/v+ [-0.5 -0.5 -0.5]  c)
-                     [1 0 0]
-                     [0 0 0]))))
+                   (cliskf/v- [-0.5 -0.5 -0.5]  c)
+                     [1 0 0])))
+
         fns  (vec (map cliskn/compile-fn (:nodes node)))]
-    (dorun
+    (clisk/show node)
+    #_(dorun
       (map (comp (partial apply str) println)
-        (partition 40
-          (log-time "for" (for [y (range 20)
-                x (range 40)
-                :let [s (vec (map #(.calc ^clisk.IFunction % (double (/ x 40)) (double (/ y 20)) (double 0.0) (double 0.0))
-                             fns))]]
-            (case s
-              [0.0 0.0 0.0] \~
-              [1.0 0.0 0.0] \_
-              [1.0 1.0 0.0] (case (uniform-int 3)
-                              0 \,
-                              1 \`
-                              2 \.)
-              [1.0 0.0 1.0] \.
-              [1.0 1.0 1.0] (case (uniform-int 5)
-                              0 \T
-                              1 \"
-                              2 \'
-                              3 \.
-                              4 \`)))))))))
+        (partition 70
+          (log-time "for"
+            (for [y (range 28)
+                  x (range 70)
+                  :let [[s _ _] (vec (map #(.calc ^clisk.IFunction % (double (/ x 70)) (double (/ y 28)) (double 0.0) (double 0.0))
+                                   fns))]]
+              (cond
+                (> s 0.9) \^
+                (> s 0.7) \.
+                (> s 0.5) \_
+                :else \~))))))))
         
 
 

@@ -681,55 +681,65 @@
   "Collect non-item resources from adjacent or current cell"
   [state direction]
   {:pre  [(contains? #{:left :right :up :down :center} direction)]}
-  (let [player-x (-> state :world :player :pos :x)
-        player-y (-> state :world :player :pos :y)
-        target-x (+ player-x (case direction
-                               :left -1
-                               :right 1
-                               0))
-        target-y (+ player-y (case direction
-                               :up  -1
-                               :down 1
-                               0))
-        target-cell (get-cell-at-current-place state target-x target-y)
+  (let [player-x      (-> state :world :player :pos :x)
+        player-y      (-> state :world :player :pos :y)
+        target-x      (+ player-x (case direction
+                                    :left -1
+                                    :right 1
+                                    0))
+        target-y      (+ player-y (case direction
+                                    :up  -1
+                                    :down 1
+                                    0))
+        target-cell   (get-cell-at-current-place state target-x target-y)
+        harvestable   (get target-cell :harvestable false)
         harvest-items (if (not= target-cell nil)
                         (cond
                           (= (get target-cell :type) :tree)
                             (concat
-                              (if (<= 2 (uniform-int 10))
+                              (if (or harvestable
+                                      (<= 2 (uniform-int 1000)))
                                 (repeat (uniform-int 1 2) (ig/gen-stick))
                                 [])
-                              (if (= 0 (uniform-int 10))
+                              (if (or harvestable
+                                      (= 0 (uniform-int 1000)))
                                 (repeat (uniform-int 1 5) (ig/gen-plant-fiber))
                                 []))
                           (= (get target-cell :type) :bamboo)
-                              (if (= 0 (uniform-int 10))
+                              (if (or harvestable
+                                      (= 0 (uniform-int 1000)))
                                 (repeat (uniform-int 1 2) (ig/gen-bamboo))
                                 [])
                           (= (get target-cell :type) :palm-tree)
                             (concat
-                              (if (= 0 (uniform-int 10))
+                              (if (or harvestable
+                                      (= 0 (uniform-int 1000)))
                                 (repeat (uniform-int 1 2) (ig/gen-unhusked-coconut))
                                 [])
-                              (if (= 0 (uniform-int 15))
+                              (if (or harvestable
+                                      (= 0 (uniform-int 1500)))
                                 (repeat (uniform-int 1 2) (ig/gen-plant-fiber))
                                 []))
                           (and (= (get target-cell :type) :tall-grass)
                                (= direction :center))
                             (concat
-                              (if (= 0 (uniform-int 10))
+                              (if (or harvestable
+                                      (= 0 (uniform-int 1000)))
                                 (repeat (uniform-int 1 5) (ig/gen-grass))
                                 [])
-                              (if (= 0 (uniform-int 10))
+                              (if (or harvestable
+                                      (= 0 (uniform-int 1000)))
                                 (repeat (uniform-int 1 5) (ig/gen-plant-fiber))
                                 []))
                           (and (= (get target-cell :type) :gravel)
                                (= direction :center))
                             (concat
-                              (if (= 0 (uniform-int 10))
+                              (if (or harvestable
+                                      (= 0 (uniform-int 1000)))
                                 (repeat (uniform-int 1 5) (ig/gen-rock))
                                 [])
-                              (if (= 0 (uniform-int 20))
+                              (if (or harvestable
+                                      (= 0 (uniform-int 2000)))
                                 (repeat (uniform-int 1 5) (ig/gen-obsidian))
                                 []))
                           :else [])
@@ -739,6 +749,7 @@
       (append-log state "You don't find anything.")
       (-> state
         (add-to-inventory harvest-items)
+        (update-cell-xy target-x target-y (fn [cell] (dissoc cell :harvestable)))
         ((fn [state] (reduce update-harvested state harvest-items)))
         (append-log (format "You gather %s." (clojure.string/join ", " (map #(if (> (get % :count 1) 1)
                                                                                   (format "%d %s" (get % :count) (get % :name-plural))
@@ -1624,7 +1635,7 @@
         (recur state remaining-npcs (dec i)))))))
 
 (defn update-cells
-  "Fill holes with a small amount of water. Drop fruit."
+  "Fill holes with a small amount of water. Drop fruit. Drop harvest items."
   [state]
   (info "updating cells")
   (-> state
@@ -1649,7 +1660,7 @@
                                                                                  (remove (fn [item] (< (get item :rot-time (get-time state))
                                                                                                        (get-time state)))
                                                                                           items))))))))
-    ;; update fruit trees
+    ;; update fruit trees/drop fruit
     ((fn [state]
       (reduce (fn [state [cell x y]]
               ;; chance of dropped a fruit
@@ -1670,8 +1681,15 @@
             (filter (fn filter-fruit-tree-cells
                       [[cell _ _]]
                       (= (get cell :type) :fruit-tree))
-                    (with-xy (current-place state))))))))
-            
+                    (with-xy (current-place state))))))
+    ;; drop harvest items
+    (update-in [:world :places (current-place-id state)]
+      (fn [place]
+        (update-matching-cells place
+                               (fn [cell] (contains? #{:gravel :tree :palm-tree :tall-grass} (get cell :type)))
+                               (fn [cell] (if (= (uniform-int 0 10000) 0)
+                                            (assoc cell :harvestable true)
+                                            cell)))))))
 
 (defn update-quests
   "Execute the `pred` function for the current stage of each quest. If 

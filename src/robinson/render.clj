@@ -703,9 +703,14 @@
                                                  ["O"])
                               :dry-hole        ["O"]
                               ["?"])))
-                shaded-out-char (if (= (cell :discovered) current-time)
-                                  out-char
-                                  (update-in out-char [1] (comp rgb->mono darken-rgb)))]
+                shaded-out-char (cond
+                                  (not= (cell :discovered) current-time)
+                                    (update-in out-char [1] (comp rgb->mono darken-rgb))
+                                  (contains? cell :harvestable)
+                                    (let [[chr fg bg] out-char]
+                                      [chr bg fg])
+                                  :else
+                                    out-char)]
               (apply put-string screen x y shaded-out-char)))))
     ;; draw character
     ;(debug (-> state :world :player))

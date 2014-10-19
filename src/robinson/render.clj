@@ -671,8 +671,12 @@
                               :corridor        ["#"] 
                               :down-stairs     [">"] 
                               :up-stairs       ["<"] 
-                              :water           ["\u2248"  (rand-nth [:blue :dark-blue]) :black] ;; ≈ 
-                              :surf            ["~"  (rand-nth [:white :light-blue :blue-green]) :black]
+                              :water           ["\u2248" (if (= (cell :discovered) current-time)
+                                                           (rand-nth [:blue :dark-blue])
+                                                           :blue) :black] ;; ≈ 
+                              :surf            ["~" (if (= (cell :discovered) current-time)
+                                                      (rand-nth [:white :light-blue :blue-green])
+                                                      :light-blue) :black]
                               :sand            ["."  :beige      :black]
                               :dirt            ["."  :brown      :black]
                               :gravel          ["."  :gray       :black]

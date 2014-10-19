@@ -1612,12 +1612,14 @@
                                (fn [npc]
                                  ;(trace "updating npc" (select-keys npc [:race :place :pos :speed :energy]))
                                  (update-in
-                                   ;; no npc at the destination cell?
-                                   (if (not-any? (fn [npc] (and (= (get npc :pos)
-                                                                   new-pos)
-                                                                (= (get npc :place)
-                                                                   (get new-npc :place))))
-                                                 (get-in state [:world :npcs]))
+                                   ;; no npc or player at the destination cell?
+                                   (if (and
+                                         (not-any? (fn [npc] (and (= (get npc :pos)
+                                                                      new-pos)
+                                                                   (= (get npc :place)
+                                                                      (get new-npc :place))))
+                                                    (get-in state [:world :npcs]))
+                                         (not= new-pos (player-pos state)))
                                      ;; use the new npc value
                                      new-npc
                                      ;; otherwise there is an npc at the destination, use the old npc

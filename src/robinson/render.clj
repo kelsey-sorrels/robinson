@@ -392,6 +392,11 @@
   [state]
   (render-multi-select (state :screen) "Describe" [] (-> state :world :player :inventory)))
 
+(defn render-throw-inventory
+  "Render the throw item menu if the world state is `:throw-inventory`."
+  [state]
+  (render-multi-select (state :screen) "Throw" [] (-> state :world :player :inventory)))
+
 (defn render-eat
   "Render the eat item menu if the world state is `:pickup`."
   [state]
@@ -782,6 +787,7 @@
       :magic              (render-magic state)
       :drop               (render-drop state)
       :describe-inventory (render-describe-inventory state)
+      :throw-inventory    (render-throw-inventory state)
       :eat                (render-eat state)
       :quests             (render-quests state)
       :craft              (render-craft state)

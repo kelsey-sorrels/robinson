@@ -522,17 +522,21 @@
   If an npc is encountered first, return `{:npc npc}`.
   If a non-npc is encountered first, return `{:cell cell}`.
   If no collision occurs in any of the cells, return `{}`."
- [state direction]
+ [state direction max-distance]
  {:pre [(contains? #{:up :down :left :right} direction)]}
-  (let [cellsxy (direction->cellsxy state direction)]
+  (let [cellsxy (remove (fn [[cell x y]]
+                          (farther-than? (xy->pos x y)
+                                         (get-in state [:world :player :pos])
+                                         max-distance))
+                        (direction->cellsxy state direction))]
    (loop [[cell x y] (first cellsxy)
           xs         (rest cellsxy)]
      (let [npc (npc-at-xy state x y)]
        (cond
          (not (nil? npc))
-           {:npc npc}
+           {:npc npc :pos (xy->pos x y)}
          (collide? state x y false)
-           {:cell cell}
+           {:cell cell :pos (xy->pos x y)}
          (empty? xs)
            {}
          :else
@@ -561,7 +565,8 @@
 (defn conj-in-cell-items
   "Adds an item to [x y] in the current place. Simple, right?"
   [state item x y]
-  (conj-in state [:world :places (-> state :world :current-place) y x :items] item))
+  (info "Adding" item "to cell @" x y)
+  (conj-in state [:world :places (current-place-id state) y x :items] item))
 
 (defn conj-in-current-cell-items
   "Adds an item to the player's cell's items."

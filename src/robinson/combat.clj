@@ -388,10 +388,42 @@
     [:urchin     :spike        :human      :*]         (dg/uniform 1.5 2.2)
     [:* :* :* :*] (+ (dg/float) 1.5)))
 
+(defn calc-thrown-item-dmg
+  [item-id defender-race]
+  (condp vec-match? [defender-race item-id]
+    [:bat        :*] (dg/uniform 1.5 2.5)
+    [:bird       :*] (dg/uniform 1.5 1.9)
+    [:boar       :*] (dg/uniform 1.5 3.5)
+    [:centipede  :*] (dg/uniform 1.5 1.9)
+    [:clam       :*] (dg/uniform 1.1 1.3)
+    [:fish       :*] (dg/uniform 1.2 2.7)
+    [:frog       :*] (dg/uniform 1.1 1.5)
+    [:gecko      :*] (dg/uniform 1.1 1.3)
+    [:human      :*] (dg/uniform 1.5 2.5)
+    [:monkey     :*] (dg/uniform 1.5 2.5)
+    [:octopus    :*] (dg/uniform 1.5 2.5)
+    [:parrot     :*] (dg/uniform 1.5 2.5)
+    [:rat        :*] (dg/uniform 1.5 2.5)
+    [:scorpion   :*] (dg/uniform 1.5 2.5)
+    [:sea-snake  :*] (dg/uniform 1.5 2.1)
+    [:shark      :*] (dg/uniform 3.5 5.5)
+    [:snake      :*] (dg/uniform 2.1 2.6)
+    [:squid      :*] (dg/uniform 2.5 3.5)
+    [:turtle     :*] (dg/uniform 1.5 2.5)
+    [:urchin     :*] (dg/uniform 1.9 2.5)
+    [:*          :*] (+ (dg/float) 1.5)))
+
 (defn attack
   "Perform combat. The attacker fights the defender, but not vice-versa.
    Return a new state reflecting combat outcome."
-  [state attacker-path defender-path]
+  ([state attacker-path defender-path]
+   (let [attacker           (get-in state attacker-path)
+         attack-type (or (get (first (filter (fn [item] (contains? item :wielded))
+                                     (get-in state (conj attacker-path :inventory) [])))
+                              :attack)
+                         (dg/rand-nth (vec (get attacker :attacks))))]
+     (attack state attacker-path defender-path attack-type)))
+  ([state attacker-path defender-path attack]
   {:pre [(every? (set (keys (get-in state defender-path))) [:hp :pos :race :body-parts :inventory])
          (every? (set (keys (get-in state attacker-path))) [:attacks])
          (vector? (get-in state [:world :npcs]))]
@@ -399,22 +431,30 @@
   (let [defender           (get-in state defender-path)
         ;; 
         attacker           (get-in state attacker-path)
-        attack             (or (get (first (filter (fn [item] (contains? item :wielded))
-                                           (get-in state (conj attacker-path :inventory) [])))
-                                    :attack)
-                               (dg/rand-nth (vec (get attacker :attacks))))
+        thrown-item        (when-not (keyword? attack)
+                             attack)
+        attack             (if (keyword? attack)
+                             attack
+                             :thrown-item)
         defender-body-part (dg/rand-nth (vec (get defender :body-parts)))
         {x :x y :y}        (get defender :pos)
         hp                 (get defender :hp)
         hit-or-miss        (dg/rand-nth (concat (repeat (get attacker :speed) :hit)
                                              (repeat (get defender :speed) :miss)))
-        dmg                (case hit-or-miss
-                             :hit (calc-dmg (get attacker :race) attack (get defender :race) defender-body-part)
-                             :miss 0)
+        dmg                (cond
+                             (and (= hit-or-miss :hit)
+                                  (= attack :thrown-item))
+                               (calc-thrown-item-dmg (get thrown-item :id) (get defender :race))
+                             (= hit-or-miss :hit)
+                               (calc-dmg (get attacker :race) attack (get defender :race) defender-body-part)
+                             :else 0)
         is-wound           (> dmg 1.5)]
     (debug "attack" attacker-path "is attacking defender" defender-path)
     (debug "attacker-detail" attacker)
     (debug "defender-detail" defender)
+    (debug "attack" attack)
+    (debug "hit?" hit-or-miss)
+    (debug "dmg" dmg)
     (cond
       ;; defender still alive?
       (pos? (- hp dmg))
@@ -476,5 +516,5 @@
                                                                  (get attacker :name)
                                                                  (name attack)))
             (update-in [:world :player :status]
-              (fn [status] (conj status :dead))))))))
+              (fn [status] (conj status :dead)))))))))
 

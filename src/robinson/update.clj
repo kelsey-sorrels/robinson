@@ -991,6 +991,75 @@
         (info "selecting recipe path" recipe-path)
         (assoc-in state [:world :craft-recipe-path] recipe-path)))))
 
+(defn assoc-throw-item
+  [state item]
+  (assoc-in state [:world :throw-item] item))
+
+(defn get-throw-item
+  [state]
+  (get-in state [:world :throw-item]))
+
+(defn throw-select-inventory
+  [state keyin]
+  (if-let [item (inventory-and-player-cell-hotkey->item state keyin)]
+    (-> state
+      (ui-hint "Select direction.")
+      (assoc-throw-item item))
+    state))
+
+(defn throw-selected-inventory
+  [state direction]
+  {:pre  [(contains? #{:left :right :up :down} direction)]}
+  (let [item           (get-throw-item state)
+        throw-distance 5
+        obj            (first-collidable-object state direction throw-distance)]
+    (cond
+      (contains? obj :npc)
+        ;; do attack
+        (-> state
+          (attack [:world :player] (npc->keys state (get obj :npc)) item)
+          (conj-in-cell-items item (get-in obj [:pos :x]) (get-in obj [:pos :y]))
+          (dec-item-count (get item :id)))
+      (contains? obj :cell)
+        ;; drop item into cell before hitting colliding cell
+        (-> state
+          (conj-in-cell-items (if (get item :rot-time)
+                                (assoc item :rot-time (inc (get-time state)))
+                                item)
+                              (+ (get-in obj [:pos :x])
+                                 (case direction
+                                   :left 1
+                                   :right -1
+                                   0))
+                              (+ (get-in obj [:pos :y])
+                                 (case direction
+                                   :up 1
+                                   :down -1
+                                   0)))
+          (dec-item-count (get item :id)))
+      :else
+        ;; didn't hit anything, drop into cell at max-distance
+        (let [[x y] (nth (direction->xys state direction) throw-distance)]
+          (-> state
+            (conj-in-cell-items item x y)
+            (dec-item-count (get item :id)))))))
+
+(defn throw-left
+  [state]
+  (throw-selected-inventory state :left))
+
+(defn throw-right
+  [state]
+  (throw-selected-inventory state :right))
+
+(defn throw-up
+  [state]
+  (throw-selected-inventory state :up))
+
+(defn throw-down
+  [state]
+  (throw-selected-inventory state :down))
+
 (defn craft-weapon
   [state]
   (craft-select-recipe (assoc-current-state state :craft-weapon) \a))
@@ -1763,6 +1832,7 @@
                            \P         [next-party-member      :normal          false]
                            \z         [identity               :craft           true]
                            \Z         [identity               :magic           true]
+                           \t         [identity               :throw-inventory false]
                            \T         [identity               :talk            true]
                            \m         [identity               :log             false]
                            \?         [identity               :help            false]
@@ -1856,6 +1926,15 @@
                           {:escape    [identity               :craft           false]
                            :enter     [craft                  :normal          true]
                            :else      [craft-select-recipe    identity         false]}
+               :throw-inventory
+                          {:escape    [identity               :normal          false]
+                           :else      [throw-select-inventory :throw-direction false]}
+               :throw-direction
+                          {:escape    [identity               :normal          false]
+                           \h         [throw-left             :normal          true]
+                           \j         [throw-down             :normal          true]
+                           \k         [throw-up               :normal          true]
+                           \l         [throw-right            :normal          true]}
                :magic     {:escape    [identity               :normal          false]
                            :else      [do-magic               identity         true]}
                :magic-direction

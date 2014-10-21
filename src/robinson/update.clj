@@ -1762,7 +1762,7 @@
       (fn [place]
         (update-matching-cells place
                                (fn [cell] (contains? #{:gravel :tree :palm-tree :tall-grass} (get cell :type)))
-                               (fn [cell] (if (= (uniform-int 0 2000) 0)
+                               (fn [cell] (if (= (uniform-int 0 1000) 0)
                                             (assoc cell :harvestable true)
                                             cell)))))))
 

@@ -337,11 +337,9 @@
       (debug "not-selected-items" not-selected-items)
       (if (seq selected-items)
         (let [new-state (-> state
-                          (append-log (format "You pick up the item%s" (if (> (count selected-items) 1) "s" "")))
+                          (append-log "You pick up:")
                           ;; dup the item into inventory with hotkey
-                          (update-in [:world :player :inventory]
-                            (fn [prev-inventory]
-                              (vec (concat prev-inventory selected-items))))
+                          (add-to-inventory selected-items)
                           ;; remove the item from cell
                           (assoc-in [:world :places place y x :items]
                                     not-selected-items)

@@ -49,8 +49,12 @@
                                                            (noun->indefinite-article (ig/id->name item-id))
                                                            num-items)
                                                          (if (= num-items 1)
-                                                           (ig/id->name item-id)
-                                                           (ig/id->name-plural item-id))]))
+                                                           (get (first (filter #(= (get % :id) item-id)
+                                                                               items))
+                                                                :name)
+                                                           (get (first (filter #(= (get % :id) item-id)
+                                                                               items))
+                                                                :name-plural))]))
                                 (frequencies (map :id items)))))
 (defn describe-cell-at-xy
   [state x y]

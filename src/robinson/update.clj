@@ -1909,7 +1909,7 @@
                            \j         [harvest-down           :normal          true]
                            \k         [harvest-up             :normal          true]
                            \l         [harvest-right          :normal          true]
-                           \.         [harvest-center         :normal          true]
+                           \>         [harvest-center         :normal          true]
                            :escape    [identity               :normal          false]}
                :wield     {:escape    [identity               :normal          false]
                            :else      [wield                  :normal          true]}

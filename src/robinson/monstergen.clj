@@ -18,7 +18,7 @@
    :rat
    "rat"
    "rats"
-   9
+   5
    0
    1.1
    #{:face :head :neck :body :leg :tail}
@@ -34,7 +34,7 @@
    :spider
    "spider"
    "spiders"
-   4
+   2
    0
    0.9
    #{:face :leg :abdomen}
@@ -66,7 +66,7 @@
    :snake
    "snake"
    "snakes"
-   8
+   5
    0
    0.8
    #{:head :body :tail}
@@ -82,7 +82,7 @@
    :bat
    "bat"
    "bats"
-   8
+   5
    0
    1.6
    #{:head :body :wing :leg :face}
@@ -146,7 +146,7 @@
    :bird
    "bird"
    "birds"
-   6
+   4
    0
    2.1
    #{:head :body :tail :leg :beak :wing}
@@ -162,7 +162,7 @@
    :centipede
    "centipede"
    "centipedes"
-   4
+   1
    0
    0.5
    #{:head :body :leg}
@@ -210,7 +210,7 @@
    :parrot
    "parrot"
    "parrots"
-   7
+   5
    0
    2.1
    #{:head :body :leg :face :wing :tail}

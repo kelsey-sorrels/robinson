@@ -1091,6 +1091,8 @@
 (defn scroll-log
   [state keyin]
   (let [t (get-in state [:world :time])]
+    (info "scroll-log t" t)
+    (info "scroll-log logs-viewed" (get-in state [:world :logs-viewed]))
     (-> state
       (update-in [:world :logs-viewed] inc)
       ((fn [state]
@@ -1122,11 +1124,13 @@
           (vals (group-by :time logs)))))
     ((fn [state]
       (let [t    (get-in state [:world :time])
-            logs (filter #(= t (get % :time)) (get-in state [:world :log]))]
+            logs (filter #(= t (get % :time)) (get-in state [:world :log]))
+            logs-viewed (get-in state [:world :logs-viewed] 1)]
         (info "logs" logs)
         (-> state
           (assoc-in [:world :logs-viewed] 1)
-          (tx/when-> (> (count logs) 1)
+          (tx/when-> (and (> (count logs) 1)
+                          (= logs-viewed 1))
             (assoc-current-state :more-log))))))))
 
 (defn get-hungrier-and-thirstier
@@ -1758,7 +1762,7 @@
       (fn [place]
         (update-matching-cells place
                                (fn [cell] (contains? #{:gravel :tree :palm-tree :tall-grass} (get cell :type)))
-                               (fn [cell] (if (= (uniform-int 0 10000) 0)
+                               (fn [cell] (if (= (uniform-int 0 2000) 0)
                                             (assoc cell :harvestable true)
                                             cell)))))))
 

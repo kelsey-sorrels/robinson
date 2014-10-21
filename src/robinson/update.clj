@@ -335,7 +335,8 @@
       (debug "divided-items" divided-items)
       (debug "selected-items" selected-items)
       (debug "not-selected-items" not-selected-items)
-      (let [new-state (-> state
+      (if (seq selected-items)
+        (let [new-state (-> state
                           (append-log (format "You pick up the item%s" (if (> (count selected-items) 1) "s" "")))
                           ;; dup the item into inventory with hotkey
                           (update-in [:world :player :inventory]
@@ -349,8 +350,9 @@
                               remaining-hotkeys)
                           ;; reset selected-hotkeys
                           (assoc-in [:world :selected-hotkeys] #{}))]
-        (debug "cell-items (-> state :world :places" place y x ":items)")
-        new-state)))
+          (debug "cell-items (-> state :world :places" place y x ":items)")
+          new-state)
+        state)))
 
 (defn drop-item
   "Drop the item from the player's inventory whose hotkey matches `keyin`.

@@ -148,6 +148,15 @@
                                               (= (.getKeyCode e) KeyEvent/VK_ENTER)      :enter
                                               (= (.getKeyCode e) KeyEvent/VK_ESCAPE)     :escape
                                               (= (.getKeyCode e) KeyEvent/VK_BACK_SPACE) :backspace
+                                              (= (.getKeyCode e) KeyEvent/VK_NUMPAD1)    :numpad1
+                                              (= (.getKeyCode e) KeyEvent/VK_NUMPAD2)    :numpad2
+                                              (= (.getKeyCode e) KeyEvent/VK_NUMPAD3)    :numpad3
+                                              (= (.getKeyCode e) KeyEvent/VK_NUMPAD4)    :numpad4
+                                              (= (.getKeyCode e) KeyEvent/VK_NUMPAD5)    :numpad5
+                                              (= (.getKeyCode e) KeyEvent/VK_NUMPAD6)    :numpad6
+                                              (= (.getKeyCode e) KeyEvent/VK_NUMPAD7)    :numpad7
+                                              (= (.getKeyCode e) KeyEvent/VK_NUMPAD8)    :numpad8
+                                              (= (.getKeyCode e) KeyEvent/VK_NUMPAD9)    :numpad9
                                               true (let [altDown (not= (bit-and (.getModifiersEx e) InputEvent/ALT_DOWN_MASK) 0)
                                                          ctrlDown (not= (bit-and (.getModifiersEx e) InputEvent/CTRL_DOWN_MASK) 0)]
                                                      ;(println "processing non-enter non-escape keypress")

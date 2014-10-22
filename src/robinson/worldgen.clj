@@ -172,11 +172,11 @@
    added during the course of the game."
   [seed]
   ;; Assign hotkeys to inventory and remove from remaining hotkeys
-  (let [inventory              [(ig/gen-plant-fiber)]
+  (let [inventory              []
         remaining-hotkeys      (vec (seq "abcdefghijklmnopqrstuvwxyzABCdEFGHIJKLMNOPQRSTUVWQYZ"))
         hotkey-groups          (split-at (count inventory) remaining-hotkeys)
         inventory-with-hotkeys (vec (map #(assoc %1 :hotkey %2) inventory (first hotkey-groups)))
-        remaining-hotkeys      (vec (clojure.string/join (second hotkey-groups)))
+        remaining-hotkeys      (set (clojure.string/join (second hotkey-groups)))
         place-0                (init-island seed)
         [_ starting-x
            starting-y]         (first (filter (fn [[cell x y]] (contains? cell :starting-location))

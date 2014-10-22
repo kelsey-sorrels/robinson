@@ -21,9 +21,9 @@
                                 (ig/gen-bedroll)
                                 (ig/gen-tarp)
                                 (ig/gen-saw)]
-        _ (info "start-inventory" inventory)
         hotkeys                (vec (seq "abcdefghijklmnopqrstuvwxyzABCdEFGHIJKLMNOPQRSTUVWQYZ"))
         inventory-with-hotkeys (mapv #(assoc %1 :hotkey %2) inventory hotkeys)]
+    (info "start-inventory" inventory-with-hotkeys)
     inventory-with-hotkeys))
 
 (defn start-text []

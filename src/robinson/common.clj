@@ -350,9 +350,9 @@
   ;; so that setting can pass through each fn in turn.
   (debug "add-extras" place extras)
   (reduce (fn [place [[x y] & r]]
-           (let [args (concat [[y x]] r)
-                 _ (debug "assoc-in place" args)]
-                 (apply assoc-in place args))) place extras))
+           (let [args (concat [[y x]] r)]
+             #_(debug "assoc-in place" args)
+             (apply assoc-in place args))) place extras))
 
 (defn current-place-id
   "Retrieve the current place id."

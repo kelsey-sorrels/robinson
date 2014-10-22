@@ -63,29 +63,23 @@
 
 (defn add-starting-inventory
   [state]
-  (let [state              (reinit-world state)
+  (let [new-state          (reinit-world state)
         selected-hotkeys   (get-in state [:world :selected-hotkeys])
-        start-inventory    (filter #(contains? selected-hotkeys (get % :hotkey)) (sg/start-inventory))
-        state              (add-to-inventory state start-inventory)]
+        _                  (info "selected-hotkeys" selected-hotkeys)
+        start-inventory    (filter #(contains? (set selected-hotkeys) (get % :hotkey)) (sg/start-inventory))
+        _                  (info "Adding to starting inventory:" start-inventory)
+        state              (add-to-inventory new-state start-inventory)]
     state))
 
 (defn select-starting-inventory
-  [state key-in]
-  (if (and (char? key-in)
-           (<= (int \a) (int key-in) (int \k)))
-    (let [selected-hotkeys (get-in state [:world :selected-hotkeys])
-          _ (info "selected-hotkeys" selected-hotkeys)
-          selected-hotkeys ((if (contains? selected-hotkeys key-in)
-                              disj
-                              conj)
-                            selected-hotkeys
-                            key-in)
-          _ (info "selected-hotkeys" selected-hotkeys)]
-      (info "count shk" (count selected-hotkeys))
+  [state keyin]
+  (if (and (char? keyin)
+           (<= (int \a) (int keyin) (int \k)))
+    (let [new-state (toggle-hotkey state keyin)
+          selected-hotkeys (get-in new-state [:world :selected-hotkeys])]
+      (info "selected-hotkeys" selected-hotkeys)
       (if (< (count selected-hotkeys) 4)
-        (assoc-in state
-                  [:world :selected-hotkeys]
-                  selected-hotkeys)
+        new-state
         state))
     state))
 
@@ -582,8 +576,8 @@
   (debug "toggle-hotkey" keyin)
   (update-in state [:world :selected-hotkeys]
              (fn [hotkeys] (if (contains? hotkeys keyin)
-                             (disj hotkeys keyin)
-                             (conj hotkeys keyin)))))
+                             (disj (set hotkeys) keyin)
+                             (conj (set hotkeys) keyin)))))
 
 (defn eat
   "Remove the item whose `:hotkey` equals `keyin` and subtract from the player's
@@ -1807,7 +1801,7 @@
                                                               :start-inventory false]}
                :start-text
                           {:else      [(fn [state _]
-                                         (do-rest state))     :normal          false]}
+                                         (do-rest state))     :normal          true]}
                :normal    {\i         [identity               :inventory       false]
                            \d         [identity               :drop            false]
                            \,         [identity               :pickup          false]

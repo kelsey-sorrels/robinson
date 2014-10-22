@@ -31,6 +31,6 @@
                                         "sailboat" "steamboat" "barge" "oceanliner" "ferry" "helicopter"
                                         "biplane"])
         natural-disaster  (dg/rand-nth ["hurricane" "tornado" "dark storm" "cyclone" "squall"])]
-    (format "While traveling by %s, a %s engulfs you.\n        You awake on an island."
+    (format "While traveling by %s, a %s engulfs you.\n\n             You awake on an island.\n\n     One thing is certain - you'll have to escape."
              mode-of-transport
              natural-disaster)))

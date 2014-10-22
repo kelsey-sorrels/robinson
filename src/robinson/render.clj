@@ -868,7 +868,7 @@
         start-text (sg/start-text)]
     (clear (state :screen))
     (doall (map-indexed
-      (fn [idx line] (put-string screen 5 (+ idx 5) line))
+      (fn [idx line] (put-string screen 12 (+ idx 9) line))
       (clojure.string/split-lines start-text)))
     (refresh screen)))
 

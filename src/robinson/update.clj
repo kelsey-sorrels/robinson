@@ -1099,20 +1099,24 @@
 (defn init-log-scrolling
   [state]
   (-> state
-    (update-in [:world :logs]
+    (update-in [:world :log]
       (fn [logs]
         (mapcat
           (fn [logs-with-same-time]
             (vec
               (reduce (fn [logs-with-same-time log]
-                        (if (< (+ (count (get (last logs-with-same-time) :message))
-                                  (count (get log :message)))
-                                70)
-                          (vec (conj (butlast logs-with-same-time)
-                                      {:time (get log :time)
-                                       :message (clojure.string/join " " [(get (last logs-with-same-time) :message)
-                                                                          (get log :message)])}))
-                          (conj logs-with-same-time log)))
+                        (let [last-log (last logs-with-same-time)]
+                          (if (and (< (+ (count (get last-log :text))
+                                      (count (get log :text)))
+                                    70)
+                                (= (get last-log :color)
+                                   (get log :color)))
+                            (vec (conj (butlast logs-with-same-time)
+                                        {:time (get log :time)
+                                         :text (clojure.string/join " " [(get last-log :text)
+                                                                         (get log :text)])
+                                         :color (get log :color)}))
+                            (conj logs-with-same-time log))))
                       []
                       logs-with-same-time)))
           (vals (group-by :time logs)))))

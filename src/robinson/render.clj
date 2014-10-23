@@ -634,6 +634,7 @@
                 (not (cell :discovered)))
           (put-string screen x y " ")
           (let [cell-items (cell :items)
+                _ (info "cell" cell)
                 out-char (apply fill-put-string-color-style-defaults
                            (if (and cell-items
                                     (seq cell-items)
@@ -664,6 +665,7 @@
                                :black-fruit    ["*" :gray   :black]
                                :bamboo         ["/" :light-green  :black]
                                :stick          ["/" :brown  :black]
+                               :log            ["/" :brown  :black #{:bold}]
                                :$              ["$"  :yellow :black #{:bold}]
                                :amulet         ["\"" :blue   :black #{:bold}]
                                ["?"])

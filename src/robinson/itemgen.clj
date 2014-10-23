@@ -23,6 +23,7 @@
 
 (defn id-is-sharp? [id]
   (contains? #{:knife
+               :saw
                :obsidian-knife
                :obsidian-axe
                :obsidian-spear
@@ -58,6 +59,7 @@
 (def ^:private items
   [
    {:id  :stick                   :name  "stick"                      :name-plural "sticks"}
+   {:id  :log                     :name  "log"                        :name-plural "logs"}
    {:id  :sharpened-stick         :name  "sharpened stick"            :name-plural "sharpened sticks" :attack :spear}
    {:id  :plant-fiber             :name  "plant fiber"                :name-plural "plant fibers"}
    {:id  :unhusked-coconut        :name  "unhusked coconut"           :name-plural "husked coconuts"}

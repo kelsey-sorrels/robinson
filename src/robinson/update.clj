@@ -1034,7 +1034,8 @@
   (let [recipe-type      (case (current-state state)
                            :craft-weapon   :weapons
                            :craft-survival :survival
-                           :craft-shelter :shelter)
+                           :craft-shelter :shelter
+                           :craft-transportation :transportation)
         matching-recipes (filter (fn [recipe] (= (get recipe :hotkey) keyin))
                                  (get (get-recipes state) recipe-type))]
     (info "selecting matching recipe" matching-recipes)
@@ -1124,6 +1125,10 @@
 (defn craft-shelter
   [state]
   (craft-select-recipe (assoc-current-state state :craft-shelter) \a))
+
+(defn craft-transportation
+  [state]
+  (craft-select-recipe (assoc-current-state state :craft-transportation) \a))
 
 
 (defn craft
@@ -1974,6 +1979,8 @@
                :craft     {\w          [craft-weapon           :craft-weapon    false]
                            \s          [craft-survival         :craft-survival  false]
                            \c          [craft-shelter          :craft-shelter   false]
+                           \t          [craft-transportation   :craft-transportation
+                                                                                false]
                            :escape     [identity               :normal          false]}
                :craft-weapon
                           {:escape     [identity               :craft           false]
@@ -1984,6 +1991,10 @@
                            :enter      [craft                  :normal          true]
                            :else       [craft-select-recipe    identity         false]}
                :craft-shelter
+                          {:escape     [identity               :craft           false]
+                           :enter      [craft                  :normal          true]
+                           :else       [craft-select-recipe    identity         false]}
+               :craft-transportation
                           {:escape     [identity               :craft           false]
                            :enter      [craft                  :normal          true]
                            :else       [craft-select-recipe    identity         false]}

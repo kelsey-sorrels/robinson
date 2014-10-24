@@ -526,7 +526,8 @@
   (let [screen (state :screen)]
     (render-multi-select screen nil [] [{:name "Weapons" :hotkey \w}
                                         {:name "Survival" :hotkey \s}
-                                        {:name "Shelter" :hotkey \c}]
+                                        {:name "Shelter" :hotkey \c}
+                                        {:name "Transportation" :hotkey \t}]
                                         30 6 20 5)
     (render-rect-border screen 29 5 20 5 :black :white)
     (put-string screen 37 5 "Craft" :black :white)))
@@ -545,7 +546,7 @@
   ;; render recipes
   (render-list screen 11 6 29 15
     (concat
-      [{:s (str recipe-type) :fg :black :bg :white :style #{:underline}}]
+      [{:s (name recipe-type) :fg :black :bg :white :style #{:underline}}]
        (map (fn [recipe]
               {:s (format "%c-%s"
                     (get recipe :hotkey)
@@ -600,6 +601,11 @@
   [state]
   (render-craft-submenu state :shelter))
 
+(defn render-craft-transportation
+  "Render the craft menu if the world state is `:craft-transportation`."
+  [state]
+  (render-craft-submenu state :transportation))
+
 (defn render-wield
   "Render the wield item menu if the world state is `:wield`."
   [state]
@@ -634,7 +640,7 @@
                 (not (cell :discovered)))
           (put-string screen x y " ")
           (let [cell-items (cell :items)
-                _ (info "cell" cell)
+                ;_ (info "cell" cell)
                 out-char (apply fill-put-string-color-style-defaults
                            (if (and cell-items
                                     (seq cell-items)
@@ -716,6 +722,12 @@
                                   (contains? cell :harvestable)
                                     (let [[chr fg bg] out-char]
                                       [chr bg fg])
+                                  (contains? (set (map :id cell-items)) :raft)
+                                    (let [[chr fg bg] out-char]
+                                      (info "raft-cell" out-char cell-items)
+                                      (if (> (count cell-items) 1)
+                                        [chr fg :brown]
+                                        ["\u2225" :black :brown]))
                                   :else
                                     out-char)]
               (apply put-string screen x y shaded-out-char)))))
@@ -726,8 +738,10 @@
       (-> state :world :player :pos :x)
       (-> state :world :player :pos :y)
       "@"
-      (class->rgb (-> state :world :player :class))
-      :black)
+      :white
+      (if (contains? (set (map :id (get (first (player-cellxy state)) :items))) :raft)
+        :brown
+        :black))
     ;; draw npcs
     (let [place-npcs (npcs-at-current-place state)
           ;_ (debug "place-npcs" place-npcs)
@@ -779,24 +793,25 @@
     (render-hud state)
     (info "current-state" (current-state state))
     (case (current-state state)
-      :pickup             (render-pick-up state)
-      :inventory          (render-inventory state)
-      :apply              (render-apply state)
+      :pickup               (render-pick-up state)
+      :inventory            (render-inventory state)
+      :apply                (render-apply state)
       :apply-item-inventory
-                          (render-apply-to state)
+                            (render-apply-to state)
       :quaff-inventory
-                          (render-quaff-inventory state)
-      :magic              (render-magic state)
-      :drop               (render-drop state)
-      :describe-inventory (render-describe-inventory state)
-      :throw-inventory    (render-throw-inventory state)
-      :eat                (render-eat state)
-      :quests             (render-quests state)
-      :craft              (render-craft state)
-      :craft-weapon       (render-craft-weapon state)
-      :craft-survival     (render-craft-survival state)
-      :craft-shelter      (render-craft-shelter state)
-      :wield              (render-wield state)
+                            (render-quaff-inventory state)
+      :magic                (render-magic state)
+      :drop                 (render-drop state)
+      :describe-inventory   (render-describe-inventory state)
+      :throw-inventory      (render-throw-inventory state)
+      :eat                  (render-eat state)
+      :quests               (render-quests state)
+      :craft                (render-craft state)
+      :craft-weapon         (render-craft-weapon state)
+      :craft-survival       (render-craft-survival state)
+      :craft-shelter        (render-craft-shelter state)
+      :craft-transportation (render-craft-transportation state)
+      :wield                (render-wield state)
       nil)
     (if-not (nil? (get-in state [:world :ui-hint]))
       (put-string screen 0 0 (get-in state [:world :ui-hint]) :white :black))

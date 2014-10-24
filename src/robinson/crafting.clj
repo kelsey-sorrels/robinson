@@ -27,16 +27,20 @@
                                                                    :obsidian-spear
                                                                    :obsidian-axe
                                                                    :knife]
-                                                         :add [:bamboo-water-collector]} :place :immediate}
+                                                         :add [:bamboo-water-collector]} :place :cell-type}
      {:name "solar still"            :hotkey \e :recipe {:exhaust [:rock :tarp :stick :coconut-shell]
                                                          :have-or [:stick]
-                                                         :add [:bamboo-water-collector]} :place :immediate}]
+                                                         :add [:bamboo-water-collector]} :place :cell-type}]
    :shelter [
-     {:name "palisade"               :hotkey \a :recipe {:exhaust [:rope :sharpened-stick]       :add [:palisade]} :place :immediate}
-     {:name "shelter"                :hotkey \b :recipe {:exhaust [:rope :leaves :stick]         :add [:shelter]}  :place :immediate}]
+     {:name "palisade"               :hotkey \a :recipe {:exhaust [:rope :sharpened-stick]       :add [:palisade]} :place :inventory}
+     {:name "shelter"                :hotkey \b :recipe {:exhaust [:rope :leaves :stick]         :add [:shelter]}  :place :cell-type}]
    :traps [
      {:name "snare"                  :hotkey \a :recipe {:exhaust [:rope :stick]                 :add [:snare]}}
-     {:name "deadfall trap"          :hotkey \b :recipe {:exhaust [:rope :stick :rock]           :add [:deadfall-trap]}}]})
+     {:name "deadfall trap"          :hotkey \b :recipe {:exhaust [:rope :stick :rock]           :add [:deadfall-trap]}}]
+   :transportation [
+     {:name "raft"               :hotkey \a :recipe {:exhaust [:rope :log :log
+                                                               :log :log :log]
+                                                         :add [:raft]} :place :drop}]})
 
 (defn has-prerequisites?
   "Return true if the player has the ability to make the recipe."
@@ -81,15 +85,28 @@
           state
           ids))
 
+(defn- place-cell-type
+  [state id]
+    (let [[x y] (player-xy state)]
+      (assoc-in state [:world :places (current-place-id state) y x :type] id)))
+  
+(defn- place-drop
+  [state id]
+  (let [[x y] (player-xy state)]
+    (conj-in state [:world :places (current-place-id state) y x :items] (id->item id))))
+  
 (defn- add-by-ids
-  [state ids place-immediate]
+  [state ids place]
   (reduce (fn [state id]
-            (let [item (id->item id)
-                  [x y] (player-xy state)]
-            (info "adding" item)
-            (if place-immediate
-              (assoc-in state [:world :places (current-place-id state) y x :type] id)
-              (add-to-inventory state [item]))))
+            (case place
+              :cell-type
+                (place-cell-type state id)
+              :drop
+                (place-drop state id)
+              :inventory
+                (let [item (id->item id)]
+                  (info "adding" item)
+                  (add-to-inventory state [item]))))
           state
           ids))
   
@@ -101,7 +118,7 @@
         _ (info "crafting" recipe)]
     (if (has-prerequisites? state recipe)
       (let [state (-> state
-                    (add-by-ids add (= (get recipe :place) :immediate))
+                    (add-by-ids add (get recipe :place))
                     (exhaust-by-ids exhaust)
                     ((fn [state] (reduce update-crafted state (map (fn [id] {:id id}) add)))))]
         state)

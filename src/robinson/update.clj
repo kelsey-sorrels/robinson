@@ -137,6 +137,73 @@
           (fn [player-$] (+ $ player-$))))
       state)))
 
+(defn move-out-of-bounds
+  "Move the player to a new place when they hit the edge of the map.
+   If a pre-generated place does not exist, create a new one entirely of water."
+  [state direction]
+  (let [[player-cell x y] (player-cellxy state)
+        orig-place-id     (current-place-id state)
+        on-raft           (player-mounted-on-raft? state)
+        _ (info "orig-place-id" orig-place-id)
+        [ox oy]           (map read-string (clojure.string/split (name orig-place-id) #"_"))
+        target-x          (case direction
+                            :left (dec ox)
+                            :right (inc ox)
+                            :up-left (dec ox)
+                            :down-left (dec ox)
+                            :up-right (inc ox)
+                            :down-right (inc ox)
+                            ox)
+        target-y          (case direction
+                            :up (dec oy)
+                            :down (inc oy)
+                            :up-left (dec oy)
+                            :down-left (inc oy)
+                            :up-right (dec oy)
+                            :down-right (inc oy)
+                            oy)
+        _ (info "target-x" target-x "target-y" target-y)
+       dest-place-id     (keyword (format "%d_%d" target-x target-y))
+       _ (info "dest-place-id" dest-place-id)
+       ;; load the place into state. From file if exists or gen a new random place.
+       state             (assoc-in state [:world :places dest-place-id]
+                           (if (.exists (clojure.java.io/as-file (format "save/%s.place.edn" (str dest-place-id))))
+                             (clojure.edn/read-string {:readers {'Monster mg/map->Monster}}
+                               (slurp (format "save/%s.place.edn" (str dest-place-id))))
+                             (init-ocean)))
+ 
+       dest-place        (-> state :world :places dest-place-id)
+       width             (count (first dest-place))
+       height            (count dest-place)
+       _ (info "width" width "height" height)
+       ;; manipulate state so that if there isn't a destination place, create one
+       ;; save the current place to disk
+       _                 (spit (format "save/%s.place.edn" orig-place-id)
+                               (with-out-str (pprint (-> state :world :places orig-place-id))))
+
+       dest-x             (case direction
+                            (:left :up-left :down-left) (mod (dec x) width)
+                            (:right :up-right :down-right) (mod (inc x) width)
+                            x)
+       dest-y             (case direction
+                            (:up :up-left :up-right) (mod (dec y) height)
+                            (:down :down-left :down-right) (mod (inc y) height)
+                            y)]
+      (debug "dest-x" dest-x "dest-y" dest-y)
+      (debug "npcs" (with-out-str (pprint (-> state :world :npcs))))
+      (-> state
+        (tx/when-> on-raft 
+          (dec-cell-item-count :raft))
+        ;; unload the current place
+        (dissoc-in [:world :places orig-place-id])
+        ;; change the place
+        (assoc-in [:world :current-place] dest-place-id)
+        (assoc-in [:world :places dest-place-id] dest-place)
+        ;; move player
+        (assoc-in [:world :player :pos] {:x dest-x :y dest-y})
+        (tx/when-> on-raft
+          (conj-in-cell-items (ig/id->item :raft) dest-x dest-y)))))
+
 (defn move
   "Move the player one space provided her/she is able. Else do combat. Else swap positions
    with party member."
@@ -161,9 +228,12 @@
                                :up-right -1
                                :down-left 1
                                :down-right 1
-                               0))]
-    (info "moving to" (get (get-cell-at-current-place state target-x target-y) :type))
+                               0))
+        target-cell (get-cell-at-current-place state target-x target-y)]
+    (info "moving to" (get target-cell :type))
     (cond
+      (nil? target-cell)
+        (move-out-of-bounds state direction)
       (and (not (collide? state target-x target-y))
            (not (player-mounted-on-raft? state)))
         (-> state
@@ -1416,6 +1486,7 @@
         _ (info "sight-distance" sight-distance)
         will-to-live     (get-in state [:world :player :will-to-live])
         max-will-to-live (get-in state [:world :player :max-will-to-live])
+        _ (info "updating visibility @" (current-place-id state))
         place            (get-in state [:world :places (current-place-id state)])
         get-cell         (memoize (fn [x y] (get-in place [y x])))
         new-time         (get-in state [:world :time])

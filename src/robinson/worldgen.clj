@@ -40,6 +40,19 @@
       (cons 'vcond (next (next clauses))))
     [0 0 0]))
 
+(defn init-ocean
+  []
+  (let [max-x 80
+        max-y 26]
+    (add-extras
+      (vec
+        (map vec
+          (partition max-x
+            (for [y (range max-y)
+                  x (range max-x)]
+                {:type :water}))))
+      [])))
+  
 (defn init-island
   "Create an example place with an island, two items
    and a set of down stairs that lead to place `:1`"
@@ -64,8 +77,8 @@
                    [1 1 1]
                      [0 0.4 0.5])))
         fns  (vec (map cliskn/compile-fn (:nodes node)))
-        max-x 55
-        max-y 20]
+        max-x 80
+        max-y 26]
     (add-extras
       (vec
         (map vec
@@ -149,7 +162,7 @@
 
    A world consists of
 
-   * an intial place id (`:0`)
+   * an intial place id (`:0_0`)
   
    * places (indexed by place id)
 
@@ -190,9 +203,9 @@
        skin-identifiable       (set (take (/ (count poisoned-fruit) 2) (dg/shuffle poisoned-fruit)))
        tongue-identifiable     (set (take (/ (count poisoned-fruit) 2) (dg/shuffle poisoned-fruit)))]
 
-  {:places {:0 place-0}
+  {:places {:0_0 place-0}
             ;:1 (init-place-1)}
-   :current-place :0
+   :current-place :0_0
    :time 0
    :current-state :start
    :selected-hotkeys #{}
@@ -221,7 +234,7 @@
             :thirst 0
             :max-thirst 100
             :pos starting-pos
-            :place :0
+            :place :0_0
             :body-parts #{:head :neck :face :abdomen :arm :leg :foot}
             :attacks #{:punch}
             :status #{}

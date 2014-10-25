@@ -144,13 +144,14 @@
 (defn add-npcs
   "Randomly add monsters to the current place's in floor cells."
   [state level]
-  (let [[cell x y] (first (dg/shuffle (filter (fn [[cell x y]] (not (collide? state x y {:include-npcs? true
+  (if-let [[cell x y] (first (dg/shuffle (filter (fn [[cell x y]] (not (collide? state x y {:include-npcs? true
                                                                                        :collide-water? false})))
                                            (with-xy (current-place state)))))]
     (add-npc state (-> state :world :current-place)
                    (gen-monster level (cell :type))
                    x
-                   y)))
+                   y)
+    state))
 
 (defn add-npcs-random
   "Randomly add monsters to the current place."

@@ -164,7 +164,8 @@
                                0))]
     (info "moving to" (get (get-cell-at-current-place state target-x target-y) :type))
     (cond
-      (not (collide? state target-x target-y))
+      (and (not (collide? state target-x target-y))
+           (not (player-mounted-on-raft? state)))
         (-> state
             (assoc-in [:world :player :pos :x] target-x)
             (assoc-in [:world :player :pos :y] target-y)
@@ -187,6 +188,21 @@
                                     (assoc-in [:pos :x] player-x)
                                     (assoc-in [:pos :y] player-y))
                                 npc))))
+      (and (not (collide-in-water? state target-x target-y))
+           (player-mounted-on-raft? state))
+        (-> state
+            (dec-cell-item-count :raft)
+            (conj-in-cell-items (ig/id->item :raft) target-x target-y)
+            (assoc-in [:world :player :pos :x] target-x)
+            (assoc-in [:world :player :pos :y] target-y)
+            ;; rafting = more hunger
+            (update-in [:world :player :hunger] (partial + 0.05 ))
+            ((fn [state]
+               (let [cell  (get-cell-at-current-place state target-x target-y)
+                     items (get cell :items)]
+                 (if (seq items)
+                   (search state)
+                   state)))))
       (and (npc-at-xy state target-x target-y)
            (every? (set (keys (npc-at-xy state target-x target-y))) #{:hp :pos :race :body-parts :inventory}))
         ;; collided with npc. Engage in combat.
@@ -474,6 +490,8 @@
     (if (contains? #{:tree :palm-tree :fruit-tree} (get target-cell :type))
       (-> state
         (append-log "You saw the tree into logs.")
+        ;; sawing = more hunger
+        (update-in [:world :player :hunger] (partial + 10))
         (update-cell-xy target-x
                         target-y
                         (fn [cell] (-> cell
@@ -1431,6 +1449,26 @@
                       visible-cells)))
     (assoc-in [:world :player :will-to-live] will-to-live))))
 
+(defn toggle-mount
+  "Mount or unmount at the current cell."
+  [state]
+  (let [[{items :items} x y]  (player-cellxy state)
+        mounted (get-in state [:world :player :mounted] false)]
+    (cond
+      (and mounted
+           (contains? (set (map :id items)) :raft))
+        (-> state
+          (append-log "You dismount the raft.")
+          (assoc-in [:world :player :mounted] false))
+      (and (not mounted) (contains? (set (map :id items)) :raft))
+        (-> state
+          (append-log "You mount the raft.")
+          (assoc-in [:world :player :mounted] true))
+      (not (contains? (set (map :id items)) :raft))
+        (append-log state "There is nothing to mount here."))))
+
+      
+
 (defn next-party-member
   "Switch (-> state :world :player) with the next npc where (-> npc :in-party?) is equal to true.
    Place the player at the end of (-> state :world :npcs)."
@@ -1895,6 +1933,7 @@
                            \s          [search                 :normal          true]
                            \S          [extended-search        :normal          true]
                            \Q          [identity               :quests          false]
+                           \M          [toggle-mount           :normal          false]
                            \P          [next-party-member      :normal          false]
                            \z          [identity               :craft           true]
                            \Z          [identity               :magic           true]

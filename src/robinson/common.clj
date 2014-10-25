@@ -491,6 +491,10 @@
                :freshwater-hole
                :saltwater-hole} t))
 
+(defn type->water?
+  [t]
+  (contains? #{:water :surf} t))
+
 (defn collide?
   "Return `true` if the cell at `[x y]` is non-traverable. Ie: a wall, closed door or simply does
    not exist. Cells occupied by npcs are considered non-traversable."
@@ -515,6 +519,28 @@
 
   ([state x y]
   (collide? state x y {})))
+
+(defn collide-in-water?
+  "Return `true` if the cell at `[x y]` is non-traverable. Ie: any non-water cell or simply does
+   not exist. Cells occupied by npcs are considered non-traversable."
+  ([state x y opts]
+    ;; destructure opts into variables with defaults
+    (let [{:keys [include-npcs?
+                  collide-water?]
+           :or {include-npcs? true
+                collide-water? true}} opts
+          cell (get-cell (current-place state) x y)]
+      ;(debug "collide? " cell x y)
+      (or
+        (nil? cell)
+        ;; check the cell to see if it is a wall or closed door
+        (not (type->water? (get cell :type)))
+        ;; check for npcs
+        (and include-npcs?
+             (npc-at-xy state x y)))))
+
+  ([state x y]
+  (collide-in-water? state x y {})))
 
 
 (defn first-collidable-object

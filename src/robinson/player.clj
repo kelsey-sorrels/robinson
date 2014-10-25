@@ -23,6 +23,10 @@
   [state]
   (contains? (get-in state [:world :player :status]) :infected))
 
+(defn player-mounted-on-raft?
+  [state]
+  (and (get-in state [:world :player :mounted] false)
+       (contains? (set (map :id (get (first (player-cellxy state)) :items []))) :raft)))
 
 (defn player-pos
   "Return the position of the player."

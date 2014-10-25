@@ -179,7 +179,7 @@
        ;; manipulate state so that if there isn't a destination place, create one
        ;; save the current place to disk
        _                 (spit (format "save/%s.place.edn" orig-place-id)
-                               (with-out-str (pprint (-> state :world :places orig-place-id))))
+                               (prn-str (-> state :world :places orig-place-id)))
 
        dest-x             (case direction
                             (:left :up-left :down-left) (mod (dec x) width)

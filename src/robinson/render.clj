@@ -17,6 +17,7 @@
             [clojure.pprint :only [print-table]])
   (:require 
             [clojure.reflect :as r]
+            [clojure.data.generators :as dg]
             [taoensso.timbre :as timbre]
             [robinson.startgame :as sg]
             [robinson.itemgen :as ig]
@@ -892,32 +893,46 @@
 (defn render-game-over
   "Render the game over screen."
   [state]
-  (let [points 0
+  (let [cur-state      (current-state state)
+        points 0
         player-name    (get-in state [:world :player :name])
-        death-madlib   (gen-death-madlib state)
-        hp             (get-in state [:world :player :hp])
-        hunger         (get-in state [:world :player :hunger])
-        max-hunger     (get-in state [:world :player :max-hunger])
-        thirst         (get-in state [:world :player :thirst])
-        max-thirst     (get-in state [:world :player :max-thirst])
-        will-to-live   (get-in state [:world :player :will-to-live])
-        cause-of-death (or
-                         (get-in state [:world :cause-of-death])
-                         (cond
-                           (<= hp 0)             "massive injuries"
-                           (> hunger max-hunger) "literall starving to death"
-                           (> thirst max-thirst) "not drinking enough water"
-                           (<= will-to-live 0)   "just giving up on life"
-                           :else                 "mysterious causes"))]
+        madlib         (gen-end-madlib state)]
     (clear (state :screen))
-    ;; Title
-    (put-string (state :screen) 10 1 (format "%s: %s." player-name death-madlib))
-    (put-string (state :screen) 18 2 (format "Died from %s." cause-of-death))
-    (put-string (state :screen) 10 4 "Inventory:")
-    (doall (map-indexed
-      (fn [idx item] (put-string (state :screen) 18 (+ idx 5) (item :name)))
-      (-> state :world :player :inventory)))
-    (put-string (state :screen) 10 22 "Play again? [yn]")
+    (case cur-state
+      :dead
+        (let [hp             (get-in state [:world :player :hp])
+              hunger         (get-in state [:world :player :hunger])
+              max-hunger     (get-in state [:world :player :max-hunger])
+              thirst         (get-in state [:world :player :thirst])
+              max-thirst     (get-in state [:world :player :max-thirst])
+              will-to-live   (get-in state [:world :player :will-to-live])
+              cause-of-death (or
+                               (get-in state [:world :cause-of-death])
+                               (cond
+                                 (<= hp 0)             "massive injuries"
+                                 (> hunger max-hunger) "literall starving to death"
+                                 (> thirst max-thirst) "not drinking enough water"
+                                 (<= will-to-live 0)   "just giving up on life"
+                                 :else                 "mysterious causes"))]
+          ;; Title
+          (put-string (state :screen) 10 1 (format "%s: %s." player-name madlib))
+          (put-string (state :screen) 18 2 (format "Died from %s." cause-of-death))
+          (put-string (state :screen) 10 4 "Inventory:")
+          (doall (map-indexed
+            (fn [idx item] (put-string (state :screen) 18 (+ idx 5) (item :name)))
+            (-> state :world :player :inventory)))
+          (put-string (state :screen) 10 22 "Play again? [yn]"))
+      :rescued
+        (let [rescued-mode   (dg/rand-nth ["boat" "helicopter" "hovercraft" "ocean liner"])
+              days           (int (/ (get-time state) 800))]
+          ;; Title
+          (put-string (state :screen) 10 1 (format "%s: %s." player-name madlib))
+          (put-string (state :screen) 18 2 (format "Rescued by %s after surviving for %d days." rescued-mode days))
+          (put-string (state :screen) 10 4 "Inventory:")
+          (doall (map-indexed
+            (fn [idx item] (put-string (state :screen) 18 (+ idx 5) (item :name)))
+            (-> state :world :player :inventory)))
+          (put-string (state :screen) 10 22 "Play again? [yn]")))
     (refresh (state :screen))))
 
 (defn render-help
@@ -954,7 +969,7 @@
     (= (current-state state) :start-text)
       (render-start-text state)
     ;; Is player dead?
-    (= (current-state state) :dead)
+    (contains? #{:dead :rescued} (current-state state))
       ;; Render game over
       (render-game-over state)
     (= (get-in state [:world :current-state]) :help)

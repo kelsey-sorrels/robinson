@@ -10,7 +10,7 @@
 (timbre/refer-timbre)
 
 
-(defn gen-death-madlib
+(defn gen-end-madlib
   [state]
   (let [death-msg-type (dg/rand-nth [:num-animals-killed
                                   :num-items-crafted

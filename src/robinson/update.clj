@@ -1300,6 +1300,26 @@
                                                    60 :starving
                                                    40 :hungry
                                                   nil))))))))))
+
+(defn get-rescued
+  [state]
+  (if (player-mounted-on-raft? state)
+    (let [{x :x y :y}         (player-pos state)
+          orig-place-id       (current-place-id state)
+          [ox oy]             (map read-string (clojure.string/split (name orig-place-id) #"_"))
+          cur-place           (current-place state)
+          width               (count (first cur-place))
+          height              (count cur-place)
+          distance-from-start (chebyshev-distance {:x (/ width 2) :y (/ height 2)}
+                                                  {:x (+ (* width ox) x)
+                                                   :y (+ (* height oy) y)})
+          chance-of-rescue (max 0 (+ (/ -300.0 distance-from-start) 1.5))]
+      (info "distance from 0,0" distance-from-start)
+      (if (< (dg/float) chance-of-rescue)
+        (assoc-in state [:world :current-state] :rescued)
+        state))
+    state))
+
 (defn decrease-will-to-live
   "Decrease the player's will-to-live depending on circumstances."
   [state]
@@ -2134,6 +2154,8 @@
                            :right      [close-right            :normal          true]}
                :more-log  {:else       [scroll-log             identity         false]}
                :log       {:else       [pass-state             :normal          false]}
+               :rescued   {\y          [identity               :start-inventory false]
+                           \n          [(constantly nil)       :normal          false]}
                :dead      {\y          [identity               :start-inventory false]
                            \n          [(constantly nil)       :normal          false]}
                :quit?     {\y          [(constantly nil)       :normal          false]
@@ -2223,6 +2245,8 @@
               ;; do updates that don't deal with keyin
               ;; Get hungrier
               (get-hungrier-and-thirstier)
+              ;; Chance of rescue
+              (get-rescued)
               ;; Show fruit identify messages if applicable
               (fruit-identify-activate)
               ;; if poisoned, damage player, else heal

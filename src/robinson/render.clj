@@ -685,6 +685,9 @@
                               :corridor        ["#"] 
                               :down-stairs     [">"] 
                               :up-stairs       ["<"] 
+                              :fire            ["\u2240" (if (= (cell :discovered) current-time)
+                                                           (rand-nth [:red :orange])
+                                                           :red) :black] ;; ≀ 
                               :water           ["\u2248" (if (= (cell :discovered) current-time)
                                                            (rand-nth [:blue :dark-blue])
                                                            :blue) :black] ;; ≈ 
@@ -924,7 +927,7 @@
           (put-string (state :screen) 10 22 "Play again? [yn]"))
       :rescued
         (let [rescued-mode   (dg/rand-nth ["boat" "helicopter" "hovercraft" "ocean liner"])
-              days           (int (/ (get-time state) 800))]
+              days           (int (/ (get-time state) 346))]
           ;; Title
           (put-string (state :screen) 10 1 (format "%s: %s." player-name madlib))
           (put-string (state :screen) 18 2 (format "Rescued by %s after surviving for %d days." rescued-mode days))

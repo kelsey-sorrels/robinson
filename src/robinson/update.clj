@@ -513,6 +513,10 @@
           (assoc-apply-item item)
           ((fn [state]
             (cond
+              (= id :match)
+                (-> state
+                  (assoc-current-state :apply-item-normal)
+                  (ui-hint "Pick a direction to use the match."))
               (= id :stick)
                 (-> state
                   (assoc-current-state :apply-item-normal)
@@ -540,6 +544,29 @@
                     (reverse (player-xy state))
                     [:type])
             (dg/rand-nth [:freshwater-hole :saltwater-hole :dry-hole])))
+
+(defn apply-match
+  "Light something on fire, creating chaos."
+  [state direction]
+  (let [player-x      (-> state :world :player :pos :x)
+        player-y      (-> state :world :player :pos :y)
+        target-x      (+ player-x (case direction
+                                    :left -1
+                                    :right 1
+                                    0))
+        target-y      (+ player-y (case direction
+                                    :up  -1
+                                    :down 1
+                                    0))
+        target-cell   (get-cell-at-current-place state target-x target-y)]
+    (if (type->flammable? (get target-cell :type))
+      (-> state
+        (append-log (format "You strike the match and light the %s." (clojure.string/replace (name (get target-cell :type))
+                                                                                            #"-"
+                                                                                            " ")))
+        (dec-item-count :match)
+        (assoc-cell-type target-x target-y :fire))
+      state)))
 
 (defn saw
   "Saw nearby tree creating logs."
@@ -614,22 +641,21 @@
 (defn apply-item
   "Applies the selected item."
   [state keyin]
-  (let [item (get-apply-item state)]
+  (let [item (get-apply-item state)
+        trans->dir? (comp is-direction? translate-directions)]
     (info "apply-item" [item keyin])
     (info "is-direction?" ((comp is-direction? translate-directions) keyin))
     (first-vec-match [(get item :id) keyin]
-      [:stick          \>           ] (dig-hole state)
-      [:saw            (comp
-                         is-direction?
-                         translate-directions)
-                                    ] (saw state (translate-directions keyin))
-      [ig/id-is-sharp? :*           ] (if-let [item (inventory-hotkey->item state keyin)]
-                                        (apply-sharp-item state item)
-                                        state)
+      [:match          trans->dir?] (apply-match state (translate-directions keyin))
+      [:stick          \>         ] (dig-hole state)
+      [:saw            trans->dir?] (saw state (translate-directions keyin))
+      [ig/id-is-sharp? :*         ] (if-let [item (inventory-hotkey->item state keyin)]
+                                      (apply-sharp-item state item)
+                                      state)
       ;; apply fruit to body
-      [ig/id-is-fruit? \a           ] (apply-fruit-to-skin state item)
-      [ig/id-is-fruit? \b           ] (apply-fruit-to-tongue state item)
-      [:*              :*           ] (ui-hint state "You're not sure how to apply it to that."))))
+      [ig/id-is-fruit? \a         ] (apply-fruit-to-skin state item)
+      [ig/id-is-fruit? \b         ] (apply-fruit-to-tongue state item)
+      [:*              :*         ] (ui-hint state "You're not sure how to apply it to that."))))
 
 (defn quaff-only-adjacent-cell
   "Drink all adjacent cells."
@@ -1955,7 +1981,33 @@
                                (fn [cell] (contains? #{:gravel :tree :palm-tree :tall-grass} (get cell :type)))
                                (fn [cell] (if (= (uniform-int 0 1000) 0)
                                             (assoc cell :harvestable true)
-                                            cell)))))))
+                                            cell)))))
+    ;; update fire
+    ((fn [state]
+      (reduce (fn [state [cell x y]]
+              ;; chance of fire spreading
+              (condp = (uniform-int 0 10)
+                0
+                ;; make the fire spread and find an adjacent free cell to spread it into
+                (let [adj-xys (filter (fn [[x y]] (type->flammable?
+                                                    (get (get-cell-at-current-place state x y) :type)))
+                                      (adjacent-xys-ext x y))]
+                  (info "spreading fire at [" x y "]" adj-xys)
+                  (if (seq adj-xys)
+                    ;; spread fire into the cell
+                    (let [[x y] (dg/rand-nth adj-xys)]
+                      (assoc-cell-type state x y :fire))
+                    state))
+                1
+                ;; extinguish the fire
+                (assoc-cell-type state x y :dirt)
+                state))
+            state
+            ;; [x y]s of fire cells in the current place
+            (filter (fn filter-fruit-tree-cells
+                      [[cell _ _]]
+                      (= (get cell :type) :fire))
+                    (with-xy (current-place state))))))))
 
 (defn update-quests
   "Execute the `pred` function for the current stage of each quest. If 

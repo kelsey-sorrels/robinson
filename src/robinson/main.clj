@@ -1,6 +1,5 @@
 (ns robinson.main
   (:use    clojure.pprint
-           clojure.stacktrace
            robinson.common
            [robinson.worldgen :exclude [-main]]
            robinson.dialog
@@ -10,6 +9,7 @@
            robinson.render)
   (:require 
             [clojure.data.generators :as dg]
+            [clojure.stacktrace :as st]
             [robinson.swingterminal :as swingterminal]
             clojure.edn
             [taoensso.timbre :as timbre]
@@ -45,9 +45,7 @@
       (catch Exception e
         (do
           (error "Caught exception" e)
-          (error (.getCause e))
-          (.printStackTrace e)
-          (print-stack-trace e)
+          (st/print-cause-trace e)
           state)))))
 
 ;; Example setup and tick fns

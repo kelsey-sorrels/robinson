@@ -402,6 +402,13 @@
   [state x y f]
   (update-in state [:world :places (current-place-id state) y x] f))
 
+(defn assoc-cell
+  [state x y & keyvals]
+  (reduce (fn [[k v]]
+            (assoc-in state [:world :places (current-place-id state) y x k] v))
+          state
+          (partition 2 keyvals)))
+
 (defn player-cellxy
   "Retrieve the cell at which the player is located."
   [state]
@@ -494,6 +501,10 @@
 (defn type->water?
   [t]
   (contains? #{:water :surf} t))
+
+(defn type->flammable?
+  [t]
+  (contains? #{:tree :palm-tree :fruit-tree :bamboo :tall-grass :short-grass} t))
 
 (defn collide?
   "Return `true` if the cell at `[x y]` is non-traverable. Ie: a wall, closed door or simply does

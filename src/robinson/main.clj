@@ -45,6 +45,7 @@
       (catch Exception e
         (do
           (error "Caught exception" e)
+          (st/print-stack-trace e)
           (st/print-cause-trace e)
           state)))))
 

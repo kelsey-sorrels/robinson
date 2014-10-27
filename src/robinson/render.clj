@@ -897,7 +897,12 @@
   "Render the game over screen."
   [state]
   (let [cur-state      (current-state state)
-        points 0
+        points         (int
+                         (+ (get-in state [:world :player :will-to-live])
+                            (/ 50000 (get-time state))
+                            (case cur-state
+                              :dead 0
+                              :rescued 1000)))
         player-name    (get-in state [:world :player :name])
         madlib         (gen-end-madlib state)]
     (clear (state :screen))
@@ -920,6 +925,7 @@
           ;; Title
           (put-string (state :screen) 10 1 (format "%s: %s." player-name madlib))
           (put-string (state :screen) 18 2 (format "Died from %s." cause-of-death))
+          (put-string (state :screen) 10 3 (format "Points: %s." points))
           (put-string (state :screen) 10 4 "Inventory:")
           (doall (map-indexed
             (fn [idx item] (put-string (state :screen) 18 (+ idx 5) (item :name)))
@@ -931,6 +937,7 @@
           ;; Title
           (put-string (state :screen) 10 1 (format "%s: %s." player-name madlib))
           (put-string (state :screen) 18 2 (format "Rescued by %s after surviving for %d days." rescued-mode days))
+          (put-string (state :screen) 10 3 (format "Points: %s." points))
           (put-string (state :screen) 10 4 "Inventory:")
           (doall (map-indexed
             (fn [idx item] (put-string (state :screen) 18 (+ idx 5) (item :name)))

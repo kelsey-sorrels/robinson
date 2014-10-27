@@ -565,7 +565,7 @@
                                                                                             #"-"
                                                                                             " ")))
         (dec-item-count :match)
-        (assoc-cell-type target-x target-y :fire))
+        (assoc-cell target-x target-y :type :fire))
       state)))
 
 (defn saw

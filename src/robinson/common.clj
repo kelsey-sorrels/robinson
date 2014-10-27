@@ -404,7 +404,7 @@
 
 (defn assoc-cell
   [state x y & keyvals]
-  (reduce (fn [[k v]]
+  (reduce (fn [state [k v]]
             (assoc-in state [:world :places (current-place-id state) y x k] v))
           state
           (partition 2 keyvals)))

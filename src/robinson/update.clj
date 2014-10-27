@@ -1985,23 +1985,25 @@
     ;; update fire
     ((fn [state]
       (reduce (fn [state [cell x y]]
-              ;; chance of fire spreading
-              (condp = (uniform-int 0 10)
-                0
-                ;; make the fire spread and find an adjacent free cell to spread it into
-                (let [adj-xys (filter (fn [[x y]] (type->flammable?
-                                                    (get (get-cell-at-current-place state x y) :type)))
-                                      (adjacent-xys-ext x y))]
-                  (info "spreading fire at [" x y "]" adj-xys)
-                  (if (seq adj-xys)
-                    ;; spread fire into the cell
-                    (let [[x y] (dg/rand-nth adj-xys)]
-                      (assoc-cell-type state x y :fire))
-                    state))
-                1
-                ;; extinguish the fire
-                (assoc-cell-type state x y :dirt)
-                state))
+                (let [p (uniform-int 0 10)]
+                  ;; chance of fire spreading
+                  (cond
+                    (= p 0)
+                    ;; make the fire spread and find an adjacent free cell to spread it into
+                    (let [adj-xys (filter (fn [[x y]] (type->flammable?
+                                                        (get (get-cell-at-current-place state x y) :type)))
+                                          (adjacent-xys-ext x y))]
+                      (info "spreading fire at [" x y "]" adj-xys)
+                      (if (seq adj-xys)
+                        ;; spread fire into the cell
+                        (let [[x y] (dg/rand-nth adj-xys)]
+                          (assoc-cell state x y :type :fire :fire-time (get-time state)))
+                        state))
+                    (= p 1)
+                    ;; extinguish the fire
+                    (assoc-cell state x y :type :dirt)
+                    :else
+                    state)))
             state
             ;; [x y]s of fire cells in the current place
             (filter (fn filter-fruit-tree-cells

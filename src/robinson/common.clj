@@ -444,6 +444,16 @@
   (map (fn [[x y]] (get-in place [y x]))
     (adjacent-xys x y)))
 
+(defn adjacent-cells-ext
+  "Return a collection of adjacent cells (diagonals included) around pos.
+   Pos is a map with the keys `:x` and `:y`.
+
+   Ex: `(adjacent-cells [...] {:x 0 :y 0})`
+   `[{:type :floor} {:type :water}...]`"
+  [place {x :x y :y}]
+  (map (fn [[x y]] (get-in place [y x]))
+    (adjacent-xys-ext x y)))
+
 (defn direction->cells
   [state direction]
   {:pre [(contains? #{:left :right :up :down} direction)]}

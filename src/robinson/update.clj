@@ -575,7 +575,7 @@
                                                                                             #"-"
                                                                                             " ")))
         (dec-item-count :match)
-        (assoc-cell target-x target-y :type :fire))
+        (assoc-cell target-x target-y :type :fire :fire-time (get-time state)))
       state)))
 
 (defn saw
@@ -2029,7 +2029,7 @@
                     state)))
             state
             ;; [x y]s of fire cells in the current place
-            (filter (fn filter-fruit-tree-cells
+            (filter (fn filter-fire-cells
                       [[cell _ _]]
                       (= (get cell :type) :fire))
                     (with-xy (current-place state))))))))
@@ -2335,6 +2335,7 @@
               (decrease-will-to-live)
               (update-npcs)
               (update-cells)
+              ((fn [state] (info "Done updating cells") state))
               ;; TODO: Add appropriate level
               (add-npcs-random 1)
               ;; update visibility

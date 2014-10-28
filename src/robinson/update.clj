@@ -2009,9 +2009,12 @@
                         (let [[x y] (dg/rand-nth adj-xys)]
                           (assoc-cell state x y :type :fire :fire-time (get-time state)))
                         state))
-                    (= p 1)
+                    (and (< p 5)
+                         (> (- (get-time state) (get cell :fire-time)) 10))
                     ;; extinguish the fire
-                    (assoc-cell state x y :type :dirt)
+                    (-> state
+                      (assoc-cell x y :type :dirt)
+                      (dissoc-cell x y :fire-time))
                     :else
                     state)))
             state

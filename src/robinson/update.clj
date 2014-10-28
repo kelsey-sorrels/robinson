@@ -527,6 +527,10 @@
                 (-> state
                   (assoc-current-state :apply-item-normal)
                   (ui-hint "Pick a direction to use the match."))
+              (= id :plant-guide)
+                (-> state
+                  (assoc-current-state :apply-item-inventory)
+                  (ui-hint "Pick an item to identify."))
               (= id :stick)
                 (-> state
                   (assoc-current-state :apply-item-normal)
@@ -608,6 +612,18 @@
                                                          (repeat (uniform-int 2 3) (ig/gen-log))))))))
       state)))
 
+(defn apply-plant-guide
+  "Apply a plant-guide to the inventory item."
+  [state item]
+  (info "applying plant guide to" item)
+  (info "identified"  (get-in state [:world :fruit :identified]))
+  (if (ig/is-fruit? item)
+    (-> state
+      (conj-in [:world :fruit :identified] (get item :id))
+      (append-log (format "Identified %s." (name (get item :id)))))
+    (append-log state (format "You're not able to identify the %s." (name (get item :id))))))
+
+
 (defn apply-sharp-item
   "Apply a sharp item to the inventory item."
   [state item]
@@ -657,6 +673,9 @@
     (info "is-direction?" ((comp is-direction? translate-directions) keyin))
     (first-vec-match [(get item :id) keyin]
       [:match          trans->dir?] (apply-match state (translate-directions keyin))
+      [:plant-guide    :*         ] (if-let [item (inventory-hotkey->item state keyin)]
+                                      (apply-plant-guide state item)
+                                      state)
       [:stick          \>         ] (dig-hole state)
       [:saw            trans->dir?] (saw state (translate-directions keyin))
       [ig/id-is-sharp? :*         ] (if-let [item (inventory-hotkey->item state keyin)]

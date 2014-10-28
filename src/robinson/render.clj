@@ -338,6 +338,18 @@
                        rgb1
                        #{:underline}))))))
 
+(defn translate-identified-items
+  [state items]
+  (let [identified (get-in state [:world :fruit :identified])
+        poisonous  (get-in state [:world :fruit :poisonous])]
+    (map (fn [item] (if (contains? identified (get item :id))
+                      (if (contains? poisonous (get item :id))
+                        (assoc item :name (format "%s (poisonous)" (get item :name))
+                                    :name-plural (format "%s (poisonous)" (get item :name-plural)))
+                        (assoc item :name (format "%s (safe)" (get item :name))
+                                    :name-plural (format "%s (safe)" (get item :name-plural))))
+                      item))
+         items)))
 
 (defn render-pick-up
   "Render the pickup item menu if the world state is `:pickup`."
@@ -355,28 +367,28 @@
   (debug "player-x" player-x "player-y" player-y)
   (trace "cell" cell)
   (trace "cell-items" cell-items)
-  (render-multi-select (state :screen) "Pick up" selected-hotkeys items)))
+  (render-multi-select (state :screen) "Pick up" selected-hotkeys (translate-identified-items state items))))
 
 (defn render-inventory
   "Render the pickup item menu if the world state is `:pickup`."
   [state]
-  (render-multi-select (state :screen) "Inventory" [] (-> state :world :player :inventory)))
+  (render-multi-select (state :screen) "Inventory" [] (translate-identified-items state (-> state :world :player :inventory))))
 
 (defn render-apply
   "Render the inventory menu with `Apply` as the title."
   [state]
-  (render-multi-select (state :screen) "Apply Inventory" [] (-> state :world :player :inventory)))
+  (render-multi-select (state :screen) "Apply Inventory" [] (translate-identified-items state (-> state :world :player :inventory))))
 
 (defn render-apply-to
   "Render the inventory menu with `Apply To` as the title."
   [state]
-  (render-multi-select (state :screen) "Apply To" [] (-> state :world :player :inventory)))
+  (render-multi-select (state :screen) "Apply To" [] (translate-identified-items state (-> state :world :player :inventory))))
 
 (defn render-quaff-inventory
   "Render the inventory menu with `Quaff` as the title."
   [state]
-  (render-multi-select (state :screen) "Quaff To" [] (filter ig/is-quaffable?
-                                                             (-> state :world :player :inventory))))
+  (render-multi-select (state :screen) "Quaff To" [] (translate-identified-items state (filter ig/is-quaffable?
+                                                             (-> state :world :player :inventory)))))
 
 (defn render-magic
   "Render the pickup item menu if the world state is `:magic`."
@@ -386,17 +398,17 @@
 (defn render-drop
   "Render the pickup item menu if the world state is `:pickup`."
   [state]
-  (render-multi-select (state :screen) "Drop Inventory" [] (-> state :world :player :inventory)))
+  (render-multi-select (state :screen) "Drop Inventory" [] (translate-identified-items state (-> state :world :player :inventory))))
 
 (defn render-describe-inventory
   "Render the pickup item menu if the world state is `:pickup`."
   [state]
-  (render-multi-select (state :screen) "Describe" [] (-> state :world :player :inventory)))
+  (render-multi-select (state :screen) "Describe" [] (translate-identified-items state (-> state :world :player :inventory))))
 
 (defn render-throw-inventory
   "Render the throw item menu if the world state is `:throw-inventory`."
   [state]
-  (render-multi-select (state :screen) "Throw" [] (-> state :world :player :inventory)))
+  (render-multi-select (state :screen) "Throw" [] (translate-identified-items state (-> state :world :player :inventory))))
 
 (defn render-eat
   "Render the eat item menu if the world state is `:pickup`."
@@ -404,8 +416,9 @@
   (render-multi-select (state :screen)
                        "Eat Inventory"
                        []
-                       (filter #(contains? % :hunger)
-                               (inventory-and-player-cell-items state))))
+                       (translate-identified-items state
+                         (filter #(contains? % :hunger)
+                               (inventory-and-player-cell-items state)))))
 
 (defn render-quests
   "Render the pickup item menu if the world state is `:pickup`."

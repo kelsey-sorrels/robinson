@@ -11,6 +11,22 @@
  ([hi] (uniform-int 0 hi))
  ([lo hi] (int (dg/uniform lo hi))))
 
+(defmacro log-time
+  "Log the time it takes to execute body."
+  [msg & body]
+  `(time
+     (let [result# (do ~@body)]
+       (println ~msg)
+       result#)))
+
+(defn log-io
+  "Log function inputs and outputs by wrapping an function f."
+  [msg f]
+  (fn [& args]
+    (let [result (apply f args)]
+      (println (format "(%s %s)=>%s" msg (str args) (str result)))
+      result)))
+
 (letfn [(arg-when- [threader arg sym condition body]
   `(let [~sym ~arg
          arg# ~arg]
@@ -638,21 +654,5 @@
           (recur (- size wlen) [word] (conj lines (clojure.string/join line)) (next words))))
       (when (seq line)
         (conj lines (clojure.string/join line))))))
-
-(defmacro log-time
-  "Log the time it takes to execute body."
-  [msg & body]
-  `(time
-     (let [result# (do ~@body)]
-       (println ~msg)
-       result#)))
-
-(defn log-io
-  "Log function inputs and outputs by wrapping an function f."
-  [msg f]
-  (fn [& args]
-    (let [result (apply f args)]
-      (println (format "(%s %s)=>%s" msg (str args) (str result)))
-      result)))
 
 

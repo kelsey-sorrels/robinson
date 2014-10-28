@@ -1,6 +1,6 @@
 ;; Utility functions and functions for manipulating state
 (ns robinson.common
-  ;;(:use [robinson.mapgen :exclude [-main]])
+  (:use     clojure.contrib.core)
   (:require [ clojure.data.generators :as dg]
             [taoensso.timbre :as timbre]
             [pallet.thread-expr :as tx]))
@@ -408,6 +408,10 @@
             (assoc-in state [:world :places (current-place-id state) y x k] v))
           state
           (partition 2 keyvals)))
+
+(defn dissoc-cell
+  [state x y k]
+  (dissoc-in state [:world :places (current-place-id state) y x k]))
 
 (defn player-cellxy
   "Retrieve the cell at which the player is located."

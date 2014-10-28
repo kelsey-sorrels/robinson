@@ -495,6 +495,14 @@
         new-state)
         state)))
 
+(defn apply-bandage
+  [state]
+  (-> state
+    (dec-item-count :bandage)
+    (assoc-in [:world :player :hp] (get-in state [:world :player :max-hp]))
+    (assoc-in [:world :current-state] :normal)
+    (append-log "You apply the bandage.")))
+
 (defn assoc-apply-item
   [state item]
   (assoc-in state [:world :apply-item] item))
@@ -513,6 +521,8 @@
           (assoc-apply-item item)
           ((fn [state]
             (cond
+              (= id :bandage)
+                (apply-bandage state)
               (= id :match)
                 (-> state
                   (assoc-current-state :apply-item-normal)

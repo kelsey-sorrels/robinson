@@ -87,6 +87,7 @@
    {:id  :obsidian-axe            :name  "obsidian axe"               :name-plural "obsidian axes"         :attack :axe}
    {:id  :obsidian-knife          :name  "obsidian knife"             :name-plural "obsidian knives"       :attack :knife}
    {:id  :bamboo-water-collector  :name  "bamboo water collector"     :name-plural "bamboo water collectors"}
+   {:id  :fishing-pole            :name  "fishing pole"               :name-plural "fishing poles"}
    {:id  :match                   :name  "match"                      :name-plural "matches"}
    {:id  :knife                   :name  "knife"                      :name-plural "knives"                :attack :knife}
    {:id  :plant-guide             :name  "plant guide"                :name-plural "plant guides"}

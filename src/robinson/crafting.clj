@@ -30,7 +30,9 @@
                                                          :add [:bamboo-water-collector]} :place :cell-type}
      {:name "solar still"            :hotkey \e :recipe {:exhaust [:rock :tarp :stick :coconut-shell]
                                                          :have-or [:stick]
-                                                         :add [:bamboo-water-collector]} :place :cell-type}]
+                                                         :add [:bamboo-water-collector]} :place :cell-type}
+     {:name "fishing pole"           :hotkey \f :recipe {:exhaust [:fishing-line-and-hook :stick]
+                                                         :add [:fishing-pole]}}]
    :shelter [
      {:name "palisade"               :hotkey \a :recipe {:exhaust [:rope :sharpened-stick]       :add [:palisade]} :place :inventory}
      {:name "shelter"                :hotkey \b :recipe {:exhaust [:rope :leaves :stick]         :add [:shelter]}  :place :cell-type}]

@@ -1473,6 +1473,16 @@
         (- hp 0.2)
         hp))))
 
+(defn if-near-too-much-fire-get-hurt
+  [state]
+  (update-in state [:world :player :hp]
+    (fn [hp]
+      (if (>= (count (filter #(= (get % :type) :fire)
+                             (adjacent-cells-ext (current-place state) (player-pos state))))
+              3)
+        (dec hp)
+        hp))))
+
 (defn heal
   [state]
   (-> state
@@ -2308,6 +2318,7 @@
               (heal)
               (if-wounded-get-infected)
               (if-infected-get-hurt)
+              (if-near-too-much-fire-get-hurt)
               (decrease-will-to-live)
               (update-npcs)
               (update-cells)

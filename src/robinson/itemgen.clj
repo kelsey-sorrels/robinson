@@ -145,7 +145,8 @@
 
 (defn can-be-wielded?
   [item]
-  (contains? #{:sharpened-stick
+  (contains? #{:knife
+               :sharpened-stick
                :obsidian-spear
                :obsidian-axe
                :obsidian-knife}

@@ -247,9 +247,10 @@
             ;; map from body-part to {:time <int> :damage <float>}
             :wounds {}}
    :fruit {
-     :poisonous poisoned-fruit
-     :skin-identifiable skin-identifiable
+     :poisonous           poisoned-fruit
+     :skin-identifiable   skin-identifiable
      :tongue-identifiable tongue-identifiable
+     :identified          #{}
    }
    :quests {}
    :npcs []}))

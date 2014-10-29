@@ -523,6 +523,10 @@
             (cond
               (= id :bandage)
                 (apply-bandage state)
+              (= id :fishing-pole)
+                (-> state
+                  (assoc-current-state :apply-item-normal)
+                  (ui-hint "Pick a direction to use the fishing pole."))
               (= id :match)
                 (-> state
                   (assoc-current-state :apply-item-normal)
@@ -558,6 +562,43 @@
                     (reverse (player-xy state))
                     [:type])
             (dg/rand-nth [:freshwater-hole :saltwater-hole :dry-hole])))
+
+(defn apply-fishing-pole
+  "Start fishing for something."
+  [state direction]
+  (let [player-x      (-> state :world :player :pos :x)
+        player-y      (-> state :world :player :pos :y)
+        target-x      (+ player-x (case direction
+                                    :left -1
+                                    :right 1
+                                    0))
+        target-y      (+ player-y (case direction
+                                    :up  -1
+                                    :down 1
+                                    0))
+        target-cell   (get-cell-at-current-place state target-x target-y)
+        new-state     (case direction
+                        :left  :fishing-left
+                        :right :fishing-right
+                        :up    :fishing-up
+                        :down  :fishing-down)]
+    (if (type->water? (get target-cell :type))
+      (-> state
+        (append-log "You start fishing.")
+        (assoc-current-state new-state))
+      (append-log state "You can't fish here."))))
+
+(defn do-fishing
+  "Fish somewhere."
+  [state]
+  (let [p (uniform-int 0 50)]
+    ;; chance of catching a fish
+    (cond
+      (= p 0)
+      ;; catch a fish
+      (add-to-inventory state [(ig/gen-corpse (mg/gen-monster 1 :water))])
+      :else
+      state)))
 
 (defn apply-match
   "Light something on fire, creating chaos."
@@ -672,18 +713,33 @@
     (info "apply-item" [item keyin])
     (info "is-direction?" ((comp is-direction? translate-directions) keyin))
     (first-vec-match [(get item :id) keyin]
-      [:match          trans->dir?] (apply-match state (translate-directions keyin))
+      [:fishing-pole   trans->dir?] (apply-fishing-pole state (translate-directions keyin))
+      [:match          trans->dir?] (-> state
+                                      (apply-match state (translate-directions keyin))
+                                      (assoc-current-state :normal))
       [:plant-guide    :*         ] (if-let [item (inventory-hotkey->item state keyin)]
-                                      (apply-plant-guide state item)
+                                      (-> state
+                                        (apply-plant-guide item)
+                                        (assoc-current-state  :normal))
                                       state)
-      [:stick          \>         ] (dig-hole state)
-      [:saw            trans->dir?] (saw state (translate-directions keyin))
+      [:stick          \>         ] (-> state
+                                      (dig-hole)
+                                      (assoc-current-state :normal))
+      [:saw            trans->dir?] (-> state
+                                      (saw (translate-directions keyin))
+                                      (assoc-current-state :normal))
       [ig/id-is-sharp? :*         ] (if-let [item (inventory-hotkey->item state keyin)]
-                                      (apply-sharp-item state item)
+                                      (-> state
+                                        (apply-sharp-item item)
+                                        (assoc-current-state :normal))
                                       state)
       ;; apply fruit to body
-      [ig/id-is-fruit? \a         ] (apply-fruit-to-skin state item)
-      [ig/id-is-fruit? \b         ] (apply-fruit-to-tongue state item)
+      [ig/id-is-fruit? \a         ] (-> state
+                                      (apply-fruit-to-skin item)
+                                      (assoc-current-state :normal))
+      [ig/id-is-fruit? \b         ] (-> state
+                                      (apply-fruit-to-tongue item)
+                                      (assoc-current-state :normal))
       [:*              :*         ] (ui-hint state "You're not sure how to apply it to that."))))
 
 (defn quaff-only-adjacent-cell
@@ -2148,7 +2204,7 @@
                            :else       [select-apply-item      identity         false]}
                :apply-item-normal
                           {:escape     [identity               :normal          false]
-                           :else       [apply-item             :normal          true]}
+                           :else       [apply-item             identity         true]}
                :apply-item-inventory
                           {:escape     [identity               :normal          false]
                            :else       [apply-item             :normal          true]}
@@ -2233,6 +2289,18 @@
                            :down       [throw-down             :normal          true]
                            :up         [throw-up               :normal          true]
                            :right      [throw-right            :normal          true]}
+               :fishing-left
+                          {\.          [do-fishing             identity         true]
+                           :else       [pass-state             :normal          false]}
+               :fishing-right
+                          {\.          [do-fishing             identity         true]
+                           :else       [pass-state             :normal          false]}
+               :fishing-up
+                          {\.          [do-fishing             identity         true]
+                           :else       [pass-state             :normal          false]}
+               :fishing-down
+                          {\.          [do-fishing             identity         true]
+                           :else       [pass-state             :normal          false]}
                :magic     {:escape     [identity               :normal          false]
                            :else       [do-magic               identity         true]}
                :magic-direction

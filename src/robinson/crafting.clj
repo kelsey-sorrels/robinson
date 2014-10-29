@@ -32,7 +32,8 @@
                                                          :have-or [:stick]
                                                          :add [:bamboo-water-collector]} :place :cell-type}
      {:name "fishing pole"           :hotkey \f :recipe {:exhaust [:fishing-line-and-hook :stick]
-                                                         :add [:fishing-pole]}}]
+                                                         :add [:fishing-pole]}
+                                                :place :inventory}]
    :shelter [
      {:name "palisade"               :hotkey \a :recipe {:exhaust [:rope :sharpened-stick]       :add [:palisade]} :place :inventory}
      {:name "shelter"                :hotkey \b :recipe {:exhaust [:rope :leaves :stick]         :add [:shelter]}  :place :cell-type}]

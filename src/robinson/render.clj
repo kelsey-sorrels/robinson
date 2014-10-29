@@ -759,6 +759,26 @@
       (if (contains? (set (map :id (get (first (player-cellxy state)) :items))) :raft)
         :brown
         :black))
+    ;; if character is fishing, draw pole
+    (condp = (current-state state)
+      :fishing-left  (put-string screen (dec (-> state :world :player :pos :x))
+                                        (-> state :world :player :pos :y)
+                                        "\\"
+                                        :white :black)
+      :fishing-right (put-string screen (inc (-> state :world :player :pos :x))
+                                        (-> state :world :player :pos :y)
+                                        "/"
+                                        :white :black)
+      :fishing-up    (put-string screen (-> state :world :player :pos :x)
+                                        (dec (-> state :world :player :pos :y))
+                                        "/"
+                                        :white :black)
+      :fishing-down  (put-string screen (-> state :world :player :pos :x)
+                                        (inc (-> state :world :player :pos :y))
+                                        "\\"
+                                        :white :black)
+      nil)
+      
     ;; draw npcs
     (let [place-npcs (npcs-at-current-place state)
           ;_ (debug "place-npcs" place-npcs)

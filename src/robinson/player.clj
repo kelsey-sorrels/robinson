@@ -159,6 +159,14 @@
                                                                                          inventory)))))
       (conj-in [:world :remaining-hotkeys] hotkey))))
 
+(defn update-inventory-item
+  "Apply the fn f to inventory item identified by id."
+  [state id f]
+  (map-in state [:world :player :inventory]
+    (fn [item] (if (= (get item :id) id)
+                 (f item)
+                 item))))
+
 (defn dec-item-count
   "Decreses the count of an item in inventory."
   [state id]

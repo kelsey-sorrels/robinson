@@ -503,6 +503,24 @@
     (assoc-in [:world :current-state] :normal)
     (append-log "You apply the bandage.")))
 
+(defn apply-flashlight
+  [state]
+  (let [item         (inventory-id->item state :flashlight)
+        item-state   (get item :state :off)]
+    (case item-state
+      :on
+      (-> state
+        (update-inventory-item :flashlight (fn [item] (assoc item :state :off)))
+        (append-log "You turn the flashlight off.")
+        (assoc-in [:world :current-state] :normal))
+      :off
+      (if (pos? (get item :charge))
+        (-> state
+          (update-inventory-item :flashlight (fn [item] (assoc item :state :on)))
+          (append-log "You turn the flashlight on.")
+          (assoc-in [:world :current-state] :normal))
+        (append-log state "You try turning the flashlight on, but nothing happens.")))))
+
 (defn assoc-apply-item
   [state item]
   (assoc-in state [:world :apply-item] item))
@@ -523,6 +541,8 @@
             (cond
               (= id :bandage)
                 (apply-bandage state)
+              (= id :flashlight)
+                (apply-flashlight state)
               (= id :fishing-pole)
                 (-> state
                   (assoc-current-state :apply-item-normal)
@@ -1599,6 +1619,15 @@
               (disj status :infected)))
         (append-log "The infection has cleared up." :yellow))))
 
+(defn decrease-flashlight-charge
+  [state]
+  (if-let [flashlight (inventory-id->item state :flashlight)]
+    (update-inventory-item state :flashlight (fn [flashlight] (-> flashlight
+                                                                (arg-when-> [flashlight] (= (get flashlight :state :off) :on)
+                                                                    (update-in [:charge] dec))
+                                                                (arg-when-> [flashlight] (neg? (get flashlight :charge))
+                                                                    (assoc :state :off)))))
+    state))
 
 ;; forward declaration because update-state and repeat-cmmands are mutually recursive.
 (declare update-state)
@@ -1615,7 +1644,11 @@
         frames (count atmo)
         t      (mod (get-in state [:world :time]) frames)
         frame  (nth atmo t)
-        values (flatten frame)]
+        values (flatten frame)
+        item   (inventory-id->item state :flashlight)
+        on     (and item (= (get item :state) :on))
+        _      (info "sight-distance. flashlight:" item "state:" on)
+        values (map (fn [v] (if on (max v 100) v)) values)]
     (+ 1.5 (* 8 (/ (reduce + values) (* 255 (count values)))))))
       
 ;; update visibility
@@ -2416,6 +2449,7 @@
               ;; if poisoned, damage player, else heal
               (if-poisoned-get-hurt)
               (heal)
+              (decrease-flashlight-charge)
               (if-wounded-get-infected)
               (if-infected-get-hurt)
               (if-near-too-much-fire-get-hurt)

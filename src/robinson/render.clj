@@ -686,6 +686,7 @@
                                :bamboo         ["/" :light-green  :black]
                                :stick          ["/" :brown  :black]
                                :log            ["/" :brown  :black #{:bold}]
+                               :bedroll        ["_" :white :black]
                                :$              ["$"  :yellow :black #{:bold}]
                                :amulet         ["\"" :blue   :black #{:bold}]
                                ["?"])

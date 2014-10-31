@@ -30,10 +30,13 @@
                                                          :add [:bamboo-water-collector]} :place :cell-type}
      {:name "solar still"            :hotkey \e :recipe {:exhaust [:rock :tarp :stick :coconut-shell]
                                                          :have-or [:stick]
-                                                         :add [:bamboo-water-collector]} :place :cell-type}
+                                                         :add [:solar-still]} :place :cell-type}
      {:name "fishing pole"           :hotkey \f :recipe {:exhaust [:fishing-line-and-hook :stick]
                                                          :add [:fishing-pole]}
-                                                :place :inventory}]
+                                                :place :inventory}
+     {:name "campfire"               :hotkey \g :recipe {:exhaust [:match :stick :log :log :rock :rock :rock]
+                                                         :add [:campfire]}
+                                                :place :cell-type}]
    :shelter [
      {:name "palisade"               :hotkey \a :recipe {:exhaust [:rope :sharpened-stick]       :add [:palisade]} :place :inventory}
      {:name "shelter"                :hotkey \b :recipe {:exhaust [:rope :leaves :stick]         :add [:shelter]}  :place :cell-type}]
@@ -121,7 +124,7 @@
         _ (info "crafting" recipe)]
     (if (has-prerequisites? state recipe)
       (let [state (-> state
-                    (add-by-ids add (get recipe :place))
+                    (add-by-ids add (get recipe :place :inventory))
                     (exhaust-by-ids exhaust)
                     ((fn [state] (reduce update-crafted state (map (fn [id] {:id id}) add)))))]
         state)

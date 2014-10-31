@@ -726,6 +726,7 @@
                               :tree            ["T"  :dark-green :black]
                               :bamboo          ["\u2225" :light-green :black] ;; ∥ 
                               :palisade        ["#" :brown :black]
+                              :campfire        ["^" :brown :black]
                               :bamboo-water-collector
                                                (if (< 10 (get cell :water 0))
                                                  ["O" (rand-nth [:blue :light-blue :dark-blue]) :black]

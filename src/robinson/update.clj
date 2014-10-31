@@ -898,6 +898,8 @@
         (dec-item-count (get item :id))
         ;; remove the item from the current-cell
         (dec-cell-item-count (get item :id)))
+      (arg-when-> [state] (= (get item :id) :coconut-empty)
+        (add-to-inventory [(ig/gen-coconut-shell)]))
       ;; if the item was a poisonous fruit, set a poisoned timebomb
       ((fn [state]
         (if (and (ig/is-fruit? item)

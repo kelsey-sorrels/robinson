@@ -56,6 +56,19 @@
   (or (is-direction? keyin)
       (contains? #{:up-left :up-right :down-left :down-right} keyin)))
 
+(defn sight-distance
+  [state]
+  (let [atmo   (get-in state [:data :atmo])
+        frames (count atmo)
+        t      (mod (get-in state [:world :time]) frames)
+        frame  (nth atmo t)
+        values (flatten frame)
+        item   (inventory-id->item state :flashlight)
+        on     (and item (= (get item :state) :on))
+        _      (info "sight-distance. flashlight:" item "state:" on)
+        values (map (fn [v] (if on (max v 100) v)) values)]
+    (+ 1.5 (* 8 (/ (reduce + values) (* 255 (count values)))))))
+      
 (defn backspace-name
   [state]
   (update-in state
@@ -857,6 +870,14 @@
                             (assoc-in player [:hp] (+ (player :hp) 0.05))
                             player))))
 
+(defn do-sleep
+  "Sleep."
+  [state keyin]
+  (let [d (sight-distance state)]
+    (if (> d 2)
+      (assoc-current-state state :normal)
+      (do-rest state))))
+
 (defn eat
   "Remove the item whose `:hotkey` equals `keyin` and subtract from the player's
    hunger the item's `:hunger` value."
@@ -1417,20 +1438,24 @@
 (defn get-hungrier-and-thirstier
   "Increase player's hunger."
   [state]
-  (-> state
-    (update-in [:world :player :hunger] (partial + 0.05 (* 0.2 (count (player-inventory state)))))
-    (update-in [:world :player :thirst] (partial + 0.2))
-    ((fn [state] (update-in state
-                            [:world :player :status]
-                            (fn [status]
-                              (set (remove nil?
-                                   (conj status (condp <= (max (-> state :world :player :hunger)
-                                                               (-> state :world :player :thirst))
-                                                  100 :dead
-                                                   80 :dying
-                                                   60 :starving
-                                                   40 :hungry
-                                                  nil))))))))))
+  (if (= (current-state state) :sleep)
+    (-> state
+      (update-in [:world :player :hunger] (partial + 0.01))
+      (update-in [:world :player :thirst] (partial + 0.05)))
+    (-> state
+      (update-in [:world :player :hunger] (partial + 0.05 (* 0.2 (count (player-inventory state)))))
+      (update-in [:world :player :thirst] (partial + 0.2))
+      ((fn [state] (update-in state
+                              [:world :player :status]
+                              (fn [status]
+                                (set (remove nil?
+                                     (conj status (condp <= (max (-> state :world :player :hunger)
+                                                                 (-> state :world :player :thirst))
+                                                    100 :dead
+                                                     80 :dying
+                                                     60 :starving
+                                                     40 :hungry
+                                                    nil)))))))))))
 
 (defn get-rescued
   [state]
@@ -1454,50 +1479,52 @@
 (defn decrease-will-to-live
   "Decrease the player's will-to-live depending on circumstances."
   [state]
-  (-> state
-    (update-in [:world :player :will-to-live]
-      (fn [will-to-live]
-        (let [dwtl       0.05 ;; you've been on the island. It sucks and you want to get off.
-              hp         (get-in state [:world :player :hp])
-              max-hp     (get-in state [:world :player :max-hp])
-              _          (info "hp" hp "max-hp" max-hp)
-              dwtl       (+ dwtl (if (> 0.5 (/ hp max-hp))
-                                   1
-                                   0))
-              hunger     (get-in state [:world :player :hunger])
-              max-hunger (get-in state [:world :player :max-hunger])
-              _          (info "hunger" hunger "max-hunger" max-hunger)
-              dwtl       (+ dwtl (if (> (/ hunger max-hunger) 0.5)
-                                   1
-                                   0))
-              thirst     (get-in state [:world :player :thirst])
-              max-thirst (get-in state [:world :player :max-thirst])
-              _          (info "thirst" thirst "max-thirst" max-thirst)
-              dwtl       (+ dwtl (if (> (/ thirst max-thirst) 0.5)
-                                   1
-                                   0))
-              wounded    (player-wounded? state)
-              _          (info "wounded" wounded)
-              dwtl       (+ dwtl (if wounded
-                                   1
-                                   0))
-              poisoned   (player-poisoned? state)
-              _          (info "poisoned" poisoned)
-              dwtl       (+ dwtl (if poisoned
-                                   1
-                                   0))
-              infected   (player-infected? state)
-              _          (info "infected" infected)
-              dwtl       (+ dwtl (if infected
-                                   1
-                                   0))]
-        (info "dwtl" dwtl "will-to-live" will-to-live)
-        (- will-to-live dwtl))))
-    (update-in [:world :player :status]
-               (fn [status]
-                 (set (if (neg? (get-in state [:world :player :will-to-live]))
-                        (conj status :dead)
-                        status))))))
+  (if (= (current-state state) :sleep)
+    state
+    (-> state
+      (update-in [:world :player :will-to-live]
+        (fn [will-to-live]
+          (let [dwtl       0.05 ;; you've been on the island. It sucks and you want to get off.
+                hp         (get-in state [:world :player :hp])
+                max-hp     (get-in state [:world :player :max-hp])
+                _          (info "hp" hp "max-hp" max-hp)
+                dwtl       (+ dwtl (if (> 0.5 (/ hp max-hp))
+                                     1
+                                     0))
+                hunger     (get-in state [:world :player :hunger])
+                max-hunger (get-in state [:world :player :max-hunger])
+                _          (info "hunger" hunger "max-hunger" max-hunger)
+                dwtl       (+ dwtl (if (> (/ hunger max-hunger) 0.5)
+                                     1
+                                     0))
+                thirst     (get-in state [:world :player :thirst])
+                max-thirst (get-in state [:world :player :max-thirst])
+                _          (info "thirst" thirst "max-thirst" max-thirst)
+                dwtl       (+ dwtl (if (> (/ thirst max-thirst) 0.5)
+                                     1
+                                     0))
+                wounded    (player-wounded? state)
+                _          (info "wounded" wounded)
+                dwtl       (+ dwtl (if wounded
+                                     1
+                                     0))
+                poisoned   (player-poisoned? state)
+                _          (info "poisoned" poisoned)
+                dwtl       (+ dwtl (if poisoned
+                                     1
+                                     0))
+                infected   (player-infected? state)
+                _          (info "infected" infected)
+                dwtl       (+ dwtl (if infected
+                                     1
+                                     0))]
+          (info "dwtl" dwtl "will-to-live" will-to-live)
+          (- will-to-live dwtl))))
+      (update-in [:world :player :status]
+                 (fn [status]
+                   (set (if (neg? (get-in state [:world :player :will-to-live]))
+                          (conj status :dead)
+                          status)))))))
 
 (defn log-will-to-live-flavor
   "Log a flavor message when will-to-live increases or decreases by a lot."
@@ -1638,19 +1665,6 @@
     (info "repeating commands" command-seq)
     (reduce update-state state command-seq)))
 
-(defn sight-distance
-  [state]
-  (let [atmo   (get-in state [:data :atmo])
-        frames (count atmo)
-        t      (mod (get-in state [:world :time]) frames)
-        frame  (nth atmo t)
-        values (flatten frame)
-        item   (inventory-id->item state :flashlight)
-        on     (and item (= (get item :state) :on))
-        _      (info "sight-distance. flashlight:" item "state:" on)
-        values (map (fn [v] (if on (max v 100) v)) values)]
-    (+ 1.5 (* 8 (/ (reduce + values) (* 255 (count values)))))))
-      
 ;; update visibility
 (defn update-visibility
   [state]
@@ -2206,6 +2220,7 @@
                            \>          [use-stairs             :normal          true]
                            \<          [use-stairs             :normal          true]
                            \;          [init-cursor            :describe        false]
+                           \R          [identity               :sleep           false]
                            \s          [search                 :normal          true]
                            \S          [extended-search        :normal          true]
                            \Q          [identity               :quests          false]
@@ -2344,6 +2359,7 @@
                :magic-inventory
                           {:escape     [identity               :normal          false]
                            :else       [magic-inventory        :normal          true]}
+               :sleep     {:else       [do-sleep               identity         true]}
                :help      {:else       [pass-state             :normal          false]}
                :close     {:left       [close-left             :normal          true]
                            :down       [close-down             :normal          true]

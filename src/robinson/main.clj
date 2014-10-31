@@ -28,7 +28,9 @@
    world too, in case the  game is interrupted. Then we can load it next
    time we start up."
   ([state]
-   (let [keyin (swingterminal/wait-for-key (state :screen))]
+   (let [keyin (or (when (= (current-state state) :sleep)
+                     \.)
+                   (swingterminal/wait-for-key (state :screen)))]
      (if keyin
        (tick state keyin)
        state)))

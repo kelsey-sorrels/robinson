@@ -1480,7 +1480,12 @@
   "Decrease the player's will-to-live depending on circumstances."
   [state]
   (if (= (current-state state) :sleep)
-    state
+    (let [[cell _ _] (player-cellxy state)
+          bedroll?   (contains? (set (map :id (get cell :items []))) :bedroll)]
+      (if bedroll?
+        (update-in [:world :player :will-to-live]
+          (fn [will-to-live] (+ 0.05 will-to-live)))
+        state))
     (-> state
       (update-in [:world :player :will-to-live]
         (fn [will-to-live]

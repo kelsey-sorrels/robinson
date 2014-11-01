@@ -58,14 +58,14 @@
 
 (def ^:private items
   [
-   {:id  :stick                   :name  "stick"                      :name-plural "sticks"}
-   {:id  :log                     :name  "log"                        :name-plural "logs"}
-   {:id  :sharpened-stick         :name  "sharpened stick"            :name-plural "sharpened sticks" :attack :spear}
-   {:id  :plant-fiber             :name  "plant fiber"                :name-plural "plant fibers"}
+   {:id  :stick                   :name  "stick"                      :name-plural "sticks" :fuel 100}
+   {:id  :log                     :name  "log"                        :name-plural "logs" :fuel 500}
+   {:id  :sharpened-stick         :name  "sharpened stick"            :name-plural "sharpened sticks" :attack :spear :fuel 100}
+   {:id  :plant-fiber             :name  "plant fiber"                :name-plural "plant fibers" :fuel 50}
    {:id  :unhusked-coconut        :name  "unhusked coconut"           :name-plural "husked coconuts"}
    {:id  :coconut                 :name  "coconut"                    :name-plural "coconuts" :thirst 30}
    {:id  :coconut-empty           :name  "coconut (empty)"            :name-plural "coconuts (empty)" :hunger 30}
-   {:id  :coconut-shell           :name  "coconut shell"              :name-plural "coconut shells"}
+   {:id  :coconut-shell           :name  "coconut shell"              :name-plural "coconut shells" :fuel 30}
    {:id  :red-fruit               :name  "red fruit"                  :name-plural "red fruits" :hunger 30}
    {:id  :orange-fruit            :name  "orange fruit"               :name-plural "orange fruits" :hunger 30}
    {:id  :yellow-fruit            :name  "yellow fruit"               :name-plural "yellow fruits" :hunger 30}
@@ -74,24 +74,24 @@
    {:id  :purple-fruit            :name  "purple fruit"               :name-plural "purple fruits" :hunger 30}
    {:id  :white-fruit             :name  "white fruit"                :name-plural "white fruits" :hunger 30}
    {:id  :black-fruit             :name  "black fruit"                :name-plural "black fruits" :hunger 30}
-   {:id  :bamboo                  :name  "bamboo"                     :name-plural "bamboo"}
+   {:id  :bamboo                  :name  "bamboo"                     :name-plural "bamboo" :fuel 100}
    {:id  :wood-log                :name  "wood log"                   :name-plural "wood logs"}
    {:id  :raft                    :name  "raft"                       :name-plural "rafts"}
    {:id  :rock                    :name  "rock"                       :name-plural "rocks"}
    {:id  :obsidian                :name  "obsidian stone"             :name-plural "obsidian stones"}
-   {:id  :grass                   :name  "grass"                      :name-plural "grass"}
+   {:id  :grass                   :name  "grass"                      :name-plural "grass" :fuel 20}
    {:id  :obsidian-blade          :name  "obsidian blade"             :name-plural "obsidian blades"}
-   {:id  :rope                    :name  "rope"                       :name-plural "ropes"}
+   {:id  :rope                    :name  "rope"                       :name-plural "ropes" :fuel 10}
    {:id  :bamboo                  :name  "bamboo"                     :name-plural "bamboo"}
-   {:id  :obsidian-spear          :name  "obsidian spear"             :name-plural "obsidian spears"       :attack :spear}
-   {:id  :obsidian-axe            :name  "obsidian axe"               :name-plural "obsidian axes"         :attack :axe}
-   {:id  :obsidian-knife          :name  "obsidian knife"             :name-plural "obsidian knives"       :attack :knife}
+   {:id  :obsidian-spear          :name  "obsidian spear"             :name-plural "obsidian spears"       :attack :spear :fuel 50}
+   {:id  :obsidian-axe            :name  "obsidian axe"               :name-plural "obsidian axes"         :attack :axe :fuel 50}
+   {:id  :obsidian-knife          :name  "obsidian knife"             :name-plural "obsidian knives"       :attack :knife :fuel 10}
    {:id  :bamboo-water-collector  :name  "bamboo water collector"     :name-plural "bamboo water collectors"}
-   {:id  :fishing-pole            :name  "fishing pole"               :name-plural "fishing poles"}
-   {:id  :match                   :name  "match"                      :name-plural "matches"}
+   {:id  :fishing-pole            :name  "fishing pole"               :name-plural "fishing poles" :fuel 50}
+   {:id  :match                   :name  "match"                      :name-plural "matches" :fuel 10}
    {:id  :knife                   :name  "knife"                      :name-plural "knives"                :attack :knife}
-   {:id  :plant-guide             :name  "plant guide"                :name-plural "plant guides"}
-   {:id  :bandage                 :name  "bandage"                    :name-plural "bandages"}
+   {:id  :plant-guide             :name  "plant guide"                :name-plural "plant guides" :fuel 100}
+   {:id  :bandage                 :name  "bandage"                    :name-plural "bandages" :fuel 30}
    {:id  :fishing-line-and-hook   :name  "fishing line and hook"      :name-plural "fishing lines and hooks"}
    {:id  :ration                  :name  "ration"                     :name-plural "rations"               :type :food :hunger 100}
    {:id  :flashlight              :name  "flashlight"                 :name-plural "flashlights"           :charge 1500}
@@ -156,6 +156,10 @@
 (defn is-drinkable?
   [item]
   (get item :drinkable false))
+
+(defn id->fuel
+  [id]
+  (get (id->item id) :fuel 0))
 
 (defn gen-food
   "Generate one random food item."

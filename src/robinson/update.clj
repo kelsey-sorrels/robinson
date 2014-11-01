@@ -1324,19 +1324,21 @@
       (contains? obj :cell)
         ;; drop item into cell before hitting colliding cell
         (-> state
-          (conj-in-cell-items (if (get item :rot-time)
-                                (assoc item :rot-time (inc (get-time state)))
-                                item)
-                              (+ (get-in obj [:pos :x])
-                                 (case direction
-                                   :left 1
-                                   :right -1
-                                   0))
-                              (+ (get-in obj [:pos :y])
-                                 (case direction
-                                   :up 1
-                                   :down -1
-                                   0)))
+          (arg-if-> [state] (= (get-in obj [:cell :type]) :fire)
+            (update-cell-xy (get-in obj [:pos :x]) (get-in obj [:pos :y]) (fn [cell] (update-in cell [:fuel] (partial + (ig/id->fuel (get item :id))))))
+            (conj-in-cell-items (if (get item :rot-time)
+                                  (assoc item :rot-time (inc (get-time state)))
+                                  item)
+                                (+ (get-in obj [:pos :x])
+                                   (case direction
+                                     :left 1
+                                     :right -1
+                                     0))
+                                (+ (get-in obj [:pos :y])
+                                   (case direction
+                                     :up 1
+                                     :down -1
+                                     0))))
           (dec-item-count (get item :id)))
       :else
         ;; didn't hit anything, drop into cell at max-distance

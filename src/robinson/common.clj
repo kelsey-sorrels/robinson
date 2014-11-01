@@ -516,6 +516,7 @@
   [t]
   (contains? #{:vertical-wall
                :horizontal-wall
+               :fire
                :close-door
                :tree
                :bamboo

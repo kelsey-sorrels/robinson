@@ -534,7 +534,7 @@
 
 (defn type->flammable?
   [t]
-  (contains? #{:tree :palm-tree :fruit-tree :bamboo :tall-grass :short-grass} t))
+  (contains? #{:tree :palm-tree :fruit-tree :bamboo :tall-grass :short-grass :campfire} t))
 
 (defn collide?
   "Return `true` if the cell at `[x y]` is non-traverable. Ie: a wall, closed door or simply does

@@ -39,7 +39,12 @@
                                                 :place :cell-type}]
    :shelter [
      {:name "palisade"               :hotkey \a :recipe {:exhaust [:rope :sharpened-stick]       :add [:palisade]} :place :inventory}
-     {:name "shelter"                :hotkey \b :recipe {:exhaust [:rope :leaves :stick]         :add [:shelter]}  :place :cell-type}]
+     {:name "ramada"                 :hotkey \b :recipe {:exhaust [:rope :leaves :stick
+                                                                   :stick :stick :stick :stick]  :add [:ramada]}  :place :cell-type}
+     {:name "tarp shelter"           :hotkey \c :recipe {:exhaust [:rope :tarp :stick
+                                                                   :stick :stick :stick]         :add [:tarp-shelter]}  :place :cell-type}
+     {:name "lean-to"                :hotkey \d :recipe {:exhaust [:leaves :stick :stick
+                                                                   :stick :stick :stick]         :add [:lean-to]}  :place :cell-type}]
    :traps [
      {:name "snare"                  :hotkey \a :recipe {:exhaust [:rope :stick]                 :add [:snare]}}
      {:name "deadfall trap"          :hotkey \b :recipe {:exhaust [:rope :stick :rock]           :add [:deadfall-trap]}}]

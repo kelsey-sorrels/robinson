@@ -647,13 +647,18 @@
                                     :down 1
                                     0))
         target-cell   (get-cell-at-current-place state target-x target-y)]
-    (if (type->flammable? (get target-cell :type))
+    (cond
+      (type->flammable? (get target-cell :type))
       (-> state
         (append-log (format "You strike the match and light the %s." (clojure.string/replace (name (get target-cell :type))
                                                                                             #"-"
                                                                                             " ")))
         (dec-item-count :match)
-        (assoc-cell target-x target-y :type :fire :fire-time (get-time state)))
+        (assoc-cell target-x target-y :type :fire :fuel (if (= (get target-cell :type)
+                                                               :campfire)
+                                                          (uniform-int 500 600)
+                                                          (uniform-int 100 300))))
+      :else
       state)))
 
 (defn saw
@@ -748,7 +753,7 @@
     (first-vec-match [(get item :id) keyin]
       [:fishing-pole   trans->dir?] (apply-fishing-pole state (translate-directions keyin))
       [:match          trans->dir?] (-> state
-                                      (apply-match state (translate-directions keyin))
+                                      (apply-match (translate-directions keyin))
                                       (assoc-current-state :normal))
       [:plant-guide    :*         ] (if-let [item (inventory-hotkey->item state keyin)]
                                       (-> state
@@ -2134,28 +2139,26 @@
     ;; update fire
     ((fn [state]
       (reduce (fn [state [cell x y]]
-                (let [p (uniform-int 0 10)]
+                (-> state
+                  (update-cell-xy x y (fn [cell] (update-in cell [:fuel] dec)))
                   ;; chance of fire spreading
-                  (cond
-                    (= p 0)
+                  (arg-when-> [state] (= 0 (uniform-int 0 10))
                     ;; make the fire spread and find an adjacent free cell to spread it into
-                    (let [adj-xys (filter (fn [[x y]] (type->flammable?
-                                                        (get (get-cell-at-current-place state x y) :type)))
-                                          (adjacent-xys-ext x y))]
-                      (info "spreading fire at [" x y "]" adj-xys)
-                      (if (seq adj-xys)
-                        ;; spread fire into the cell
-                        (let [[x y] (dg/rand-nth adj-xys)]
-                          (assoc-cell state x y :type :fire :fire-time (get-time state)))
-                        state))
-                    (and (< p 5)
-                         (> (- (get-time state) (get cell :fire-time)) 10))
+                    ((fn [state]
+                      (let [adj-xys (filter (fn [[x y]] (type->flammable?
+                                                          (get (get-cell-at-current-place state x y) :type)))
+                                            (adjacent-xys-ext x y))]
+                        (info "spreading fire at [" x y "]" adj-xys)
+                        (if (seq adj-xys)
+                          ;; spread fire into the cell
+                          (let [[x y] (dg/rand-nth adj-xys)]
+                            (assoc-cell state x y :type :fire :fuel (uniform-int 10 50)))
+                          state)))))
+                  (arg-when-> [state] (neg? (get cell :fuel 0))
                     ;; extinguish the fire
-                    (-> state
+                    (->
                       (assoc-cell x y :type :dirt)
-                      (dissoc-cell x y :fire-time))
-                    :else
-                    state)))
+                      (dissoc-cell x y :fuel)))))
             state
             ;; [x y]s of fire cells in the current place
             (filter (fn filter-fire-cells

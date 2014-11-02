@@ -541,6 +541,10 @@
   [t]
   (contains? #{:ramada :lean-to :tarp-shelter} t))
 
+(defn type->destroyable?
+  [t]
+  (contains? #{:palisade} t))
+
 (defn collide?
   "Return `true` if the cell at `[x y]` is non-traverable. Ie: a wall, closed door or simply does
    not exist. Cells occupied by npcs are considered non-traversable."

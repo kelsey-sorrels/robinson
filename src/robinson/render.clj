@@ -52,6 +52,10 @@
    :fushia      (vec (hex-str-to-dec "D30094"))
    :beige       (vec (hex-str-to-dec "C8B464"))})
 
+(defn limit-color
+  [v]
+  (min (max 0 v) 255))
+
 (defn rgb->mono
   [rbg]
   (let [avg (/ (reduce + rbg) 3)]
@@ -61,7 +65,7 @@
   ([rgb]
   (vec (map #(/ % 3) rgb)))
   ([rgb d]
-  (vec (map #(* % d) rgb))))
+  (vec (map #(limit-color (* % d)) rgb))))
 
 (defn color->rgb
   [color]
@@ -638,7 +642,8 @@
   (let [screen         (state :screen)
         [columns rows] (get-size screen)
         place          (current-place state)
-        current-time   (get-in state [:world :time])]
+        current-time   (get-in state [:world :time])
+        [player-x player-y] (player-xy state)]
     ;(debug "begin-render")
     ;(clear (state :screen))
     (trace "rendering place" (current-place state))
@@ -761,7 +766,10 @@
                                         [chr fg :brown]
                                         ["\u2225" :black :brown]))
                                   :else
-                                    out-char)]
+                                    out-char)
+                shaded-out-char (if (= (get cell :discovered) current-time)
+                                  (update-in shaded-out-char [1] (fn [c] (darken-rgb c (min 1 (/ 2 (max 1 (distance-from-player state (xy->pos x y))))))))
+                                  shaded-out-char)]
               (apply put-string screen x y shaded-out-char)))))
     ;; draw character
     ;(debug (-> state :world :player))

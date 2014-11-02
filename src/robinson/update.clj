@@ -127,6 +127,11 @@
         state))
     state))
 
+(defn destroy-cell
+  "Destroy the cell at xy, changing its type. This is when the player bumps into things like palisades."
+  [state x y]
+  (assoc-cell state x y :type :dirt))
+
 (defn pick-up-gold
   "Vacuums up gold from the floor into player's inventory."
   [state]
@@ -219,7 +224,7 @@
 
 (defn move
   "Move the player one space provided her/she is able. Else do combat. Else swap positions
-   with party member."
+   with party member. Else hack something down."
   [state direction]
   {:pre  [(contains? #{:left :right :up :down :up-left :up-right :down-left :down-right} direction)
           (vector? (get-in state [:world :npcs]))]
@@ -290,6 +295,9 @@
            (every? (set (keys (npc-at-xy state target-x target-y))) #{:hp :pos :race :body-parts :inventory}))
         ;; collided with npc. Engage in combat.
         (attack state [:world :player] (npc->keys state (npc-at-xy state target-x target-y)))
+      ;; Hack down destroyable cells.
+      (type->destroyable? (get target-cell :type))
+        (destroy-cell state target-x target-y)
       ;; collided with a wall or door, nothing to be done.
       :else
         state)))

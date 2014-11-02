@@ -870,10 +870,15 @@
 (defn do-rest
   "NOP action. Player's hp increases a little."
   [state]
-  (update-in state [:world :player]
-             (fn [player] (if (< (int (player :hp)) (player :max-hp))
-                            (assoc-in player [:hp] (+ (player :hp) 0.05))
-                            player))))
+  (-> state
+    (arg-when-> [state] (let [[cell _ _] (player-cellxy state)]
+                          (type->shelter? (get cell :type)))
+      (update-in [:world :player :will-to-live]
+        (fn [will-to-live] (+ 0.05 will-to-live))))
+    (update-in [:world :player]
+               (fn [player] (if (< (int (player :hp)) (player :max-hp))
+                              (assoc-in player [:hp] (+ (player :hp) 0.05))
+                              player)))))
 
 (defn do-sleep
   "Sleep."

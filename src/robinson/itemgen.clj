@@ -75,7 +75,6 @@
    {:id  :white-fruit             :name  "white fruit"                :name-plural "white fruits" :hunger 30}
    {:id  :black-fruit             :name  "black fruit"                :name-plural "black fruits" :hunger 30}
    {:id  :bamboo                  :name  "bamboo"                     :name-plural "bamboo" :fuel 100}
-   {:id  :wood-log                :name  "wood log"                   :name-plural "wood logs"}
    {:id  :raft                    :name  "raft"                       :name-plural "rafts"}
    {:id  :rock                    :name  "rock"                       :name-plural "rocks"}
    {:id  :obsidian                :name  "obsidian stone"             :name-plural "obsidian stones"}

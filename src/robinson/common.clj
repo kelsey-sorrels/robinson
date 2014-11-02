@@ -537,6 +537,10 @@
   [t]
   (contains? #{:tree :palm-tree :fruit-tree :bamboo :tall-grass :short-grass :campfire} t))
 
+(defn type->shelter?
+  [t]
+  (contains? #{:ramada :lean-to :tarp-shelter} t))
+
 (defn collide?
   "Return `true` if the cell at `[x y]` is non-traverable. Ie: a wall, closed door or simply does
    not exist. Cells occupied by npcs are considered non-traversable."

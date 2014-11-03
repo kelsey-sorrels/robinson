@@ -879,9 +879,20 @@
   "NOP action. Player's hp increases a little."
   [state]
   (-> state
+    ;; rest better then in shelter
     (arg-when-> [state] (let [[cell _ _] (player-cellxy state)]
                           (type->shelter? (get cell :type)))
       (update-in [:world :player :will-to-live]
+        (fn [will-to-live] (+ 0.05 will-to-live))))
+    ;; rest better when near a fire
+    (arg-when-> [state] (let [fire-distances (->> (current-place state)
+                                                  (with-xy)
+                                                  (filter (fn [[cell x y]] (contains? #{:fire :campfire}
+                                                                                      (get cell :type))))
+                                                  (map (fn [cell x y] (distance-from-player state (xy->pos x y)))))]
+                         (and (seq fire-distances)
+                              (< 2 (first (sort (fire-distances))))))
+      (update-in state [:world :player :will-to-live]
         (fn [will-to-live] (+ 0.05 will-to-live))))
     (update-in [:world :player]
                (fn [player] (if (< (int (player :hp)) (player :max-hp))

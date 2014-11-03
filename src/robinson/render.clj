@@ -63,7 +63,7 @@
 
 (defn darken-rgb
   ([rgb]
-  (vec (map #(/ % 3) rgb)))
+  (vec (map #(/ % 10) rgb)))
   ([rgb d]
   (vec (map #(limit-color (* % d)) rgb))))
 

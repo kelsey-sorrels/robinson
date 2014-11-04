@@ -204,6 +204,8 @@
        tongue-identifiable     (set (take (/ (count poisoned-fruit) 2) (dg/shuffle poisoned-fruit)))]
 
   {:seed seed
+   :viewport {
+     :pos {:x 0 :y 0}}
    :places {:0_0 place-0}
             ;:1 (init-place-1)}
    :current-place :0_0

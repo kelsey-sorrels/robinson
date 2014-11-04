@@ -203,7 +203,8 @@
        skin-identifiable       (set (take (/ (count poisoned-fruit) 2) (dg/shuffle poisoned-fruit)))
        tongue-identifiable     (set (take (/ (count poisoned-fruit) 2) (dg/shuffle poisoned-fruit)))]
 
-  {:places {:0_0 place-0}
+  {:seed seed
+   :places {:0_0 place-0}
             ;:1 (init-place-1)}
    :current-place :0_0
    :time 0

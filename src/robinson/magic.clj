@@ -1,6 +1,7 @@
 ;; Functions for querying and manipulating magic
 (ns robinson.magic
   (:use robinson.common
+        robinson.world
         robinson.combat
         robinson.npc
         pallet.thread-expr)

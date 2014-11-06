@@ -23,11 +23,6 @@
   [state]
   (contains? (get-in state [:world :player :status]) :infected))
 
-(defn player-mounted-on-raft?
-  [state]
-  (and (get-in state [:world :player :mounted] false)
-       (contains? (set (map :id (get (first (player-cellxy state)) :items []))) :raft)))
-
 (defn player-pos
   "Return the position of the player."
   [state]
@@ -37,36 +32,6 @@
   "Return `[x y]` position of player."
   [state]
   (pos->xy (player-pos state)))
-
-(defn player-adjacent-cells
-  "Return a collection of cells adjacent to the player. Does not include diagonals."
-  [state]
-  (adjacent-cells (current-place state) (player-pos state)))
-
-(defn player-adjacent-xys
-  [state]
-  (let [[x y] (player-xy state)]
-    [[(dec x) y]
-     [(inc x) y]
-     [x (dec y)]
-     [x (inc y)]]))
-
-(defn player-adjacent-pos
-  [state direction]
-  (let [{x :x y :y} (player-pos state)
-        x           (case direction
-                      :left  (dec x)
-                      :right (inc x)
-                      x)
-        y           (case direction
-                      :up   (dec y)
-                      :down (inc y)
-                      y)]
-    {:x x :y y}))
-
-(defn player-adjacent-cell
-  [state direction]
-  (apply get-cell-at-current-place state (pos->xy (player-adjacent-pos state direction))))
 
 (defn- merge-items
   [item1 item2]
@@ -181,22 +146,6 @@
         (map-in state [:world :player :inventory] (fn [item] (if (= id (get item :id))
                                                                (update-in item [:count] dec)
                                                                item))))))
-(defn dec-cell-item-count
-  "Decreases the count of an item in the player's cell."
-  [state id]
-  (let [[cell x y] (player-cellxy state)
-        item       (first (filter #(= id (get % :id)) (get cell :items)))
-        item-count (get item :count 1)]
-    (cond
-      (zero? item-count)
-        state
-      (= 1 item-count)
-        (update-cell-xy state x y (fn [cell] (remove-in cell [:items] #(= id (get % :id)))))
-      :else
-        (update-cell-xy state x y (fn [cell] (map-in cell [:items] (fn [item]
-                                                                     (if (= id (get item :id))
-                                                                       (update-in item [:count] dec)
-                                                                       item))))))))
 
 (defn update-npc-killed
   [state npc attack]
@@ -234,22 +183,4 @@
     (-> state
       (update-in [:world :player :will-to-live] (fn [will-to-live] (min max-will-to-live (+ will-to-live dwill-to-live))))
       (update-in [:world :player :stats :num-items-eaten] (fn [num-items-eaten] (merge-with + num-items-eaten {(get item :id) 1}))))))
-
-
-(defn inventory-and-player-cell-items
-  [state]
-  (let [[cell _ _]        (player-cellxy state)
-        inventory         (player-inventory state)
-        cell-items        (get cell :items [])
-        remaining-hotkeys (get-in state [:world :remaining-hotkeys])
-        inventory         (vec (fill-missing #(not (contains? % :hotkey))
-                                             #(assoc %1 :hotkey %2)
-                                             remaining-hotkeys
-                                             (concat inventory cell-items)))]
-    inventory))
-
-(defn inventory-and-player-cell-hotkey->item
-  [state hotkey]
-  (first (filter (fn [item] (= hotkey (get item :hotkey))) (inventory-and-player-cell-items state))))
-
 

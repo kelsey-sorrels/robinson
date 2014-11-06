@@ -1,6 +1,7 @@
 ;; Functions for generating random items.
 (ns robinson.crafting
   (:use     robinson.common
+            robinson.world
             robinson.itemgen
             robinson.player)
   (:require [pallet.thread-expr :as tx]

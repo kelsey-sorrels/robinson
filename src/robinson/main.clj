@@ -1,6 +1,7 @@
 (ns robinson.main
   (:use    clojure.pprint
            robinson.common
+           robinson.world
            [robinson.worldgen :exclude [-main]]
            robinson.dialog
            robinson.npc

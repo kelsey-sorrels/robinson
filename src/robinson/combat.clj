@@ -3,6 +3,7 @@
   (:use     
     clojure.pprint
     robinson.common
+    robinson.world
     robinson.player
     robinson.itemgen)
   (:require clojure.pprint

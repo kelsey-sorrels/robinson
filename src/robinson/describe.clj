@@ -4,6 +4,7 @@
     [clojure.string :only [lower-case]]
     clojure.contrib.core
     robinson.common
+    robinson.world
     robinson.npc
     robinson.player)
   (:require
@@ -58,7 +59,7 @@
                                 (frequencies (map :id items)))))
 (defn describe-cell-at-xy
   [state x y]
-  (let [cell (get-cell-at-current-place state x y)
+  (let [cell (get-cell state x y)
         npc  (npc-at-xy state x y)
         items (get cell :items)]
     (cond
@@ -89,7 +90,7 @@
                           ["To the west" -1 0]        ["At your feet" 0 0]  ["To the east" 1 0]
                           ["To the south-west" -1 1]  ["To the south" 0 1]  ["To the south-east" 1 1]]
         describe-cell-fn (fn [state direction x y]
-                           (if (get-cell-at-current-place state x y)
+                           (if (get-cell state x y)
                              (append-log state (format "%s %s." direction (describe-cell-at-xy state x y)))
                              state))]
     (-> state

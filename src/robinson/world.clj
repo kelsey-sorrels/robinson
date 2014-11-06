@@ -2,6 +2,7 @@
 (ns robinson.world
   (:use     clojure.contrib.core
             robinson.common
+            robinson.player
             robinson.viewport)
   (:require [ clojure.data.generators :as dg]
             [taoensso.timbre :as timbre]
@@ -78,11 +79,6 @@
   [state]
   (-> state :world :current-place))
 
-(defn current-place
-  "Retrieve the current place."
-  [state]
-  (get-in state [:world :places (current-place-id state)]))
-
 (defn current-state
   [state]
   (get-in state [:world :current-state]))
@@ -110,34 +106,30 @@
 (defn get-cell
   "Retrieve the cell at the position `[x y]` within the given grid. If `[x y]` is outside the bounds
    of the grid, return `nil`."
-  [grid x y]
-  (get-in grid [y x]))
-
-(defn get-cell-at-current-place
   [state x y]
-  (get-cell (current-place state) x y))
+  (get-in state [:world :places (xy->place-id state x y) y x]))
 
-(defn update-cell-xy
+(defn update-cell
   [state x y f]
-  (update-in state [:world :places (current-place-id state) y x] f))
+  (update-in state [:world :places (xy->place-id state x y) y x] f))
 
 (defn assoc-cell
   [state x y & keyvals]
   (reduce (fn [state [k v]]
-            (assoc-in state [:world :places (current-place-id state) y x k] v))
+            (assoc-in state [:world :places (xy->place-id state x y) y x k] v))
           state
           (partition 2 keyvals)))
 
 (defn dissoc-cell
   [state x y k]
-  (dissoc-in state [:world :places (current-place-id state) y x k]))
+  (dissoc-in state [:world :places (xy->place-id state x y) y x k]))
 
 (defn player-cellxy
   "Retrieve the cell at which the player is located."
   [state]
   (let [x (-> state :world :player :pos :x)
         y (-> state :world :player :pos :y)]
-    [(get-cell (current-place state) x y) x y]))
+    [(get-cell state x y) x y]))
 
 (defn adjacent-xys
   [x y]
@@ -181,7 +173,7 @@
   [state direction]
   {:pre [(contains? #{:left :right :up :down} direction)]}
   (let [{x :x y :y} (get-in state [:world :player :pos])
-        place (current-place state)]
+        place (get-place state x y)]
    (vec
      (case direction
        :left  (reverse (take x (get place y)))
@@ -193,7 +185,7 @@
   [state direction]
   {:pre [(contains? #{:left :right :up :down} direction)]}
   (let [{x :x y :y} (get-in state [:world :player :pos])
-        place (current-place state)
+        place (get-place state x y)
         max-x (count (first place))
         max-y (count place)]
     (case direction
@@ -204,13 +196,13 @@
 
 (defn direction->cellsxy
   [state direction]
-  (map (fn [[x y]] [(get-in state [:world :places (current-place-id state) y x]) x y])
+  (map (fn [[x y]] [(get-in state [:world :places (xy->place-id state x y) y x]) x y])
        (direction->xys state direction)))
 
 (defn npc-at-xy
   "npc at [x y] of the current place. Otherwise `nil`."
   [state x y]
-  (first (filter (fn [npc] (and (= (get npc :place) (current-place-id state))
+  (first (filter (fn [npc] (and (= (get npc :place) (xy->place-id state x y))
                                 (= (-> npc :pos :x) x)
                                 (= (-> npc :pos :y) y)))
                  (get-in state [:world :npcs]))))
@@ -257,7 +249,7 @@
                   collide-water?]
            :or {include-npcs? true
                 collide-water? true}} opts
-          cell (get-cell (current-place state) x y)]
+          cell (get-cell state x y)]
       ;(debug "collide? " cell x y)
       (or
         (nil? cell)
@@ -282,7 +274,7 @@
                   collide-water?]
            :or {include-npcs? true
                 collide-water? true}} opts
-          cell (get-cell (current-place state) x y)]
+          cell (get-cell state x y)]
       ;(debug "collide? " cell x y)
       (or
         (nil? cell)
@@ -321,11 +313,22 @@
          :else
            (recur (first xs) (rest xs)))))))
 
+(defn assoc-in-cell-items
+  "Adds an item to [x y] in the current place. Simple, right?"
+  [state x y items]
+  (info "Adding" items "to cell @" x y)
+  (assoc-in state [:world :places (xy->place-id state x y) y x :items] items))
+
 (defn conj-in-cell-items
   "Adds an item to [x y] in the current place. Simple, right?"
-  [state item x y]
+  [state x y item]
   (info "Adding" item "to cell @" x y)
-  (conj-in state [:world :places (current-place-id state) y x :items] item))
+  (conj-in state [:world :places (xy->place-id state x y) y x :items] item))
+
+(defn update-in-cell-items
+  "Adds an item to [x y] in the current place. Simple, right?"
+  [state x y f]
+  (update-in state [:world :places (xy->place-id state x y) y x :items] f))
 
 (defn conj-in-current-cell-items
   "Adds an item to the player's cell's items."
@@ -333,4 +336,92 @@
   (let [x (-> state :world :player :pos :x)
         y (-> state :world :player :pos :y)]
     (conj-in-cell-items state item x y)))
+
+(defn dec-cell-item-count
+  "Decreases the count of an item in the player's cell."
+  [state id]
+  (let [[cell x y] (player-cellxy state)
+        item       (first (filter #(= id (get % :id)) (get cell :items)))
+        item-count (get item :count 1)]
+    (cond
+      (zero? item-count)
+        state
+      (= 1 item-count)
+        (update-cell state x y (fn [cell] (remove-in cell [:items] #(= id (get % :id)))))
+      :else
+        (update-cell state x y (fn [cell] (map-in cell [:items] (fn [item]
+
+      (if (= id (get item :id))
+                                                                       (update-in item [:count] dec)
+
+        item))))))))
+
+(defn player-adjacent-xys
+  [state]
+  (let [[x y] (player-xy state)]
+    [[(dec x) y]
+     [(inc x) y]
+     [x (dec y)]
+     [x (inc y)]]))
+
+(defn player-adjacent-xys-ext
+  [state]
+  (let [[x y] (player-xy state)]
+    [[(dec x) y]
+     [(inc x) y]
+     [x (dec y)]
+     [x (inc y)]
+     [(dec x) (dec y)]
+     [(inc x) (inc y)]
+     [(inc x) (dec y)]
+     [(dec x) (inc y)]]))
+
+(defn player-adjacent-cells
+  "Return a collection of cells adjacent to the player. Does not include diagonals."
+  [state]
+  (map (fn [[x y]] (get-cell state x y)) (player-adjacent-xys state)))
+
+(defn player-adjacent-cells-ext
+  "Return a collection of cells adjacent to the player. Includes diagonals."
+  [state]
+  (map (fn [[x y]] (get-cell state x y)) (player-adjacent-xys-ext state)))
+
+(defn player-adjacent-pos
+  [state direction]
+  (let [{x :x y :y} (player-pos state)
+        x           (case direction
+                      :left  (dec x)
+                      :right (inc x)
+                      x)
+        y           (case direction
+                      :up   (dec y)
+                      :down (inc y)                      y)]
+    {:x x :y y}))
+
+(defn player-adjacent-cell
+  [state direction]
+  (apply get-cell state (pos->xy (player-adjacent-pos state direction))))
+
+
+(defn player-mounted-on-raft?
+  [state]
+  (and (get-in state [:world :player :mounted] false)
+       (contains? (set (map :id (get (first (player-cellxy state)) :items []))) :raft)))
+
+
+(defn inventory-and-player-cell-items
+  [state]
+  (let [[cell _ _]        (player-cellxy state)
+        inventory         (player-inventory state)
+        cell-items        (get cell :items [])
+        remaining-hotkeys (get-in state [:world :remaining-hotkeys])
+        inventory         (vec (fill-missing #(not (contains? % :hotkey))
+                                             #(assoc %1 :hotkey %2)
+                                             remaining-hotkeys
+                                             (concat inventory cell-items)))]
+    inventory))
+
+(defn inventory-and-player-cell-hotkey->item
+  [state hotkey]
+  (first (filter (fn [item] (= hotkey (get item :hotkey))) (inventory-and-player-cell-items state))))
 

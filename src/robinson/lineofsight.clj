@@ -1,6 +1,7 @@
 (ns robinson.lineofsight
   (:use [robinson.mapgen :exclude [-main]]
-        robinson.common)
+        robinson.common
+        robinson.world)
   (:require [clojure.contrib.math :as math]
             clojure.pprint))
 

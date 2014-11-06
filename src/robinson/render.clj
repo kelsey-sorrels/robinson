@@ -4,6 +4,8 @@
             (java.awt.image BufferedImage)
             (javax.swing ImageIcon))
   (:use     robinson.common
+            robinson.world
+            robinson.viewport
             robinson.player
             robinson.endgame
             robinson.magic
@@ -360,7 +362,7 @@
   [state]
   (let [player-x         (-> state :world :player :pos :x)
         player-y         (-> state :world :player :pos :y)
-        cell             (get-cell (current-place state) player-x player-y)
+        cell             (get-cell state player-x player-y)
         cell-items       (or (cell :items) [])
         hotkeys          (-> state :world :remaining-hotkeys)
         selected-hotkeys (-> state :world :selected-hotkeys)
@@ -641,19 +643,21 @@
   [state]
   (let [screen         (state :screen)
         [columns rows] (get-size screen)
-        place          (current-place state)
         current-time   (get-in state [:world :time])
-        [player-x player-y] (player-xy state)]
+        [player-x player-y] (player-xy state)
+        xys            (viewport-xys state)]
+    (debug "viewport-xys" xys)
     ;(debug "begin-render")
     ;(clear (state :screen))
-    (trace "rendering place" (current-place state))
+    ;;(trace "rendering place" (current-place state))
     ;; draw map
-    (doseq [y (range rows)
-            x (range
-                (if (is-menu-state? state)
-                  (- columns 40)
-                  columns))]
-      (let [cell (get-cell place x y)]
+    (doseq [[x y] (viewport-xys state)]
+    ;(doseq [y (range rows)
+    ;        x (range
+    ;            (if (is-menu-state? state)
+    ;              (- columns 40)
+    ;              columns))]
+      (let [cell (get-cell state x y)]
         ;(trace "render-cell" cell x y)
         (if (or (nil? cell)
                 (not (cell :discovered)))
@@ -806,7 +810,7 @@
     (let [place-npcs (npcs-at-current-place state)
           ;_ (debug "place-npcs" place-npcs)
           pos (-> state :world :player :pos)
-          get-cell (memoize (fn [x y] (get-in (current-place state) [y x])))]
+          get-cell (memoize (fn [x y] (get-cell state x y)))]
       (doall (map (fn [npc]
                     (let [x       (-> npc :pos :x)
                           y       (-> npc :pos :y)

@@ -2,6 +2,7 @@
 (ns robinson.worldgen
   (:use 
         robinson.common
+        robinson.world
         robinson.npc
         [robinson.mapgen :exclude [-main]])
   (:require 
@@ -54,9 +55,8 @@
       [])))
   
 (defn init-island
-  "Create an example place with an island, two items
-   and a set of down stairs that lead to place `:1`"
-  [seed]
+  "Create an island block. `x` and `y` denote the coordinates of the upper left cell in the block."
+  [seed x y width height]
   (let [_    (cliskp/seed-simplex-noise! seed)
         node (cliskf/vectorize
                (cliskf/vlet [c (center (invert (cliskf/offset (cliskf/scale 0.43 (cliskf/v* [0.5 0.5 0.5] cliskp/vsnoise)) cliskf/radius)))]
@@ -77,14 +77,14 @@
                    [1 1 1]
                      [0 0.4 0.5])))
         fns  (vec (map cliskn/compile-fn (:nodes node)))
-        max-x 80
-        max-y 26]
+        max-x width
+        max-y height]
     (add-extras
       (vec
         (map vec
           (partition max-x
-            (log-time "for" (for [y (range max-y)
-                  x (range max-x)
+            (log-time "for" (for [y (range y max-y)
+                  x (range x max-x)
                   :let [s (vec (map #(.calc ^clisk.IFunction % (double (/ x max-x)) (double (/ y max-y)) (double 0.0) (double 0.0))
                                fns))]]
               (case s
@@ -185,12 +185,14 @@
    added during the course of the game."
   [seed]
   ;; Assign hotkeys to inventory and remove from remaining hotkeys
-  (let [inventory              []
+  (let [width                  80
+        height                 26
+        inventory              []
         remaining-hotkeys      (vec (seq "abcdefghijklmnopqrstuvwxyzABCdEFGHIJKLMNOPQRSTUVWQYZ"))
         hotkey-groups          (split-at (count inventory) remaining-hotkeys)
         inventory-with-hotkeys (vec (map #(assoc %1 :hotkey %2) inventory (first hotkey-groups)))
         remaining-hotkeys      (set (clojure.string/join (second hotkey-groups)))
-        place-0                (init-island seed)
+        place-0                (init-island seed 0 0 width height)
         [_ starting-x
            starting-y]         (first (filter (fn [[cell x y]] (contains? cell :starting-location))
                                               (with-xy place-0)))
@@ -204,7 +206,10 @@
        tongue-identifiable     (set (take (/ (count poisoned-fruit) 2) (dg/shuffle poisoned-fruit)))]
 
   {:seed seed
+   :block-size {:width width :height height}
    :viewport {
+     :width width
+     :height height
      :pos {:x 0 :y 0}}
    :places {:0_0 place-0}
             ;:1 (init-place-1)}

@@ -2,6 +2,8 @@
 (ns robinson.npc
   (:use clojure.walk
         robinson.common
+        robinson.viewport
+        robinson.world
         [robinson.monstergen :exclude [-main]]
         [robinson.dialog :exclude [-main]])
   (:require [clojure.data.generators :as dg]
@@ -15,10 +17,10 @@
   
    Ex: `(adjacent-floor-pos [...] {:x 0 :y 0})`
    `[{:x 1 :y 1} {:x 0 :y 0}]`"
-  [place pos navigable-types]
+  [state pos navigable-types]
   {:pre [(= (set (keys pos)) #{:x :y})]}
   (filter (fn [{x :x y :y}]
-            (let [cell (get-in place [y x])]
+            (let [cell (get-cell state x y)]
               (and (not (nil? cell))
                    (contains? navigable-types (cell :type)))))
           (for [x (range -1 1)
@@ -146,7 +148,7 @@
   [state level]
   (if-let [[cell x y] (first (dg/shuffle (filter (fn [[cell x y]] (not (collide? state x y {:include-npcs? true
                                                                                        :collide-water? false})))
-                                           (with-xy (current-place state)))))]
+                                           (with-xy (player-place state)))))]
     (add-npc state (-> state :world :current-place)
                    (gen-monster level (cell :type))
                    x

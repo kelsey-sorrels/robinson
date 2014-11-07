@@ -204,17 +204,8 @@
                                  (-xy [target-x target-y] [x y])))
        ;;dest-place        (-> state :world :places dest-place-id)
        {width :width
-        height :height}  (get-in state [:world :viewport])
-       _ (info "width" width "height" height)
-       dest-x             (case direction
-                            (:left :up-left :down-left) (mod (dec x) width)
-                            (:right :up-right :down-right) (mod (inc x) width)
-                            x)
-       dest-y             (case direction
-                            (:up :up-left :up-right) (mod (dec y) height)
-                            (:down :down-left :down-right) (mod (inc y) height)
-                            y)]
-      (debug "dest-x" dest-x "dest-y" dest-y)
+        height :height}  (get-in state [:world :viewport])]
+      (debug "viewport-pos" vp-pos)
       #_(debug "npcs" (with-out-str (pprint (-> state :world :npcs))))
       (-> state
         (tx/when-> on-raft 
@@ -226,9 +217,9 @@
         ;;(assoc-in [:world :current-place] dest-place-id)
         ;;(assoc-in [:world :places dest-place-id] dest-place)
         ;; move player
-        (assoc-in [:world :player :pos] {:x dest-x :y dest-y})
+        (assoc-in [:world :player :pos] {:x target-x :y target-y})
         (tx/when-> on-raft
-          (conj-in-cell-items (ig/id->item :raft) dest-x dest-y)))))
+          (conj-in-cell-items (ig/id->item :raft) target-x target-y)))))
 
 (defn move
   "Move the player one space provided her/she is able. Else do combat. Else swap positions
@@ -257,7 +248,7 @@
                                0))
         target-cell (get-cell state target-x target-y)]
     (info "moving to" (get target-cell :type))
-    (info "inside-safe-zone?" (xy-in-safe-zone? state target-x target-y))
+    (info "inside-safe-zone?" (xy-in-safe-zone? state target-x target-y) target-x target-y)
     (cond
       (not (xy-in-safe-zone? state target-x target-y))
         (move-outside-safe-zone state direction)

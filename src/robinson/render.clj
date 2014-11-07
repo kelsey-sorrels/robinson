@@ -646,22 +646,22 @@
         current-time   (get-in state [:world :time])
         [player-x player-y] (player-xy state)
         xys            (viewport-xys state)]
-    (debug "viewport-xys" xys)
+    ;(debug "viewport-xys" xys)
     ;(debug "begin-render")
     ;(clear (state :screen))
     ;;(trace "rendering place" (current-place state))
     ;; draw map
-    (doseq [[x y] (viewport-xys state)]
+    (doseq [[vx vy wx wy] (viewport-world-xys state)]
     ;(doseq [y (range rows)
     ;        x (range
     ;            (if (is-menu-state? state)
     ;              (- columns 40)
     ;              columns))]
-      (let [cell (get-cell state x y)]
+      (let [cell (get-cell state wx wy)]
         ;(trace "render-cell" cell x y)
         (if (or (nil? cell)
                 (not (cell :discovered)))
-          (put-string screen x y " ")
+          (put-string screen vx vy " ")
           (let [cell-items (cell :items)
                 ;_ (info "cell" cell)
                 out-char (apply fill-put-string-color-style-defaults
@@ -772,15 +772,17 @@
                                   :else
                                     out-char)
                 shaded-out-char (if (= (get cell :discovered) current-time)
-                                  (update-in shaded-out-char [1] (fn [c] (darken-rgb c (min 1 (/ 2 (max 1 (distance-from-player state (xy->pos x y))))))))
+                                  (update-in shaded-out-char [1] (fn [c] (darken-rgb c (min 1 (/ 2 (max 1 (distance-from-player state (xy->pos wx wy))))))))
                                   shaded-out-char)]
-              (apply put-string screen x y shaded-out-char)))))
+              (apply put-string screen vx vy shaded-out-char)))))
     ;; draw character
     ;(debug (-> state :world :player))
     (put-string
       screen
-      (-> state :world :player :pos :x)
-      (-> state :world :player :pos :y)
+      (- (-> state :world :player :pos :x)
+         (-> state :world :viewport :pos :x))
+      (- (-> state :world :player :pos :y)
+         (-> state :world :viewport :pos :y))
       "@"
       :white
       (if (contains? (set (map :id (get (first (player-cellxy state)) :items))) :raft)
@@ -812,8 +814,10 @@
           pos (-> state :world :player :pos)
           get-cell (memoize (fn [x y] (get-cell state x y)))]
       (doall (map (fn [npc]
-                    (let [x       (-> npc :pos :x)
-                          y       (-> npc :pos :y)
+                    (let [x       (- (-> npc :pos :x)
+                                     (-> state :world :viewport :pos :x))
+                          y       (- (-> npc :pos :y)
+                                     (-> state :world :viewport :pos :x))
                           visible 
                                   (and (not (farther-than?
                                               pos

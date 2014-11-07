@@ -24,7 +24,7 @@
         s 5]
         
     (xy-in-rect? x y (+ v-x s) (+ v-y s)
-                     (- v-width s) (- v-height s))))
+                     (- v-width (* 2 s)) (- v-height (* 2 s)))))
 (defn xy->place-id
   [state x y]
   (let [{v-width     :width
@@ -81,3 +81,16 @@
     (for [x (range v-x (+ v-x v-width))
           y (range v-y (+ v-y v-height))]
       [x y])))
+
+(defn viewport-world-xys
+  "Return a collection of 4-tuples in the form of
+  `[viewport-x viewport-y world-x world-y]`."
+  [state]
+  (let [{v-width     :width
+         v-height    :height
+         {v-x :x v-y :y} :pos}
+        (get-in state [:world :viewport])]
+    (info "viewport-xys v-x" v-x "v-y" v-y)
+    (for [x (range v-width)
+          y (range v-height)]
+      [x y (+ x v-x) (+ y v-y)])))

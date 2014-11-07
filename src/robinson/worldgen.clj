@@ -44,7 +44,7 @@
 (defn init-ocean
   []
   (let [max-x 80
-        max-y 26]
+        max-y 22]
     (add-extras
       (vec
         (map vec
@@ -197,9 +197,7 @@
            starting-y]         (first (filter (fn [[cell x y]] (contains? cell :starting-location))
                                               (with-xy place-0)))
         starting-pos           {:x starting-x :y starting-y}
-        party-pos              (adjacent-navigable-pos place-0 starting-pos #{:corridor :open-door :floor})
         _ (debug "starting-pos" starting-pos)
-        _ (debug "party-pos" party-pos)
        fruit-ids               [:red-fruit :orange-fruit :yellow-fruit :green-fruit :blue-fruit :purple-fruit :white-fruit :black-fruit]
        poisoned-fruit          (set (take (/ (count fruit-ids) 2) (dg/shuffle fruit-ids)))
        skin-identifiable       (set (take (/ (count poisoned-fruit) 2) (dg/shuffle poisoned-fruit)))

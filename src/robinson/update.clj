@@ -207,19 +207,20 @@
         height :height}  (get-in state [:world :viewport])]
       (debug "viewport-pos" vp-pos)
       #_(debug "npcs" (with-out-str (pprint (-> state :world :npcs))))
-      (-> state
-        (tx/when-> on-raft 
-          (dec-cell-item-count :raft))
-        (assoc-in [:world :viewport :pos] vp-pos) 
+      (assoc-in state [:world :viewport :pos] vp-pos)))
+      ;(-> state
+      ;  (tx/when-> on-raft 
+      ;    (dec-cell-item-count :raft))
+      ;  (assoc-in [:world :viewport :pos] vp-pos) 
         ;; unload the current place
         ;;(dissoc-in [:world :places orig-place-id])
         ;; change the place
         ;;(assoc-in [:world :current-place] dest-place-id)
         ;;(assoc-in [:world :places dest-place-id] dest-place)
         ;; move player
-        (assoc-in [:world :player :pos] {:x target-x :y target-y})
-        (tx/when-> on-raft
-          (conj-in-cell-items (ig/id->item :raft) target-x target-y)))))
+      ;  (assoc-in [:world :player :pos] {:x target-x :y target-y})
+      ;  (tx/when-> on-raft
+      ;    (conj-in-cell-items (ig/id->item :raft) target-x target-y)))))
 
 (defn move
   "Move the player one space provided her/she is able. Else do combat. Else swap positions
@@ -250,47 +251,47 @@
     (info "moving to" (get target-cell :type))
     (info "inside-safe-zone?" (xy-in-safe-zone? state target-x target-y) target-x target-y)
     (cond
-      (not (xy-in-safe-zone? state target-x target-y))
-        (move-outside-safe-zone state direction)
       (and (not (collide? state target-x target-y))
            (not (player-mounted-on-raft? state)))
         (-> state
-            (assoc-in [:world :player :pos :x] target-x)
-            (assoc-in [:world :player :pos :y] target-y)
-            ((fn [state]
-               (let [cell  (get-cell state target-x target-y)
-                     items (get cell :items)]
-                 (if (seq items)
-                   (search state)
-                   state))))
-            (pick-up-gold))
+          (arg-when-> [state] (not (xy-in-safe-zone? state target-x target-y))
+            (move-outside-safe-zone direction))
+          (assoc-in [:world :player :pos :x] target-x)
+          (assoc-in [:world :player :pos :y] target-y)
+          ((fn [state]
+             (let [cell  (get-cell state target-x target-y)
+                   items (get cell :items)]
+               (if (seq items)
+                 (search state)
+                 state))))
+          (pick-up-gold))
       (= (get (npc-at-xy state target-x target-y) :in-party?) true)
         (-> state
-            (assoc-in [:world :player :pos :x] target-x)
-            (assoc-in [:world :player :pos :y] target-y)
-            (pick-up-gold)
-            (map-in [:world :npcs]
-                    (fn [npc] (if (and (= (-> npc :pos :x) target-x)
-                                       (= (-> npc :pos :y) target-y))
-                                (-> npc
-                                    (assoc-in [:pos :x] player-x)
-                                    (assoc-in [:pos :y] player-y))
-                                npc))))
+          (assoc-in [:world :player :pos :x] target-x)
+          (assoc-in [:world :player :pos :y] target-y)
+          (pick-up-gold)
+          (map-in [:world :npcs]
+                  (fn [npc] (if (and (= (-> npc :pos :x) target-x)
+                                     (= (-> npc :pos :y) target-y))
+                              (-> npc
+                                  (assoc-in [:pos :x] player-x)
+                                  (assoc-in [:pos :y] player-y))
+                              npc))))
       (and (not (collide-in-water? state target-x target-y))
            (player-mounted-on-raft? state))
         (-> state
-            (dec-cell-item-count :raft)
-            (conj-in-cell-items (ig/id->item :raft) target-x target-y)
-            (assoc-in [:world :player :pos :x] target-x)
-            (assoc-in [:world :player :pos :y] target-y)
-            ;; rafting = more hunger
-            (update-in [:world :player :hunger] (partial + 0.05 ))
-            ((fn [state]
-               (let [cell  (get-cell state target-x target-y)
-                     items (get cell :items)]
-                 (if (seq items)
-                   (search state)
-                   state)))))
+          (dec-cell-item-count :raft)
+          (conj-in-cell-items (ig/id->item :raft) target-x target-y)
+          (assoc-in [:world :player :pos :x] target-x)
+          (assoc-in [:world :player :pos :y] target-y)
+          ;; rafting = more hunger
+          (update-in [:world :player :hunger] (partial + 0.05 ))
+          ((fn [state]
+             (let [cell  (get-cell state target-x target-y)
+                   items (get cell :items)]
+               (if (seq items)
+                 (search state)
+                 state)))))
       (and (npc-at-xy state target-x target-y)
            (every? (set (keys (npc-at-xy state target-x target-y))) #{:hp :pos :race :body-parts :inventory}))
         ;; collided with npc. Engage in combat.

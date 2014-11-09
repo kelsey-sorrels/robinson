@@ -104,25 +104,37 @@
     (pmap (fn [e] (apply f e)) (with-xy grid))))
 
 (defn get-cell
-  "Retrieve the cell at the position `[x y]` within the given grid. If `[x y]` is outside the bounds
-   of the grid, return `nil`."
+  "Retrieve the cell at the position `[x y]` in absolute world coordinates. If `[x y]` is outside the bounds
+   of the in-memory places, return `nil`."
   [state x y]
-  (get-in state [:world :places (xy->place-id state x y) y x]))
+  (let [place-id (xy->place-id state x y)
+        [ax ay]  (place-id->anchor-xy state place-id)
+        [x y]    [(- y ay) (- x ax)]]
+    (get-in state [:world :places place-id y x])))
 
 (defn update-cell
   [state x y f]
-  (update-in state [:world :places (xy->place-id state x y) y x] f))
+  (let [place-id (xy->place-id state x y)
+        [ax ay]  (place-id->anchor-xy state place-id)
+        [x y]    [(- y ay) (- x ax)]]
+    (update-in state [:world :places place-id y x] f)))
 
 (defn assoc-cell
   [state x y & keyvals]
-  (reduce (fn [state [k v]]
-            (assoc-in state [:world :places (xy->place-id state x y) y x k] v))
-          state
-          (partition 2 keyvals)))
+  (let [place-id (xy->place-id state x y)
+        [ax ay]  (place-id->anchor-xy state place-id)
+        [x y]    [(- y ay) (- x ax)]]
+    (reduce (fn [state [k v]]
+              (assoc-in state [:world :places place-id y x k] v))
+            state
+            (partition 2 keyvals))))
 
 (defn dissoc-cell
-  [state x y k]
-  (dissoc-in state [:world :places (xy->place-id state x y) y x k]))
+  [state x y k] 
+  (let [place-id (xy->place-id state x y)
+        [ax ay]  (place-id->anchor-xy state place-id)
+        [x y]    [(- y ay) (- x ax)]]
+    (dissoc-in state [:world :places place-id y x k])))
 
 (defn player-cellxy
   "Retrieve the cell at which the player is located."

@@ -158,18 +158,42 @@
 
 (defn load-place
   [state id]
+  (info "loading" id)
   ;; load the place into state. From file if exists or gen a new random place.
   (assoc-in state [:world :places id]
     (if (.exists (clojure.java.io/as-file (format "save/%s.place.edn" (str id))))
       (clojure.edn/read-string {:readers {'Monster mg/map->Monster}}
-        (slurp (format "save/%s.place.edn" (str id))))
-      (init-island (get-in state [:world :seed])))))
+        (slurp (format "save/%s.place.edn" (name id))))
+      (let [[ax ay]            (place-id->anchor-xy state id)
+            [v-width v-height] (viewport-wh state)
+            w-width            (get-in state [:world :width])
+            w-height           (get-in state [:world :height])]
+        (init-island (get-in state [:world :seed]) ax ay v-width v-height w-width w-height)))))
 
 (defn unload-place
   [state id]
-  (spit (format "save/%s.place.edn" id)
+  (info "unloading" id)
+  (spit (format "save/%s.place.edn" (name id))
         (prn-str (-> state :world :places id)))
   (dissoc-in state [:world :places id]))
+
+
+(defn load-unload-places
+  [state]
+  (let [[x y]             (player-xy state)
+        loaded-place-ids  (keys (get-in state [:world :places]))
+        visible-place-ids (visible-place-ids state x y)
+        places-to-load    (clojure.set/difference (set visible-place-ids) (set loaded-place-ids))
+        places-to-unload  (clojure.set/difference (set loaded-place-ids) (set visible-place-ids))]
+    (info "currently loaded places:" loaded-place-ids)
+    (info "visible places:" visible-place-ids)
+    (info "unloading places:" places-to-unload)
+    (info "loading places:" places-to-load)
+    (-> state
+      (as-> state
+        (reduce unload-place state places-to-unload))
+      (as-> state
+        (reduce load-place state places-to-load)))))
 
 (defn move-outside-safe-zone
   "Move the player when they are near the edge of the map.
@@ -207,7 +231,9 @@
         height :height}  (get-in state [:world :viewport])]
       (debug "viewport-pos" vp-pos)
       #_(debug "npcs" (with-out-str (pprint (-> state :world :npcs))))
-      (assoc-in state [:world :viewport :pos] vp-pos)))
+      (-> state
+        (assoc-in [:world :viewport :pos] vp-pos)
+        (load-unload-places))))
       ;(-> state
       ;  (tx/when-> on-raft 
       ;    (dec-cell-item-count :raft))

@@ -658,7 +658,7 @@
     ;              (- columns 40)
     ;              columns))]
       (let [cell (get-cell state wx wy)]
-        ;(trace "render-cell" cell x y)
+        ;(debug "render-cell" cell (xy->place-id state wx wy) vx vy wx wy)
         (if (or (nil? cell)
                 (not (cell :discovered)))
           (put-string screen vx vy " ")

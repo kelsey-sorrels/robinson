@@ -13,6 +13,13 @@
   (and (<= rx x (+ -1 rx rw))
        (<= ry y (+ -1 ry rh))))
 
+(defn viewport-wh
+  [state]
+  (let [{v-width     :width
+         v-height    :height}
+        (get-in state [:world :viewport])]
+    [v-width v-height]))
+
 (defn xy-in-safe-zone?
   "Is `(x,y)` in the viewport bounds defined in the viewport in `state`?"
   [state x y]
@@ -90,7 +97,7 @@
          v-height    :height
          {v-x :x v-y :y} :pos}
         (get-in state [:world :viewport])]
-    (info "viewport-xys v-x" v-x "v-y" v-y)
+    (info "viewport-world-xys v-x" v-x "v-y" v-y)
     (for [x (range v-width)
           y (range v-height)]
       [x y (+ x v-x) (+ y v-y)])))

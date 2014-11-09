@@ -21,6 +21,21 @@
 
 (timbre/set-config! [] (read-string (slurp "config/timbre.clj")))
 
+(def save-chan (async/chan (async/sliding-buffer 1)))
+
+(async/go-loop []
+  (let [state (async/<! save-chan)]
+    (info "World saved at time" (get-in state [:world :time]))
+    (-> (async/<!! save-chan)
+      (get :world)
+      prn-str
+      (as-> s
+        (spit "save/world.edn" s)))
+    (recur)))
+
+(defn save-state [state]
+  (async/>!! save-chan state))
+  
 (defn tick
   "The game loop.
 
@@ -42,7 +57,7 @@
         (let [new-state (log-time "update-state" (update-state state keyin))]
           (when new-state
             (log-time "render" (render new-state))
-            (async/thread (spit "save/world.edn" (prn-str (new-state :world)))))
+            (save-state new-state))
           ;(async/thread (spit "save/world.edn" (with-out-str (pprint (new-state :world)))))
           new-state))
       (catch Exception e

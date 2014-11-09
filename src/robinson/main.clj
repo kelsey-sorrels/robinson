@@ -100,7 +100,7 @@
         dialog (apply merge (map (fn [[k v]]
                                    {k (dialog->fsm v)})
                                  (apply merge (map :dialog quests))))
-        _ (debug "loaded data" data)
+        ;;_ (debug "loaded data" data)
         settings (clojure.edn/read-string
                    (slurp "config/settings.edn"))
         terminal  (or screen

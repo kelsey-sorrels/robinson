@@ -2,6 +2,7 @@
 (ns robinson.worldgen
   (:use 
         robinson.common
+        robinson.viewport
         robinson.world
         robinson.npc
         [robinson.mapgen :exclude [-main]])
@@ -56,7 +57,8 @@
   
 (defn init-island
   "Create an island block. `x` and `y` denote the coordinates of the upper left cell in the block."
-  [seed x y width height]
+  [seed x y width height max-x max-y]
+  (info "init-island" seed x y width height max-x max-y)
   (let [_    (cliskp/seed-simplex-noise! seed)
         node (cliskf/vectorize
                (cliskf/vlet [c (center (invert (cliskf/offset (cliskf/scale 0.43 (cliskf/v* [0.5 0.5 0.5] cliskp/vsnoise)) cliskf/radius)))]
@@ -76,14 +78,13 @@
                    ;; else ocean
                    [1 1 1]
                      [0 0.4 0.5])))
-        fns  (vec (map cliskn/compile-fn (:nodes node)))
-        max-x width
-        max-y height]
+        fns  (vec (map cliskn/compile-fn (:nodes node)))]
     (add-extras
       (vec
         (map vec
           (partition max-x
-            (log-time "for" (for [y (range y max-y)
+            (log-time "for"
+            (for [y (range y max-y)
                   x (range x max-x)
                   :let [s (vec (map #(.calc ^clisk.IFunction % (double (/ x max-x)) (double (/ y max-y)) (double 0.0) (double 0.0))
                                fns))]]
@@ -104,7 +105,7 @@
                                 4 {:type :short-grass}
                                 5 {:type :gravel}
                                 6 {:type :bamboo})))))))
-    [[[(int (/ max-x 2)) (int (/ max-y 2))]      {:type :dirt :starting-location true}]])))
+    [[[(int (/ width 2)) (int (/ height 2))]      {:type :dirt :starting-location true}]])))
 
 
 (defn init-random-0
@@ -186,30 +187,37 @@
   [seed]
   ;; Assign hotkeys to inventory and remove from remaining hotkeys
   (let [width                  80
-        height                 26
+        height                 23
+        max-x                  800
+        max-y                  800
+        x                      (/ max-x 2)
+        y                      (/ max-y 2)
         inventory              []
         remaining-hotkeys      (vec (seq "abcdefghijklmnopqrstuvwxyzABCdEFGHIJKLMNOPQRSTUVWQYZ"))
         hotkey-groups          (split-at (count inventory) remaining-hotkeys)
         inventory-with-hotkeys (vec (map #(assoc %1 :hotkey %2) inventory (first hotkey-groups)))
         remaining-hotkeys      (set (clojure.string/join (second hotkey-groups)))
-        place-0                (init-island seed 0 0 width height)
-        [_ starting-x
-           starting-y]         (first (filter (fn [[cell x y]] (contains? cell :starting-location))
-                                              (with-xy place-0)))
-        starting-pos           {:x starting-x :y starting-y}
+        ;; calculate place-id and viewport position using minimal state information
+        place-id               (xy->place-id {:world {:viewport {:width width :height height}}} x y)
+        [vx vy]                (place-id->anchor-xy {:world {:viewport {:width width :height height}}} place-id)
+        starting-pos           {:x (int (+ vx (/ width 2)))
+                                :y (int (+ vy (/ height 2)))}
         _ (debug "starting-pos" starting-pos)
-       fruit-ids               [:red-fruit :orange-fruit :yellow-fruit :green-fruit :blue-fruit :purple-fruit :white-fruit :black-fruit]
-       poisoned-fruit          (set (take (/ (count fruit-ids) 2) (dg/shuffle fruit-ids)))
-       skin-identifiable       (set (take (/ (count poisoned-fruit) 2) (dg/shuffle poisoned-fruit)))
-       tongue-identifiable     (set (take (/ (count poisoned-fruit) 2) (dg/shuffle poisoned-fruit)))]
+        place-0                (init-island seed vx vy width height max-x max-y)
+        fruit-ids              [:red-fruit :orange-fruit :yellow-fruit :green-fruit :blue-fruit :purple-fruit :white-fruit :black-fruit]
+        poisoned-fruit         (set (take (/ (count fruit-ids) 2) (dg/shuffle fruit-ids)))
+        skin-identifiable      (set (take (/ (count poisoned-fruit) 2) (dg/shuffle poisoned-fruit)))
+        tongue-identifiable    (set (take (/ (count poisoned-fruit) 2) (dg/shuffle poisoned-fruit)))]
 
   {:seed seed
    :block-size {:width width :height height}
+   :width max-x
+   :height max-y
    :viewport {
      :width width
      :height height
-     :pos {:x 0 :y 0}}
-   :places {:0_0 place-0}
+     :pos {:x vx :y vy}}
+   :places {place-id place-0}
             ;:1 (init-place-1)}
    :current-place :0_0
    :time 0

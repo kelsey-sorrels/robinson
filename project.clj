@@ -8,7 +8,7 @@
                  [lein-kibit "0.0.8"]
                  [lein-tarsier "0.10.0"]]
   :dependencies [[org.clojure/clojure "1.6.0"]
-                 [org.clojure/core.async "0.1.303.0-886421-alpha"]
+                 [org.clojure/core.async "0.1.346.0-17112a-alpha"]
                  [org.clojure/core.memoize "0.5.6"]
                  [org.clojure/tools.reader "0.8.9"]
                  [org.clojure/core.typed "0.2.44"]

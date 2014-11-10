@@ -163,7 +163,7 @@
   (assoc-in state [:world :places id]
     (if (.exists (clojure.java.io/as-file (format "save/%s.place.edn" (str id))))
       (clojure.edn/read-string {:readers {'Monster mg/map->Monster}}
-        (slurp (format "save/%s.place.edn" (name id))))
+        (slurp (format "save/%s.place.edn" (str id))))
       (let [[ax ay]            (place-id->anchor-xy state id)
             [v-width v-height] (viewport-wh state)
             w-width            (get-in state [:world :width])
@@ -173,8 +173,8 @@
 (defn unload-place
   [state id]
   (info "unloading" id)
-  (spit (format "save/%s.place.edn" (name id))
-        (prn-str (-> state :world :places id)))
+  (spit (format "save/%s.place.edn" (str id))
+        (prn-str (get-in state [:world :places id])))
   (dissoc-in state [:world :places id]))
 
 
@@ -2115,67 +2115,60 @@
   "Fill holes with a small amount of water. Drop fruit. Drop harvest items."
   [state]
   (info "updating cells")
-  (-> state
-    ;; update holes
-    (update-in [:world :places (current-place-id state)]
-      (fn [place]
-        (update-matching-cells place
-                               (fn [cell] (contains? #{:freshwater-hole :saltwater-hole} (get cell :type)))
-                               (fn [cell] (assoc cell :water (min 20 (+ 0.1 (* (dg/float) 0.1) (get cell :water 0.0))))))))
-    ;; update solar stills
-    (update-in [:world :places (current-place-id state)]
-      (fn [place]
-        (update-matching-cells place
-                               (fn [cell] (contains? #{:solar-still} (get cell :type)))
-                               (fn [cell] (assoc cell :water (min 20 (+ 0.2 (* (dg/float) 0.1) (get cell :water 0.0))))))))
-    ;; rot fruit
-    (update-in [:world :places (current-place-id state)]
-      (fn [place]
-        (update-matching-cells place
-                               (fn [cell] (seq (get cell :items [])))
-                               (fn [cell] (update-in cell [:items] (fn [items] (vec
-                                                                                 (remove (fn [item] (< (get item :rot-time (get-time state))
-                                                                                                       (get-time state)))
-                                                                                          items))))))))
-    ;; update fruit trees/drop fruit
-    ((fn [state]
-      (reduce (fn [state [cell x y]]
-              ;; chance of dropped a fruit
-              (if (= (uniform-int 0 20) 0)
-                ;; make the fruit item and find an adjacent free cell to drop it into
-                (let [item    (assoc (ig/id->item (get cell :fruit-type)) :rot-time (+ (get-time state) (uniform-int 10 30)))
-                      adj-xys (remove (fn [[x y]] (type->collide?
-                                                           (get (get-cell state x y) :type)))
-                                      (adjacent-xys x y))]
-                  (info "dropping fruit" item "at [" x y "]" adj-xys)
-                  (if (seq adj-xys)
-                    ;; drop the fruit into the cell
-                    (apply conj-in-cell-items state item (dg/rand-nth adj-xys))
-                    state))
-                state))
-            state
-            ;; [x y]s of fruit tree cells in the current place
-            (filter (fn filter-fruit-tree-cells
-                      [[cell _ _]]
-                      (= (get cell :type) :fruit-tree))
-                    (viewport-xys state)))))
-    ;; drop harvest items
-    (update-in [:world :places (current-place-id state)]
-      (fn [place]
-        (update-matching-cells place
-                               (fn [cell] (contains? #{:gravel :tree :palm-tree :tall-grass} (get cell :type)))
-                               (fn [cell] (if (= (uniform-int 0 1000) 0)
-                                            (assoc cell :harvestable true)
-                                            cell)))))
-    ;; update fire
-    ((fn [state]
-      (reduce (fn [state [cell x y]]
+  (let [xys      (viewport-xys state)
+        fire-xys (set (filter (fn filter-fire-cells
+                        [[x y]]
+                        (= (get (get-cell state x y) :type) :fire))
+                        xys))]
+    (reduce 
+      (fn cell-reduction-fn [state [x y]] 
+        (let [cell       (get-cell state x y)
+              cell-type  (get cell :type)
+              cell-items (get cell :items)]
+          #_(info "updating cell" cell "@" x y)
+          #_(info "viewport" (get-in state [:world :viewport]))
+          (-> 
+            (cond
+                ;; update holes
+                (contains? #{:freshwater-hole :saltwater-hole} cell-type)
+                (update-cell state x y
+                  (fn increase-hole-water [cell] (assoc cell :water (min 20 (+ 0.1 (* (dg/float) 0.1) (get cell :water 0.0))))))
+                ;; update solar stills
+                (contains? #{:solar-still} (get cell :type))
+                (update-cell state x y
+                  (fn increase-still-water [cell] (assoc cell :water (min 20 (+ 0.2 (* (dg/float) 0.1) (get cell :water 0.0))))))
+                ;; drop harvest items
+                (contains? #{:gravel :tree :palm-tree :tall-grass} cell-type)
+                (update-cell state x y
+                  (fn drop-harvest-items [cell]
+                    (if (= (uniform-int 0 1000) 0)
+                      (assoc cell :harvestable true)
+                      cell)))
+                ;; drop fruit
+                (contains? #{:fruit-tree} cell-type)
+                ;; chance of dropped a fruit
+                (if (= (uniform-int 0 20) 0)
+                  ;; make the fruit item and find an adjacent free cell to drop it into
+                  (let [item    (assoc (ig/id->item (get cell :fruit-type)) :rot-time (+ (get-time state) (uniform-int 10 30)))
+                        adj-xys (remove (fn [[x y]] (or (not (xy-in-viewport? state x y))
+                                                         (type->collide?
+                                                           (get (get-cell state x y) :type))))
+                                        (adjacent-xys x y))]
+                    (info "dropping fruit" item "at [" x y "]" adj-xys)
+                    state
+                    #_(if (seq adj-xys)
+                      ;; drop the fruit into the cell
+                      (apply conj-in-cell-items state item (dg/rand-nth adj-xys))
+                      state))
+                  state)
+                ;; update fire
+                (contains? fire-xys [x y])
                 (-> state
                   (update-cell x y (fn [cell] (update-in cell [:fuel] dec)))
                   ;; chance of fire spreading
                   (arg-when-> [state] (= 0 (uniform-int 0 10))
                     ;; make the fire spread and find an adjacent free cell to spread it into
-                    ((fn [state]
+                    (as-> state
                       (let [adj-xys (filter (fn [[x y]] (type->flammable?
                                                           (get (get-cell state x y) :type)))
                                             (adjacent-xys-ext x y))]
@@ -2184,18 +2177,22 @@
                           ;; spread fire into the cell
                           (let [[x y] (dg/rand-nth adj-xys)]
                             (assoc-cell state x y :type :fire :fuel (uniform-int 10 50)))
-                          state)))))
+                          state))))
                   (arg-when-> [state] (neg? (get cell :fuel 0))
                     ;; extinguish the fire
                     (->
                       (assoc-cell x y :type :dirt)
-                      (dissoc-cell x y :fuel)))))
-            state
-            ;; [x y]s of fire cells in the current place
-            (filter (fn filter-fire-cells
-                      [[x y]]
-                      (= (get (get-cell state x y) :type) :fire))
-                    (viewport-xys state)))))))
+                      (dissoc-cell x y :fuel))))
+                 :else
+                 state)
+            ;; rot fruit
+            (update-cell x y (fn rot-cell-fruit [cell]
+                               (update-in cell [:items] (fn [items] (vec
+                                 (remove (fn [item] (< (get item :rot-time (get-time state))
+                                                       (get-time state)))
+                                          items)))))))))
+      state
+      xys)))
 
 (defn update-quests
   "Execute the `pred` function for the current stage of each quest. If 

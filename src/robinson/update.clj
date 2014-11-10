@@ -25,6 +25,7 @@
             clojure.core.memoize
             clojure.edn
             clj-tiny-astar.path
+            [clojure.core.async :as async]
             [clojure.data.generators :as dg]
             [pallet.thread-expr :as tx]
             [clojure.stacktrace :as st]
@@ -170,13 +171,21 @@
             w-height           (get-in state [:world :height])]
         (init-island (get-in state [:world :seed]) ax ay v-width v-height w-width w-height)))))
 
+
+(def save-place-chan (async/chan))
+
+(async/go-loop []
+  (let [[id place] (async/<! save-place-chan)]
+    (info "Saving" id)
+    (spit (format "save/%s.place.edn" (str id))
+          (prn-str place))
+    (recur)))
+
 (defn unload-place
   [state id]
   (info "unloading" id)
-  (spit (format "save/%s.place.edn" (str id))
-        (prn-str (get-in state [:world :places id])))
+  (async/>!! save-place-chan [id (get-in state [:world :places id])])
   (dissoc-in state [:world :places id]))
-
 
 (defn load-unload-places
   [state]

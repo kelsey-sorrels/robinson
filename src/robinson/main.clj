@@ -26,7 +26,7 @@
 (async/go-loop []
   (let [state (async/<! save-chan)]
     (info "World saved at time" (get-in state [:world :time]))
-    (-> (async/<!! save-chan)
+    (-> state
       (get :world)
       prn-str
       (as-> s

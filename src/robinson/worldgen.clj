@@ -54,32 +54,36 @@
                   x (range max-x)]
                 {:type :water}))))
       [])))
-  
+
+
+(def island-node
+  (cliskf/vectorize
+    (cliskf/vlet [c (center (invert (cliskf/offset (cliskf/scale 0.43 (cliskf/v* [0.5 0.5 0.5] cliskp/vsnoise)) cliskf/radius)))]
+      (vcond
+        ;; interior trees/green
+        (cliskf/v+ [-0.7 -0.7 -0.7]  (cliskf/v* c (cliskf/v+ [0.4 0.4 0.4] (cliskf/scale 0.05 cliskp/noise))))
+          [0 0.5 0]
+        ;; interior dirt/brown
+        (cliskf/v+ [-0.6 -0.6 -0.6]  c)
+          [0.3 0.2 0.1]
+        ;; shore/yellow
+        (cliskf/v+ [-0.5 -0.5 -0.5]  c)
+          [0.7 0.6 0.0]
+        ;; surf/light blue
+        (cliskf/v+ [-0.37 -0.37 -0.37]  c)
+          [0 0.5 0.6]
+        ;; else ocean
+        [1 1 1]
+          [0 0.4 0.5]))))
+
+(def island-fns
+  (vec (map cliskn/compile-fn (:nodes island-node))))
+
 (defn init-island
   "Create an island block. `x` and `y` denote the coordinates of the upper left cell in the block."
   [seed x y width height max-x max-y]
   (info "init-island" seed x y width height max-x max-y)
-  (let [_    (cliskp/seed-simplex-noise! seed)
-        node (cliskf/vectorize
-               (cliskf/vlet [c (center (invert (cliskf/offset (cliskf/scale 0.43 (cliskf/v* [0.5 0.5 0.5] cliskp/vsnoise)) cliskf/radius)))]
-                 (vcond
-                   ;; interior trees/green
-                   (cliskf/v+ [-0.7 -0.7 -0.7]  (cliskf/v* c (cliskf/v+ [0.4 0.4 0.4] (cliskf/scale 0.05 cliskp/noise))))
-                     [0 0.5 0]
-                   ;; interior dirt/brown
-                   (cliskf/v+ [-0.6 -0.6 -0.6]  c)
-                     [0.3 0.2 0.1]
-                   ;; shore/yellow
-                   (cliskf/v+ [-0.5 -0.5 -0.5]  c)
-                     [0.7 0.6 0.0]
-                   ;; surf/light blue
-                   (cliskf/v+ [-0.37 -0.37 -0.37]  c)
-                     [0 0.5 0.6]
-                   ;; else ocean
-                   [1 1 1]
-                     [0 0.4 0.5])))
-        fns  (vec (map cliskn/compile-fn (:nodes node)))]
-    (add-extras
+  (let [_    (cliskp/seed-simplex-noise! seed)]
       (vec
         (map vec
           (partition max-x
@@ -87,7 +91,7 @@
             (for [y (range y max-y)
                   x (range x max-x)
                   :let [s (vec (map #(.calc ^clisk.IFunction % (double (/ x max-x)) (double (/ y max-y)) (double 0.0) (double 0.0))
-                               fns))]]
+                               island-fns))]]
               (case s
                 [0.0 0.4 0.5] {:type :water}
                 [0.0 0.5 0.6] {:type :surf}
@@ -104,8 +108,7 @@
                                 3 {:type :tall-grass}
                                 4 {:type :short-grass}
                                 5 {:type :gravel}
-                                6 {:type :bamboo})))))))
-    [[[(int (/ width 2)) (int (/ height 2))]      {:type :dirt :starting-location true}]])))
+                                6 {:type :bamboo})))))))))
 
 
 (defn init-random-0

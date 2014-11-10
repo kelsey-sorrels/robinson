@@ -183,11 +183,13 @@
                              (.pack)
                              (.setDefaultCloseOperation JFrame/EXIT_ON_CLOSE)
                              (.setLocationByPlatform true)
+                             (.setLocationRelativeTo nil)
+                             (.setAlwaysOnTop true)
+                             (.setAlwaysOnTop false)
                              (.setVisible true)
                              (.setIconImage icon)
                              (.setFocusTraversalKeysEnabled false)
                              (.setResizable false)
-                             (.setLocationRelativeTo nil)
                              (.pack))]
       (reify ATerminal
         (get-size [this]

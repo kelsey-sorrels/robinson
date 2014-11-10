@@ -187,6 +187,7 @@
                              (.setIconImage icon)
                              (.setFocusTraversalKeysEnabled false)
                              (.setResizable false)
+                             (.setLocationRelativeTo nil)
                              (.pack))]
       (reify ATerminal
         (get-size [this]

@@ -20,6 +20,16 @@
         (get-in state [:world :viewport])]
     [v-width v-height]))
 
+(defn xy-in-viewport?
+  [state x y]
+  (let [{v-width     :width
+         v-height    :height
+         {v-x :x v-y :y} :pos}
+        (get-in state [:world :viewport])]
+        
+    (xy-in-rect? x y v-x v-y)
+                     v-width v-height))
+
 (defn xy-in-safe-zone?
   "Is `(x,y)` in the viewport bounds defined in the viewport in `state`?"
   [state x y]
@@ -37,7 +47,12 @@
   (let [{v-width     :width
          v-height    :height}
         (get-in state [:world :viewport])]
-    (keyword (format "%d_%d" (int (/ x v-width)) (int (/ y v-height))))))
+    ;(info "xy->place-id")
+    ;(info x)
+    ;(info v-width)
+    ;(info y)
+    ;(info v-height)
+    [(int (/ x v-width)) (int (/ y v-height))]))
 
 (defn get-place
   [state x y]
@@ -52,7 +67,7 @@
   (let [{v-width     :width
          v-height    :height}
         (get-in state [:world :viewport])
-        [px py]      (map read-string (clojure.string/split (name place-id) #"_"))]
+        [px py]      place-id]
     [(* px v-width) (* py v-height)]))
 
 (defn +xy
@@ -72,11 +87,11 @@
         (get-in state [:world :viewport])
         ;; upper left place
         ul-place-id (xy->place-id state v-x v-y)
-        [px py]      (map read-string (clojure.string/split (name ul-place-id) #"_"))]
+        [px py]     ul-place-id]
     [ul-place-id 
-     (keyword (format "%d_%d" (inc px) py))
-     (keyword (format "%d_%d" px       (inc py)))
-     (keyword (format "%d_%d" (inc px) (inc py)))]))
+     [(inc px) py]
+     [px       (inc py)]
+     [(inc px) (inc py)]]))
 
 (defn viewport-xys
   [state]

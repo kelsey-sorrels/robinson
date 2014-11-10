@@ -106,11 +106,15 @@
 (defn get-cell
   "Retrieve the cell at the position `[x y]` in absolute world coordinates. If `[x y]` is outside the bounds
    of the in-memory places, return `nil`."
-  [state x y]
-  (let [place-id (xy->place-id state x y)
-        [ax ay]  (place-id->anchor-xy state place-id)
-        [x y]    [(- y ay) (- x ax)]]
-    (get-in state [:world :places place-id y x])))
+  ([state x y]
+   (let [place-id (xy->place-id state x y)]
+     (get-cell state place-id x y)))
+  ([state place-id x y]
+   (let [[ax ay]  (place-id->anchor-xy state place-id)]
+     (get-cell state place-id ax ay x y)))
+  ([state place-id ax ay x y]
+   (let [[x y]    [(- y ay) (- x ax)]]
+     (get-in state [:world :places place-id y x]))))
 
 (defn update-cell
   [state x y f]

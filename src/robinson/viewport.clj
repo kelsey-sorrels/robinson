@@ -27,8 +27,9 @@
          {v-x :x v-y :y} :pos}
         (get-in state [:world :viewport])]
         
-    (xy-in-rect? x y v-x v-y)
-                     v-width v-height))
+    (xy-in-rect? x y
+                 v-x v-y
+                 v-width v-height)))
 
 (defn xy-in-safe-zone?
   "Is `(x,y)` in the viewport bounds defined in the viewport in `state`?"

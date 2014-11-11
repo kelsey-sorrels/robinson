@@ -756,7 +756,8 @@
                                                  ["~" (rand-nth [:blue :light-blue :dark-blue]) :black]
                                                  ["O"])
                               :dry-hole        ["O"]
-                              ["?"])))
+                              (do (info (format "unknown type: %s %s" (str (get cell :type)) (str cell)))
+                              ["?"]))))
                 shaded-out-char (cond
                                   (not= (cell :discovered) current-time)
                                     (update-in out-char [1] (comp rgb->mono darken-rgb))

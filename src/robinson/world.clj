@@ -113,7 +113,7 @@
    (let [[ax ay]  (place-id->anchor-xy state place-id)]
      (get-cell state place-id ax ay x y)))
   ([state place-id ax ay x y]
-   (let [[x y]    [(- y ay) (- x ax)]]
+   (let [[x y]    [(- x ax) (- y ay)]]
      (get-in state [:world :places place-id y x]))))
 
 (defn update-cell

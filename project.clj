@@ -23,6 +23,7 @@
                  [clj-tiny-astar "0.1.1-SNAPSHOT"]
                  [dorothy "0.0.6"]
                  [com.taoensso/timbre "3.3.1"]
+                 [com.taoensso/nippy "2.7.0"]
                  [org.clojars.folcon/clojure-lanterna "0.9.5"]]
   :main robinson.core
   :repl-init robinson.core

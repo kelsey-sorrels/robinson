@@ -120,14 +120,14 @@
   [state x y f]
   (let [place-id (xy->place-id state x y)
         [ax ay]  (place-id->anchor-xy state place-id)
-        [x y]    [(- y ay) (- x ax)]]
+        [x y]    [(- x ax) (- y ay)]]
     (update-in state [:world :places place-id y x] f)))
 
 (defn assoc-cell
   [state x y & keyvals]
   (let [place-id (xy->place-id state x y)
         [ax ay]  (place-id->anchor-xy state place-id)
-        [x y]    [(- y ay) (- x ax)]]
+        [x y]    [(- x ax) (- y ay)]]
     (reduce (fn [state [k v]]
               (assoc-in state [:world :places place-id y x k] v))
             state
@@ -137,7 +137,7 @@
   [state x y k] 
   (let [place-id (xy->place-id state x y)
         [ax ay]  (place-id->anchor-xy state place-id)
-        [x y]    [(- y ay) (- x ax)]]
+        [x y]    [(- x ax) (- y ay)]]
     (dissoc-in state [:world :places place-id y x k])))
 
 (defn player-cellxy

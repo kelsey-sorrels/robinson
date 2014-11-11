@@ -29,7 +29,10 @@
             [clojure.data.generators :as dg]
             [pallet.thread-expr :as tx]
             [clojure.stacktrace :as st]
-            [taoensso.timbre :as timbre]))
+            [taoensso.timbre :as timbre]
+            [taoensso.nippy :as nippy]
+            [clojure.java.io :as io])
+  (:import [java.io DataInputStream DataOutputStream]))
 
 (timbre/refer-timbre)
 
@@ -158,18 +161,25 @@
       state)))
 
 (defn load-place
+  "Returns a place, not state."
   [state id]
   (info "loading" id)
   ;; load the place into state. From file if exists or gen a new random place.
-  (assoc-in state [:world :places id]
-    (if (.exists (clojure.java.io/as-file (format "save/%s.place.edn" (str id))))
-      (clojure.edn/read-string {:readers {'Monster mg/map->Monster}}
-        (slurp (format "save/%s.place.edn" (str id))))
+  (let [place
+    (if (.exists (io/as-file (format "save/%s.place.edn" (str id))))
+      (log-time "read-string time" ;;(clojure.edn/read-string {:readers {'Monster mg/map->Monster}} s)))
+        (with-open [o (io/input-stream (format "save/%s.place.edn" (str id)))]
+          (nippy/thaw-from-in! (DataInputStream. o))))
       (let [[ax ay]            (place-id->anchor-xy state id)
             [v-width v-height] (viewport-wh state)
             w-width            (get-in state [:world :width])
             w-height           (get-in state [:world :height])]
-        (init-island (get-in state [:world :seed]) ax ay v-width v-height w-width w-height)))))
+        (log-time "init-island time" (init-island (get-in state [:world :seed])
+                                                  ax ay
+                                                  v-width v-height
+                                                 w-width w-height))))]
+      (info "loaded place. width:" (count (first place)) "height:" (count place))
+      place))
 
 
 (def save-place-chan (async/chan))
@@ -177,15 +187,16 @@
 (async/go-loop []
   (let [[id place] (async/<! save-place-chan)]
     (info "Saving" id)
-    (spit (format "save/%s.place.edn" (str id))
-          (prn-str place))
-    (recur)))
+    (with-open [o (io/output-stream (format "save/%s.place.edn" (str id)))]
+      (nippy/freeze-to-out! (DataOutputStream. o) place)))
+    (recur))
 
 (defn unload-place
   [state id]
   (info "unloading" id)
+  (log-time "unloading"
   (async/>!! save-place-chan [id (get-in state [:world :places id])])
-  (dissoc-in state [:world :places id]))
+  (dissoc-in state [:world :places id])))
 
 (defn load-unload-places
   [state]
@@ -202,7 +213,9 @@
       (as-> state
         (reduce unload-place state places-to-unload))
       (as-> state
-        (reduce load-place state places-to-load)))))
+        (reduce (fn [state [id place]]
+          (assoc-in state [:world :places id] place))
+          state (pmap (fn [id] [id (load-place state id)]) places-to-load))))))
 
 (defn move-outside-safe-zone
   "Move the player when they are near the edge of the map.
@@ -981,7 +994,7 @@
                                     (with-out-str (pprint (-> state :world :places orig-place-id))))
             ;; load the place into state. From file if exists or gen a new random place.
             state             (assoc-in state [:world :places dest-place-id]
-                                (if (.exists (clojure.java.io/as-file (format "save/%s.place.edn" (str dest-place-id))))
+                                (if (.exists (io/as-file (format "save/%s.place.edn" (str dest-place-id))))
                                   (clojure.edn/read-string {:readers {'Monster mg/map->Monster}}
                                     (slurp (format "save/%s.place.edn" (str dest-place-id))))
                                   (init-random-n (read-string (name dest-place-id)))))
@@ -2529,7 +2542,7 @@
             (update-quests)
             (arg-when-> [state] (contains? (-> state :world :player :status) :dead)
               ((fn [state]
-                (.delete (clojure.java.io/file "save/world.edn"))
+                (.delete (io/file "save/world.edn"))
                 state))
               (update-in [:world :player :status]
                (fn [status]

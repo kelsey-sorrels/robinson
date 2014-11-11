@@ -84,14 +84,13 @@
   [seed x y width height max-x max-y]
   (info "init-island" seed x y width height max-x max-y)
   (let [_    (cliskp/seed-simplex-noise! seed)]
-      (vec
-        (map vec
-          (partition max-x
-            (log-time "for"
-            (for [y (range y max-y)
-                  x (range x max-x)
-                  :let [s (vec (map #(.calc ^clisk.IFunction % (double (/ x max-x)) (double (/ y max-y)) (double 0.0) (double 0.0))
-                               island-fns))]]
+    (binding [clisk/*anti-alias* 0]
+    (vec
+     (pmap vec
+       (partition width
+         (map (fn [[x y]]
+            (let [s (mapv #(.calc ^clisk.IFunction % (double (/ x max-x)) (double (/ y max-y)) (double 0.0) (double 0.0))
+                              island-fns)]
               (case s
                 [0.0 0.4 0.5] {:type :water}
                 [0.0 0.5 0.6] {:type :surf}
@@ -108,7 +107,10 @@
                                 3 {:type :tall-grass}
                                 4 {:type :short-grass}
                                 5 {:type :gravel}
-                                6 {:type :bamboo})))))))))
+                                6 {:type :bamboo}))))
+            (for [y (range y (+ y height))
+                  x (range x (+ x width))]
+              [x y]))))))))
 
 
 (defn init-random-0
@@ -294,7 +296,7 @@
                      [0 0.4 0.5])))
 
         fns  (vec (map cliskn/compile-fn (:nodes node)))]
-    (clisk/show node)
+    (log-time "show-time" (clisk/show node))
     #_(dorun
       (map (comp (partial apply str) println)
         (partition 70

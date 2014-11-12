@@ -223,12 +223,12 @@
         inventory-with-hotkeys (vec (map #(assoc %1 :hotkey %2) inventory (first hotkey-groups)))
         remaining-hotkeys      (set (clojure.string/join (second hotkey-groups)))
         ;; calculate place-id and viewport position using minimal state information
-        place-id               (xy->place-id {:world {:viewport {:width width :height height}}} x y)
         
         starting-pos           (find-starting-pos seed max-x max-y)
         viewport-state         {:world {:viewport {:width width :height height}}}
-        [vx vy]                (place-id->anchor-xy viewport-state
-                                                    (apply xy->place-id viewport-state (pos->xy starting-pos)))
+        place-id               (apply xy->place-id viewport-state (pos->xy starting-pos))
+        [sx sy]                (pos->xy starting-pos)
+        [vx vy]                [(int (- sx (/ width 2))) (int (- sy (/ height 2)))]
         _ (debug "starting-pos" starting-pos)
         place-0                (init-island seed vx vy width height max-x max-y)
         fruit-ids              [:red-fruit :orange-fruit :yellow-fruit :green-fruit :blue-fruit :purple-fruit :white-fruit :black-fruit]

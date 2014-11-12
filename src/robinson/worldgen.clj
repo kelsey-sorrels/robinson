@@ -4,6 +4,7 @@
         robinson.common
         robinson.viewport
         robinson.world
+        [robinson.lineofsight :exclude [-main]]
         robinson.npc
         [robinson.mapgen :exclude [-main]])
   (:require 
@@ -78,6 +79,25 @@
 
 (def island-fns
   (vec (map cliskn/compile-fn (:nodes island-node))))
+
+(defn find-starting-pos [seed max-x max-y]
+  (let [angle (dg/rand-nth (range (* 2 Math/PI)))
+        radius (/ (min max-x max-y) 2)
+        [cx cy] [(/ max-x 2) (/ max-y 2)]
+        [x y]   [(+ (* radius (Math/cos angle)) cx)
+                 (+ (* radius (Math/sin angle)) cy)]
+        points  (line-segment [x y] [cx cy])
+        samples (take-nth 5 points)
+        _       (cliskp/seed-simplex-noise! seed)
+        non-water-samples (remove
+          (fn [[x y]]
+            (let [s (mapv #(.calc ^clisk.IFunction % (double (/ x max-x)) (double (/ y max-y)) (double 0.0) (double 0.0))
+                              island-fns)]
+            (or (= s [0.0 0.4 0.5])
+                (= s [0.0 0.5 0.6]))))
+          samples)
+        [sx sy] (first non-water-samples)]
+    (xy->pos sx sy)))
 
 (defn init-island
   "Create an island block. `x` and `y` denote the coordinates of the upper left cell in the block."
@@ -204,9 +224,11 @@
         remaining-hotkeys      (set (clojure.string/join (second hotkey-groups)))
         ;; calculate place-id and viewport position using minimal state information
         place-id               (xy->place-id {:world {:viewport {:width width :height height}}} x y)
-        [vx vy]                (place-id->anchor-xy {:world {:viewport {:width width :height height}}} place-id)
-        starting-pos           {:x (int (+ vx (/ width 2)))
-                                :y (int (+ vy (/ height 2)))}
+        
+        starting-pos           (find-starting-pos seed max-x max-y)
+        viewport-state         {:world {:viewport {:width width :height height}}}
+        [vx vy]                (place-id->anchor-xy viewport-state
+                                                    (apply xy->place-id viewport-state (pos->xy starting-pos)))
         _ (debug "starting-pos" starting-pos)
         place-0                (init-island seed vx vy width height max-x max-y)
         fruit-ids              [:red-fruit :orange-fruit :yellow-fruit :green-fruit :blue-fruit :purple-fruit :white-fruit :black-fruit]

@@ -98,7 +98,8 @@
         world (if (.exists (clojure.java.io/file "save/world.edn"))
                 (clojure.edn/read-string {:readers {'robinson.monstergen.Monster map->Monster}}
                   (slurp "save/world.edn"))
-                (init-world (dg/long)))
+                {:current-state :start
+                 :time 0})
         ;; load quests
         _ (doall (map #(load-file (.getPath %))
                        (filter (fn [file] (.endsWith (.getPath file) ".clj"))
@@ -123,8 +124,7 @@
                                                (get settings :windows-font)
                                                (get settings :else-font)
                                                (get settings :font-size)))
-        state {:world world :screen terminal :quests quest-map :dialog dialog :data data :settings settings}
-        state (reduce (fn [state _] (add-npcs state 1)) state (range 5))]
+        state {:world world :screen terminal :quests quest-map :dialog dialog :data data :settings settings}]
     ;; tick once to render frame
     (tick state \.))))
 

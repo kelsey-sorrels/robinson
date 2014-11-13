@@ -4,17 +4,27 @@
         robinson.common
         robinson.viewport
         robinson.world
+        robinson.player
         [robinson.lineofsight :exclude [-main]]
         robinson.npc
-        [robinson.mapgen :exclude [-main]])
+        [robinson.mapgen :exclude [-main]]
+        clojure.contrib.core)
   (:require 
             [robinson.itemgen :as ig]
+            [clojure.core.async :as async]
+            [clojure.java.io :as io]
             [clojure.data.generators :as dg]
             [taoensso.timbre :as timbre]
             [clisk.core :as clisk]
             [clisk.patterns :as cliskp]
             [clisk.node :as cliskn]
-            [clisk.functions :as cliskf]))
+            [clisk.functions :as cliskf]
+            [taoensso.timbre :as timbre]
+            [pallet.thread-expr :as tx]
+            [taoensso.nippy :as nippy])
+  (:import [java.io DataInputStream DataOutputStream]))
+
+
 
 (timbre/refer-timbre)
 
@@ -234,67 +244,127 @@
         fruit-ids              [:red-fruit :orange-fruit :yellow-fruit :green-fruit :blue-fruit :purple-fruit :white-fruit :black-fruit]
         poisoned-fruit         (set (take (/ (count fruit-ids) 2) (dg/shuffle fruit-ids)))
         skin-identifiable      (set (take (/ (count poisoned-fruit) 2) (dg/shuffle poisoned-fruit)))
-        tongue-identifiable    (set (take (/ (count poisoned-fruit) 2) (dg/shuffle poisoned-fruit)))]
+        tongue-identifiable    (set (take (/ (count poisoned-fruit) 2) (dg/shuffle poisoned-fruit)))
+        world
+          {:seed seed
+           :block-size {:width width :height height}
+           :width max-x
+           :height max-y
+           :viewport {
+             :width width
+             :height height
+             :pos {:x vx :y vy}}
+           :places {place-id place-0}
+                    ;:1 (init-place-1)}
+           :current-place :0_0
+           :time 0
+           :current-state :start
+           :selected-hotkeys #{}
+           :remaining-hotkeys remaining-hotkeys
+           :log []
+           :ui-hint nil
+           :dialog-log []
+           :player {
+                    :id :player
+                    :name "Player"
+                    :race :human
+                    :class :ranger
+                    :movement-policy :entourage
+                    :in-party? true
+                    :inventory inventory-with-hotkeys
+                    :speed 1
+                    :hp 10
+                    :max-hp 10
+                    :will-to-live 100
+                    :max-will-to-live 100
+                    :$ 50
+                    :xp 0
+                    :level 0
+                    :hunger 0
+                    :max-hunger 100
+                    :thirst 0
+                    :max-thirst 100
+                    :pos starting-pos
+                    :place :0_0
+                    :body-parts #{:head :neck :face :abdomen :arm :leg :foot}
+                    :attacks #{:punch}
+                    :status #{}
+                    :stats {
+                      :num-animals-killed       {}
+                      :num-items-crafted        {}
+                      :num-items-harvested      {}
+                      :num-kills-by-attack-type {}
+                      :num-items-eaten          {}}
+                    ;; map from body-part to {:time <int> :damage <float>}
+                    :wounds {}}
+           :fruit {
+             :poisonous           poisoned-fruit
+             :skin-identifiable   skin-identifiable
+             :tongue-identifiable tongue-identifiable
+             :identified          #{}
+           }
+           :quests {}
+           :npcs []}]
+    world))
 
-  {:seed seed
-   :block-size {:width width :height height}
-   :width max-x
-   :height max-y
-   :viewport {
-     :width width
-     :height height
-     :pos {:x vx :y vy}}
-   :places {place-id place-0}
-            ;:1 (init-place-1)}
-   :current-place :0_0
-   :time 0
-   :current-state :start
-   :selected-hotkeys #{}
-   :remaining-hotkeys remaining-hotkeys
-   :log []
-   :ui-hint nil
-   :dialog-log []
-   :player {
-            :id :player
-            :name "Player"
-            :race :human
-            :class :ranger
-            :movement-policy :entourage
-            :in-party? true
-            :inventory inventory-with-hotkeys
-            :speed 1
-            :hp 10
-            :max-hp 10
-            :will-to-live 100
-            :max-will-to-live 100
-            :$ 50
-            :xp 0
-            :level 0
-            :hunger 0
-            :max-hunger 100
-            :thirst 0
-            :max-thirst 100
-            :pos starting-pos
-            :place :0_0
-            :body-parts #{:head :neck :face :abdomen :arm :leg :foot}
-            :attacks #{:punch}
-            :status #{}
-            :stats {
-              :num-animals-killed       {}
-              :num-items-crafted        {}
-              :num-items-harvested      {}
-              :num-kills-by-attack-type {}
-              :num-items-eaten          {}}
-            ;; map from body-part to {:time <int> :damage <float>}
-            :wounds {}}
-   :fruit {
-     :poisonous           poisoned-fruit
-     :skin-identifiable   skin-identifiable
-     :tongue-identifiable tongue-identifiable
-     :identified          #{}
-   }
-   :quests {}
-   :npcs []}))
+
+
+(defn load-place
+  "Returns a place, not state."
+  [state id]
+  (info "loading" id)
+  ;; load the place into state. From file if exists or gen a new random place.
+  (let [place
+    (if (.exists (io/as-file (format "save/%s.place.edn" (str id))))
+      (log-time "read-string time" ;;(clojure.edn/read-string {:readers {'Monster mg/map->Monster}} s)))
+        (with-open [o (io/input-stream (format "save/%s.place.edn" (str id)))]
+          (nippy/thaw-from-in! (DataInputStream. o))))
+      (let [[ax ay]            (place-id->anchor-xy state id)
+            [v-width v-height] (viewport-wh state)
+            w-width            (get-in state [:world :width])
+            w-height           (get-in state [:world :height])]
+        (log-time "init-island time" (init-island (get-in state [:world :seed])
+                                                  ax ay
+                                                  v-width v-height
+                                                 w-width w-height))))]
+      (info "loaded place. width:" (count (first place)) "height:" (count place))
+      place))
+
+(def save-place-chan (async/chan))
+
+(async/go-loop []
+  (let [[id place] (async/<! save-place-chan)]
+    (info "Saving" id)
+    (with-open [o (io/output-stream (format "save/%s.place.edn" (str id)))]
+      (nippy/freeze-to-out! (DataOutputStream. o) place)))
+    (recur))
+
+(defn unload-place
+  [state id]
+  (info "unloading" id)
+  (log-time "unloading"
+  (async/>!! save-place-chan [id (get-in state [:world :places id])])
+  (dissoc-in state [:world :places id])))
+
+(defn load-unload-places
+  [state]
+  (let [[x y]             (player-xy state)
+        loaded-place-ids  (keys (get-in state [:world :places]))
+        visible-place-ids (visible-place-ids state x y)
+        places-to-load    (clojure.set/difference (set visible-place-ids) (set loaded-place-ids))
+        places-to-unload  (clojure.set/difference (set loaded-place-ids) (set visible-place-ids))]
+    (info "currently loaded places:" loaded-place-ids)
+    (info "visible places:" visible-place-ids)
+    (info "unloading places:" places-to-unload)
+    (info "loading places:" places-to-load)
+    (-> state
+      (as-> state
+        (reduce unload-place state places-to-unload))
+      (as-> state
+        (reduce (fn [state [id place]]
+          (assoc-in state [:world :places id] place))
+          state (pmap (fn [id] [id (load-place state id)]) places-to-load))))))
+
 
 (defn -main [& args]
   (let [_ (cliskp/seed-simplex-noise!)

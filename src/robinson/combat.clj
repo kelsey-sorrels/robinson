@@ -500,11 +500,11 @@
             ;; remove defender
             (remove-in (butlast defender-path) (partial = defender))
             ;; maybe add corpse
-            (update-in [:world :places (current-place-id state) y x :items]
-                       (fn [items]
-                         (if (> (dg/float) 0.2)
-                           (conj items (gen-corpse defender))
-                           items)))
+            (update-cell-items state x y
+              (fn [items]
+                (if (> (dg/float) 0.2)
+                  (conj items (gen-corpse defender))
+                  items)))
             (append-log (gen-attack-message attacker
                                             defender
                                             attack

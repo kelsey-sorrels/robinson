@@ -100,12 +100,12 @@
 (defn- place-cell-type
   [state id]
     (let [[x y] (player-xy state)]
-      (assoc-in state [:world :places (current-place-id state) y x :type] id)))
+      (assoc-cell state x y :type id)))
   
 (defn- place-drop
   [state id]
   (let [[x y] (player-xy state)]
-    (conj-in state [:world :places (current-place-id state) y x :items] (id->item id))))
+    (conj-cell-items state x y (id->item id))))
   
 (defn- add-by-ids
   [state ids place]

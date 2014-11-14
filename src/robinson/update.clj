@@ -2480,7 +2480,10 @@
             (update-quests)
             (arg-when-> [state] (contains? (-> state :world :player :status) :dead)
               ((fn [state]
-                (.delete (io/file "save/world.edn"))
+                (->>
+                  (file-seq (io/file "save"))
+                  (filter (fn [file] (re-matches #".*edn" (.getName file))))
+                  (map (fn [file] (.delete file))))
                 state))
               (update-in [:world :player :status]
                (fn [status]

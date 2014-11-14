@@ -128,6 +128,14 @@
         [x y]    [(- x ax) (- y ay)]]
     (update-in state [:world :places place-id y x] f)))
 
+(defn update-cell-items
+  [state x y f]
+  (update-cell state x y (fn [cell] (assoc cell :items (f (or (get cell :items) []))))))
+
+(defn conj-cell-items
+  [state x y item]
+  (update-cell-items x y (fn [items] (conj items item))))
+
 (defn assoc-cell
   [state x y & keyvals]
   (let [place-id (xy->place-id state x y)

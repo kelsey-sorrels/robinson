@@ -810,7 +810,7 @@
       nil)
       
     ;; draw npcs
-    (let [place-npcs (npcs-at-current-place state)
+    (let [place-npcs (npcs-in-viewport state)
           ;_ (debug "place-npcs" place-npcs)
           pos (-> state :world :player :pos)
           get-cell (memoize (fn [x y] (get-cell state x y)))]

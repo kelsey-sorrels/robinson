@@ -776,19 +776,16 @@
 (defn quaff-only-adjacent-cell
   "Drink all adjacent cells."
   [state]
-  (let [place (get-in state [:world :places (current-place-id state)])
-        [place water] 
-        (reduce (fn [[place water] [x y]]
-                  (info "testing cell for water:" (get-cell place x y))
-                  (if (contains? (get-cell place x y) :water)
-                    [(update-in-xy place x y (fn [cell] (assoc cell :water 0))) (+ water (get (get-cell place x y) :water 0))]
-                    [place water]))
-                [place 0]
+  (let [[state water] 
+        (reduce (fn [[state water] [x y]]
+                  (info "testing cell for water:" (get-cell state x y))
+                  (if (contains? (get-cell state x y) :water)
+                    [(update-cell state x y (fn [cell] (assoc cell :water 0))) (+ water (get (get-cell state x y) :water 0))]
+                    [state water]))
+                [state 0]
                 (player-adjacent-xys state))]
     (info "player-adj-xys" (player-adjacent-xys state))
-    (-> state
-      (assoc-in [:world :places (current-place-id state)] place)
-      (update-in [:world :player :thirst] (fn [thirst] (min 0 (- thirst water)))))))
+    (update-in state [:world :player :thirst] (fn [thirst] (min 0 (- thirst water))))))
 
 (defn quaff-select
   "Select the next state depending on what quaffable items are available."
@@ -1761,7 +1758,7 @@
    from the npc to the target. Returns the moved npc and not the updated state.
    `target` is a map with the keys `:x` and `:y`."
   [state npc target]
-    (let [npcs                   (npcs-at-current-place state)
+    (let [npcs                   (npcs-in-viewport state)
           ;_                      (debug "meta" (-> move-to-target var meta))
           ;_                      (debug "move-to-target npc" npc "target" target)
           npc-pos                (get npc :pos)
@@ -1830,7 +1827,7 @@
    from the npc to the target. Returns the moved npc and not the updated state.
    `target` is a map with the keys `:x` and `:y`."
   [state npc target]
-    (let [npcs                   (npcs-at-current-place state)
+    (let [npcs                   (npcs-in-viewport state)
           npc-pos                (get npc :pos)
           npc-pos-vec            [(npc-pos :x) (npc-pos :y)]
           [npc-x npc-y]          [(npc-pos :x) (npc-pos :y)]
@@ -1985,14 +1982,11 @@
   {:pre  [(vector? (get-in state [:world :npcs]))]
    :post [(vector? (get-in % [:world :npcs]))]}
   ;; do npc->player attacks if adjacent
-  (let [current-place-id (current-place-id state)
-        ;; increase all npcs energy by their speed value and have any adjacent npcs attack the player.
+  (let [;; increase all npcs energy by their speed value and have any adjacent npcs attack the player.
         state (reduce
                 (fn [state npc]
                   ;; only update npcs that are in the current place and have an :energy value.
-                  (if (and (= (get npc :place)
-                              current-place-id)
-                           (contains? npc :energy))
+                  (if (contains? npc :energy)
                     (let [npc-keys (npc->keys state npc)
                           ;; add speed value to energy.
                           ;_ (trace "adding speed to" (select-keys npc [:race :place :pos :speed :energy]))
@@ -2005,7 +1999,7 @@
                         state))
                     state))
                 state
-                (get-in state [:world :npcs]))]
+                (npcs-in-viewport state))]
     (loop [state          state
            ;; find all npcs in the current place with enough energy to move (energy > 1).
            ;;; Since most npcs are moving toward the player, sort by distance
@@ -2014,9 +2008,8 @@
            ;;; to fill the gap.
            remaining-npcs (sort-by (fn [npc] (distance-from-player state (get npc :pos)))
                                    (filter (fn [npc] (and (contains? npc :energy)
-                                                          (> (get npc :energy) 1)
-                                                          (= (get npc :place) current-place-id)))
-                                     (get-in state [:world :npcs])))
+                                                          (> (get npc :energy) 1)))
+                                     (npcs-in-viewport state)))
            i 5]
       ;(info "looping over" (count remaining-npcs) "npcs")
       (if (or (empty? remaining-npcs)
@@ -2073,9 +2066,8 @@
                            map-result)
               remaining-npcs (sort-by (fn [npc] (distance-from-player state (get npc :pos)))
                                (filter (fn [npc] (and (contains? npc :energy)
-                                                      (> (get npc :energy) 1)
-                                                      (= (get npc :place) current-place-id)))
-                                 (get-in state [:world :npcs])))]
+                                                      (> (get npc :energy) 1)))
+                                 (npcs-in-viewport state)))]
               ;_ (trace "count remaining npcs" (count remaining-npcs))]
         (recur state remaining-npcs (dec i)))))))
 

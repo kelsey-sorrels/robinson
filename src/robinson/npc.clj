@@ -46,10 +46,10 @@
 
 
 
-(defn npcs-at-current-place
+(defn npcs-in-viewport
   "Seq of npcs at the current place."
   [state]
-  (filter (fn [npc] (= (get npc :place) (current-place-id state)))
+  (filter (fn [npc] (apply xy-in-viewport? state (pos->xy (get npc :pos))))
           (get-in state [:world :npcs])))
 
 (defn npc-by-id
@@ -66,11 +66,10 @@
 
 (defn add-npc
   "Add an npc to the specified place and position."
-  ([state place-id npc x y]
-  (add-npc state place-id npc x y nil))
-  ([state place-id npc x y buy-fn-path]
+  ([state npc x y]
+  (add-npc state npc x y nil))
+  ([state npc x y buy-fn-path]
   (conj-in state [:world :npcs] (assoc npc :pos {:x x :y y}
-                                           :place place-id
                                            :inventory (if (contains? npc :inventory)
                                                         (npc :inventory)
                                                         [])
@@ -149,8 +148,7 @@
   (if-let [[cell x y] (first (dg/shuffle (filter (fn [[cell x y]] (not (collide? state x y {:include-npcs? true
                                                                                        :collide-water? false})))
                                            (with-xy (player-place state)))))]
-    (add-npc state (-> state :world :current-place)
-                   (gen-monster level (cell :type))
+    (add-npc state (gen-monster level (cell :type))
                    x
                    y)
     state))
@@ -159,9 +157,7 @@
   "Randomly add monsters to the current place."
   [state level]
   (if (and (< (uniform-int 100) 2)
-           (< (count (filter (fn [npc] (= (-> state :world :current-place)
-                                          (get npc :place)))
-                             (-> state :world :npcs)))
+           (< (count (-> state :world :npcs))
               20))
     (add-npcs state level)
     state))

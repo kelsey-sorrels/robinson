@@ -815,15 +815,15 @@
           pos (-> state :world :player :pos)
           get-cell (memoize (fn [x y] (get-cell state x y)))]
       (doall (map (fn [npc]
-                    (let [x       (- (-> npc :pos :x)
-                                     (-> state :world :viewport :pos :x))
-                          y       (- (-> npc :pos :y)
-                                     (-> state :world :viewport :pos :x))
+                    (let [x       (-> npc :pos :x)
+                          y       (-> npc :pos :y)
+                          vx      (- x (-> state :world :viewport :pos :x))
+                          vy      (- y (-> state :world :viewport :pos :y))
                           visible 
                                   (and (not (farther-than?
                                               pos
                                               {:x x :y y}
-                                              3))
+                                              5))
                                        (visible? get-cell
                                                  cell-blocking?
                                                  (pos :x)
@@ -833,8 +833,8 @@
                       ;(debug "npc@" x y "visible?" visible)
                       (when visible
                         (apply put-string screen
-                                            (-> npc :pos :x)
-                                            (-> npc :pos :y)
+                                            vx
+                                            vy
                                             (case (get npc :race)
                                               :rat       ["r"]
                                               :spider    ["S"]

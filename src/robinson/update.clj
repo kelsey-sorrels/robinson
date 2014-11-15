@@ -156,7 +156,7 @@
     (if (> $ 0)
       (-> state
         (append-log (format "You pick up %d cash." $))
-        (assoc-in-cell-items state x y
+        (assoc-cell-items state x y
           (or non-cash-items []))
         (update-in [:world :player :$]
           (fn [player-$] (+ $ player-$))))
@@ -274,7 +274,7 @@
            (player-mounted-on-raft? state))
         (-> state
           (dec-cell-item-count :raft)
-          (conj-in-cell-items (ig/id->item :raft) target-x target-y)
+          (conj-cell-items target-x target-y (ig/id->item :raft))
           (assoc-in [:world :player :pos :x] target-x)
           (assoc-in [:world :player :pos :y] target-y)
           ;; rafting = more hunger
@@ -464,7 +464,7 @@
                           ;; dup the item into inventory with hotkey
                           (add-to-inventory selected-items)
                           ;; remove the item from cell
-                          (assoc-in-cell-items state not-selected-items)
+                          (assoc-current-cell-items not-selected-items)
                           ;;;; hotkey is no longer available
                           (assoc-in [:world :remaining-hotkeys]
                               remaining-hotkeys)
@@ -486,10 +486,7 @@
             new-state (-> state
               (append-log (format "You let the %s fall to the ground" (lower-case (get item :name))))
               ;; dup the item into cell
-              (update-in-cell-items state x y
-                (fn [prev-items]
-                  ;; wipe :wielded status from all dropped items
-                  (conj prev-items (dissoc item :wielded))))
+              (conj-cell-items x y (dissoc item :wielded))
               ;; remove the item from inventory
               (assoc-in [:world :player :inventory]
                (vec (concat (subvec items 0 item-index)
@@ -1319,32 +1316,32 @@
         ;; do attack
         (-> state
           (attack [:world :player] (npc->keys state (get obj :npc)) item)
-          (conj-in-cell-items item (get-in obj [:pos :x]) (get-in obj [:pos :y]))
+          (conj-cell-items (get-in obj [:pos :x]) (get-in obj [:pos :y]) item)
           (dec-item-count (get item :id)))
       (contains? obj :cell)
         ;; drop item into cell before hitting colliding cell
         (-> state
           (arg-if-> [state] (= (get-in obj [:cell :type]) :fire)
             (update-cell (get-in obj [:pos :x]) (get-in obj [:pos :y]) (fn [cell] (update-in cell [:fuel] (partial + (ig/id->fuel (get item :id))))))
-            (conj-in-cell-items (if (get item :rot-time)
-                                  (assoc item :rot-time (inc (get-time state)))
-                                  item)
-                                (+ (get-in obj [:pos :x])
-                                   (case direction
-                                     :left 1
-                                     :right -1
-                                     0))
-                                (+ (get-in obj [:pos :y])
-                                   (case direction
-                                     :up 1
-                                     :down -1
-                                     0))))
+            (conj-cell-items (+ (get-in obj [:pos :x])
+                                (case direction
+                                  :left 1
+                                  :right -1
+                                  0))
+                             (+ (get-in obj [:pos :y])
+                                (case direction
+                                  :up 1
+                                  :down -1
+                                  0))
+                             (if (get item :rot-time)
+                               (assoc item :rot-time (inc (get-time state)))
+                               item)))
           (dec-item-count (get item :id)))
       :else
         ;; didn't hit anything, drop into cell at max-distance
         (let [[x y] (nth (direction->xys state direction) throw-distance)]
           (-> state
-            (conj-in-cell-items item x y)
+            (conj-cell-items x y item)
             (dec-item-count (get item :id)))))))
 
 (defn throw-left
@@ -2118,7 +2115,7 @@
                     state
                     #_(if (seq adj-xys)
                       ;; drop the fruit into the cell
-                      (apply conj-in-cell-items state item (dg/rand-nth adj-xys))
+                      (apply conj-cell-items state (dg/rand-nth adj-xys) item)
                       state))
                   state)
                 ;; update fire

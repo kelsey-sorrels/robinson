@@ -128,14 +128,6 @@
         [x y]    [(- x ax) (- y ay)]]
     (update-in state [:world :places place-id y x] f)))
 
-(defn update-cell-items
-  [state x y f]
-  (update-cell state x y (fn [cell] (assoc cell :items (f (or (get cell :items) []))))))
-
-(defn conj-cell-items
-  [state x y item]
-  (update-cell-items x y (fn [items] (conj items item))))
-
 (defn assoc-cell
   [state x y & keyvals]
   (let [place-id (xy->place-id state x y)
@@ -152,6 +144,54 @@
         [ax ay]  (place-id->anchor-xy state place-id)
         [x y]    [(- x ax) (- y ay)]]
     (dissoc-in state [:world :places place-id y x k])))
+
+(defn update-cell-items
+  [state x y f]
+  (update-cell state x y (fn [cell] (assoc cell :items (f (or (get cell :items) []))))))
+
+(defn conj-cell-items
+  [state x y item]
+  (update-cell-items state x y (fn [items] (conj items item))))
+
+(defn assoc-cell-items
+  "Adds an item to [x y] in the current place. Simple, right?"
+  [state x y items]
+  (info "Adding" items "to cell @" x y)
+  (assoc-cell state x y :items items))
+
+(defn conj-current-cell-items
+  "Adds an item to the player's cell's items."
+  [state item]
+  (let [x (-> state :world :player :pos :x)
+        y (-> state :world :player :pos :y)]
+    (conj-cell-items state x y item)))
+
+(defn assoc-current-cell-items
+  "Replaces items in player's current cell."
+  [state items]
+  (let [x (-> state :world :player :pos :x)
+        y (-> state :world :player :pos :y)]
+    (assoc-cell-items state x y items)))
+
+(defn dec-cell-item-count
+  "Decreases the count of an item in the player's cell."
+  [state id]
+  (let [[cell x y] (player-cellxy state)
+        item       (first (filter #(= id (get % :id)) (get cell :items)))
+        item-count (get item :count 1)]
+    (cond
+      (zero? item-count)
+        state
+      (= 1 item-count)
+        (update-cell state x y (fn [cell] (remove-in cell [:items] #(= id (get % :id)))))
+      :else
+        (update-cell state x y (fn [cell] (map-in cell [:items] (fn [item]
+
+      (if (= id (get item :id))
+                                                                       (update-in item [:count] dec)
+
+        item))))))))
+
 
 (defn player-cellxy
   "Retrieve the cell at which the player is located."
@@ -341,49 +381,6 @@
            {}
          :else
            (recur (first xs) (rest xs)))))))
-
-(defn assoc-in-cell-items
-  "Adds an item to [x y] in the current place. Simple, right?"
-  [state x y items]
-  (info "Adding" items "to cell @" x y)
-  (assoc-in state [:world :places (xy->place-id state x y) y x :items] items))
-
-(defn conj-in-cell-items
-  "Adds an item to [x y] in the current place. Simple, right?"
-  [state x y item]
-  (info "Adding" item "to cell @" x y)
-  (conj-in state [:world :places (xy->place-id state x y) y x :items] item))
-
-(defn update-in-cell-items
-  "Adds an item to [x y] in the current place. Simple, right?"
-  [state x y f]
-  (update-in state [:world :places (xy->place-id state x y) y x :items] f))
-
-(defn conj-in-current-cell-items
-  "Adds an item to the player's cell's items."
-  [state item]
-  (let [x (-> state :world :player :pos :x)
-        y (-> state :world :player :pos :y)]
-    (conj-in-cell-items state item x y)))
-
-(defn dec-cell-item-count
-  "Decreases the count of an item in the player's cell."
-  [state id]
-  (let [[cell x y] (player-cellxy state)
-        item       (first (filter #(= id (get % :id)) (get cell :items)))
-        item-count (get item :count 1)]
-    (cond
-      (zero? item-count)
-        state
-      (= 1 item-count)
-        (update-cell state x y (fn [cell] (remove-in cell [:items] #(= id (get % :id)))))
-      :else
-        (update-cell state x y (fn [cell] (map-in cell [:items] (fn [item]
-
-      (if (= id (get item :id))
-                                                                       (update-in item [:count] dec)
-
-        item))))))))
 
 (defn player-adjacent-xys
   [state]

@@ -2110,10 +2110,9 @@
                                                            (get (get-cell state x y) :type))))
                                         (adjacent-xys x y))]
                     (info "dropping fruit" item "at [" x y "]" adj-xys)
-                    state
-                    #_(if (seq adj-xys)
+                    (if (seq adj-xys)
                       ;; drop the fruit into the cell
-                      (apply conj-cell-items state (dg/rand-nth adj-xys) item)
+                      (apply conj-cell-items state (conj (dg/rand-nth adj-xys) item))
                       state))
                   state)
                 ;; update fire

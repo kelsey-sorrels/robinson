@@ -63,6 +63,12 @@
   [grid]
   (mapcat concat (map-indexed (fn [y line] (map-indexed (fn [x cell] [cell x y]) line)) grid)))
 
+(defn rect->xys
+  [[x1 y1] [x2 y2]]
+  (for [y (range (min y1 y2) (max y1 y2))
+        x (range (min x1 x2) (max x1 x2))]
+    [x y]))
+
 
 (defn update-matching-cells
   "Update the cells in place for which (p cell) returns true

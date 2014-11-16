@@ -1765,12 +1765,11 @@
         
           player                 (-> state :world :player)
           player-pos-vec         [(-> player :pos :x) (-> player :pos :y)]
-          place                  [[]]
-          width                  (count (first place))
-          height                 (count place)
+          width                  (get-in state [:world :width])
+          height                 (get-in state [:world :height])
           get-type               (memoize (fn [x y] (do
                                                       ;(debug "traversable?" x y "type" (get-in place [y x :type]))
-                                                      (get-in place [y x :type]))))
+                                                      (or (get (get-cell state x y) :type) :unknown))))
           water-traversable?     (fn water-traversable? [[x y]]
                                    (and (< 0 x width)
                                         (< 0 y height)
@@ -1833,12 +1832,11 @@
         
           player                 (-> state :world :player)
           player-pos-vec         [(-> player :pos :x) (-> player :pos :y)]
-          place                  [[]]
-          width                  (count (first place))
-          height                 (count place)
+          width                  (get-in state [:world :width])
+          height                 (get-in state [:world :height])
           get-type               (memoize (fn [x y] (do
                                                       #_(debug "traversable?" x y "type" (get-in place [y x :type]))
-                                                      (get-in place [y x :type]))))
+                                                      (or (get (get-cell state x y) :type) :unknown))))
           water-traversable?     (fn water-traversable? [[x y]]
                                    (and (< 0 x width)
                                         (< 0 y height)

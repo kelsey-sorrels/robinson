@@ -72,16 +72,19 @@
     (cliskf/vlet [c (center (invert (cliskf/offset (cliskf/scale 0.43 (cliskf/v* [0.5 0.5 0.5] cliskp/vsnoise)) cliskf/radius)))]
       (vcond
         ;; interior trees/green
-        (cliskf/v+ [-0.7 -0.7 -0.7]  (cliskf/v* c (cliskf/v+ [0.4 0.4 0.4] (cliskf/scale 0.05 cliskp/noise))))
+        (cliskf/v+ [-0.7 -0.7 -0.7]  (cliskf/v* c (cliskf/v+ [0.4 0.4 0.4] (cliskf/scale 0.03 cliskp/noise))))
           [0 0.5 0]
+        ;; interior meadows
+        (cliskf/v+ [-0.58 -0.58 -0.58]  (cliskf/v* c (cliskf/v+ [0.4 0.4 0.4] (cliskf/offset [-0.5 -0.5] (cliskf/scale 0.06 cliskp/noise)))))
+          [0.2 0.7 0.2]
         ;; interior dirt/brown
-        (cliskf/v+ [-0.6 -0.6 -0.6]  c)
+        (cliskf/v+ [-0.55 -0.55 -0.55]  c)
           [0.3 0.2 0.1]
         ;; shore/yellow
         (cliskf/v+ [-0.5 -0.5 -0.5]  c)
           [0.7 0.6 0.0]
         ;; surf/light blue
-        (cliskf/v+ [-0.37 -0.37 -0.37]  c)
+        (cliskf/v+ [-0.42 -0.42 -0.42]  c)
           [0 0.5 0.6]
         ;; else ocean
         [1 1 1]
@@ -128,6 +131,12 @@
                 [0.3 0.2 0.1] (case (uniform-int 2)
                                 0 {:type :dirt}
                                 1 {:type :gravel})
+                [0.2 0.7 0.2] (case (uniform-int 5)
+                                0 {:type :dirt}
+                                1 {:type :tall-grass}
+                                2 {:type :tall-grass}
+                                3 {:type :short-grass}
+                                4 {:type :short-grass})
                 [0.0 0.5 0.0] (case (uniform-int 7)
                                 0 {:type :tree}
                                 1 {:type :palm-tree}
@@ -367,28 +376,8 @@
 
 
 (defn -main [& args]
-  (let [_ (cliskp/seed-simplex-noise!)
-        node (cliskf/vectorize
-               (cliskf/vlet [c (center (invert (cliskf/offset (cliskf/scale 0.43 (cliskf/v* [0.5 0.5 0.5] cliskp/vsnoise)) cliskf/radius)))]
-                 (vcond
-                   ;; interior trees/green
-                   (cliskf/v+ [-0.7 -0.7 -0.7]  (cliskf/v* c (cliskf/v+ [0.4 0.4 0.4] (cliskf/scale 0.05 cliskp/noise))))
-                     [0 0.5 0]
-                   ;; interior dirt/brown
-                   (cliskf/v+ [-0.6 -0.6 -0.6]  c)
-                     [0.3 0.2 0.1]
-                   ;; shore/yellow
-                   (cliskf/v+ [-0.5 -0.5 -0.5]  c)
-                     [0.7 0.6 0.0]
-                   ;; surf/light blue
-                   (cliskf/v+ [-0.37 -0.37 -0.37]  c)
-                     [0 0.5 0.6]
-                   ;; else ocean
-                   [1 1 1]
-                     [0 0.4 0.5])))
-
-        fns  (vec (map cliskn/compile-fn (:nodes node)))]
-    (log-time "show-time" (clisk/show node))
+  (let [_ (cliskp/seed-simplex-noise!)]
+    (log-time "show-time" (clisk/show island-node))
     #_(dorun
       (map (comp (partial apply str) println)
         (partition 70
@@ -396,7 +385,7 @@
             (for [y (range 28)
                   x (range 70)
                   :let [[s _ _] (vec (map #(.calc ^clisk.IFunction % (double (/ x 70)) (double (/ y 28)) (double 0.0) (double 0.0))
-                                   fns))]]
+                                   island-fns))]]
               (cond
                 (> s 0.9) \^
                 (> s 0.7) \.

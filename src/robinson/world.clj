@@ -179,6 +179,13 @@
         y (-> state :world :player :pos :y)]
     (assoc-cell-items state x y items)))
 
+(defn player-cellxy
+  "Retrieve the cell at which the player is located."
+  [state]
+  (let [x (-> state :world :player :pos :x)
+        y (-> state :world :player :pos :y)]
+    [(get-cell state x y) x y]))
+
 (defn dec-cell-item-count
   "Decreases the count of an item in the player's cell."
   [state id]
@@ -198,13 +205,6 @@
 
         item))))))))
 
-
-(defn player-cellxy
-  "Retrieve the cell at which the player is located."
-  [state]
-  (let [x (-> state :world :player :pos :x)
-        y (-> state :world :player :pos :y)]
-    [(get-cell state x y) x y]))
 
 (defn adjacent-xys
   [x y]

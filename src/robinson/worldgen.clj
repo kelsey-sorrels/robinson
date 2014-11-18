@@ -71,11 +71,14 @@
   (cliskf/vectorize
     (cliskf/vlet [c (center (invert (cliskf/offset (cliskf/scale 0.43 (cliskf/v* [0.5 0.5 0.5] cliskp/vsnoise)) cliskf/radius)))]
       (vcond
-        ;; interior trees/green
+        ;; interior jungle
         (cliskf/v+ [-0.7 -0.7 -0.7]  (cliskf/v* c (cliskf/v+ [0.4 0.4 0.4] (cliskf/scale 0.03 cliskp/noise))))
+          [0 0.4 0.1]
+        ;; interior trees/green
+        (cliskf/v+ [-0.7 -0.7 -0.7]  (cliskf/v* c (cliskf/v+ [0.4 0.4 0.4] (cliskf/offset [0.5 0.5] (cliskf/scale 0.04 cliskp/noise)))))
           [0 0.5 0]
         ;; interior meadows
-        (cliskf/v+ [-0.58 -0.58 -0.58]  (cliskf/v* c (cliskf/v+ [0.4 0.4 0.4] (cliskf/offset [-0.5 -0.5] (cliskf/scale 0.06 cliskp/noise)))))
+        (cliskf/v+ [-0.56 -0.56 -0.56]  (cliskf/v* c (cliskf/v+ [0.3 0.3 0.3] (cliskf/offset [-0.5 -0.5] (cliskf/scale 0.06 cliskp/noise)))))
           [0.2 0.7 0.2]
         ;; interior dirt/brown
         (cliskf/v+ [-0.55 -0.55 -0.55]  c)
@@ -128,25 +131,35 @@
                 [0.0 0.4 0.5] {:type :water}
                 [0.0 0.5 0.6] {:type :surf}
                 [0.7 0.6 0.0] {:type :sand}
-                [0.3 0.2 0.1] (case (uniform-int 2)
+                [0.3 0.2 0.1] (case (uniform-int 3)
                                 0 {:type :dirt}
                                 1 {:type :gravel})
+                                2 {:type :tall-grass}
                 [0.2 0.7 0.2] (case (uniform-int 5)
                                 0 {:type :dirt}
                                 1 {:type :tall-grass}
                                 2 {:type :tall-grass}
                                 3 {:type :short-grass}
                                 4 {:type :short-grass})
-                [0.0 0.5 0.0] (case (uniform-int 7)
-                                0 {:type :tree}
-                                1 {:type :palm-tree}
-                                2 {:type :fruit-tree :fruit-type (dg/rand-nth [:red-fruit :orange-fruit :yellow-fruit
+                ;; jungle
+                [0.0 0.4 0.1] (case (uniform-int 6)
+                                0 {:type :palm-tree}
+                                1 {:type :fruit-tree :fruit-type (dg/rand-nth [:red-fruit :orange-fruit :yellow-fruit
                                                                                :green-fruit :blue-fruit :purple-fruit
                                                                                :white-fruit :black-fruit])}
-                                3 {:type :tall-grass}
-                                4 {:type :short-grass}
-                                5 {:type :gravel}
-                                6 {:type :bamboo}))))
+                                2 {:type :tall-grass}
+                                3 {:type :short-grass}
+                                4 {:type :gravel}
+                                5 {:type :bamboo})
+                ;; forest
+                [0.0 0.5 0.0] (case (uniform-int 5)
+                                0 {:type :tree}
+                                1 {:type :fruit-tree :fruit-type (dg/rand-nth [:red-fruit :orange-fruit :yellow-fruit
+                                                                               :green-fruit :blue-fruit :purple-fruit
+                                                                               :white-fruit :black-fruit])}
+                                2 {:type :tall-grass}
+                                3 {:type :short-grass}
+                                4 {:type :gravel}))))
             (for [y (range y (+ y height))
                   x (range x (+ x width))]
               [x y]))))))))

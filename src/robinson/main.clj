@@ -23,6 +23,8 @@
 
 (def save-chan (async/chan (async/sliding-buffer 1)))
 
+(def render-chan (async/chan (async/sliding-buffer 1)))
+
 (async/go-loop []
   (let [state (async/<! save-chan)]
     (info "World saved at time" (get-in state [:world :time]))
@@ -33,8 +35,17 @@
         (spit "save/world.edn" s)))
     (recur)))
 
+(async/go-loop []
+  (let [state (async/<! render-chan)]
+    (info "Rendering world at time" (get-in state [:world :time]))
+    (log-time "render" (render state))
+    (recur)))
+
 (defn save-state [state]
   (async/>!! save-chan state))
+  
+(defn render-state [state]
+  (async/>!! render-chan state))
   
 (defn tick
   "The game loop.
@@ -56,7 +67,8 @@
       (log-time "tick"
         (let [new-state (log-time "update-state" (update-state state keyin))]
           (when new-state
-            (log-time "render" (render new-state))
+            #_(log-time "render" (render new-state))
+            (render-state new-state)
             (save-state new-state))
           ;(async/thread (spit "save/world.edn" (with-out-str (pprint (new-state :world)))))
           new-state))

@@ -267,6 +267,7 @@
         poisoned-fruit         (set (take (/ (count fruit-ids) 2) (dg/shuffle fruit-ids)))
         skin-identifiable      (set (take (/ (count poisoned-fruit) 2) (dg/shuffle poisoned-fruit)))
         tongue-identifiable    (set (take (/ (count poisoned-fruit) 2) (dg/shuffle poisoned-fruit)))
+        volcano-xy             [x y]
         world
           {:seed seed
            :block-size {:width width :height height}
@@ -279,6 +280,7 @@
            :places {place-id place-0}
                     ;:1 (init-place-1)}
            :current-place :0_0
+           :volcano-pos (apply xy->pos volcano-xy)
            :time 0
            :current-state :start
            :selected-hotkeys #{}

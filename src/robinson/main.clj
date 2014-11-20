@@ -12,9 +12,12 @@
             [clojure.data.generators :as dg]
             [clojure.stacktrace :as st]
             [robinson.swingterminal :as swingterminal]
+            [clojure.java.io :as io]
             clojure.edn
             [taoensso.timbre :as timbre]
-            [clojure.core.async :as async]))
+            [taoensso.nippy :as nippy]
+            [clojure.core.async :as async])
+  (:import [java.io DataInputStream DataOutputStream]))
 
 
 (timbre/refer-timbre)
@@ -28,17 +31,22 @@
 (async/go-loop []
   (let [state (async/<! save-chan)]
     (info "World saved at time" (get-in state [:world :time]))
-    (-> state
-      (get :world)
-      prn-str
-      (as-> s
-        (spit "save/world.edn" s)))
+    #_(as-> state state
+      (get state :world)
+      (prn-str state)
+      (spit "save/world.edn" state))
+    (try
+      (with-open [o (io/output-stream "save/world.edn")]
+        (nippy/freeze-to-out! (DataOutputStream. o) (get state :world)))
+      (catch Throwable e (error e)))
     (recur)))
 
 (async/go-loop []
   (let [state (async/<! render-chan)]
     (info "Rendering world at time" (get-in state [:world :time]))
-    (log-time "render" (render state))
+    (try
+      (log-time "render" (render state))
+      (catch Throwable e (error e)))
     (recur)))
 
 (defn save-state [state]
@@ -67,9 +75,9 @@
       (log-time "tick"
         (let [new-state (log-time "update-state" (update-state state keyin))]
           (when new-state
-            #_(log-time "render" (render new-state))
+            (do
             (render-state new-state)
-            (save-state new-state))
+            (save-state new-state)))
           ;(async/thread (spit "save/world.edn" (with-out-str (pprint (new-state :world)))))
           new-state))
       (catch Exception e
@@ -108,8 +116,11 @@
         _     (when (get data :seed)
                 (alter-var-root #'dg/*rnd* (constantly (java.util.Random. (get data :seed)))))
         world (if (.exists (clojure.java.io/file "save/world.edn"))
-                (clojure.edn/read-string {:readers {'robinson.monstergen.Monster map->Monster}}
+                #_(clojure.edn/read-string {:readers {'robinson.monstergen.Monster map->Monster}}
                   (slurp "save/world.edn"))
+                (with-open [o (io/input-stream "save/world.edn")]
+                  (nippy/thaw-from-in! (DataInputStream. o)))
+      
                 {:current-state :start
                  :time 0})
         ;; load quests

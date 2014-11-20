@@ -28,6 +28,25 @@
 
 (timbre/refer-timbre)
 
+(defn rand-xy-in-circle
+  [x y max-r]
+  (let [theta (rand-nth (range (* 2 Math/PI)))
+        r     (rand-nth (range max-r))]
+    [(int (+ x (* r (Math/cos theta)))) (int (+ y (* r (Math/sin theta))))]))
+
+(defn line-segments [x1 y1 x2 y2]
+  #_(println "line-segments" x1 y1 x2 y2)
+  (if (not (farther-than? (xy->pos x1 y1) (xy->pos x2 y2) 5))
+    ;; too short to split, return direct line betweem two points.
+    [[x1 y1] [x2 y2]]
+    ;; subdivide
+    (let [mx       (/ (+ x1 x2) 2)
+          my       (/ (+ y1 y2) 2)
+          r        (min 20 (distance (xy->pos x1 y1) (xy->pos mx my)))
+          [rmx rmy] (rand-xy-in-circle mx my (dec r))]
+      (concat (line-segments x1 y1 rmx rmy)
+              (line-segments rmx rmy x2 y2)))))
+
 ;; clisk utils
 (defn invert [a] (cliskf/v+ [1 1 1] (cliskf/v* [-1 -1 -1] a)))
 
@@ -115,6 +134,25 @@
         [sx sy] (first non-water-samples)]
     (xy->pos sx sy)))
 
+(defn find-lava-terminal-pos [seed max-x max-y]
+  (let [angle (dg/rand-nth (range (* 2 Math/PI)))
+        radius (/ (min max-x max-y) 2)
+        [cx cy] [(/ max-x 2) (/ max-y 2)]
+        [x y]   [(+ (* radius (Math/cos angle)) cx)
+                 (+ (* radius (Math/sin angle)) cy)]
+        points  (line-segment [x y] [cx cy])
+        samples  points
+        _       (cliskp/seed-simplex-noise! seed)
+        non-water-samples (remove
+          (fn [[x y]]
+            (let [s (mapv #(.calc ^clisk.IFunction % (double (/ x max-x)) (double (/ y max-y)) (double 0.0) (double 0.0))
+                              island-fns)]
+            (or (= s [0.0 0.4 0.5])
+                (= s [0.0 0.5 0.6]))))
+          samples)
+        [sx sy] (first non-water-samples)]
+    (xy->pos sx sy)))
+
 (defn init-island
   "Create an island block. `x` and `y` denote the coordinates of the upper left cell in the block."
   [seed x y width height max-x max-y]
@@ -133,8 +171,8 @@
                 [0.7 0.6 0.0] {:type :sand}
                 [0.3 0.2 0.1] (case (uniform-int 3)
                                 0 {:type :dirt}
-                                1 {:type :gravel})
-                                2 {:type :tall-grass}
+                                1 {:type :gravel}
+                                2 {:type :tall-grass})
                 [0.2 0.7 0.2] (case (uniform-int 5)
                                 0 {:type :dirt}
                                 1 {:type :tall-grass}
@@ -268,6 +306,10 @@
         skin-identifiable      (set (take (/ (count poisoned-fruit) 2) (dg/shuffle poisoned-fruit)))
         tongue-identifiable    (set (take (/ (count poisoned-fruit) 2) (dg/shuffle poisoned-fruit)))
         volcano-xy             [x y]
+        lava-terminal-pos      (find-lava-terminal-pos seed max-x max-y)
+        lava-segments          (partition 2 (apply line-segments [(first volcano-xy) (second volcano-xy) (get lava-terminal-pos :x) (get lava-terminal-pos :y)]))
+        _                      (info "lava-segments" lava-segments)
+        lava-points            (vec (mapcat first lava-segments))
         world
           {:seed seed
            :block-size {:width width :height height}
@@ -281,6 +323,7 @@
                     ;:1 (init-place-1)}
            :current-place :0_0
            :volcano-pos (apply xy->pos volcano-xy)
+           :lava-points lava-points
            :time 0
            :current-state :start
            :selected-hotkeys #{}

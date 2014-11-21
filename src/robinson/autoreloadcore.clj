@@ -1,7 +1,10 @@
 (ns robinson.autoreloadcore
   (:use ns-tracker.core
         clojure.stacktrace)
-  (:require robinson.main))
+  (:require robinson.main
+            [taoensso.timbre :as timbre]))
+
+(timbre/refer-timbre)
 
 (defn check-namespace-changes [track]
  (try
@@ -9,7 +12,7 @@
      (println "Reloading namespace:" ns-sym)
      (require ns-sym :reload)
      (println "Done."))
-   (catch Throwable e (.printStackTrace e)))
+   (catch Throwable e (error e)))
    (Thread/sleep 500))
 
 (defn start-nstracker []
@@ -38,8 +41,8 @@
         ; tick the old state through the tick-fn to get the new state
         (let [new-state (try
                           ((get-tick-fn) state)
-                          (catch Exception ex
-                            (print-stack-trace ex)
+                          (catch Throwable e
+                            (error e)
                             state))]
           (if (nil? new-state)
             (System/exit 0)

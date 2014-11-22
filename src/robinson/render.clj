@@ -727,6 +727,10 @@
                               :surf            ["~" (if (= (cell :discovered) current-time)
                                                       (rand-nth [:white :light-blue :blue-green])
                                                       :light-blue) :black]
+                              :lava            ["~" (if (= (cell :discovered) current-time)
+                                                      (rand-nth [:red :orange :yellow])
+                                                      :light-blue) :black]
+                              :mountain        ["\u2206" :gray :black] ;; ∆
                               :sand            ["."  :beige      :black]
                               :dirt            ["."  :brown      :black]
                               :gravel          ["."  :gray       :black]

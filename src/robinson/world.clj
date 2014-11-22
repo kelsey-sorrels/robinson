@@ -287,6 +287,8 @@
   (contains? #{:vertical-wall
                :horizontal-wall
                :fire
+               :lava
+               :mountain
                :close-door
                :tree
                :bamboo

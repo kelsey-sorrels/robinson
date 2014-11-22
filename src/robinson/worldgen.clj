@@ -155,49 +155,59 @@
 
 (defn init-island
   "Create an island block. `x` and `y` denote the coordinates of the upper left cell in the block."
-  [seed x y width height max-x max-y]
-  (info "init-island" seed x y width height max-x max-y)
-  (let [_    (cliskp/seed-simplex-noise! seed)]
+  [state x y width height max-x max-y]
+  (info "init-island" x y width height max-x max-y)
+  (let [seed                  (get-in state [:world :seed])
+        _                     (cliskp/seed-simplex-noise! seed)
+        volcano-pos           (get-in state [:world :volcano-pos])
+        lava-xys              (get-in state [:world :lava-points])]
     (binding [clisk/*anti-alias* 0]
     (vec
      (pmap vec
        (partition width
          (map (fn [[x y]]
-            (let [s (mapv #(.calc ^clisk.IFunction % (double (/ x max-x)) (double (/ y max-y)) (double 0.0) (double 0.0))
-                              island-fns)]
-              (case s
-                [0.0 0.4 0.5] {:type :water}
-                [0.0 0.5 0.6] {:type :surf}
-                [0.7 0.6 0.0] {:type :sand}
-                [0.3 0.2 0.1] (case (uniform-int 3)
-                                0 {:type :dirt}
-                                1 {:type :gravel}
-                                2 {:type :tall-grass})
-                [0.2 0.7 0.2] (case (uniform-int 5)
-                                0 {:type :dirt}
-                                1 {:type :tall-grass}
-                                2 {:type :tall-grass}
-                                3 {:type :short-grass}
-                                4 {:type :short-grass})
-                ;; jungle
-                [0.0 0.4 0.1] (case (uniform-int 6)
-                                0 {:type :palm-tree}
-                                1 {:type :fruit-tree :fruit-type (dg/rand-nth [:red-fruit :orange-fruit :yellow-fruit
-                                                                               :green-fruit :blue-fruit :purple-fruit
-                                                                               :white-fruit :black-fruit])}
-                                2 {:type :tall-grass}
-                                3 {:type :short-grass}
-                                4 {:type :gravel}
-                                5 {:type :bamboo})
-                ;; forest
-                [0.0 0.5 0.0] (case (uniform-int 5)
-                                0 {:type :tree}
-                                1 {:type :fruit-tree :fruit-type (dg/rand-nth [:red-fruit :orange-fruit :yellow-fruit
-                                                                               :green-fruit :blue-fruit :purple-fruit
-                                                                               :white-fruit :black-fruit])}
-                                2 {:type :tall-grass}
-                                3 {:type :short-grass}
-                                4 {:type :gravel}))))
+            (cond
+              ;; lava
+              (not-every? #(farther-than? (xy->pos x y) (apply xy->pos %) 3) lava-xys)
+              {:type :lava}
+              (not (farther-than? (xy->pos x y) volcano-pos 7))
+              {:type :mountain}
+              :else
+              (let [s (mapv #(.calc ^clisk.IFunction % (double (/ x max-x)) (double (/ y max-y)) (double 0.0) (double 0.0))
+                                island-fns)]
+                (case s
+                  [0.0 0.4 0.5] {:type :water}
+                  [0.0 0.5 0.6] {:type :surf}
+                  [0.7 0.6 0.0] {:type :sand}
+                  [0.3 0.2 0.1] (case (uniform-int 3)
+                                  0 {:type :dirt}
+                                  1 {:type :gravel}
+                                  2 {:type :tall-grass})
+                  [0.2 0.7 0.2] (case (uniform-int 5)
+                                  0 {:type :dirt}
+                                  1 {:type :tall-grass}
+                                  2 {:type :tall-grass}
+                                  3 {:type :short-grass}
+                                  4 {:type :short-grass})
+                  ;; jungle
+                  [0.0 0.4 0.1] (case (uniform-int 6)
+                                  0 {:type :palm-tree}
+                                  1 {:type :fruit-tree :fruit-type (dg/rand-nth [:red-fruit :orange-fruit :yellow-fruit
+                                                                                 :green-fruit :blue-fruit :purple-fruit
+                                                                                 :white-fruit :black-fruit])}
+                                  2 {:type :tall-grass}
+                                  3 {:type :short-grass}
+                                  4 {:type :gravel}
+                                  5 {:type :bamboo})
+                  ;; forest
+                  [0.0 0.5 0.0] (case (uniform-int 5)
+                                  0 {:type :tree}
+                                  1 {:type :fruit-tree :fruit-type (dg/rand-nth [:red-fruit :orange-fruit :yellow-fruit
+                                                                                 :green-fruit :blue-fruit :purple-fruit
+                                                                                 :white-fruit :black-fruit])}
+                                  2 {:type :tall-grass}
+                                  3 {:type :short-grass}
+                                  4 {:type :gravel})))))
             (for [y (range y (+ y height))
                   x (range x (+ x width))]
               [x y]))))))))
@@ -295,21 +305,24 @@
         ;; calculate place-id and viewport position using minimal state information
         
         starting-pos           (find-starting-pos seed max-x max-y)
-        viewport-state         {:world {:viewport {:width width :height height}}}
-        place-id               (apply xy->place-id viewport-state (pos->xy starting-pos))
+        volcano-xy             [x y]
+        lava-terminal-pos      (find-lava-terminal-pos seed max-x max-y)
+        lava-segments          (partition 2 (apply line-segments [(first volcano-xy) (second volcano-xy) (get lava-terminal-pos :x) (get lava-terminal-pos :y)]))
+        lava-points            (map first lava-segments)
+        _                      (info "lava-points" lava-points)
+        min-state              {:world {:viewport {:width width :height height}
+                                        :seed seed
+                                        :volcano-pos (apply xy->pos volcano-xy)
+                                        :lava-points lava-points}}
+        place-id               (apply xy->place-id min-state (pos->xy starting-pos))
         [sx sy]                (pos->xy starting-pos)
         [vx vy]                [(int (- sx (/ width 2))) (int (- sy (/ height 2)))]
         _ (debug "starting-pos" starting-pos)
-        place-0                (init-island seed vx vy width height max-x max-y)
+        place-0                (init-island min-state vx vy width height max-x max-y)
         fruit-ids              [:red-fruit :orange-fruit :yellow-fruit :green-fruit :blue-fruit :purple-fruit :white-fruit :black-fruit]
         poisoned-fruit         (set (take (/ (count fruit-ids) 2) (dg/shuffle fruit-ids)))
         skin-identifiable      (set (take (/ (count poisoned-fruit) 2) (dg/shuffle poisoned-fruit)))
         tongue-identifiable    (set (take (/ (count poisoned-fruit) 2) (dg/shuffle poisoned-fruit)))
-        volcano-xy             [x y]
-        lava-terminal-pos      (find-lava-terminal-pos seed max-x max-y)
-        lava-segments          (partition 2 (apply line-segments [(first volcano-xy) (second volcano-xy) (get lava-terminal-pos :x) (get lava-terminal-pos :y)]))
-        _                      (info "lava-segments" lava-segments)
-        lava-points            (vec (mapcat first lava-segments))
         world
           {:seed seed
            :block-size {:width width :height height}
@@ -390,7 +403,7 @@
             [v-width v-height] (viewport-wh state)
             w-width            (get-in state [:world :width])
             w-height           (get-in state [:world :height])]
-        (log-time "init-island time" (init-island (get-in state [:world :seed])
+        (log-time "init-island time" (init-island state
                                                   ax ay
                                                   v-width v-height
                                                  w-width w-height))))]

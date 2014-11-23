@@ -335,29 +335,31 @@
 
 (defn gen-monster [level cell-type]
   "Generate one random monster."
-  (let [land-monster-fns [ gen-rat
-                           gen-spider
-                           gen-scorpion
-                           gen-snake
-                           gen-bat
-                           gen-boar
-                           gen-gecko
-                           gen-monkey
-                           gen-bird
-                           gen-centipede
-                           gen-turtle
-                           gen-frog
-                           gen-parrot]
-        water-monster-fns [gen-shark
-                           gen-fish
-                           gen-octopus 
-                           gen-sea-snake 
-                           gen-clam 
-                           gen-urchin 
-                           gen-squid]]
+  (let [land-monster-fns {
+                          0 [gen-frog
+                             gen-bird
+                             gen-gecko]
+                          1 [gen-rat
+                             gen-spider
+                             gen-centipede]
+                          2 [gen-scorpion
+                             gen-snake]
+                          3 [gen-bat
+                             gen-turtle
+                             gen-parrot]
+                          4 [gen-boar
+                             gen-monkey]}
+        water-monster-fns {
+                          0 [gen-clam 
+                             gen-fish]
+                          1 [gen-urchin 
+                             gen-sea-snake] 
+                          2 [gen-octopus 
+                             gen-squid]
+                          3 [gen-shark]}]
     (case cell-type
-      :water ((dg/rand-nth water-monster-fns))
-      ((dg/rand-nth land-monster-fns)))))
+      :water ((dg/rand-nth (get water-monster-fns level)))
+      ((dg/rand-nth (get land-monster-fns level))))))
 
 (defn gen-monsters
   "Generate `n` random monsters using `gen-monster`."

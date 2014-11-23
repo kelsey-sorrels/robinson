@@ -134,15 +134,17 @@
         [sx sy] (first non-water-samples)]
     (xy->pos sx sy)))
 
-(defn find-lava-terminal-pos [seed max-x max-y]
-  (let [angle (dg/rand-nth (range (* 2 Math/PI)))
-        radius (/ (min max-x max-y) 2)
-        [cx cy] [(/ max-x 2) (/ max-y 2)]
-        [x y]   [(+ (* radius (Math/cos angle)) cx)
-                 (+ (* radius (Math/sin angle)) cy)]
-        points  (line-segment [x y] [cx cy])
-        samples  points
-        _       (cliskp/seed-simplex-noise! seed)
+(defn find-lava-terminal-pos [seed starting-pos max-x max-y]
+  (let [{x :x y :y}  starting-pos
+        player-angle (Math/atan2 (- x (/ max-x 2)) (- y (/ max-y 2)))
+        angle        (- player-angle 0.03)
+        radius       (/ (min max-x max-y) 2)
+        [cx cy]      [(/ max-x 2) (/ max-y 2)]
+        [x y]        [(+ (* radius (Math/cos angle)) cx)
+                      (+ (* radius (Math/sin angle)) cy)]
+        points       (line-segment [x y] [cx cy])
+        samples       points
+        _            (cliskp/seed-simplex-noise! seed)
         non-water-samples (remove
           (fn [[x y]]
             (let [s (mapv #(.calc ^clisk.IFunction % (double (/ x max-x)) (double (/ y max-y)) (double 0.0) (double 0.0))
@@ -306,7 +308,7 @@
         
         starting-pos           (find-starting-pos seed max-x max-y)
         volcano-xy             [x y]
-        lava-terminal-pos      (find-lava-terminal-pos seed max-x max-y)
+        lava-terminal-pos      (find-lava-terminal-pos seed starting-pos max-x max-y)
         lava-segments          (partition 2 (apply line-segments [(first volcano-xy) (second volcano-xy) (get lava-terminal-pos :x) (get lava-terminal-pos :y)]))
         lava-points            (map first lava-segments)
         _                      (info "lava-points" lava-points)
@@ -365,6 +367,7 @@
                     :thirst 0
                     :max-thirst 100
                     :pos starting-pos
+                    :starting-pos starting-pos
                     :place :0_0
                     :body-parts #{:head :neck :face :abdomen :arm :leg :foot}
                     :attacks #{:punch}

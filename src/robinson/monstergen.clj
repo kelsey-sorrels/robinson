@@ -358,8 +358,8 @@
                              gen-squid]
                           3 [gen-shark]}]
     (case cell-type
-      :water ((dg/rand-nth (get water-monster-fns level)))
-      ((dg/rand-nth (get land-monster-fns level))))))
+      :water ((dg/rand-nth (get water-monster-fns (int (* level 4/10)))))
+      ((dg/rand-nth (get land-monster-fns (int (* level 5/10))))))))
 
 (defn gen-monsters
   "Generate `n` random monsters using `gen-monster`."

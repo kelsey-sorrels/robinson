@@ -2,6 +2,7 @@
 (ns robinson.npc
   (:use clojure.walk
         robinson.common
+        robinson.player
         robinson.viewport
         robinson.world
         [robinson.monstergen :exclude [-main]]
@@ -140,25 +141,35 @@
   [state npc f]
   (update-in-matching state [:world :npcs] npc f))
 
-
+(defn monster-level
+  [state]
+  (let [{x :x y :y}    (player-pos state)
+        {sx :x sy :y}  (player-starting-pos state)
+        mid-x          (/ (get-in state [:world :width]) 2)
+        mid-y          (/ (get-in state [:world :height]) 2)
+        player-angle   (Math/atan2 (- x mid-x) (- y mid-y))
+        starting-angle (Math/atan2 (- sx mid-x) (- sy mid-y))]
+    (* 10 (/ (- player-angle starting-angle) (* 2 Math/PI)))))
 
 (defn add-npcs
   "Randomly add monsters to the current place's in floor cells."
-  [state level]
-  (if-let [[x y] (first (dg/shuffle (filter (fn [[x y]] (not (collide? state x y {:include-npcs? true
-                                                                                       :collide-water? false})))
-                                           (viewport-xys state))))]
-    (add-npc state (gen-monster level (get (get-cell state x y) :type))
-                   x
-                   y)
-    state))
+  [state]
+  (let [level (monster-level state)]
+    (if-let [[x y] (first (dg/shuffle (filter (fn [[x y]] (not (collide? state x y {:include-npcs? true
+                                                                                    :collide-water? false})))
+                                             (viewport-xys state))))]
+      (add-npc state (gen-monster level (get (get-cell state x y) :type))
+                     x
+                     y)
+      state)))
 
 (defn add-npcs-random
   "Randomly add monsters inside the viewport."
-  [state level]
-  (if (and (< (uniform-int 100) 2)
-           (< (count (-> state :world :npcs))
-              20))
-    (add-npcs state level)
-    state))
+  [state]
+  (let [level (monster-level state)]
+    (if (and (< (uniform-int 100) 2)
+             (< (count (-> state :world :npcs))
+                20))
+      (add-npcs state level)
+      state)))
 

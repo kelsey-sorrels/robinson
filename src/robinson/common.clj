@@ -7,6 +7,19 @@
 
 (timbre/refer-timbre)
 
+(defn with-transient-redefs-fn
+  [func]
+  (with-redefs-fn {#'conj   conj!
+                   #'pop    pop!
+                   #'assoc  assoc!
+                   #'dissoc dissoc!
+                   #'disj   disj!}
+                   func))
+
+(defn with-transient-state
+  [func state & more]
+  (persistent! (apply (with-transient-redefs-fn func) (transient state) more)))
+
 (defn uniform-int
  ([hi] (uniform-int 0 hi))
  ([lo hi] (int (dg/uniform lo hi))))

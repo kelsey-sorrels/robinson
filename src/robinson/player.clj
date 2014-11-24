@@ -28,6 +28,11 @@
   [state]
   (get-in state [:world :player :pos]))
 
+(defn player-starting-pos
+  "Return the starting position of the player."
+  [state]
+  (get-in state [:world :player :starting-pos]))
+
 (defn player-xy
   "Return `[x y]` position of player."
   [state]

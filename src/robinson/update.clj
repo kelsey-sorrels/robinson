@@ -109,7 +109,7 @@
     (assoc :world (init-world (System/currentTimeMillis)))
     (load-unload-places)
     (as-> state
-      (reduce (fn [state _] (add-npcs state 1))
+      (reduce (fn [state _] (add-npcs state))
               state
               (range 5)))))
 
@@ -2466,7 +2466,7 @@
               (update-cells)
               ((fn [state] (info "Done updating cells") state))
               ;; TODO: Add appropriate level
-              (add-npcs-random 1)
+              (add-npcs-random)
               ;; update visibility
               (update-visibility)
               ;; add will-to-live flavor message

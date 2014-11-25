@@ -1995,6 +1995,7 @@
                     state))
                 state
                 (npcs-in-viewport state))]
+    state
     (loop [state          state
            ;; find all npcs in the current place with enough energy to move (energy > 1).
            ;;; Since most npcs are moving toward the player, sort by distance
@@ -2026,7 +2027,7 @@
         ;                                 (first (calc-npc-next-step state npc))))
         ;                             remaining-npcs))
         (let [map-result (remove (comp nil? first)
-                             (vec (pmap (fn [npc]
+                             (vec (map (fn [npc]
                                      ;(log-time "calc-npc-next-step"
                                        (calc-npc-next-step state npc));)
                                    remaining-npcs)))

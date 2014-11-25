@@ -332,6 +332,198 @@
    #{:hostile}))
 
 
+(defn gen-crocodile
+  "Generate one crocodile"
+  []
+  (Monster.
+   :crocodile
+   "crocodile"
+   "crocodiles"
+   10
+   0
+   0.8
+   #{:head :body :arm :leg :tail :snout}
+   #{:bite :claw}
+   :hide-from-player-in-range-or-random
+   2
+   #{:hostile}))
+
+(defn gen-mosquito
+  "Generate one mosquito"
+  []
+  (Monster.
+   :mosquite
+   "mosquito"
+   "mosquitoes"
+   1
+   0
+   1.4
+   #{:head :body :leg :wing}
+   #{:bite}
+   :hide-from-player-in-range-or-random
+   3
+   #{:hostile}))
+
+(defn gen-mongoose
+  "Generate one mongoose"
+  []
+  (Monster.
+   :mongoose
+   "mongoose"
+   "mongeese"
+   4
+   0
+   1.4
+   #{:head :body :leg :tail}
+   #{:bite :claw}
+   :hide-from-player-in-range-or-random
+   2
+   #{:hostile}))
+
+(defn gen-tarantula
+  "Generate one tarantula"
+  []
+  (Monster.
+   :tarantula
+   "tarantula"
+   "tarantulas"
+   2
+   0
+   1.4
+   #{:head :body :leg}
+   #{:bite}
+   :hide-from-player-in-range-or-random
+   2
+   #{:hostile}))
+
+(defn gen-monitor-lizard
+  "Generate one tarantula"
+  []
+  (Monster.
+   :monitor-lizard
+   "monitor lizard"
+   "monitor lizards"
+   7
+   0
+   1.1
+   #{:head :body :leg :tail}
+   #{:bite :claw}
+   :hide-from-player-in-range-or-random
+   2
+   #{:hostile}))
+
+(defn gen-komodo-dragon
+  "Generate one komodo dragon"
+  []
+  (Monster.
+   :komodo-dragon
+   "komodo dragon"
+   "komodo dragons"
+   12
+   0
+   0.8
+   #{:head :body :leg :tail}
+   #{:bite :claw}
+   :hide-from-player-in-range-or-random
+   2
+   #{:hostile}))
+
+(defn gen-cobra
+  "Generate one cobra"
+  []
+  (Monster.
+   :cobra
+   "cobra"
+   "cobras"
+   5
+   0
+   0.8
+   #{:head :body :tail}
+   #{:bite :bite-venom}
+   :hide-from-player-in-range-or-random
+   2
+   #{:hostile}))
+
+(defn gen-puffer-fish
+  "Generate one puffer fish"
+  []
+  (Monster.
+   :puffer-fish
+   "puffer fish"
+   "puffer fish"
+   3
+   0
+   1.1
+   #{:head :body :tail}
+   #{:sting-venom}
+   :hide-from-player-in-range-or-random
+   2
+   #{:hostile}))
+
+(defn gen-crab
+  "Generate one crab"
+  []
+  (Monster.
+   :crab
+   "crab"
+   "crabs"
+   4
+   0
+   0.8
+   #{:head :body}
+   #{:claw}
+   :hide-from-player-in-range-or-random
+   2
+   #{:hostile}))
+
+(defn gen-hermit-crab
+  "Generate one hermit crab"
+  []
+  (Monster.
+   :hermit-crab
+   "hermit crab"
+   "hermit crabs"
+   3
+   0
+   0.6
+   #{:head :shell :leg}
+   #{:claw}
+   :hide-from-player-in-range-or-random
+   1
+   #{:hostile}))
+
+(defn gen-electric-eel
+  "Generate one electric eel"
+  []
+  (Monster.
+   :electric-eel
+   "electric eel"
+   "electric eels"
+   5
+   0
+   0.6
+   #{:head :body}
+   #{:bite}
+   :hide-from-player-in-range-or-random
+   2
+   #{:hostile}))
+
+
+(defn gen-jellyfish
+  "Generate one jellyfish"
+  []
+  (Monster.
+   :jellyfish
+   "jellyfish"
+   "jellyfish"
+   3
+   0
+   0.6
+   #{:body}
+   #{:sting-venom}
+   :hide-from-player-in-range-or-random
+   1
+   #{:hostile}))
 
 (defn gen-monster [level cell-type]
   "Generate one random monster."
@@ -340,26 +532,39 @@
                              gen-bird
                              gen-gecko]
                           1 [gen-rat
-                             gen-spider
+                             gen-mosquito]
+                          2 [gen-spider
                              gen-centipede]
-                          2 [gen-scorpion
+                          3 [gen-tarantula
+                             gen-scorpion]
+                          4 [gen-cobra
                              gen-snake]
-                          3 [gen-bat
-                             gen-turtle
-                             gen-parrot]
-                          4 [gen-boar
+                          5 [gen-bat
+                             gen-turtle]
+                          6 [gen-monitor-lizard
+                             gen-crocodile]
+                          7 [gen-parrot
+                             gen-mongoose]
+                          8 [gen-komodo-dragon]
+                          9 [gen-boar
                              gen-monkey]}
         water-monster-fns {
                           0 [gen-clam 
-                             gen-fish]
-                          1 [gen-urchin 
-                             gen-sea-snake] 
-                          2 [gen-octopus 
-                             gen-squid]
-                          3 [gen-shark]}]
+                             gen-hermit-crab]
+                          1 [gen-jellyfish]
+                          2 [gen-fish]
+                          3 [gen-crab]
+                          4 [gen-urchin] 
+                          5 [gen-sea-snake] 
+                          6 [gen-puffer-fish]
+                          7 [gen-electric-eel]
+                          8 [gen-octopus ]
+                          9 [gen-squid
+                             gen-shark]}]
+
     (case cell-type
-      :water ((dg/rand-nth (get water-monster-fns (int (* level 4/10)))))
-      ((dg/rand-nth (get land-monster-fns (int (* level 5/10))))))))
+      :water ((dg/rand-nth (get water-monster-fns (int (* level 10/10)))))
+      ((dg/rand-nth (get land-monster-fns (int (* level 10/10))))))))
 
 (defn gen-monsters
   "Generate `n` random monsters using `gen-monster`."
@@ -389,7 +594,19 @@
     :sea-snake  gen-sea-snake 
     :clam  gen-clam 
     :urchin  gen-urchin 
-    :squid gen-squid)))
+    :squid gen-squid
+    :crocodile gen-crocodile
+    :mosquito gen-mosquito
+    :mongoose gen-mongoose
+    :tarantula gen-tarantula
+    :monitor-lizard gen-monitor-lizard
+    :komodo-dragon gen-komodo-dragon
+    :cobra gen-cobra
+    :puffer-fish gen-puffer-fish
+    :crab gen-crab
+    :hermit-crab gen-hermit-crab
+    :electric-eel gen-electric-eel
+    :jellyfish gen-jellyfish)))
    
 (defn id->name
   [id]
@@ -423,7 +640,19 @@
                               gen-sea-snake 
                               gen-clam 
                               gen-urchin 
-                              gen-squid])]
+                              gen-squid
+                              gen-crocodile
+                              gen-mosquito
+                              gen-mongoose
+                              gen-tarantula
+                              gen-monitor-lizard
+                              gen-komodo-dragon
+                              gen-cobra
+                              gen-puffer-fish
+                              gen-crab
+                              gen-hermit-crab
+                              gen-electric-eel
+                              gen-jellyfish])]
       (doseq [monster monsters]
         (doseq [part (get monster :body-parts)]
           (println "[:human :punch" (get monster :race) part "] (+ (rand) 0.5)"))

@@ -840,27 +840,39 @@
                                             vx
                                             vy
                                             (case (get npc :race)
-                                              :rat       ["r"]
-                                              :spider    ["S"]
-                                              :scorpion  ["\u03C2"] ;;ς
-                                              :snake     ["\u00A7"] ;;§
-                                              :bat       ["B"]
-                                              :boar      ["b"]
-                                              :gecko     ["g"]
-                                              :monkey    ["y"]
-                                              :bird      ["a"]
-                                              :centipede ["c"]
-                                              :turtle    ["t"]
-                                              :frog      ["\u03B1"] ;;α
-                                              :parrot    ["p"]
-                                              :shark     ["\u039B"] ;;Λ
-                                              :fish      ["f"]
-                                              :octopus   ["#" :orange :black]
-                                              :sea-snake ["\u00A7"]
-                                              :clam      ["c"]
-                                              :urchin    ["u"]
-                                              :squid     ["q" :orange :black]
-                                              :human     ["@" (class->rgb (get npc :class)) :black]
+                                              :rat             ["r"]
+                                              :spider          ["S"]
+                                              :scorpion        ["\u03C2"] ;;ς
+                                              :snake           ["\u00A7"] ;;§
+                                              :bat             ["B"]
+                                              :boar            ["b" :brown :black]
+                                              :gecko           ["g" :green :black]
+                                              :monkey          ["y" :orange :black]
+                                              :bird            ["a" :red :black]
+                                              :centipede       ["c" :red :black]
+                                              :turtle          ["t" :green :black]
+                                              :frog            ["\u03B1" :green :black] ;;α
+                                              :parrot          ["p" :red :black]
+                                              :shark           ["\u039B"] ;;Λ
+                                              :fish            ["f"]
+                                              :octopus         ["#" :orange :black]
+                                              :sea-snake       ["\u00A7"]
+                                              :clam            ["c"]
+                                              :urchin          ["u" :purple :black]
+                                              :squid           ["q" :orange :black]
+                                              :crocodile       ["l" :green :black]
+                                              :mosquito        ["m"]
+                                              :mongoose        ["r" :brown :black]
+                                              :tarantula       ["s" :brown :black]
+                                              :monitor-lizard  ["l" :gray :black]
+                                              :komodo-dragon   ["l" :dark-green :black]
+                                              :cobra           ["\u00A7"] ;;§
+                                              :puffer-fish     ["f" :yellow :black]
+                                              :crab            ["c" :orange :black]
+                                              :hermit-crab     ["c" :yellow :black]
+                                              :electric-eel    ["e" :brown :black]
+                                              :jellyfish       ["j"]
+                                              :human           ["@" (class->rgb (get npc :class)) :black]
                                               ["@"])))))
                    place-npcs)))
     (render-hud state)

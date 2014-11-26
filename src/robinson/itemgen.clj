@@ -102,18 +102,7 @@
   (apply hash-map (mapcat (fn [[k v]] [k (first v)])
                           (group-by :id items))))
 
-(defn make-sym [id]
-  (->> id name (str "gen-") symbol))
-
-(defn make-gen-fn [id]
-  (let [n (gensym)]
-    (list `defn (make-sym id) [] (id->item-map id))))
-
-(defmacro make-gen-fns []
-  (let [ids (map :id items)]
-    `(do ~@(map make-gen-fn ids))))
-
-(make-gen-fns)
+(make-gen-fns *ns* id->item-map)
 
 (def id->gen-fn
   (let [fns (map (fn [[k v]]

@@ -317,6 +317,10 @@
   [t]
   (contains? #{:palisade} t))
 
+(defn type->intertidal?
+  [t]
+  (contains? #{:sand :surf} t))
+
 (defn collide?
   "Return `true` if the cell at `[x y]` is non-traverable. Ie: a wall, closed door or simply does
    not exist. Cells occupied by npcs are considered non-traversable."

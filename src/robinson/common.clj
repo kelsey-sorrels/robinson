@@ -8,45 +8,6 @@
 
 (timbre/refer-timbre)
 
-(def core-conj   conj)
-(def core-pop    pop)
-(def core-assoc  assoc)
-(def core-dissoc dissoc)
-(def core-disj   disj)
-
-(defmulti conj* (fn [a & _] (instance? ITransientCollection a)))
-(defmethod conj* true [& more] (apply conj! more))
-(defmethod conj* false [& more] (apply core-conj more))
-
-(defmulti pop* (fn [a & _] (instance? ITransientCollection a)))
-(defmethod pop* true [& more] (apply pop! more))
-(defmethod pop* false [& more] (apply core-pop more))
-
-(defmulti assoc* (fn [a & _] (instance? ITransientCollection a)))
-(defmethod assoc* true [& more] (apply assoc! more))
-(defmethod assoc* false [& more] (apply core-assoc more))
-
-(defmulti dissoc* (fn [a & _] (instance? ITransientCollection a)))
-(defmethod dissoc* true [& more] (apply dissoc! more))
-(defmethod dissoc* false [& more] (apply core-dissoc more))
-
-(defmulti disj* (fn [a & _] (instance? ITransientCollection a)))
-(defmethod disj* true [& more] (apply disj! more))
-(defmethod disj* false [& more] (apply core-disj more))
-
-(defn with-transient-redefs-fn
-  [func]
-  (with-redefs-fn {#'conj   conj*
-                   #'pop    pop*
-                   #'assoc  assoc*
-                   #'dissoc dissoc*
-                   #'disj   disj*}
-                   func))
-
-(defn with-transient-state
-  [func state & more]
-  (persistent! (with-transient-redefs-fn (fn [] (apply func (transient state) more)))))
-
 (defn uniform-int
  ([hi] (uniform-int 0 hi))
  ([lo hi] (int (dg/uniform lo hi))))
@@ -318,4 +279,8 @@
       (when (seq line)
         (conj lines (clojure.string/join line))))))
 
+(defn make-gen-fns [name-space id->obj-map]
+ (doseq [id (keys id->obj-map)]
+   (let [sym (->> id name (str "gen-") symbol)]
+   (intern name-space sym (fn [] (get id->obj-map id))))))
 

@@ -1,529 +1,73 @@
 ;; Functions for generating random monsters
 (ns robinson.monstergen
+  (:use     robinson.common)
   (:require [clojure.math.combinatorics :as combo]
             [clojure.data.generators :as dg]))
 
 (defn can-move-in-water?
   [race]
-  (contains? #{:shark :fish :octopus :sea-snake :clam :urchin :squid} race))
+  (contains? #{:shark :fish :octopus :sea-snake :clam :urchin :squid
+               :crocodile :puffer-fish :crab :hermit-crab} race))
 
+(defn can-move-on-land?
+  [race]
+  (contains? #{:rat :spider :scorpion :bat :boar :gecko :monkey :bird
+               :centipede :turtle :frog :parrot :crocodile :mosquito
+               :mongoose :tarantula :monitor-lizard :komodo-dragon
+               :cobra :crab :hermit-crab} race))
+
+(defn can-spawn-intertidally?
+  [race]
+  (contains? #{:clam :urchin
+               :turtle :crocodile
+               :crab :hermit-crab} race))
+  
 (defrecord Monster [race name name-plural hp energy speed body-parts attacks movement-policy range-threshold status]
   Object
   (toString [this] (str "#Monster" (into {} this))))
 
-(defn gen-rat
-  "Generate one rat."
-  []
-  (Monster.
-   :rat
-   "rat"
-   "rats"
-   5
-   0
-   1.1
-   #{:face :head :neck :body :leg :tail}
-   #{:bite :claw}
-   :hide-from-player-in-range-or-random
-   5
-   #{:hostile}))
+(def ^:private monsters
+  [(Monster. :rat "rat" "rats" 5 0 1.1 #{:face :head :neck :body :leg :tail} #{:bite :claw} :hide-from-player-in-range-or-random 5 #{:hostile})
 
-(defn gen-spider
-  "Generate one spider"
-  []
-  (Monster.
-   :spider
-   "spider"
-   "spiders"
-   2
-   0
-   0.9
-   #{:face :leg :abdomen}
-   #{:bite-venom}
-   :hide-from-player-in-range-or-random
-   5
-   #{:hostile}))
+  (Monster. :spider "spider" "spiders" 2 0 0.9 #{:face :leg :abdomen} #{:bite-venom} :hide-from-player-in-range-or-random 5 #{:hostile})
 
-(defn gen-scorpion
-  "Generate one scorpion"
-  []
-  (Monster.
-   :scorpion
-   "scorpion"
-   "scorpions"
-   3
-   0
-   1.1
-   #{:head :claw :leg :abdomen :tail}
-   #{:bite :claw :sting-venom}
-   :hide-from-player-in-range-or-random
-   4
-   #{:hostile}))
+  (Monster. :scorpion "scorpion" "scorpions" 3 0 1.1 #{:head :claw :leg :abdomen :tail} #{:bite :claw :sting-venom} :hide-from-player-in-range-or-random 4 #{:hostile})
+  (Monster. :snake "snake" "snakes" 5 0 0.8 #{:head :body :tail} #{:bite :bite-venom} :hide-from-player-in-range-or-random 5 #{:hostile})
+  (Monster. :bat "bat" "bats" 5 0 1.6 #{:head :body :wing :leg :face} #{:bite} :hide-from-player-in-range-or-random 7 #{:hostile})
+  (Monster. :boar "boar" "boars" 18 0 1.2 #{:head :body :tail :snout :face :eye :leg} #{:bite :gore} :hide-from-player-in-range-or-random 7 #{:hostile})
+  (Monster. :gecko "gecko" "geckos" 2 0 0.9 #{:head :face :body :tail :leg} #{:bite} :hide-from-player-in-range-or-random 4 #{:hostile})
+  (Monster. :monkey "monkey" "monkies" 13 0 1.2 #{:head :neck :body :tail :leg :face :arm} #{:bite :punch} :hide-from-player-in-range-or-random 10 #{:hostile})
+  (Monster. :bird "bird" "birds" 4 0 2.1 #{:head :body :tail :leg :beak :wing} #{:bite :claw} :hide-from-player-in-range-or-random 8 #{:hostile})
+  (Monster. :centipede "centipede" "centipedes" 1 0 0.5 #{:head :body :leg} #{:bite} :hide-from-player-in-range-or-random 3 #{:hostile})
+  (Monster. :turtle "turtle" "turtles" 4 0 0.5 #{:head :neck :body :leg :face :shell} #{:bite} :hide-from-player-in-range-or-random 5 #{:hostile})
+  (Monster. :frog "frog" "frogs" 2 0 0.9 #{:head :body :leg :face} #{:claw} :hide-from-player-in-range-or-random 4 #{:hostile})
+  (Monster. :parrot "parrot" "parrots" 5 0 2.1 #{:head :body :leg :face :wing :tail} #{:claw :bite} :hide-from-player-in-range-or-random 10 #{:hostile})
+  (Monster. :shark "shark" "sharks" 16 0 1.4 #{:head :body :fin :nose :tail} #{:bite} :hide-from-player-in-range-or-random 10 #{:hostile})
+  (Monster. :fish "fish" "fish" 4 0 1.2 #{:head :body :fin :tail} #{:bite} :hide-from-player-in-range-or-random 4 #{:hostile})
+  (Monster. :octopus "octopus" "octopodes" 4 0 1.5 #{:head :body :tentacle} #{:bite :bite-venom :squeeze} :hide-from-player-in-range-or-random 2 #{:hostile})
+  (Monster. :sea-snake "sea snake" "sea snakes" 4 0 1.5 #{:head :body} #{:bite :bite-venom} :hide-from-player-in-range-or-random 2 #{:hostile})
+  (Monster. :clam "clam" "clams" 2 0 0.1 #{:shell} #{:clamp} :constant 1 #{:hostile})
+  (Monster. :urchin "urchin" "urchins" 2 0 0.1 #{:body} #{:spike} :constant 1 #{:hostile})
+  (Monster. :squid "squid" "squids" 4 0 1.5 #{:head :body :tentacle} #{:bite :squeeze} :hide-from-player-in-range-or-random 2 #{:hostile})
+  (Monster. :crocodile "crocodile" "crocodiles" 10 0 0.8 #{:head :body :arm :leg :tail :snout} #{:bite :claw} :hide-from-player-in-range-or-random 2 #{:hostile})
+  (Monster. :mosquito "mosquito" "mosquitoes" 1 0 1.4 #{:head :body :leg :wing} #{:bite} :hide-from-player-in-range-or-random 3 #{:hostile})
+  (Monster. :mongoose "mongoose" "mongeese" 4 0 1.4 #{:head :body :leg :tail} #{:bite :claw} :hide-from-player-in-range-or-random 2 #{:hostile})
+  (Monster. :tarantula "tarantula" "tarantulas" 2 0 1.4 #{:head :body :leg} #{:bite} :hide-from-player-in-range-or-random 2 #{:hostile})
+  (Monster. :monitor-lizard "monitor lizard" "monitor lizards" 7 0 1.1 #{:head :body :leg :tail} #{:bite :claw} :hide-from-player-in-range-or-random 2 #{:hostile})
+  (Monster. :komodo-dragon "komodo dragon" "komodo dragons" 12 0 0.8 #{:head :body :leg :tail} #{:bite :claw} :hide-from-player-in-range-or-random 2 #{:hostile})
+  (Monster. :cobra "cobra" "cobras" 5 0 0.8 #{:head :body :tail} #{:bite :bite-venom} :hide-from-player-in-range-or-random 2 #{:hostile})
+  (Monster. :puffer-fish "puffer fish" "puffer fish" 3 0 1.1 #{:head :body :tail} #{:sting-venom} :hide-from-player-in-range-or-random 2 #{:hostile})
+  (Monster. :crab "crab" "crabs" 4 0 0.8 #{:head :body} #{:claw} :hide-from-player-in-range-or-random 2 #{:hostile})
+  (Monster. :hermit-crab "hermit crab" "hermit crabs" 3 0 0.6 #{:head :shell :leg} #{:claw} :hide-from-player-in-range-or-random 1 #{:hostile})
+  (Monster. :electric-eel "electric eel" "electric eels" 5 0 0.6 #{:head :body} #{:bite} :hide-from-player-in-range-or-random 2 #{:hostile})
+  (Monster. :jellyfish "jellyfish" "jellyfish" 3 0 0.6 #{:body} #{:sting-venom} :hide-from-player-in-range-or-random 1 #{:hostile})])
 
-(defn gen-snake
-  "Generate one snake"
-  []
-  (Monster.
-   :snake
-   "snake"
-   "snakes"
-   5
-   0
-   0.8
-   #{:head :body :tail}
-   #{:bite :bite-venom}
-   :hide-from-player-in-range-or-random
-   5
-   #{:hostile}))
+(def ^:private race->monster-map
+  (apply hash-map (mapcat (fn [[k v]] [k (first v)])
+                          (group-by :race monsters))))
 
-(defn gen-bat
-  "Generate one bat"
-  []
-  (Monster.
-   :bat
-   "bat"
-   "bats"
-   5
-   0
-   1.6
-   #{:head :body :wing :leg :face}
-   #{:bite}
-   :hide-from-player-in-range-or-random
-   7
-   #{:hostile}))
+(make-gen-fns *ns* race->monster-map)
 
-(defn gen-boar
-  "Generate one boar"
-  []
-  (Monster.
-   :boar
-   "boar"
-   "boars"
-   18
-   0
-   1.2
-   #{:head :body :tail :snout :face :eye :leg}
-   #{:bite :gore}
-   :hide-from-player-in-range-or-random
-   7
-   #{:hostile}))
-
-(defn gen-gecko
-  "Generate one gecko"
-  []
-  (Monster.
-   :gecko
-   "gecko"
-   "geckos"
-   2
-   0
-   0.9
-   #{:head :face :body :tail :leg}
-   #{:bite}
-   :hide-from-player-in-range-or-random
-   4
-   #{:hostile}))
-
-(defn gen-monkey
-  "Generate one monkey"
-  []
-  (Monster.
-   :monkey
-   "monkey"
-   "monkies"
-   13
-   0
-   1.2
-   #{:head :neck :body :tail :leg :face :arm}
-   #{:bite :punch}
-   :hide-from-player-in-range-or-random
-   10
-   #{:hostile}))
-
-(defn gen-bird
-  "Generate one bird"
-  []
-  (Monster.
-   :bird
-   "bird"
-   "birds"
-   4
-   0
-   2.1
-   #{:head :body :tail :leg :beak :wing}
-   #{:bite :claw}
-   :hide-from-player-in-range-or-random
-   8
-   #{:hostile}))
-
-(defn gen-centipede
-  "Generate one centipede"
-  []
-  (Monster.
-   :centipede
-   "centipede"
-   "centipedes"
-   1
-   0
-   0.5
-   #{:head :body :leg}
-   #{:bite}
-   :hide-from-player-in-range-or-random
-   3
-   #{:hostile}))
-
-(defn gen-turtle
-  "Generate one turtle"
-  []
-  (Monster.
-   :turtle
-   "turtle"
-   "turtles"
-   4
-   0
-   0.5
-   #{:head :neck :body :leg :face :shell}
-   #{:bite}
-   :hide-from-player-in-range-or-random
-   5
-   #{:hostile}))
-
-(defn gen-frog
-  "Generate one frog"
-  []
-  (Monster.
-   :frog
-   "frog"
-   "frogs"
-   2
-   0
-   0.9
-   #{:head :body :leg :face}
-   #{:claw}
-   :hide-from-player-in-range-or-random
-   4
-   #{:hostile}))
-
-(defn gen-parrot
-  "Generate one parrot"
-  []
-  (Monster.
-   :parrot
-   "parrot"
-   "parrots"
-   5
-   0
-   2.1
-   #{:head :body :leg :face :wing :tail}
-   #{:claw :bite}
-   :hide-from-player-in-range-or-random
-   10
-   #{:hostile}))
-
-(defn gen-shark
-  "Generate one shark"
-  []
-  (Monster.
-   :shark
-   "shark"
-   "sharks"
-   16
-   0
-   1.4
-   #{:head :body :fin :nose :tail}
-   #{:bite}
-   :hide-from-player-in-range-or-random
-   10
-   #{:hostile}))
-
-(defn gen-fish
-  "Generate one fish"
-  []
-  (Monster.
-   :fish
-   "fish"
-   "fish"
-   4
-   0
-   1.2
-   #{:head :body :fin :tail}
-   #{:bite}
-   :hide-from-player-in-range-or-random
-   4
-   #{:hostile}))
-
-(defn gen-octopus
-  "Generate one octopus"
-  []
-  (Monster.
-   :octopus
-   "octopus"
-   "octopodes"
-   4
-   0
-   1.5
-   #{:head :body :tentacle}
-   #{:bite :bite-venom :squeeze}
-   :hide-from-player-in-range-or-random
-   2
-   #{:hostile}))
-
-(defn gen-sea-snake
-  "Generate one sea snake"
-  []
-  (Monster.
-   :sea-snake
-   "sea snake"
-   "sea snakes"
-   4
-   0
-   1.5
-   #{:head :body}
-   #{:bite :bite-venom}
-   :hide-from-player-in-range-or-random
-   2
-   #{:hostile}))
-
-(defn gen-clam
-  "Generate one clam"
-  []
-  (Monster.
-   :clam
-   "clam"
-   "clams"
-   2
-   0
-   0.1
-   #{:shell}
-   #{:clamp}
-   :constant
-   1
-   #{:hostile}))
-
-(defn gen-urchin
-  "Generate one urchin"
-  []
-  (Monster.
-   :urchin
-   "urchin"
-   "urchins"
-   2
-   0
-   0.1
-   #{:body}
-   #{:spike}
-   :constant
-   1
-   #{:hostile}))
-
-(defn gen-squid
-  "Generate one squid"
-  []
-  (Monster.
-   :squid
-   "squid"
-   "squids"
-   4
-   0
-   1.5
-   #{:head :body :tentacle}
-   #{:bite :squeeze}
-   :hide-from-player-in-range-or-random
-   2
-   #{:hostile}))
-
-
-(defn gen-crocodile
-  "Generate one crocodile"
-  []
-  (Monster.
-   :crocodile
-   "crocodile"
-   "crocodiles"
-   10
-   0
-   0.8
-   #{:head :body :arm :leg :tail :snout}
-   #{:bite :claw}
-   :hide-from-player-in-range-or-random
-   2
-   #{:hostile}))
-
-(defn gen-mosquito
-  "Generate one mosquito"
-  []
-  (Monster.
-   :mosquite
-   "mosquito"
-   "mosquitoes"
-   1
-   0
-   1.4
-   #{:head :body :leg :wing}
-   #{:bite}
-   :hide-from-player-in-range-or-random
-   3
-   #{:hostile}))
-
-(defn gen-mongoose
-  "Generate one mongoose"
-  []
-  (Monster.
-   :mongoose
-   "mongoose"
-   "mongeese"
-   4
-   0
-   1.4
-   #{:head :body :leg :tail}
-   #{:bite :claw}
-   :hide-from-player-in-range-or-random
-   2
-   #{:hostile}))
-
-(defn gen-tarantula
-  "Generate one tarantula"
-  []
-  (Monster.
-   :tarantula
-   "tarantula"
-   "tarantulas"
-   2
-   0
-   1.4
-   #{:head :body :leg}
-   #{:bite}
-   :hide-from-player-in-range-or-random
-   2
-   #{:hostile}))
-
-(defn gen-monitor-lizard
-  "Generate one tarantula"
-  []
-  (Monster.
-   :monitor-lizard
-   "monitor lizard"
-   "monitor lizards"
-   7
-   0
-   1.1
-   #{:head :body :leg :tail}
-   #{:bite :claw}
-   :hide-from-player-in-range-or-random
-   2
-   #{:hostile}))
-
-(defn gen-komodo-dragon
-  "Generate one komodo dragon"
-  []
-  (Monster.
-   :komodo-dragon
-   "komodo dragon"
-   "komodo dragons"
-   12
-   0
-   0.8
-   #{:head :body :leg :tail}
-   #{:bite :claw}
-   :hide-from-player-in-range-or-random
-   2
-   #{:hostile}))
-
-(defn gen-cobra
-  "Generate one cobra"
-  []
-  (Monster.
-   :cobra
-   "cobra"
-   "cobras"
-   5
-   0
-   0.8
-   #{:head :body :tail}
-   #{:bite :bite-venom}
-   :hide-from-player-in-range-or-random
-   2
-   #{:hostile}))
-
-(defn gen-puffer-fish
-  "Generate one puffer fish"
-  []
-  (Monster.
-   :puffer-fish
-   "puffer fish"
-   "puffer fish"
-   3
-   0
-   1.1
-   #{:head :body :tail}
-   #{:sting-venom}
-   :hide-from-player-in-range-or-random
-   2
-   #{:hostile}))
-
-(defn gen-crab
-  "Generate one crab"
-  []
-  (Monster.
-   :crab
-   "crab"
-   "crabs"
-   4
-   0
-   0.8
-   #{:head :body}
-   #{:claw}
-   :hide-from-player-in-range-or-random
-   2
-   #{:hostile}))
-
-(defn gen-hermit-crab
-  "Generate one hermit crab"
-  []
-  (Monster.
-   :hermit-crab
-   "hermit crab"
-   "hermit crabs"
-   3
-   0
-   0.6
-   #{:head :shell :leg}
-   #{:claw}
-   :hide-from-player-in-range-or-random
-   1
-   #{:hostile}))
-
-(defn gen-electric-eel
-  "Generate one electric eel"
-  []
-  (Monster.
-   :electric-eel
-   "electric eel"
-   "electric eels"
-   5
-   0
-   0.6
-   #{:head :body}
-   #{:bite}
-   :hide-from-player-in-range-or-random
-   2
-   #{:hostile}))
-
-
-(defn gen-jellyfish
-  "Generate one jellyfish"
-  []
-  (Monster.
-   :jellyfish
-   "jellyfish"
-   "jellyfish"
-   3
-   0
-   0.6
-   #{:body}
-   #{:sting-venom}
-   :hide-from-player-in-range-or-random
-   1
-   #{:hostile}))
 
 (defn gen-monster [level cell-type]
   "Generate one random monster."
@@ -562,8 +106,11 @@
                           9 [gen-squid
                              gen-shark]}]
 
-    (case cell-type
-      :water ((dg/rand-nth (get water-monster-fns (int (* level 10/10)))))
+    (cond
+      ;(type->intertidal? cell-type)
+      (contains? #{:water} cell-type)
+      ((dg/rand-nth (get water-monster-fns (int (* level 10/10)))))
+      :else
       ((dg/rand-nth (get land-monster-fns (int (* level 10/10))))))))
 
 (defn gen-monsters

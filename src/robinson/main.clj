@@ -73,7 +73,7 @@
     (try
       (info "got " (str keyin) " type " (type keyin))
       (log-time "tick"
-        (let [new-state (log-time "update-state" (with-transient-state update-state state keyin))]
+        (let [new-state (log-time "update-state" (update-state state keyin))]
           (when new-state
             (do
             (render-state new-state)

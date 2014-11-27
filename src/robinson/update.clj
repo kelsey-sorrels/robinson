@@ -1762,6 +1762,7 @@
           npc-pos-vec            [(npc-pos :x) (npc-pos :y)]
           threshold              (get npc :range-threshold)
           npc-can-move-in-water  (mg/can-move-in-water? (get npc :race))
+          npc-can-move-on-land   (mg/can-move-on-land? (get npc :race))
         
           player                 (-> state :world :player)
           player-pos-vec         [(-> player :pos :x) (-> player :pos :y)]
@@ -1790,8 +1791,15 @@
                                                      :short-grass}
                                                    (get-type x y))))
       
-          traversable?           (if npc-can-move-in-water
+          traversable?           (cond
+                                   (and npc-can-move-in-water
+                                        npc-can-move-on-land)
+                                   (fn [xy]
+                                     (or (water-traversable? xy)
+                                         (land-traversable? xy)))
+                                   npc-can-move-in-water
                                      water-traversable?
+                                   npc-can-move-on-land
                                      land-traversable?)
           path                   (try
                                    (debug "a* params" [width height] traversable? npc-pos-vec [(target :x) (target :y)])
@@ -1829,6 +1837,7 @@
           [npc-x npc-y]          [(npc-pos :x) (npc-pos :y)]
           threshold              (get npc :range-threshold)
           npc-can-move-in-water  (mg/can-move-in-water? (get npc :race))
+          npc-can-move-on-land   (mg/can-move-on-land? (get npc :race))
         
           player                 (-> state :world :player)
           player-pos-vec         [(-> player :pos :x) (-> player :pos :y)]
@@ -1856,8 +1865,15 @@
                                                      :short-grass}
                                                    (get-type x y)))
       
-          traversable?           (if npc-can-move-in-water
+          traversable?           (cond
+                                   (and npc-can-move-in-water
+                                        npc-can-move-on-land)
+                                   (fn [xy]
+                                     (or (water-traversable? xy)
+                                         (land-traversable? xy)))
+                                   npc-can-move-in-water
                                      water-traversable?
+                                   npc-can-move-on-land
                                      land-traversable?)
           ;; TODO: calc new-pos based on adj-navigable space (8-dir) that is farthest away from player
           ;_                      (debug "path to target" path)

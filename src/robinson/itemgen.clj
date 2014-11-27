@@ -61,6 +61,8 @@
    {:id  :stick                   :name  "stick"                      :name-plural "sticks" :fuel 100}
    {:id  :log                     :name  "log"                        :name-plural "logs" :fuel 500}
    {:id  :sharpened-stick         :name  "sharpened stick"            :name-plural "sharpened sticks" :attack :spear :fuel 100}
+   {:id  :arrow                   :name  "arrow"                      :name-plural "arrows" :attack :spear :fuel 10}
+   {:id  :bow                     :name  "bow"                        :name-plural "bow" :fuel 10}
    {:id  :plant-fiber             :name  "plant fiber"                :name-plural "plant fibers" :fuel 50}
    {:id  :unhusked-coconut        :name  "unhusked coconut"           :name-plural "husked coconuts"}
    {:id  :coconut                 :name  "coconut"                    :name-plural "coconuts" :thirst 30}
@@ -135,6 +137,7 @@
 (defn can-be-wielded?
   [item]
   (contains? #{:knife
+               :bow
                :sharpened-stick
                :obsidian-spear
                :obsidian-axe

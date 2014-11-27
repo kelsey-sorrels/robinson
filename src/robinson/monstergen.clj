@@ -2,7 +2,10 @@
 (ns robinson.monstergen
   (:use     robinson.common)
   (:require [clojure.math.combinatorics :as combo]
-            [clojure.data.generators :as dg]))
+            [clojure.data.generators :as dg]
+            [taoensso.timbre :as timbre]))
+
+(timbre/refer-timbre)
 
 (defn can-move-in-water?
   [race]
@@ -68,107 +71,72 @@
 
 (make-gen-fns *ns* race->monster-map)
 
+(defn id->monster [id]
+  (info "id->monster" id)
+  (info race->monster-map)
+  (get race->monster-map id))
 
 (defn gen-monster [level cell-type]
   "Generate one random monster."
-  (let [land-monster-fns {
-                          0 [gen-frog
-                             gen-bird
-                             gen-gecko]
-                          1 [gen-rat
-                             gen-mosquito]
-                          2 [gen-spider
-                             gen-centipede]
-                          3 [gen-tarantula
-                             gen-scorpion]
-                          4 [gen-cobra
-                             gen-snake]
-                          5 [gen-bat
-                             gen-turtle]
-                          6 [gen-monitor-lizard
-                             gen-crocodile]
-                          7 [gen-parrot
-                             gen-mongoose]
-                          8 [gen-komodo-dragon]
-                          9 [gen-boar
-                             gen-monkey]}
-        water-monster-fns {
-                          0 [gen-clam 
-                             gen-hermit-crab]
-                          1 [gen-jellyfish]
-                          2 [gen-fish]
-                          3 [gen-crab]
-                          4 [gen-urchin] 
-                          5 [gen-sea-snake] 
-                          6 [gen-puffer-fish]
-                          7 [gen-electric-eel]
-                          8 [gen-octopus ]
-                          9 [gen-squid
-                             gen-shark]}]
+  (let [land-monster-ids {
+                          0 [:frog
+                             :bird
+                             :gecko]
+                          1 [:rat
+                             :mosquito]
+                          2 [:spider
+                             :centipede]
+                          3 [:tarantula
+                             :scorpion]
+                          4 [:cobra
+                             :snake]
+                          5 [:bat
+                             :turtle]
+                          6 [:monitor-lizard
+                             :crocodile]
+                          7 [:parrot
+                             :mongoose]
+                          8 [:komodo-dragon]
+                          9 [:boar
+                             :monkey]}
+        water-monster-ids {
+                          0 [:clam 
+                             :hermit-crab]
+                          1 [:jellyfish]
+                          2 [:fish]
+                          3 [:crab]
+                          4 [:urchin] 
+                          5 [:sea-snake] 
+                          6 [:puffer-fish]
+                          7 [:electric-eel]
+                          8 [:octopus ]
+                          9 [:squid
+                             :shark]}]
 
     (cond
-      ;(type->intertidal? cell-type)
-      (contains? #{:water} cell-type)
-      ((dg/rand-nth (get water-monster-fns (int (* level 10/10)))))
+      (contains? #{:water :surf} cell-type)
+      (id->monster (dg/rand-nth (get water-monster-ids (int (* level 10/10)))))
       :else
-      ((dg/rand-nth (get land-monster-fns (int (* level 10/10))))))))
+      (id->monster (dg/rand-nth (get land-monster-ids (int (* level 10/10))))))))
 
 (defn gen-monsters
   "Generate `n` random monsters using `gen-monster`."
   [n]
   (repeatedly n gen-monster 1 :floor))
 
-(defn id->monster
-  "Generate monster from id."
-  [id]
-  ((case id
-    :rat gen-rat
-    :spider gen-spider
-    :scorpion gen-scorpion
-    :snake gen-snake
-    :bat gen-bat
-    :boar gen-boar
-    :gecko gen-gecko
-    :monkey gen-monkey
-    :bird gen-bird
-    :centipede gen-centipede
-    :turtle gen-turtle
-    :frog gen-frog
-    :parrot gen-parrot
-    :shark gen-shark
-    :fish gen-fish
-    :octopus  gen-octopus 
-    :sea-snake  gen-sea-snake 
-    :clam  gen-clam 
-    :urchin  gen-urchin 
-    :squid gen-squid
-    :crocodile gen-crocodile
-    :mosquito gen-mosquito
-    :mongoose gen-mongoose
-    :tarantula gen-tarantula
-    :monitor-lizard gen-monitor-lizard
-    :komodo-dragon gen-komodo-dragon
-    :cobra gen-cobra
-    :puffer-fish gen-puffer-fish
-    :crab gen-crab
-    :hermit-crab gen-hermit-crab
-    :electric-eel gen-electric-eel
-    :jellyfish gen-jellyfish)))
-   
 (defn id->name
   [id]
-  (get (id->monster id) :name))
+  (get (race->monster-map id) :name))
 
 (defn id->name-plural
   [id]
-  (get (id->monster id) :name-plural))
+  (get (race->monster-map id) :name-plural))
 
 (defn -main
   "Generate five random monsters and display them."
   [& args]
   (if (contains? (set args) "--list")
-    (let [monsters (map #(%)
-                              [gen-rat
+    (let [monsters (map #(%) [gen-rat
                               gen-spider
                               gen-scorpion
                               gen-snake

@@ -229,6 +229,87 @@
     [:human      :punch         :turtle     :leg]       (dg/uniform 1.5 2.5)
     [:human      :punch         :turtle     :shell]     (dg/uniform 1.5 2.1)
     [:human      :punch         :urchin     :body]      (dg/uniform 1.5 2.5)
+;; arrows
+    [:human      :shot-arrow    :bat        :body]      (dg/uniform 1.5 2.5)
+    [:human      :shot-arrow    :bat        #{:face
+                                              :head}]   (dg/uniform 1.8 2.8)
+    [:human      :shot-arrow    :bat        :leg]       (dg/uniform 1.2 1.5)
+    [:human      :shot-arrow    :bat        :wing]      (dg/uniform 1.8 2.8)
+    [:human      :shot-arrow    :bird       :beak]      (dg/uniform 1.5 2.5)
+    [:human      :shot-arrow    :bird       :body]      (dg/uniform 1.5 2.5)
+    [:human      :shot-arrow    :bird       :head]      (dg/uniform 1.5 2.5)
+    [:human      :shot-arrow    :bird       :leg]       (dg/uniform 1.5 2.0)
+    [:human      :shot-arrow    :bird       :tail]      (dg/uniform 1.5 2.5)
+    [:human      :shot-arrow    :bird       :wing]      (dg/uniform 2.5 3.5)
+    [:human      :shot-arrow    :boar       :body]      (dg/uniform 1.5 2.5)
+    [:human      :shot-arrow    :boar       :eye]       (dg/uniform 3.5 4.5)
+    [:human      :shot-arrow    :boar       :face]      (dg/uniform 1.9 2.9)
+    [:human      :shot-arrow    :boar       :head]      (dg/uniform 1.3 2.3)
+    [:human      :shot-arrow    :boar       :leg]       (dg/uniform 1.7 2.7)
+    [:human      :shot-arrow    :boar       :snout]     (dg/uniform 1.7 2.7)
+    [:human      :shot-arrow    :boar       :tail]      (dg/uniform 1.1 2.1)
+    [:human      :shot-arrow    :centipede  #{:body
+                                              :head}]   (dg/uniform 1.9 2.9)
+    [:human      :shot-arrow    :centipede  :leg]       (dg/uniform 1.1 1.5)
+    [:human      :shot-arrow    :clam       :shell]     (dg/uniform 1.5 2.5)
+    [:human      :shot-arrow    :fish       #{:body
+                                              :head}]   (dg/uniform 1.5 2.5)
+    [:human      :shot-arrow    :fish       #{:fin
+                                              :tail}]   (dg/uniform 1.5 2.1)
+    [:human      :shot-arrow    :frog       :*]         (dg/uniform 1.5 2.5)
+    [:human      :shot-arrow    :gecko      :*]         (dg/uniform 1.5 2.5)
+    [:human      :shot-arrow    :monkey     #{:arm
+                                              :leg}]    (dg/uniform 1.5 2.5)
+    [:human      :shot-arrow    :monkey     #{:body
+                                              :face
+                                              :head
+                                              :neck}]   (dg/uniform 1.5 2.5)
+    [:human      :shot-arrow    :monkey     :tail]      (dg/uniform 1.2 2.0)
+    [:human      :shot-arrow    :octopus    #{:body
+                                              :head}]   (dg/uniform 2.5 3.9)
+    [:human      :shot-arrow    :octopus    :tentacle]  (dg/uniform 1.5 2.5)
+    [:human      :shot-arrow    :parrot     #{:body
+                                              :face
+                                              :head}]   (dg/uniform 1.5 2.5)
+    [:human      :shot-arrow    :parrot     #{:leg
+                                              :tail}]   (dg/uniform 1.5 2.3)
+    [:human      :shot-arrow    :parrot     :wing]      (dg/uniform 1.8 2.8)
+    [:human      :shot-arrow    :rat        #{:body
+                                              :face
+                                              :head
+                                              :neck}]   (dg/uniform 1.5 2.5)
+    [:human      :shot-arrow    :rat        #{:leg
+                                              :tail}]   (dg/uniform 1.5 2.2)
+    [:human      :shot-arrow    :scorpion   #{:abdomen
+                                              :head
+                                              :tail}]   (dg/uniform 1.9 2.9)
+    [:human      :shot-arrow    :scorpion   #{:claw
+                                              :leg}]    (dg/uniform 1.5 2.5)
+    [:human      :shot-arrow    :sea-snake  #{:body
+                                              :head}]   (dg/uniform 1.9 2.9)
+    [:human      :shot-arrow    :shark      #{:body
+                                              :head
+                                              :nose}]   (dg/uniform 1.5 2.5)
+    [:human      :shot-arrow    :shark      #{:fin
+                                              :tail}]   (dg/uniform 1.5 2.1)
+    [:human      :shot-arrow    :snake      #{:body
+                                              :head
+                                              :tail}]   (dg/uniform 1.5 2.5)
+    [:human      :shot-arrow    :spider     #{:abdomen
+                                              :face}]   (dg/uniform 1.5 2.5)
+    [:human      :shot-arrow    :spider     #{:leg}]    (dg/uniform 1.5 2.5)
+    [:human      :shot-arrow    :squid      #{:body
+                                              :head
+                                              :tentacle}] (dg/uniform 1.5 2.5)
+    [:human      :shot-arrow    :turtle     #{:body
+                                              :face
+                                              :head
+                                              :neck}]   (dg/uniform 1.5 2.5)
+    [:human      :shot-arrow    :turtle     :leg]       (dg/uniform 1.5 2.5)
+    [:human      :shot-arrow    :turtle     :shell]     (dg/uniform 1.5 2.1)
+    [:human      :shot-arrow    :urchin     :body]      (dg/uniform 1.5 2.5)
+
+;; generic sharp weapon
     [:human      sharp-weapon?  :bat        :body]      (dg/uniform 2.5 3.5)
     [:human      sharp-weapon?  :bat        #{:face
                                               :head}]   (dg/uniform 1.9 3.8)
@@ -432,11 +513,20 @@
   (let [defender           (get-in state defender-path)
         ;; 
         attacker           (get-in state attacker-path)
+        bow-wielded        (= :bow
+                              (get-in (filter (fn [item] (contains? item :wielded))
+                                               (get-in state (conj attacker-path :inventory) []))
+                                [0 :id] :non-bow))
         thrown-item        (when-not (keyword? attack)
                              attack)
-        attack             (if (keyword? attack)
+        attack             (cond
+                             (keyword? attack)
                              attack
+                             (and bow-wielded (= :arrow (get thrown-item :id)))
+                             :shot-arrow
+                             :else
                              :thrown-item)
+        
         defender-body-part (dg/rand-nth (vec (get defender :body-parts)))
         {x :x y :y}        (get defender :pos)
         hp                 (get defender :hp)

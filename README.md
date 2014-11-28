@@ -12,6 +12,8 @@ lein run
 
 ![alt tag](https://raw.github.com/aaron-santos/robinson/master/readme-media/video-0-o.gif)
 
+To make redistributable
+
 ```
 lein uberjar
 ./make-zip.sh

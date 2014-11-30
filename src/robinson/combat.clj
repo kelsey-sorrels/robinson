@@ -117,383 +117,40 @@
       [:*       :human :clamp        :*        :hit]  (format "The %s clamps down on your flesh crushing it." attacker-name)
       [:*       :human :spike        :*        :hit]  (format "The %s's spikes drive into your body." attacker-name))))
 
+(defn attack-toughness
+  [attack]
+  (case attack
+  :bite        5
+  :bite-venom  5
+  :clamp       3
+  :claw        5
+  :gore        4
+  :punch       1
+  :spike      10
+  :squeeze     3
+  :shot-arrow 10
+  :sting-venom 8
+  :thrown-item 1
+  (throw (Exception. (format "No value specified for %s" (name attack))))))
+
 (defn calc-dmg
-  [attacker-race attack defender-race defender-body-part]
-  (condp vec-match? [attacker-race attack defender-race defender-body-part]
-    [:bat        :bite          :human      :abdomen]   (dg/uniform 1.5 2.5)
-    [:bat        :bite          :human      :arm]       (dg/uniform 1.5 2.5)
-    [:bat        :bite          :human      :face]      (dg/uniform 1.5 2.5)
-    [:bat        :bite          :human      :foot]      (dg/uniform 1.5 2.5)
-    [:bat        :bite          :human      :head]      (dg/uniform 1.5 2.5)
-    [:bat        :bite          :human      :leg]       (dg/uniform 1.5 2.5)
-    [:bat        :bite          :human      :neck]      (dg/uniform 1.9 2.9)
-    [:bird       :bite          :human      :*]         (dg/uniform 1.5 1.9)
-    [:bird       :claw          :human      :abdomen]   (dg/uniform 1.5 2.5)
-    [:bird       :claw          :human      :face]      (dg/uniform 1.8 2.8)
-    [:bird       :claw          :human      :neck]      (dg/uniform 1.7 2.7)
-    [:bird       :claw          :human      :*]         (dg/uniform 1.5 2.5)
-    [:boar       :bite          :human      :abdomen]   (dg/uniform 1.5 3.5)
-    [:boar       :bite          :human      :arm]       (dg/uniform 1.5 4.5)
-    [:boar       :bite          :human      :face]      (dg/uniform 1.5 3.5)
-    [:boar       :bite          :human      :foot]      (dg/uniform 1.5 2.5)
-    [:boar       :bite          :human      :head]      (dg/uniform 2.5 4.5)
-    [:boar       :bite          :human      :leg]       (dg/uniform 1.9 2.8)
-    [:boar       :bite          :human      :neck]      (dg/uniform 2.5 3.5)
-    [:boar       :gore          :human      :abdomen]   (dg/uniform 3.5 5.5)
-    [:boar       :gore          :human      :arm]       (dg/uniform 2.5 3.5)
-    [:boar       :gore          :human      :face]      (dg/uniform 4.5 5.5)
-    [:boar       :gore          :human      :foot]      (dg/uniform 2.5 3.5)
-    [:boar       :gore          :human      :head]      (dg/uniform 4.5 5.5)
-    [:boar       :gore          :human      :leg]       (dg/uniform 3.5 4.5)
-    [:boar       :gore          :human      :neck]      (dg/uniform 4.5 5.5)
-    [:centipede  :bite          :human      :*]         (dg/uniform 1.5 1.9)
-    [:clam       :clamp         :human      :*]         (dg/uniform 1.1 1.3)
-    [:fish       :bite          :human      :*]         (dg/uniform 1.2 2.7)
-    [:frog       :claw          :human      :*]         (dg/uniform 1.1 1.5)
-    [:gecko      :bite          :human      :*]         (dg/uniform 1.1 1.3)
-    [:human      :punch         :bat        :body]      (dg/uniform 1.5 2.5)
-    [:human      :punch         :bat        #{:face
-                                              :head}]   (dg/uniform 1.8 2.8)
-    [:human      :punch         :bat        :leg]       (dg/uniform 1.2 1.5)
-    [:human      :punch         :bat        :wing]      (dg/uniform 1.8 2.8)
-    [:human      :punch         :bird       :beak]      (dg/uniform 1.5 2.5)
-    [:human      :punch         :bird       :body]      (dg/uniform 1.5 2.5)
-    [:human      :punch         :bird       :head]      (dg/uniform 1.5 2.5)
-    [:human      :punch         :bird       :leg]       (dg/uniform 1.5 2.0)
-    [:human      :punch         :bird       :tail]      (dg/uniform 1.5 2.5)
-    [:human      :punch         :bird       :wing]      (dg/uniform 2.5 3.5)
-    [:human      :punch         :boar       :body]      (dg/uniform 1.5 2.5)
-    [:human      :punch         :boar       :eye]       (dg/uniform 3.5 4.5)
-    [:human      :punch         :boar       :face]      (dg/uniform 1.9 2.9)
-    [:human      :punch         :boar       :head]      (dg/uniform 1.3 2.3)
-    [:human      :punch         :boar       :leg]       (dg/uniform 1.7 2.7)
-    [:human      :punch         :boar       :snout]     (dg/uniform 1.7 2.7)
-    [:human      :punch         :boar       :tail]      (dg/uniform 1.1 2.1)
-    [:human      :punch         :centipede  #{:body
-                                              :head}]   (dg/uniform 1.9 2.9)
-    [:human      :punch         :centipede  :leg]       (dg/uniform 1.1 1.5)
-    [:human      :punch         :clam       :shell]     (dg/uniform 1.5 2.5)
-    [:human      :punch         :fish       #{:body
-                                              :head}]   (dg/uniform 1.5 2.5)
-    [:human      :punch         :fish       #{:fin
-                                              :tail}]   (dg/uniform 1.5 2.1)
-    [:human      :punch         :frog       :*]         (dg/uniform 1.5 2.5)
-    [:human      :punch         :gecko      :*]         (dg/uniform 1.5 2.5)
-    [:human      :punch         :monkey     #{:arm
-                                              :leg}]    (dg/uniform 1.5 2.5)
-    [:human      :punch         :monkey     #{:body
-                                              :face
-                                              :head
-                                              :neck}]   (dg/uniform 1.5 2.5)
-    [:human      :punch         :monkey     :tail]      (dg/uniform 1.2 2.0)
-    [:human      :punch         :octopus    #{:body
-                                              :head}]   (dg/uniform 2.5 3.9)
-    [:human      :punch         :octopus    :tentacle]  (dg/uniform 1.5 2.5)
-    [:human      :punch         :parrot     #{:body
-                                              :face
-                                              :head}]   (dg/uniform 1.5 2.5)
-    [:human      :punch         :parrot     #{:leg
-                                              :tail}]   (dg/uniform 1.5 2.3)
-    [:human      :punch         :parrot     :wing]      (dg/uniform 1.8 2.8)
-    [:human      :punch         :rat        #{:body
-                                              :face
-                                              :head
-                                              :neck}]   (dg/uniform 1.5 2.5)
-    [:human      :punch         :rat        #{:leg
-                                              :tail}]   (dg/uniform 1.5 2.2)
-    [:human      :punch         :scorpion   #{:abdomen
-                                              :head
-                                              :tail}]   (dg/uniform 1.9 2.9)
-    [:human      :punch         :scorpion   #{:claw
-                                              :leg}]    (dg/uniform 1.5 2.5)
-    [:human      :punch         :sea-snake  #{:body
-                                              :head}]   (dg/uniform 1.9 2.9)
-    [:human      :punch         :shark      #{:body
-                                              :head
-                                              :nose}]   (dg/uniform 1.5 2.5)
-    [:human      :punch         :shark      #{:fin
-                                              :tail}]   (dg/uniform 1.5 2.1)
-    [:human      :punch         :snake      #{:body
-                                              :head
-                                              :tail}]   (dg/uniform 1.5 2.5)
-    [:human      :punch         :spider     #{:abdomen
-                                              :face}]   (dg/uniform 1.5 2.5)
-    [:human      :punch         :spider     #{:leg}]    (dg/uniform 1.5 2.5)
-    [:human      :punch         :squid      #{:body
-                                              :head
-                                              :tentacle}] (dg/uniform 1.5 2.5)
-    [:human      :punch         :turtle     #{:body
-                                              :face
-                                              :head
-                                              :neck}]   (dg/uniform 1.5 2.5)
-    [:human      :punch         :turtle     :leg]       (dg/uniform 1.5 2.5)
-    [:human      :punch         :turtle     :shell]     (dg/uniform 1.5 2.1)
-    [:human      :punch         :urchin     :body]      (dg/uniform 1.5 2.5)
-;; arrows
-    [:human      :shot-arrow    :bat        :body]      (dg/uniform 1.5 2.5)
-    [:human      :shot-arrow    :bat        #{:face
-                                              :head}]   (dg/uniform 1.8 2.8)
-    [:human      :shot-arrow    :bat        :leg]       (dg/uniform 1.2 1.5)
-    [:human      :shot-arrow    :bat        :wing]      (dg/uniform 1.8 2.8)
-    [:human      :shot-arrow    :bird       :beak]      (dg/uniform 1.5 2.5)
-    [:human      :shot-arrow    :bird       :body]      (dg/uniform 1.5 2.5)
-    [:human      :shot-arrow    :bird       :head]      (dg/uniform 1.5 2.5)
-    [:human      :shot-arrow    :bird       :leg]       (dg/uniform 1.5 2.0)
-    [:human      :shot-arrow    :bird       :tail]      (dg/uniform 1.5 2.5)
-    [:human      :shot-arrow    :bird       :wing]      (dg/uniform 2.5 3.5)
-    [:human      :shot-arrow    :boar       :body]      (dg/uniform 1.5 2.5)
-    [:human      :shot-arrow    :boar       :eye]       (dg/uniform 3.5 4.5)
-    [:human      :shot-arrow    :boar       :face]      (dg/uniform 1.9 2.9)
-    [:human      :shot-arrow    :boar       :head]      (dg/uniform 1.3 2.3)
-    [:human      :shot-arrow    :boar       :leg]       (dg/uniform 1.7 2.7)
-    [:human      :shot-arrow    :boar       :snout]     (dg/uniform 1.7 2.7)
-    [:human      :shot-arrow    :boar       :tail]      (dg/uniform 1.1 2.1)
-    [:human      :shot-arrow    :centipede  #{:body
-                                              :head}]   (dg/uniform 1.9 2.9)
-    [:human      :shot-arrow    :centipede  :leg]       (dg/uniform 1.1 1.5)
-    [:human      :shot-arrow    :clam       :shell]     (dg/uniform 1.5 2.5)
-    [:human      :shot-arrow    :fish       #{:body
-                                              :head}]   (dg/uniform 1.5 2.5)
-    [:human      :shot-arrow    :fish       #{:fin
-                                              :tail}]   (dg/uniform 1.5 2.1)
-    [:human      :shot-arrow    :frog       :*]         (dg/uniform 1.5 2.5)
-    [:human      :shot-arrow    :gecko      :*]         (dg/uniform 1.5 2.5)
-    [:human      :shot-arrow    :monkey     #{:arm
-                                              :leg}]    (dg/uniform 1.5 2.5)
-    [:human      :shot-arrow    :monkey     #{:body
-                                              :face
-                                              :head
-                                              :neck}]   (dg/uniform 1.5 2.5)
-    [:human      :shot-arrow    :monkey     :tail]      (dg/uniform 1.2 2.0)
-    [:human      :shot-arrow    :octopus    #{:body
-                                              :head}]   (dg/uniform 2.5 3.9)
-    [:human      :shot-arrow    :octopus    :tentacle]  (dg/uniform 1.5 2.5)
-    [:human      :shot-arrow    :parrot     #{:body
-                                              :face
-                                              :head}]   (dg/uniform 1.5 2.5)
-    [:human      :shot-arrow    :parrot     #{:leg
-                                              :tail}]   (dg/uniform 1.5 2.3)
-    [:human      :shot-arrow    :parrot     :wing]      (dg/uniform 1.8 2.8)
-    [:human      :shot-arrow    :rat        #{:body
-                                              :face
-                                              :head
-                                              :neck}]   (dg/uniform 1.5 2.5)
-    [:human      :shot-arrow    :rat        #{:leg
-                                              :tail}]   (dg/uniform 1.5 2.2)
-    [:human      :shot-arrow    :scorpion   #{:abdomen
-                                              :head
-                                              :tail}]   (dg/uniform 1.9 2.9)
-    [:human      :shot-arrow    :scorpion   #{:claw
-                                              :leg}]    (dg/uniform 1.5 2.5)
-    [:human      :shot-arrow    :sea-snake  #{:body
-                                              :head}]   (dg/uniform 1.9 2.9)
-    [:human      :shot-arrow    :shark      #{:body
-                                              :head
-                                              :nose}]   (dg/uniform 1.5 2.5)
-    [:human      :shot-arrow    :shark      #{:fin
-                                              :tail}]   (dg/uniform 1.5 2.1)
-    [:human      :shot-arrow    :snake      #{:body
-                                              :head
-                                              :tail}]   (dg/uniform 1.5 2.5)
-    [:human      :shot-arrow    :spider     #{:abdomen
-                                              :face}]   (dg/uniform 1.5 2.5)
-    [:human      :shot-arrow    :spider     #{:leg}]    (dg/uniform 1.5 2.5)
-    [:human      :shot-arrow    :squid      #{:body
-                                              :head
-                                              :tentacle}] (dg/uniform 1.5 2.5)
-    [:human      :shot-arrow    :turtle     #{:body
-                                              :face
-                                              :head
-                                              :neck}]   (dg/uniform 1.5 2.5)
-    [:human      :shot-arrow    :turtle     :leg]       (dg/uniform 1.5 2.5)
-    [:human      :shot-arrow    :turtle     :shell]     (dg/uniform 1.5 2.1)
-    [:human      :shot-arrow    :urchin     :body]      (dg/uniform 1.5 2.5)
-
-;; generic sharp weapon
-    [:human      sharp-weapon?  :bat        :body]      (dg/uniform 2.5 3.5)
-    [:human      sharp-weapon?  :bat        #{:face
-                                              :head}]   (dg/uniform 1.9 3.8)
-    [:human      sharp-weapon?  :bat        :leg]       (dg/uniform 1.9 2.5)
-    [:human      sharp-weapon?  :bat        :wing]      (dg/uniform 1.8 2.2)
-    [:human      sharp-weapon?  :bird       :beak]      (dg/uniform 2.5 3.5)
-    [:human      sharp-weapon?  :bird       :body]      (dg/uniform 2.5 3.5)
-    [:human      sharp-weapon?  :bird       :head]      (dg/uniform 2.5 3.5)
-    [:human      sharp-weapon?  :bird       :leg]       (dg/uniform 2.5 3.0)
-    [:human      sharp-weapon?  :bird       :tail]      (dg/uniform 2.5 3.5)
-    [:human      sharp-weapon?  :bird       :wing]      (dg/uniform 2.5 3.5)
-    [:human      sharp-weapon?  :boar       :body]      (dg/uniform 2.5 3.5)
-    [:human      sharp-weapon?  :boar       :eye]       (dg/uniform 4.5 6.5)
-    [:human      sharp-weapon?  :boar       :face]      (dg/uniform 1.9 5.9)
-    [:human      sharp-weapon?  :boar       :head]      (dg/uniform 1.3 6.3)
-    [:human      sharp-weapon?  :boar       :leg]       (dg/uniform 1.7 4.7)
-    [:human      sharp-weapon?  :boar       :snout]     (dg/uniform 1.7 4.7)
-    [:human      sharp-weapon?  :boar       :tail]      (dg/uniform 1.2 2.1)
-    [:human      sharp-weapon?  :centipede  #{:body
-                                              :head}]   (dg/uniform 1.9 3.9)
-    [:human      sharp-weapon?  :centipede  :leg]       (dg/uniform 1.2 1.6)
-    [:human      sharp-weapon?  :clam       :shell]     (dg/uniform 3.5 5.5)
-    [:human      sharp-weapon?  :fish       #{:body
-                                              :head}]   (dg/uniform 2.5 5.5)
-    [:human      sharp-weapon?  :fish       #{:fin
-                                              :tail}]   (dg/uniform 1.5 2.5)
-    [:human      sharp-weapon?  :frog       :*]         (dg/uniform 1.5 4.5)
-    [:human      sharp-weapon?  :gecko      :*]         (dg/uniform 1.5 4.5)
-    [:human      sharp-weapon?  :monkey     #{:arm
-                                              :leg}]    (dg/uniform 1.5 5.5)
-    [:human      sharp-weapon?  :monkey     #{:body
-                                              :face
-                                              :head
-                                              :neck}]   (dg/uniform 2.5 7.5)
-    [:human      sharp-weapon?  :monkey     :tail]      (dg/uniform 1.2 2.8)
-    [:human      sharp-weapon?  :octopus    #{:body
-                                              :head}]   (dg/uniform 2.5 6.9)
-    [:human      sharp-weapon?  :octopus    :tentacle]  (dg/uniform 1.5 4.5)
-    [:human      sharp-weapon?  :parrot     #{:body
-                                              :face
-                                              :head}]   (dg/uniform 1.5 4.5)
-    [:human      sharp-weapon?  :parrot     #{:leg
-                                              :tail}]   (dg/uniform 1.5 3.3)
-    [:human      sharp-weapon?  :parrot     :wing]      (dg/uniform 1.8 3.8)
-    [:human      sharp-weapon?  :rat        #{:body
-                                              :face
-                                              :head
-                                              :neck}]   (dg/uniform 1.5 5.5)
-    [:human      sharp-weapon?  :rat        #{:leg
-                                              :tail}]   (dg/uniform 1.5 3.2)
-    [:human      sharp-weapon?  :scorpion   #{:abdomen
-                                              :head
-                                              :tail}]   (dg/uniform 1.9 4.9)
-    [:human      sharp-weapon?  :scorpion   #{:claw
-                                              :leg}]    (dg/uniform 1.5 3.5)
-    [:human      sharp-weapon?  :sea-snake  #{:body
-                                              :head}]   (dg/uniform 1.9 4.9)
-    [:human      sharp-weapon?  :shark      #{:body
-                                              :head
-                                              :nose}]   (dg/uniform 1.5 5.5)
-    [:human      sharp-weapon?  :shark      #{:fin
-                                              :tail}]   (dg/uniform 1.5 3.1)
-    [:human      sharp-weapon?  :snake      #{:body
-                                              :head
-                                              :tail}]   (dg/uniform 1.5 5.5)
-    [:human      sharp-weapon?  :spider     #{:abdomen
-                                              :face}]   (dg/uniform 1.5 4.5)
-    [:human      sharp-weapon?  :spider     #{:leg}]    (dg/uniform 1.5 4.5)
-    [:human      sharp-weapon?  :squid      #{:body
-                                              :head
-                                              :tentacle}] (dg/uniform 1.5 5.5)
-    [:human      sharp-weapon?  :turtle     #{:body
-                                              :face
-                                              :head
-                                              :neck}]   (dg/uniform 1.5 5.5)
-    [:human      sharp-weapon?  :turtle     :leg]       (dg/uniform 1.5 4.5)
-    [:human      sharp-weapon?  :turtle     :shell]     (dg/uniform 1.5 3.1)
-    [:human      sharp-weapon?  :urchin     :body]      (dg/uniform 1.5 4.5)
-    [:monkey     :bite          :human      #{:abdomen
-                                              :head
-                                              :face}]   (dg/uniform 1.5 2.5)
-    [:monkey     :bite          :human      #{:arm
-                                              :foot
-                                              :leg}]    (dg/uniform 1.5 2.5)
-    [:monkey     :bite          :human      #{:neck
-                                              :abdomen
-                                              :face
-                                              :head}]   (dg/uniform 1.5 2.9)
-    [:monkey     :punch         :human      #{:arm
-                                              :foot
-                                              :leg}]    (dg/uniform 1.5 2.1)
-    [:monkey     :punch         :human      :neck]      (dg/uniform 1.5 2.8)
-    [:octopus    :bite          :human      #{:abdomen
-                                              :head
-                                              :neck
-                                              :face}]   (dg/uniform 1.5 2.5)
-    [:octopus    :bite          :human      #{:foot
-                                              :arm
-                                              :leg}]    (dg/uniform 1.5 2.5)
-    [:octopus    :bite-venom    :human      #{:abdomen
-                                              :face
-                                              :neck
-                                              :head}]   (dg/uniform 1.5 2.5)
-    [:octopus    :bite-venom    :human      #{:arm
-                                              :foot
-                                              :leg}]    (dg/uniform 1.5 2.5)
-    [:octopus    :squeeze       :human      :neck]      (dg/uniform 2.5 4.5)
-    [:octopus    :squeeze       :human      :*]         (dg/uniform 1.5 2.5)
-    [:parrot     :bite          :human      #{:abdomen
-                                              :head
-                                              :face
-                                              :neck}]   (dg/uniform 1.5 2.5)
-    [:parrot     :bite          :human      #{:arm
-                                              :foot
-                                              :leg}]    (dg/uniform 1.5 2.0)
-    [:parrot     :claw          :human      :*]         (dg/uniform 1.2 1.7)
-    [:rat        :bite          :human      #{:abdomen
-                                              :face
-                                              :head
-                                              :neck}]      (dg/uniform 1.5 2.5)
-    [:rat        :bite          :human      #{:arm
-                                              :foot
-                                              :leg}]       (dg/uniform 1.5 2.5)
-    [:rat        :claw          :human      :*]   (dg/uniform 1.5 2.5)
-    [:scorpion   :bite          :human      :face]      (dg/uniform 1.5 2.5)
-    [:scorpion   :bite          :human      :*]   (dg/uniform 1.5 2.5)
-    [:scorpion   :claw          :human      :*]   (dg/uniform 1.5 2.5)
-    [:scorpion   :sting-venom   :human      :abdomen]   (dg/uniform 1.5 2.5)
-    [:scorpion   :sting-venom   :human      :arm]       (dg/uniform 1.5 2.0)
-    [:scorpion   :sting-venom   :human      :face]      (dg/uniform 2.5 3.5)
-    [:scorpion   :sting-venom   :human      :foot]      (dg/uniform 1.5 1.9)
-    [:scorpion   :sting-venom   :human      :head]      (dg/uniform 2.0 2.5)
-    [:scorpion   :sting-venom   :human      :leg]       (dg/uniform 1.8 2.4)
-    [:scorpion   :sting-venom   :human      :neck]      (dg/uniform 2.0 2.5)
-    [:sea-snake  :bite          :human      :*]         (dg/uniform 1.5 2.1)
-    [:sea-snake  :bite-venom    :human      :abdomen]   (dg/uniform 1.6 2.5)
-    [:sea-snake  :bite-venom    :human      :arm]       (dg/uniform 1.6 2.3)
-    [:sea-snake  :bite-venom    :human      :face]      (dg/uniform 1.5 2.6)
-    [:sea-snake  :bite-venom    :human      :foot]      (dg/uniform 1.5 2.2)
-    [:sea-snake  :bite-venom    :human      :head]      (dg/uniform 1.7 2.5)
-    [:sea-snake  :bite-venom    :human      :leg]       (dg/uniform 1.5 2.2)
-    [:sea-snake  :bite-venom    :human      :neck]      (dg/uniform 1.8 2.5)
-    [:shark      :bite          :human      :abdomen]   (dg/uniform 3.5 5.5)
-    [:shark      :bite          :human      :arm]       (dg/uniform 2.5 4.5)
-    [:shark      :bite          :human      :face]      (dg/uniform 3.5 5.5)
-    [:shark      :bite          :human      :foot]      (dg/uniform 3.5 5.5)
-    [:shark      :bite          :human      :head]      (dg/uniform 3.5 6.5)
-    [:shark      :bite          :human      :leg]       (dg/uniform 3.5 5.5)
-    [:shark      :bite          :human      :neck]      (dg/uniform 2.5 4.5)
-    [:snake      :bite          :human      :*]         (dg/uniform 2.1 2.6)
-    [:snake      :bite-venom    :human      :*]         (dg/uniform 1.6 2.2)
-    [:squid      :bite          :human      :*]         (dg/uniform 1.5 3.5)
-    [:squid      :squeeze       :human      :neck]      (dg/uniform 2.5 3.5)
-    [:squid      :squeeze       :human      :*]         (dg/uniform 1.5 3.5)
-    [:turtle     :bite          :human      :*]         (dg/uniform 1.5 2.5)
-    [:urchin     :spike        :human      #{:head
-                                             :neck}]   (dg/uniform 1.9 2.5)
-    [:urchin     :spike        :human      :*]         (dg/uniform 1.5 2.2)
-    [:* :* :* :*] (+ (dg/float) 1.5)))
-
-(defn calc-thrown-item-dmg
-  [item-id defender-race]
-  (condp vec-match? [defender-race item-id]
-    [:bat        :*] (dg/uniform 1.5 2.5)
-    [:bird       :*] (dg/uniform 1.5 1.9)
-    [:boar       :*] (dg/uniform 1.5 3.5)
-    [:centipede  :*] (dg/uniform 1.5 1.9)
-    [:clam       :*] (dg/uniform 1.1 1.3)
-    [:fish       :*] (dg/uniform 1.2 2.7)
-    [:frog       :*] (dg/uniform 1.1 1.5)
-    [:gecko      :*] (dg/uniform 1.1 1.3)
-    [:human      :*] (dg/uniform 1.5 2.5)
-    [:monkey     :*] (dg/uniform 1.5 2.5)
-    [:octopus    :*] (dg/uniform 1.5 2.5)
-    [:parrot     :*] (dg/uniform 1.5 2.5)
-    [:rat        :*] (dg/uniform 1.5 2.5)
-    [:scorpion   :*] (dg/uniform 1.5 2.5)
-    [:sea-snake  :*] (dg/uniform 1.5 2.1)
-    [:shark      :*] (dg/uniform 3.5 5.5)
-    [:snake      :*] (dg/uniform 2.1 2.6)
-    [:squid      :*] (dg/uniform 2.5 3.5)
-    [:turtle     :*] (dg/uniform 1.5 2.5)
-    [:urchin     :*] (dg/uniform 1.9 2.5)
-    [:*          :*] (+ (dg/float) 1.5)))
+  [attacker attack defender defender-body-part]
+    ;;Damage = Astr * (Adex / Dsp) * (As / Ds) * (At / Dt)
+    (let [attacker-strength  (get attacker :strength)
+          attacker-dexterity (get attacker :dexterity 0.1)
+          defender-speed     (get defender :speed)
+          attacker-size      (get attacker :size)
+          defender-size      (get defender :size)
+          attack-toughness   (attack-toughness attack)
+          defender-toughness (get defender :toughness)]
+      (info "attacker-strength" attacker-strength
+            "attacker-dexterity" attacker-dexterity
+            "defender-speed" defender-speed
+            "attacker-size" attacker-size
+            "defender-size" defender-size
+            "attack-toughness" attack-toughness
+            "defender-toughnes" defender-toughness)
+      (* attacker-strength (/ attacker-dexterity defender-speed) (/ attacker-size defender-size) (/ attack-toughness defender-toughness))))
 
 (defn attack
   "Perform combat. The attacker fights the defender, but not vice-versa.
@@ -533,11 +190,8 @@
         hit-or-miss        (dg/rand-nth (concat (repeat (get attacker :speed) :hit)
                                              (repeat (get defender :speed) :miss)))
         dmg                (cond
-                             (and (= hit-or-miss :hit)
-                                  (= attack :thrown-item))
-                               (calc-thrown-item-dmg (get thrown-item :id) (get defender :race))
                              (= hit-or-miss :hit)
-                               (calc-dmg (get attacker :race) attack (get defender :race) defender-body-part)
+                               (calc-dmg attacker attack defender defender-body-part)
                              :else 0)
         is-wound           (> dmg 1.5)]
     (debug "attack" attacker-path "is attacking defender" defender-path)

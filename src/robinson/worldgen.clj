@@ -354,7 +354,11 @@
                     :movement-policy :entourage
                     :in-party? true
                     :inventory inventory-with-hotkeys
+                    :dexterity 1
                     :speed 1
+                    :size 75
+                    :strength 10
+                    :toughness 5
                     :hp 10
                     :max-hp 10
                     :will-to-live 100

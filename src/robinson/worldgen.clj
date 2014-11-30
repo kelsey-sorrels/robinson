@@ -325,6 +325,8 @@
         poisoned-fruit         (set (take (/ (count fruit-ids) 2) (dg/shuffle fruit-ids)))
         skin-identifiable      (set (take (/ (count poisoned-fruit) 2) (dg/shuffle poisoned-fruit)))
         tongue-identifiable    (set (take (/ (count poisoned-fruit) 2) (dg/shuffle poisoned-fruit)))
+        frog-colors            [:reg :orange :yellow :green :blue :purple]
+        poisonous-frog-colors  (set (take (/ (count frog-colors) 2) (dg/shuffle frog-colors)))
         world
           {:seed seed
            :block-size {:width width :height height}
@@ -389,6 +391,9 @@
              :skin-identifiable   skin-identifiable
              :tongue-identifiable tongue-identifiable
              :identified          #{}
+           }
+           :frogs {
+             :poisonous          poisonous-frog-colors
            }
            :quests {}
            :npcs []}]

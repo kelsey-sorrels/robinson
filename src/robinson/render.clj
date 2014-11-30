@@ -851,7 +851,12 @@
                                               :bird            ["a" :red :black]
                                               :centipede       ["c" :red :black]
                                               :turtle          ["t" :green :black]
-                                              :frog            ["\u03B1" :green :black] ;;α
+                                              :red-frog        ["\u03B1" :red :black] ;;α
+                                              :orange-frog     ["\u03B1" :orange :black] ;;α
+                                              :yellow-frog     ["\u03B1" :yellow :black] ;;α
+                                              :green-frog      ["\u03B1" :green :black] ;;α
+                                              :blue-frog       ["\u03B1" :blue :black] ;;α
+                                              :purple-frog     ["\u03B1" :purple :black] ;;α
                                               :parrot          ["p" :red :black]
                                               :shark           ["\u039B"] ;;Λ
                                               :fish            ["f"]

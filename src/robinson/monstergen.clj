@@ -15,8 +15,9 @@
 (defn can-move-on-land?
   [race]
   (contains? #{:rat :spider :scorpion :bat :boar :gecko :monkey :bird
-               :centipede :turtle :frog :parrot :crocodile :mosquito
-               :mongoose :tarantula :monitor-lizard :komodo-dragon
+               :centipede :turtle :red-frog :orange-frog :yellow-from
+               :green-frog :blue-frog :purple-frog :parrot :crocodile
+               :mosquito :mongoose :tarantula :monitor-lizard :komodo-dragon
                :cobra :crab :hermit-crab} race))
 
 (defn can-spawn-intertidally?
@@ -49,7 +50,12 @@
   (Monster. :bird           "bird"           "birds"           4 0 2.1   1     0.3  4 #{:head :body :tail :leg :beak :wing}       #{:bite :claw}                :hide-from-player-in-range-or-random  8 #{:hostile})
   (Monster. :centipede      "centipede"      "centipedes"      1 0 0.5   0.1   0.1  1 #{:head :body :leg}                         #{:bite}                      :hide-from-player-in-range-or-random  3 #{:hostile})
   (Monster. :turtle         "turtle"         "turtles"         4 0 0.5  10     1.5 20 #{:head :neck :body :leg :face :shell}      #{:bite}                      :hide-from-player-in-range-or-random  5 #{:hostile})
-  (Monster. :frog           "frog"           "frogs"           2 0 0.9   1     0.7  3 #{:head :body :leg :face}                   #{:claw}                      :hide-from-player-in-range-or-random  4 #{:hostile})
+  (Monster. :red-frog       "red frog"       "red frogs"       2 0 0.9   1     0.7  3 #{:head :body :leg :face}                   #{:claw}                      :hide-from-player-in-range-or-random  4 #{:hostile})
+  (Monster. :orange-frog    "orange frog"    "orange frogs"    2 0 0.9   1     0.7  3 #{:head :body :leg :face}                   #{:claw}                      :hide-from-player-in-range-or-random  4 #{:hostile})
+  (Monster. :yellow-frog    "yellow frog"    "yellow frogs"    2 0 0.9   1     0.7  3 #{:head :body :leg :face}                   #{:claw}                      :hide-from-player-in-range-or-random  4 #{:hostile})
+  (Monster. :green-frog     "green frog"     "green frogs"     2 0 0.9   1     0.7  3 #{:head :body :leg :face}                   #{:claw}                      :hide-from-player-in-range-or-random  4 #{:hostile})
+  (Monster. :blue-frog      "blue frog"      "blue frogs"      2 0 0.9   1     0.7  3 #{:head :body :leg :face}                   #{:claw}                      :hide-from-player-in-range-or-random  4 #{:hostile})
+  (Monster. :purple-frog    "purple frog"    "purple frogs"    2 0 0.9   1     0.7  3 #{:head :body :leg :face}                   #{:claw}                      :hide-from-player-in-range-or-random  4 #{:hostile})
   (Monster. :parrot         "parrot"         "parrots"         5 0 2.1   1     1    3 #{:head :body :leg :face :wing :tail}       #{:claw :bite}                :hide-from-player-in-range-or-random 10 #{:hostile})
   (Monster. :shark          "shark"          "sharks"         16 0 1.4 800    30   15 #{:head :body :fin :nose :tail}             #{:bite}                      :hide-from-player-in-range-or-random 10 #{:hostile})
   (Monster. :fish           "fish"           "fish"            4 0 1.2   4     1    8 #{:head :body :fin :tail}                   #{:bite}                      :hide-from-player-in-range-or-random  4 #{:hostile})
@@ -85,7 +91,12 @@
 (defn gen-monster [level cell-type]
   "Generate one random monster."
   (let [land-monster-ids {
-                          0 [:frog
+                          0 [:red-frog
+                             :orange-frog
+                             :yellow-frog
+                             :green-frog
+                             :blue-frog
+                             :purple-frog
                              :bird
                              :gecko]
                           1 [:rat

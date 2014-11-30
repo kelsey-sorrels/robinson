@@ -25,7 +25,7 @@
                :turtle :crocodile
                :crab :hermit-crab} race))
   
-(defrecord Monster [race name name-plural hp energy speed body-parts attacks movement-policy range-threshold status]
+(defrecord Monster [race name name-plural hp energy speed size strength toughness body-parts attacks movement-policy range-threshold status]
   Object
   (toString [this] (str "#Monster" (into {} this))))
 
@@ -33,41 +33,43 @@
   [
   ;;        race            name             name-plural       hp
   ;;                                                             energy
-  ;;                                                               speed
-  ;;                                                                   body-parts                                  attacks                       movement policy                       range-threshold
-  ;;                                                                                                                                                                                     status
-  (Monster. :rat            "rat"            "rats"            5 0 1.1 #{:face :head :neck :body :leg :tail}       #{:bite :claw}                :hide-from-player-in-range-or-random  5 #{:hostile})
-  (Monster. :spider         "spider"         "spiders"         2 0 0.9 #{:face :leg :abdomen}                      #{:bite-venom}                :hide-from-player-in-range-or-random  5 #{:hostile})
-  (Monster. :scorpion       "scorpion"       "scorpions"       3 0 1.1 #{:head :claw :leg :abdomen :tail}          #{:bite :claw :sting-venom}   :hide-from-player-in-range-or-random  4 #{:hostile})
-  (Monster. :snake          "snake"          "snakes"          5 0 0.8 #{:head :body :tail}                        #{:bite :bite-venom}          :hide-from-player-in-range-or-random  5 #{:hostile})
-  (Monster. :bat            "bat"            "bats"            5 0 1.6 #{:head :body :wing :leg :face}             #{:bite}                      :hide-from-player-in-range-or-random  7 #{:hostile})
-  (Monster. :boar           "boar"           "boars"          18 0 1.2 #{:head :body :tail :snout :face :eye :leg} #{:bite :gore}                :hide-from-player-in-range-or-random  7 #{:hostile})
-  (Monster. :gecko          "gecko"          "geckos"          2 0 0.9 #{:head :face :body :tail :leg}             #{:bite}                      :hide-from-player-in-range-or-random  4 #{:hostile})
-  (Monster. :monkey         "monkey"         "monkies"        13 0 1.2 #{:head :neck :body :tail :leg :face :arm}  #{:bite :punch}               :hide-from-player-in-range-or-random 10 #{:hostile})
-  (Monster. :bird           "bird"           "birds"           4 0 2.1 #{:head :body :tail :leg :beak :wing}       #{:bite :claw}                :hide-from-player-in-range-or-random  8 #{:hostile})
-  (Monster. :centipede      "centipede"      "centipedes"      1 0 0.5 #{:head :body :leg}                         #{:bite}                      :hide-from-player-in-range-or-random  3 #{:hostile})
-  (Monster. :turtle         "turtle"         "turtles"         4 0 0.5 #{:head :neck :body :leg :face :shell}      #{:bite}                      :hide-from-player-in-range-or-random  5 #{:hostile})
-  (Monster. :frog           "frog"           "frogs"           2 0 0.9 #{:head :body :leg :face}                   #{:claw}                      :hide-from-player-in-range-or-random  4 #{:hostile})
-  (Monster. :parrot         "parrot"         "parrots"         5 0 2.1 #{:head :body :leg :face :wing :tail}       #{:claw :bite}                :hide-from-player-in-range-or-random 10 #{:hostile})
-  (Monster. :shark          "shark"          "sharks"         16 0 1.4 #{:head :body :fin :nose :tail}             #{:bite}                      :hide-from-player-in-range-or-random 10 #{:hostile})
-  (Monster. :fish           "fish"           "fish"            4 0 1.2 #{:head :body :fin :tail}                   #{:bite}                      :hide-from-player-in-range-or-random  4 #{:hostile})
-  (Monster. :octopus        "octopus"        "octopodes"       4 0 1.5 #{:head :body :tentacle}                    #{:bite :bite-venom :squeeze} :hide-from-player-in-range-or-random  2 #{:hostile})
-  (Monster. :sea-snake      "sea snake"      "sea snakes"      4 0 1.5 #{:head :body}                              #{:bite :bite-venom}          :hide-from-player-in-range-or-random  2 #{:hostile})
-  (Monster. :clam           "clam"           "clams"           2 0 0.1 #{:shell}                                   #{:clamp}                     :constant                             1 #{:hostile})
-  (Monster. :urchin         "urchin"         "urchins"         2 0 0.1 #{:body}                                    #{:spike}                     :constant                             1 #{:hostile})
-  (Monster. :squid          "squid"          "squids"          4 0 1.5 #{:head :body :tentacle}                    #{:bite :squeeze}             :hide-from-player-in-range-or-random  2 #{:hostile})
-  (Monster. :crocodile      "crocodile"      "crocodiles"     10 0 0.8 #{:head :body :arm :leg :tail :snout}       #{:bite :claw}                :hide-from-player-in-range-or-random  2 #{:hostile})
-  (Monster. :mosquito       "mosquito"       "mosquitoes"      1 0 1.4 #{:head :body :leg :wing}                   #{:bite}                      :hide-from-player-in-range-or-random  3 #{:hostile})
-  (Monster. :mongoose       "mongoose"       "mongeese"        4 0 1.4 #{:head :body :leg :tail}                   #{:bite :claw}                :hide-from-player-in-range-or-random  2 #{:hostile})
-  (Monster. :tarantula      "tarantula"      "tarantulas"      2 0 1.4 #{:head :body :leg}                         #{:bite}                      :hide-from-player-in-range-or-random  2 #{:hostile})
-  (Monster. :monitor-lizard "monitor lizard" "monitor lizards" 7 0 1.1 #{:head :body :leg :tail}                   #{:bite :claw}                :hide-from-player-in-range-or-random  2 #{:hostile})
-  (Monster. :komodo-dragon  "komodo dragon"  "komodo dragons" 12 0 0.8 #{:head :body :leg :tail}                   #{:bite :claw}                :hide-from-player-in-range-or-random  2 #{:hostile})
-  (Monster. :cobra          "cobra"          "cobras"          5 0 0.8 #{:head :body :tail}                        #{:bite :bite-venom}          :hide-from-player-in-range-or-random  2 #{:hostile})
-  (Monster. :puffer-fish    "puffer fish"    "puffer fish"     3 0 1.1 #{:head :body :tail}                        #{:sting-venom}               :hide-from-player-in-range-or-random  2 #{:hostile})
-  (Monster. :crab           "crab"           "crabs"           4 0 0.8 #{:head :body}                              #{:claw}                      :hide-from-player-in-range-or-random  2 #{:hostile})
-  (Monster. :hermit-crab    "hermit crab"    "hermit crabs"    3 0 0.6 #{:head :shell :leg}                        #{:claw}                      :hide-from-player-in-range-or-random  1 #{:hostile})
-  (Monster. :electric-eel   "electric eel"   "electric eels"   5 0 0.6 #{:head :body}                              #{:bite}                      :hide-from-player-in-range-or-random  2 #{:hostile})
-  (Monster. :jellyfish      "jellyfish"      "jellyfish"       3 0 0.6 #{:body}                                    #{:sting-venom}               :hide-from-player-in-range-or-random  1 #{:hostile})])
+  ;;                                                               speed size (kg)
+  ;;                                                                           strength
+  ;;                                                                               toughness
+  ;;                                                                                 body-parts                                  attacks                       movement policy                       range-threshold
+  ;;                                                                                                                                                                                                 status
+  (Monster. :rat            "rat"            "rats"            5 0 1.1   0.2   1    5 #{:face :head :neck :body :leg :tail}       #{:bite :claw}                :hide-from-player-in-range-or-random  5 #{:hostile})
+  (Monster. :spider         "spider"         "spiders"         2 0 0.9   0.01  0.1  1 #{:face :leg :abdomen}                      #{:bite-venom}                :hide-from-player-in-range-or-random  5 #{:hostile})
+  (Monster. :scorpion       "scorpion"       "scorpions"       3 0 1.1   0.01  0.1  1 #{:head :claw :leg :abdomen :tail}          #{:bite :claw :sting-venom}   :hide-from-player-in-range-or-random  4 #{:hostile})
+  (Monster. :snake          "snake"          "snakes"          5 0 0.8   1     1    8 #{:head :body :tail}                        #{:bite :bite-venom}          :hide-from-player-in-range-or-random  5 #{:hostile})
+  (Monster. :bat            "bat"            "bats"            5 0 1.6   1     0.5  4 #{:head :body :wing :leg :face}             #{:bite}                      :hide-from-player-in-range-or-random  7 #{:hostile})
+  (Monster. :boar           "boar"           "boars"          18 0 1.2  70    20    8 #{:head :body :tail :snout :face :eye :leg} #{:bite :gore}                :hide-from-player-in-range-or-random  7 #{:hostile})
+  (Monster. :gecko          "gecko"          "geckos"          2 0 0.9   0.1   0.5  5 #{:head :face :body :tail :leg}             #{:bite}                      :hide-from-player-in-range-or-random  4 #{:hostile})
+  (Monster. :monkey         "monkey"         "monkies"        13 0 1.2  50    10    5 #{:head :neck :body :tail :leg :face :arm}  #{:bite :punch}               :hide-from-player-in-range-or-random 10 #{:hostile})
+  (Monster. :bird           "bird"           "birds"           4 0 2.1   1     0.3  4 #{:head :body :tail :leg :beak :wing}       #{:bite :claw}                :hide-from-player-in-range-or-random  8 #{:hostile})
+  (Monster. :centipede      "centipede"      "centipedes"      1 0 0.5   0.1   0.1  1 #{:head :body :leg}                         #{:bite}                      :hide-from-player-in-range-or-random  3 #{:hostile})
+  (Monster. :turtle         "turtle"         "turtles"         4 0 0.5  10     1.5 20 #{:head :neck :body :leg :face :shell}      #{:bite}                      :hide-from-player-in-range-or-random  5 #{:hostile})
+  (Monster. :frog           "frog"           "frogs"           2 0 0.9   1     0.7  3 #{:head :body :leg :face}                   #{:claw}                      :hide-from-player-in-range-or-random  4 #{:hostile})
+  (Monster. :parrot         "parrot"         "parrots"         5 0 2.1   1     1    3 #{:head :body :leg :face :wing :tail}       #{:claw :bite}                :hide-from-player-in-range-or-random 10 #{:hostile})
+  (Monster. :shark          "shark"          "sharks"         16 0 1.4 800    30   15 #{:head :body :fin :nose :tail}             #{:bite}                      :hide-from-player-in-range-or-random 10 #{:hostile})
+  (Monster. :fish           "fish"           "fish"            4 0 1.2   4     1    8 #{:head :body :fin :tail}                   #{:bite}                      :hide-from-player-in-range-or-random  4 #{:hostile})
+  (Monster. :octopus        "octopus"        "octopodes"       4 0 1.5  15     5    4 #{:head :body :tentacle}                    #{:bite :bite-venom :squeeze} :hide-from-player-in-range-or-random  2 #{:hostile})
+  (Monster. :sea-snake      "sea snake"      "sea snakes"      4 0 1.5   2     1    7 #{:head :body}                              #{:bite :bite-venom}          :hide-from-player-in-range-or-random  2 #{:hostile})
+  (Monster. :clam           "clam"           "clams"           2 0 0.1   0.2   0.2 25 #{:shell}                                   #{:clamp}                     :constant                             1 #{:hostile})
+  (Monster. :urchin         "urchin"         "urchins"         2 0 0.1   0.1  10   10 #{:body}                                    #{:spike}                     :constant                             1 #{:hostile})
+  (Monster. :squid          "squid"          "squids"          4 0 1.5  10     6    4 #{:head :body :tentacle}                    #{:bite :squeeze}             :hide-from-player-in-range-or-random  2 #{:hostile})
+  (Monster. :crocodile      "crocodile"      "crocodiles"     10 0 0.8 150    15    9 #{:head :body :arm :leg :tail :snout}       #{:bite :claw}                :hide-from-player-in-range-or-random  2 #{:hostile})
+  (Monster. :mosquito       "mosquito"       "mosquitoes"      1 0 1.4   0.01  0.1  1 #{:head :body :leg :wing}                   #{:bite}                      :hide-from-player-in-range-or-random  3 #{:hostile})
+  (Monster. :mongoose       "mongoose"       "mongeese"        4 0 1.4   5     4    6 #{:head :body :leg :tail}                   #{:bite :claw}                :hide-from-player-in-range-or-random  2 #{:hostile})
+  (Monster. :tarantula      "tarantula"      "tarantulas"      2 0 1.4   0.1   0.2  2 #{:head :body :leg}                         #{:bite}                      :hide-from-player-in-range-or-random  2 #{:hostile})
+  (Monster. :monitor-lizard "monitor lizard" "monitor lizards" 7 0 1.1  10     5   10 #{:head :body :leg :tail}                   #{:bite :claw}                :hide-from-player-in-range-or-random  2 #{:hostile})
+  (Monster. :komodo-dragon  "komodo dragon"  "komodo dragons" 12 0 0.8  60    10   14 #{:head :body :leg :tail}                   #{:bite :claw}                :hide-from-player-in-range-or-random  2 #{:hostile})
+  (Monster. :cobra          "cobra"          "cobras"          5 0 0.8   6     3    7 #{:head :body :tail}                        #{:bite :bite-venom}          :hide-from-player-in-range-or-random  2 #{:hostile})
+  (Monster. :puffer-fish    "puffer fish"    "puffer fish"     3 0 1.1   1     0.6  7 #{:head :body :tail}                        #{:sting-venom}               :hide-from-player-in-range-or-random  2 #{:hostile})
+  (Monster. :crab           "crab"           "crabs"           4 0 0.8   2     1.5  9 #{:head :body}                              #{:claw}                      :hide-from-player-in-range-or-random  2 #{:hostile})
+  (Monster. :hermit-crab    "hermit crab"    "hermit crabs"    3 0 0.6   1     1   15 #{:head :shell :leg}                        #{:claw}                      :hide-from-player-in-range-or-random  1 #{:hostile})
+  (Monster. :electric-eel   "electric eel"   "electric eels"   5 0 0.6  10     5    8 #{:head :body}                              #{:bite}                      :hide-from-player-in-range-or-random  2 #{:hostile})
+  (Monster. :jellyfish      "jellyfish"      "jellyfish"       3 0 0.6   1     0.1  4 #{:body}                                    #{:sting-venom}               :hide-from-player-in-range-or-random  1 #{:hostile})])
 
 (def ^:private race->monster-map
   (apply hash-map (mapcat (fn [[k v]] [k (first v)])

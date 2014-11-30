@@ -13,8 +13,8 @@
    :type        :food
    :name        (format "%s corpse" (name (get npc :race)))
    :name-plural (format "%s corpses" (name (get npc :race)))
-   ;; TODO: base on type of monster by including a weight field in all monsters
-   :hunger      (int (dg/uniform 5 10))})
+   ;; food=log((size+1)/10000)+15
+   :hunger      (+ (Math/log10 (/ (inc (get npc :size)) 10000)) 15)})
 
 (defn is-corpse-id? [id] (re-matches #"-corpse$" (name id)))
 

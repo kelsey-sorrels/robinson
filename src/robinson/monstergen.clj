@@ -164,7 +164,12 @@
                               gen-bird
                               gen-centipede
                               gen-turtle
-                              gen-frog
+                              gen-red-frog
+                              gen-orange-frog
+                              gen-yellow-frog
+                              gen-green-frog
+                              gen-blue-frog
+                              gen-purple-frog
                               gen-parrot
                               gen-shark
                               gen-fish

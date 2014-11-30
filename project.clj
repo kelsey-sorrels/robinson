@@ -10,8 +10,8 @@
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [org.clojure/core.async "0.1.346.0-17112a-alpha"]
                  [org.clojure/core.memoize "0.5.6"]
-                 [org.clojure/tools.reader "0.8.9"]
-                 [org.clojure/core.typed "0.2.44"]
+                 [org.clojure/tools.reader "0.8.12"]
+                 [org.clojure/core.typed "0.2.72"]
                  [org.clojure/data.generators "0.1.2"]
                  [org.clojure/math.combinatorics "0.0.8"]
                  [org.clojure/clojure-contrib "1.2.0"]
@@ -23,7 +23,7 @@
                  [clj-tiny-astar "0.1.1-SNAPSHOT"]
                  [dorothy "0.0.6"]
                  [com.taoensso/timbre "3.3.1"]
-                 [com.taoensso/nippy "2.7.0"]
+                 [com.taoensso/nippy "2.7.1"]
                  [org.clojars.folcon/clojure-lanterna "0.9.5"]]
   :main robinson.core
   :repl-init robinson.core

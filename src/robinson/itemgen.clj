@@ -18,6 +18,11 @@
 
 (defn is-corpse-id? [id] (re-matches #"-corpse$" (name id)))
 
+(defn is-corpse-poisonous?
+  [state id]
+  (contains? (get-in state [:world :frogs :poisonous])
+             (-> (clojure.string/split (name id) #"-") first keyword)))
+
 (defn is-quaffable? [item]
   (pos? (get item :thirst 0)))
 
@@ -62,6 +67,12 @@
    {:id  :log                     :name  "log"                        :name-plural "logs" :fuel 500}
    {:id  :sharpened-stick         :name  "sharpened stick"            :name-plural "sharpened sticks" :attack :spear :fuel 100}
    {:id  :arrow                   :name  "arrow"                      :name-plural "arrows" :attack :spear :fuel 10}
+   {:id  :red-tipped-arrow        :name  "red-tipped arrow"           :name-plural "red-tipped arrows" :attack :spear :fuel 10}
+   {:id  :orange-topped-arrow     :name  "orange-tipped arrow"        :name-plural "orange-tipped arrows" :attack :spear :fuel 10}
+   {:id  :yellow-tipped-arrow     :name  "yellow-tipped arrow"        :name-plural "yellow-tipped arrows" :attack :spear :fuel 10}
+   {:id  :green-tipped-arrow      :name  "green-tipped arrow"         :name-plural "green-tipped arrows" :attack :spear :fuel 10}
+   {:id  :blue-tipped-arrow       :name  "blue-tipped arrow"          :name-plural "blue-tipped arrows" :attack :spear :fuel 10}
+   {:id  :purple-tipped-arrow     :name  "prurple-tipped arrow"       :name-plural "arrows" :attack :spear :fuel 10}
    {:id  :bow                     :name  "bow"                        :name-plural "bow" :fuel 10}
    {:id  :plant-fiber             :name  "plant fiber"                :name-plural "plant fibers" :fuel 50}
    {:id  :unhusked-coconut        :name  "unhusked coconut"           :name-plural "husked coconuts"}

@@ -156,6 +156,7 @@
   "Perform combat. The attacker fights the defender, but not vice-versa.
    Return a new state reflecting combat outcome."
   ([state attacker-path defender-path]
+  {:pre [(every? (set (keys (get-in state attacker-path))) [:attacks])]}
    (let [attacker           (get-in state attacker-path)
          attack-type (or (get (first (filter (fn [item] (contains? item :wielded))
                                      (get-in state (conj attacker-path :inventory) [])))
@@ -163,17 +164,21 @@
                          (dg/rand-nth (vec (get attacker :attacks))))]
      (attack state attacker-path defender-path attack-type)))
   ([state attacker-path defender-path attack]
-  {:pre [(every? (set (keys (get-in state defender-path))) [:hp :pos :race :body-parts :inventory])
-         (every? (set (keys (get-in state attacker-path))) [:attacks])
+  {:pre [(vector? attacker-path)
+         (vector? defender-path)
+         (every? (set (keys (get-in state defender-path))) [:hp :pos :race :body-parts :inventory])
          (vector? (get-in state [:world :npcs]))]
    :post [(vector? (get-in % [:world :npcs]))]}
+  (info "attacker-path" attacker-path "defender-path" defender-path)
   (let [defender           (get-in state defender-path)
         ;; 
         attacker           (get-in state attacker-path)
         bow-wielded        (= :bow
-                              (get-in (filter (fn [item] (contains? item :wielded))
-                                               (get-in state (conj attacker-path :inventory) []))
-                                [0 :id] :non-bow))
+                              (let [attacker-inventory (get-in state (conj attacker-path :inventory) [])
+                                    attack-item        (first (filter (fn [item] (contains? item :wielded))
+                                                                      attacker-inventory))
+                                    item-id            (get (or attack-item {}) :id)]
+                                (or item-id :non-bow)))
         thrown-item        (when-not (keyword? attack)
                              attack)
         attack             (cond
@@ -244,7 +249,7 @@
             ;; remove defender
             (remove-in (butlast defender-path) (partial = defender))
             ;; maybe add corpse
-            (update-cell-items state x y
+            (update-cell-items x y
               (fn [items]
                 (if (> (dg/float) 0.2)
                   (conj items (gen-corpse defender))

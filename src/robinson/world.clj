@@ -277,8 +277,7 @@
 (defn npc-at-xy
   "npc at [x y] of the current place. Otherwise `nil`."
   [state x y]
-  (first (filter (fn [npc] (and (= (get npc :place) (xy->place-id state x y))
-                                (= (-> npc :pos :x) x)
+  (first (filter (fn [npc] (and (= (-> npc :pos :x) x)
                                 (= (-> npc :pos :y) y)))
                  (get-in state [:world :npcs]))))
 

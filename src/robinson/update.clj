@@ -243,21 +243,26 @@
         target-cell (get-cell state target-x target-y)]
     (info "moving to" (get target-cell :type))
     (info "inside-safe-zone?" (xy-in-safe-zone? state target-x target-y) target-x target-y)
+    (info "not collide?" (not (collide? state target-x target-y {:include-npcs? false})))
+    (info "not mounted-on-raft?" (not (player-mounted-on-raft? state)))
     (cond
-      (and (not (collide? state target-x target-y))
+      (and (not (collide? state target-x target-y {:include-npcs? false}))
            (not (player-mounted-on-raft? state)))
         (-> state
           (arg-when-> [state] (not (xy-in-safe-zone? state target-x target-y))
             (move-outside-safe-zone direction))
-          (assoc-in [:world :player :pos :x] target-x)
-          (assoc-in [:world :player :pos :y] target-y)
-          ((fn [state]
-             (let [cell  (get-cell state target-x target-y)
-                   items (get cell :items)]
-               (if (seq items)
-                 (search state)
-                 state))))
-          (pick-up-gold))
+          (arg-if-> [state] (do (info "npc-at-xy?" (npc-at-xy state target-x target-y)) (npc-at-xy state target-x target-y))
+            ;; collided with npc. Engage in combat.
+            (attack [:world :player] (npc->keys state (npc-at-xy state target-x target-y)))
+            (as-> state
+              (assoc-in state [:world :player :pos :x] target-x)
+              (assoc-in state [:world :player :pos :y] target-y)
+              (let [cell  (get-cell state target-x target-y)
+                    items (get cell :items)]
+                (if (seq items)
+                  (search state)
+                  state))
+              (pick-up-gold state))))
       (= (get (npc-at-xy state target-x target-y) :in-party?) true)
         (-> state
           (assoc-in [:world :player :pos :x] target-x)
@@ -285,10 +290,6 @@
                (if (seq items)
                  (search state)
                  state)))))
-      (and (npc-at-xy state target-x target-y)
-           (every? (set (keys (npc-at-xy state target-x target-y))) #{:hp :pos :race :body-parts :inventory}))
-        ;; collided with npc. Engage in combat.
-        (attack state [:world :player] (npc->keys state (npc-at-xy state target-x target-y)))
       ;; Hack down destroyable cells.
       (type->destroyable? (get target-cell :type))
         (destroy-cell state target-x target-y)
@@ -552,6 +553,11 @@
                 (-> state
                   (assoc-current-state :apply-item-normal)
                   (ui-hint "Pick a direction to use the fishing pole."))
+              (contains? #{:red-frog-corpse :orange-frog-corpse :yellow-frog-corpse
+                           :green-frog-corpse :blue-frog-corpse :purple-frog-corpse} id)
+                (-> state
+                  (assoc-current-state :apply-item-inventory)
+                  (ui-hint "Pick an item to apply the frog secretion to."))
               (= id :match)
                 (-> state
                   (assoc-current-state :apply-item-normal)
@@ -733,6 +739,22 @@
                                    [(get-in state [:world :player :tongue-identify-activate-time])
                                     (+ (get-time state) (uniform-int 5 10))]))))))
 
+(defn apply-frog-corpse
+  "Apply the secretions of a frog corpse to an inventory item."
+  [state frog-corpse target-item]
+  (info "poisonous frogs" (get-in state [:world :frogs]))
+  (-> state
+    (append-log (format "You touch the %s to the %s." (get frog-corpse :name) (get target-item :name)))
+    (arg-if-> [state] (= :arrow (get target-item :id))
+      (->
+        (dec-item-count :arrow)
+        (add-to-inventory (ig/id->item (-> (get target-item :name)
+                                           (clojure.string/split #"-")
+                                           first
+                                           (str "-tipped-arrow")
+                                           keyword))))
+      (append-log "You rub it all over but nothing happens."))))
+
 (defn apply-item
   "Applies the selected item."
   [state keyin]
@@ -768,6 +790,17 @@
       [ig/id-is-fruit? \b         ] (-> state
                                       (apply-fruit-to-tongue item)
                                       (assoc-current-state :normal))
+      [#{:red-frog-corpse
+         :orange-frog-corpse
+         :yellow-frog-corpse
+         :green-frog-corpse
+         :blue-frog-corpse
+         :purple-frog-corpse}
+                      :*          ] (if-let [target-item (inventory-hotkey->item state keyin)]
+                                      (-> state
+                                        (apply-frog-corpse (get item :id) target-item)
+                                        (assoc-current-state  :normal))
+                                      state)
       [:*              :*         ] (ui-hint state "You're not sure how to apply it to that."))))
 
 (defn quaff-only-adjacent-cell

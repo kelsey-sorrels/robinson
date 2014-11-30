@@ -708,6 +708,7 @@
                                :bedroll         ["_" :white :black]
                                :$               ["$"  :yellow :black #{:bold}]
                                :amulet          ["\"" :blue   :black #{:bold}]
+                               :food            ["%"]
                                ["?"])
                              (case (cell :type)
                               :vertical-wall   ["|"]

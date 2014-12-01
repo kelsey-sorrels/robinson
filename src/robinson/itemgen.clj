@@ -61,6 +61,15 @@
   [state item]
   (contains? (get-in state [:world :fruit :tongue-identifiable]) (get item :id)))
 
+(defn arrow-poison-tipped?
+  [state item]
+  (and (contains? #{:red-tipped-arrow :orange-tipped-arrow :yellow-tipped-arrrow
+                    :green-tipped-arrow :blue-tipped-arrow :purple-tipped-arrow}
+                  (get item :id))
+       (contains? (get-in state [:world :frogs :poisonous])
+                  (-> (clojure.string/split (name (get item :id)) #"-") first keyword))))
+       
+                                                 
 (def ^:private items
   [
    {:id  :stick                   :name  "stick"                      :name-plural "sticks" :fuel 100}

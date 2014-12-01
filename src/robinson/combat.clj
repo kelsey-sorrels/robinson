@@ -170,35 +170,37 @@
          (vector? (get-in state [:world :npcs]))]
    :post [(vector? (get-in % [:world :npcs]))]}
   (info "attacker-path" attacker-path "defender-path" defender-path)
-  (let [defender           (get-in state defender-path)
+  (let [defender             (get-in state defender-path)
         ;; 
-        attacker           (get-in state attacker-path)
-        bow-wielded        (= :bow
-                              (let [attacker-inventory (get-in state (conj attacker-path :inventory) [])
-                                    attack-item        (first (filter (fn [item] (contains? item :wielded))
-                                                                      attacker-inventory))
-                                    item-id            (get (or attack-item {}) :id)]
-                                (or item-id :non-bow)))
-        thrown-item        (when-not (keyword? attack)
-                             attack)
-        attack             (cond
-                             (keyword? attack)
-                             attack
-                             (and bow-wielded (= :arrow (get thrown-item :id)))
-                             :shot-arrow
-                             :else
-                             :thrown-item)
+        attacker             (get-in state attacker-path)
+        bow-wielded          (= :bow
+                                (let [attacker-inventory (get-in state (conj attacker-path :inventory) [])
+                                      attack-item        (first (filter (fn [item] (contains? item :wielded))
+                                                                        attacker-inventory))
+                                      item-id            (get (or attack-item {}) :id)]
+                                  (or item-id :non-bow)))
+        thrown-item          (when-not (keyword? attack)
+                               attack)
+        shot-poisoned-arrow  (when thrown-item
+                               (arrow-poison-tipped? thrown-item))
+        attack               (cond
+                               (keyword? attack)
+                               attack
+                               (and bow-wielded (= :arrow (get thrown-item :id)))
+                               :shot-arrow
+                               :else
+                               :thrown-item)
         
-        defender-body-part (dg/rand-nth (vec (get defender :body-parts)))
-        {x :x y :y}        (get defender :pos)
-        hp                 (get defender :hp)
-        hit-or-miss        (dg/rand-nth (concat (repeat (get attacker :speed) :hit)
-                                             (repeat (get defender :speed) :miss)))
-        dmg                (cond
-                             (= hit-or-miss :hit)
-                               (calc-dmg attacker attack defender defender-body-part)
-                             :else 0)
-        is-wound           (> dmg 1.5)]
+        defender-body-part   (dg/rand-nth (vec (get defender :body-parts)))
+        {x :x y :y}          (get defender :pos)
+        hp                   (get defender :hp)
+        hit-or-miss          (dg/rand-nth (concat (repeat (get attacker :speed) :hit)
+                                               (repeat (get defender :speed) :miss)))
+        dmg                  (cond
+                               (= hit-or-miss :hit)
+                                 (+ (calc-dmg attacker attack defender defender-body-part) (if shot-poisoned-arrow 1 0))
+                               :else 0)
+        is-wound             (> dmg 1.5)]
     (debug "attack" attacker-path "is attacking defender" defender-path)
     (debug "attacker-detail" attacker)
     (debug "defender-detail" defender)

@@ -748,6 +748,7 @@
     (arg-if-> [state] (= :arrow (get target-item :id))
       (->
         (dec-item-count :arrow)
+        (dec-item-count (get frog-corpse :id))
         (add-to-inventory (ig/id->item (-> (get target-item :name)
                                            (clojure.string/split #"-")
                                            first
@@ -2190,11 +2191,14 @@
                  :else
                  state)
             ;; rot fruit
-            (update-cell x y (fn rot-cell-fruit [cell]
-                               (update-in cell [:items] (fn [items] (vec
-                                 (remove (fn [item] (< (get item :rot-time (get-time state))
-                                                       (get-time state)))
-                                          items)))))))))
+            ;; TODO: only rot fruit if it is in the set of visible cells.
+            (arg-when-> [state] (some (fn [item] (< (get item :rot-time (get-time state)) (get-time state)))
+                                      cell-items)
+              (update-cell x y (fn rot-cell-fruit [cell]
+                                 (update-in cell [:items] (fn [items]
+                                   (remove (fn [item] (< (get item :rot-time (get-time state))
+                                                         (get-time state)))
+                                            items)))))))))
       state
       xys)))
 

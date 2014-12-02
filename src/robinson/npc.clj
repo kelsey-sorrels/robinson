@@ -166,7 +166,7 @@
 (defn add-npcs-random
   "Randomly add monsters inside the viewport."
   [state]
-  (if (and (< (uniform-int 100) 2)
+  (if (and (< (uniform-int 100) (if (is-night? state) 4 2))
            (< (count (-> state :world :npcs))
               20))
     (add-npcs state)

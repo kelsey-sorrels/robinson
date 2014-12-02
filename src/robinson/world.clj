@@ -462,3 +462,12 @@
   [state hotkey]
   (first (filter (fn [item] (= hotkey (get item :hotkey))) (inventory-and-player-cell-items state))))
 
+(defn is-night?
+  [state]
+  (let [atmo   (get-in state [:data :atmo])
+        frames (count atmo)
+        t      (mod (get-in state [:world :time]) frames)
+        frame  (nth atmo t)
+        values (flatten frame)]
+    (zero? (reduce + values))))
+

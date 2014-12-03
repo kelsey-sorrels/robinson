@@ -39,7 +39,7 @@
   ;;                                                                               toughness
   ;;                                                                                 body-parts                                  attacks                       movement policy                       range-threshold
   ;;                                                                                                                                                                                                 status
-  (Monster. :rat            "rat"            "rats"            5 0 1.1   0.2   1    5 #{:face :head :neck :body :leg :tail}       #{:bite :claw}                :hide-from-player-in-range-or-random  5 #{:hostile})
+  (Monster. :rat            "rat"            "rats"            5 0 1.1   0.2   1    5 #{:face :head :neck :body :leg :tail}       #{:bite :claw}                :hostile-after-attacked               5 #{:docile})
   (Monster. :spider         "spider"         "spiders"         2 0 0.9   0.01  0.1  1 #{:face :leg :abdomen}                      #{:bite-venom}                :hide-from-player-in-range-or-random  5 #{:hostile})
   (Monster. :scorpion       "scorpion"       "scorpions"       3 0 1.1   0.01  0.1  1 #{:head :claw :leg :abdomen :tail}          #{:bite :claw :sting-venom}   :hide-from-player-in-range-or-random  4 #{:hostile})
   (Monster. :snake          "snake"          "snakes"          5 0 0.8   1     1    8 #{:head :body :tail}                        #{:bite :bite-venom}          :hide-from-player-in-range-or-random  5 #{:hostile})

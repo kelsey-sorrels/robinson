@@ -1926,6 +1926,32 @@
         ]
       [{:x (first new-pos) :y (second new-pos)} new-npc npc]))
 
+(defn move-random
+  [state npc]
+  (let [npc-pos  (get npc :pos)
+        navigable-types (if (mg/can-move-in-water? (get npc :race))
+                          #{:water :surf}
+                          #{:floor
+                            :corridor
+                            :open-door
+                            :sand
+                            :dirt
+                            :gravel
+                            :tall-grass
+                            :short-grass})]
+    ;; move randomly into an adjacent cell
+    (let [target (first
+                   (dg/shuffle
+                     (adjacent-navigable-pos state
+                                             npc-pos
+                                             navigable-types)))]
+      ;(debug "distance > threshold, move randomly. target" target)
+      [target
+       (-> npc
+         (assoc-in [:pos :x] (get target :x))
+         (assoc-in [:pos :y] (get target :y)))
+       npc])))
+
 (defn move-to-target-in-range-or-random
   [state npc target]
   (let [threshold (get npc :range-threshold)
@@ -1990,9 +2016,9 @@
 
 (defn calc-npc-next-step
   "Returns the moved npc and not the updated state. New npc pos will depend on
-   the npc's `:movement-policy which is one of `:constant` `:entourage` `:follow-player` `:follow-player-in-range-or-random`."
+   the npc's `:movement-policy which is one of `:constant` `:entourage` `:follow-player` `:random` `:follow-player-in-range-or-random` `:hide-from-player-in-range-or-random`."
   [state npc]
-  {:pre  [(contains? #{:constant :entourage :follow-player :follow-player-in-range-or-random :hide-from-player-in-range-or-random} (get npc :movement-policy))]
+  {:pre  [(contains? #{:constant :entourage :follow-player :random :follow-player-in-range-or-random :hide-from-player-in-range-or-random} (get npc :movement-policy))]
    :post [(= (count %) 3)]}
   (let [policy (get npc :movement-policy)
         pos    (-> state :world :player :pos)
@@ -2008,16 +2034,17 @@
                             :short-grass})]
         ;_ (info "moving npc@" (get npc :pos) "with policy" policy)]
     (case policy
-      :constant [nil nil npc]
-      :entourage (move-to-target state
-                                 npc
-                                 (first
-                                   (dg/shuffle
-                                     (adjacent-navigable-pos state
-                                                             pos
-                                                             navigable-types))))
-      :follow-player (move-to-target state npc pos)
-      :follow-player-in-range-or-random (move-to-target-in-range-or-random state npc pos)
+      :constant                            [nil nil npc]
+      :entourage                           (move-to-target state
+                                                           npc
+                                                           (first
+                                                             (dg/shuffle
+                                                               (adjacent-navigable-pos state
+                                                                                       pos
+                                                                                       navigable-types))))
+      :follow-player                       (move-to-target state npc pos)
+      :random                              (move-random state npc)
+      :follow-player-in-range-or-random    (move-to-target-in-range-or-random state npc pos)
       :hide-from-player-in-range-or-random (move-away-from-target-in-range-or-random state npc pos)
       [nil nil npc])))
  

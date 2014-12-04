@@ -26,7 +26,7 @@
                :turtle :crocodile
                :crab :hermit-crab} race))
   
-(defrecord Monster [race name name-plural hp energy speed size strength toughness body-parts attacks movement-policy range-threshold status]
+(defrecord Monster [race name name-plural hp energy speed size strength toughness body-parts attacks temperment movement-policy range-threshold status]
   Object
   (toString [this] (str "#Monster" (into {} this))))
 
@@ -72,10 +72,10 @@
   (Monster. :komodo-dragon  "komodo dragon"  "komodo dragons" 12 0 0.8  60    10   14 #{:head :body :leg :tail}                   #{:bite :claw}                :hostile-after-attacked               :random                               2 #{:hostile})
   (Monster. :cobra          "cobra"          "cobras"          5 0 0.8   6     3    7 #{:head :body :tail}                        #{:bite :bite-venom}          :hostile-after-attacked               :random                               2 #{:hostile})
   (Monster. :puffer-fish    "puffer fish"    "puffer fish"     3 0 1.1   1     0.6  7 #{:head :body :tail}                        #{:sting-venom}               :hostile-during-day                   :random                               2 #{:hostile})
-  (Monster. :crab           "crab"           "crabs"           4 0 0.8   2     1.5  9 #{:head :body}                              #{:claw}                      :hostile-after-sound                  2 #{:hostile})
-  (Monster. :hermit-crab    "hermit crab"    "hermit crabs"    3 0 0.6   1     1   15 #{:head :shell :leg}                        #{:claw}                      :hostile-during-day                   1 #{:hostile})
-  (Monster. :electric-eel   "electric eel"   "electric eels"   5 0 0.6  10     5    8 #{:head :body}                              #{:bite}                      :follow-player-in-range-or-random     2 #{:hostile})
-  (Monster. :jellyfish      "jellyfish"      "jellyfish"       3 0 0.6   1     0.1  4 #{:body}                                    #{:sting-venom}               :retreat-after-attacked               1 #{:hostile})])
+  (Monster. :crab           "crab"           "crabs"           4 0 0.8   2     1.5  9 #{:head :body}                              #{:claw}                      :hostile-after-sound                  :random                               2 #{:hostile})
+  (Monster. :hermit-crab    "hermit crab"    "hermit crabs"    3 0 0.6   1     1   15 #{:head :shell :leg}                        #{:claw}                      :hostile-during-day                   :random                               1 #{:hostile})
+  (Monster. :electric-eel   "electric eel"   "electric eels"   5 0 0.6  10     5    8 #{:head :body}                              #{:bite}                      :hostile                              :follow-player-in-range-or-random     2 #{:hostile})
+  (Monster. :jellyfish      "jellyfish"      "jellyfish"       3 0 0.6   1     0.1  4 #{:body}                                    #{:sting-venom}               :retreat-after-attacked               :random                               1 #{:hostile})])
 
 (def ^:private race->monster-map
   (apply hash-map (mapcat (fn [[k v]] [k (first v)])

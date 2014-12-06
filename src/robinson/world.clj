@@ -471,3 +471,7 @@
         values (flatten frame)]
     (zero? (reduce + values))))
 
+(defn is-day?
+  [state]
+  (not (is-night? state)))
+

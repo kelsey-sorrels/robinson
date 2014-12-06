@@ -2020,8 +2020,19 @@
   [state npc]
   {:pre  [(contains? #{:constant :entourage :follow-player :random :follow-player-in-range-or-random :hide-from-player-in-range-or-random} (get npc :movement-policy))]
    :post [(= (count %) 3)]}
-  (let [policy (get npc :movement-policy)
-        pos    (-> state :world :player :pos)
+  (let [policy      (get npc :movement-policy)
+        temperament (get npc :temperament)
+        pos         (-> state :world :player :pos)
+        ;; modify movement policy as dictated by day or night
+        policy      (cond
+                      (or
+                        (and (= temperament :hostile-during-day)
+                             (is-day? state))
+                        (and (= temperament :hostile-at-day)
+                             (is-night? state)))
+                      :follow-player-in-range-or-random
+                      :else
+                      policy)
         navigable-types (if (mg/can-move-in-water? (get npc :race))
                           #{:water :surf}
                           #{:floor

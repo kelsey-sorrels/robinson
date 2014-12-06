@@ -214,12 +214,12 @@
           ;; modify defender hp
           (update-in (conj defender-path :hp)
             (fn [hp] (- hp dmg)))
-          ;; provoke tempermental animal
-          (arg-when-> [state] (= (get-in [state] (conj defender-path :temperment)) :hostile-after-attacked)
+          ;; provoke temperamental animal
+          (arg-when-> [state] (= (get-in [state] (conj defender-path :temperament)) :hostile-after-attacked)
             (->
               (update-in (conj defender-path :status)         (fn [state] (conj state :hostile)))
               (assoc-in (conj defender-path :movement-policy) :follow-player-in-range-or-random)))
-          (arg-when-> [state] (= (get-in [state] (conj defender-path :temperment)) :retreat-after-attacked)
+          (arg-when-> [state] (= (get-in [state] (conj defender-path :temperament)) :retreat-after-attacked)
             (->
               (update-in (conj defender-path :status)         (fn [state] (conj state :hostile)))
               (assoc-in (conj defender-path :movement-policy) :hide-from-player-in-range-or-random)))

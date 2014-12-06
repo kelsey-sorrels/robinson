@@ -84,8 +84,8 @@
 (make-gen-fns *ns* race->monster-map)
 
 (defn id->monster [id]
-  (info "id->monster" id)
-  (info race->monster-map)
+  #_(info "id->monster" id)
+  #_(info race->monster-map)
   (get race->monster-map id))
 
 (defn gen-monster [level cell-type]

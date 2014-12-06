@@ -5,7 +5,7 @@
     robinson.common
     robinson.world
     robinson.player
-    robinson.itemgen)
+    [robinson.itemgen :exclude [-main]])
   (:require clojure.pprint
             clojure.contrib.core
             [clojure.data.generators :as dg]
@@ -278,4 +278,77 @@
                                                                  (name attack)))
             (update-in [:world :player :status]
               (fn [status] (conj status :dead)))))))))
+
+(defn -main [& more]
+  (let [player {:id :player
+                :race :human
+                :dexterity 1
+                :speed 1
+                :size 75
+                :strength 10
+                :toughness 5
+                :hp 10
+                :max-hp 10
+                :body-parts #{:head :neck :face :abdomen :arm :leg :foot}
+                :attacks #{:punch}}
+        level->land-monster-ids {
+                          0 [:red-frog
+                             :orange-frog
+                             :yellow-frog
+                             :green-frog
+                             :blue-frog
+                             :purple-frog
+                             :bird
+                             :gecko]
+                          1 [:rat
+                             :mosquito]
+                          2 [:spider
+                             :centipede]
+                          3 [:tarantula
+                             :scorpion]
+                          4 [:cobra
+                             :snake]
+                          5 [:bat
+                             :turtle]
+                          6 [:monitor-lizard
+                             :crocodile]
+                          7 [:parrot
+                             :mongoose]
+                          8 [:komodo-dragon]
+                          9 [:boar
+                             :monkey]}
+        level->water-monster-ids {
+                          0 [:clam
+                             :hermit-crab]
+                          1 [:jellyfish]
+                          2 [:fish]
+                          3 [:crab]
+                          4 [:urchin]
+                          5 [:sea-snake]
+                          6 [:puffer-fish]
+                          7 [:electric-eel]
+                          8 [:octopus ]
+                          9 [:squid
+                             :shark]}
+        level->land-monsters  (map (fn [[level ids]] [level (map mg/id->monster ids)]) level->land-monster-ids)
+        level->water-monsters (map (fn [[level ids]] [level (map mg/id->monster ids)]) level->water-monster-ids)
+        land-monsters         (sort-by first (mapcat (fn [[k vals]] (map (fn [v] [k v]) vals)) level->land-monsters))
+        water-monsters        (sort-by first (mapcat (fn [[k vals]] (map (fn [v] [k v]) vals)) level->water-monsters))
+        land-data             (map (fn [[level monster]]
+                                     (let [attacker->defender-dmg (calc-dmg
+                                                 player :punch monster (rand-nth (vec (get monster :body-parts))))
+                                           defender->attacker-dmg (calc-dmg
+                                                 monster (rand-nth (vec (get monster :attacks)))
+                                                 player (rand-nth (vec (get player :body-parts))))]
+                                       {:attacker "player"
+                                        :attack "punch"
+                                        :defender (get monster :name)
+                                        :level level
+                                        :attacker-damage attacker->defender-dmg
+                                        :hits-to-kill-defender (float (/ (get monster :hp) attacker->defender-dmg))
+                                        :defender-damage defender->attacker-dmg
+                                        :hits-to-kill-attacker (float (/ (get player :hp) defender->attacker-dmg))}))
+                                   land-monsters)]
+    (print-table [:attacker :attack :defender :level :attacker-damage :hits-to-kill-defender
+                  :defender-damage :hits-to-kill-attacker] land-data)))
 

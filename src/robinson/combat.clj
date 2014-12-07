@@ -131,6 +131,12 @@
   :shot-arrow 10
   :sting-venom 8
   :thrown-item 1
+  :knife       5
+  :saw         3
+  :obsidian-knife 3
+  :obsidian-axe 4
+  :obsidian-spear 3
+  :sharpened-stick 2
   (throw (Exception. (format "No value specified for %s" (name attack))))))
 
 (defn calc-dmg
@@ -150,7 +156,7 @@
             "defender-size" defender-size
             "attack-toughness" attack-toughness
             "defender-toughnes" defender-toughness)
-      (* attacker-strength (/ attacker-dexterity defender-speed) (/ attacker-size defender-size) (/ attack-toughness defender-toughness))))
+      (* attacker-strength (/ (+ 5 attacker-dexterity) (+ 5 defender-speed)) (/ (+ 25 attacker-size) (+ 25 defender-size)) (/ attack-toughness defender-toughness))))
 
 (defn attack
   "Perform combat. The attacker fights the defender, but not vice-versa.
@@ -285,8 +291,8 @@
                 :dexterity 1
                 :speed 1
                 :size 75
-                :strength 10
-                :toughness 5
+                :strength  2
+                :toughness 2
                 :hp 10
                 :max-hp 10
                 :body-parts #{:head :neck :face :abdomen :arm :leg :foot}
@@ -336,19 +342,25 @@
         water-monsters        (sort-by first (mapcat (fn [[k vals]] (map (fn [v] [k v]) vals)) level->water-monsters))
         land-data             (map (fn [[level monster]]
                                      (let [attacker->defender-dmg (calc-dmg
-                                                 player :punch monster (rand-nth (vec (get monster :body-parts))))
+                                                 player :knife monster (rand-nth (vec (get monster :body-parts))))
                                            defender->attacker-dmg (calc-dmg
                                                  monster (rand-nth (vec (get monster :attacks)))
-                                                 player (rand-nth (vec (get player :body-parts))))]
+                                                 player (rand-nth (vec (get player :body-parts))))
+                                           hits-to-kill-defender (float (/ (get monster :hp) attacker->defender-dmg))
+                                           hits-to-kill-attacker (float (/ (get player :hp) defender->attacker-dmg))
+                                           winner (if (< hits-to-kill-attacker hits-to-kill-defender)
+                                                    "defender" "attacker")]
                                        {:attacker "player"
                                         :attack "punch"
                                         :defender (get monster :name)
                                         :level level
-                                        :attacker-damage attacker->defender-dmg
-                                        :hits-to-kill-defender (float (/ (get monster :hp) attacker->defender-dmg))
-                                        :defender-damage defender->attacker-dmg
-                                        :hits-to-kill-attacker (float (/ (get player :hp) defender->attacker-dmg))}))
+                                        :attacker-damage (format "%.2f" attacker->defender-dmg)
+                                        :hits-to-kill-defender (format "%.2f" hits-to-kill-defender)
+                                        :defender-damage (format "%.2f" defender->attacker-dmg)
+                                        :hits-to-kill-attacker (format "%.2f" hits-to-kill-attacker)
+                                        :winner winner
+                                        :difficulty (format "%.2f" (float (/ hits-to-kill-defender hits-to-kill-attacker)))}))
                                    land-monsters)]
     (print-table [:attacker :attack :defender :level :attacker-damage :hits-to-kill-defender
-                  :defender-damage :hits-to-kill-attacker] land-data)))
+                  :defender-damage :hits-to-kill-attacker :winner :difficulty] land-data)))
 

@@ -90,6 +90,7 @@
 
 (defn gen-monster [level cell-type]
   "Generate one random monster."
+  (info "Generating monster at level" level)
   (let [land-monster-ids {
                           0 [:red-frog
                              :orange-frog
@@ -132,9 +133,9 @@
 
     (cond
       (contains? #{:water :surf} cell-type)
-      (id->monster (dg/rand-nth (get water-monster-ids (int (* level 10/10)))))
+      (id->monster (dg/rand-nth (get water-monster-ids (int (* level 9/10)))))
       :else
-      (id->monster (dg/rand-nth (get land-monster-ids (int (* level 10/10))))))))
+      (id->monster (dg/rand-nth (get land-monster-ids (int (* level 9/10))))))))
 
 (defn gen-monsters
   "Generate `n` random monsters using `gen-monster`."

@@ -75,6 +75,10 @@
                                                         (npc :inventory)
                                                         [])
                                            :buy-fn-path buy-fn-path))))
+(defn remove-npc
+  "Remove npc from state."
+  [state npc]
+  (remove-in state [:world :npcs] (partial = npc)))
 
 (defn transfer-items-from-npc-to-player
   "Remove items from npc's inventory and add them to the player's inventory."
@@ -149,7 +153,7 @@
         mid-y          (/ (get-in state [:world :height]) 2)
         player-angle   (Math/atan2 (- x mid-x) (- y mid-y))
         starting-angle (Math/atan2 (- sx mid-x) (- sy mid-y))]
-    (* 10 (/ (- player-angle starting-angle) (* 2 Math/PI)))))
+    (* 10 (/ (Math/abs (- player-angle starting-angle)) (* 2 Math/PI)))))
 
 (defn add-npcs
   "Randomly add monsters to the current place's in floor cells."
@@ -166,7 +170,7 @@
 (defn add-npcs-random
   "Randomly add monsters inside the viewport."
   [state]
-  (if (and (< (uniform-int 100) (if (is-night? state) 4 2))
+  (if (and (< (uniform-int 100) (if (is-night? state) 8 4))
            (< (count (-> state :world :npcs))
               20))
     (add-npcs state)

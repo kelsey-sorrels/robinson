@@ -168,48 +168,53 @@
      (pmap vec
        (partition width
          (map (fn [[x y]]
-            (cond
-              ;; lava
-              (not-every? #(farther-than? (xy->pos x y) (apply xy->pos %) 3) lava-xys)
-              {:type :lava}
-              (not (farther-than? (xy->pos x y) volcano-pos 7))
-              {:type :mountain}
-              :else
-              (let [s (mapv #(.calc ^clisk.IFunction % (double (/ x max-x)) (double (/ y max-y)) (double 0.0) (double 0.0))
-                                island-fns)]
-                (case s
-                  [0.0 0.4 0.5] {:type :water}
-                  [0.0 0.5 0.6] {:type :surf}
-                  [0.7 0.6 0.0] {:type :sand}
-                  [0.3 0.2 0.1] (case (uniform-int 3)
-                                  0 {:type :dirt}
-                                  1 {:type :gravel}
-                                  2 {:type :tall-grass})
-                  [0.2 0.7 0.2] (case (uniform-int 5)
-                                  0 {:type :dirt}
-                                  1 {:type :tall-grass}
-                                  2 {:type :tall-grass}
-                                  3 {:type :short-grass}
-                                  4 {:type :short-grass})
-                  ;; jungle
-                  [0.0 0.4 0.1] (case (uniform-int 6)
-                                  0 {:type :palm-tree}
-                                  1 {:type :fruit-tree :fruit-type (dg/rand-nth [:red-fruit :orange-fruit :yellow-fruit
-                                                                                 :green-fruit :blue-fruit :purple-fruit
-                                                                                 :white-fruit :black-fruit])}
-                                  2 {:type :tall-grass}
-                                  3 {:type :short-grass}
-                                  4 {:type :gravel}
-                                  5 {:type :bamboo})
-                  ;; forest
-                  [0.0 0.5 0.0] (case (uniform-int 5)
-                                  0 {:type :tree}
-                                  1 {:type :fruit-tree :fruit-type (dg/rand-nth [:red-fruit :orange-fruit :yellow-fruit
-                                                                                 :green-fruit :blue-fruit :purple-fruit
-                                                                                 :white-fruit :black-fruit])}
-                                  2 {:type :tall-grass}
-                                  3 {:type :short-grass}
-                                  4 {:type :gravel})))))
+            (let [cell (cond
+                       ;; lava
+                       (not-every? #(farther-than? (xy->pos x y) (apply xy->pos %) 3) lava-xys)
+                       {:type :lava}
+                       (not (farther-than? (xy->pos x y) volcano-pos 7))
+                       {:type :mountain}
+                       :else
+                       (let [s (mapv #(.calc ^clisk.IFunction % (double (/ x max-x)) (double (/ y max-y)) (double 0.0) (double 0.0))
+                                         island-fns)]
+                         (case s
+                           [0.0 0.4 0.5] {:type :water}
+                           [0.0 0.5 0.6] {:type :surf}
+                           [0.7 0.6 0.0] {:type :sand}
+                           [0.3 0.2 0.1] (case (uniform-int 3)
+                                           0 {:type :dirt}
+                                           1 {:type :gravel}
+                                           2 {:type :tall-grass})
+                           [0.2 0.7 0.2] (case (uniform-int 5)
+                                           0 {:type :dirt}
+                                           1 {:type :tall-grass}
+                                           2 {:type :tall-grass}
+                                           3 {:type :short-grass}
+                                           4 {:type :short-grass})
+                           ;; jungle
+                           [0.0 0.4 0.1] (case (uniform-int 6)
+                                           0 {:type :palm-tree}
+                                           1 {:type :fruit-tree :fruit-type (dg/rand-nth [:red-fruit :orange-fruit :yellow-fruit
+                                                                                          :green-fruit :blue-fruit :purple-fruit
+                                                                                          :white-fruit :black-fruit])}
+                                           2 {:type :tall-grass}
+                                           3 {:type :short-grass}
+                                           4 {:type :gravel}
+                                           5 {:type :bamboo})
+                           ;; forest
+                           [0.0 0.5 0.0] (case (uniform-int 5)
+                                           0 {:type :tree}
+                                           1 {:type :fruit-tree :fruit-type (dg/rand-nth [:red-fruit :orange-fruit :yellow-fruit
+                                                                                          :green-fruit :blue-fruit :purple-fruit
+                                                                                          :white-fruit :black-fruit])}
+                                           2 {:type :tall-grass}
+                                           3 {:type :short-grass}
+                                           4 {:type :gravel}))))]
+              ;; drop initial harvestable items
+              (if (and (contains? #{:gravel :tree :palm-tree :tall-grass} (get cell :type))
+                       (= (uniform-int 0 200) 0))
+                (assoc cell :harvestable true)
+                cell)))
             (for [y (range y (+ y height))
                   x (range x (+ x width))]
               [x y]))))))))
@@ -436,7 +441,14 @@
   (info "unloading" id)
   (log-time "unloading"
   (async/>!! save-place-chan [id (get-in state [:world :places id])])
-  (dissoc-in state [:world :places id])))
+  ;; TODO: remove all npcs in place
+  (->
+    (reduce (fn [state npc] (if (= (apply xy->place-id state (pos->xy (get npc :pos)))
+                                   id)
+                                (remove-npc state npc)
+                                state))
+            state (get-in state [:world :npcs]))
+    (dissoc-in [:world :places id]))))
 
 (defn load-unload-places
   [state]

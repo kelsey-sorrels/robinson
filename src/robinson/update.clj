@@ -688,7 +688,7 @@
                                   (dissoc :harvestable)
                                   (assoc :type (dg/rand-nth [:dirt :gravel :tall-grass :short-grass]))
                                   (assoc :items (concat (get cell :items) 
-                                                      (repeat (uniform-int 2 3) (ig/gen-log))))))))
+                                                      (repeat (uniform-int 1 2) (ig/gen-log))))))))
       state)))
 
 (defn apply-plant-guide
@@ -882,7 +882,7 @@
       (append-log (format "The %s tastes %s." (lower-case (get item :name))
                                               (dg/rand-nth ["great" "foul" "greasy" "delicious" "burnt" "sweet" "salty"])))
       (update-eaten item)
-      ;; reduce hunger
+      ;; reduce thirst
       (update-in [:world :player :thirst]
         (fn [thirst]
           (let [new-thirst (- thirst (item :thirst))]
@@ -1034,51 +1034,34 @@
         harvest-items (if (not= target-cell nil)
                         (cond
                           (= (get target-cell :type) :tree)
-                            (concat
-                              (if (or harvestable
-                                      (<= 2 (uniform-int 1000)))
-                                (repeat (uniform-int 1 2) (ig/gen-stick))
-                                [])
-                              (if (or harvestable
-                                      (= 0 (uniform-int 1000)))
-                                (repeat (uniform-int 1 5) (ig/gen-plant-fiber))
-                                []))
+                            (if (or harvestable
+                                    (= 0 (uniform-int 1000)))
+                              [(dg/rand-nth [(ig/gen-stick) (ig/gen-plant-fiber)])]
+                              [])
                           (= (get target-cell :type) :bamboo)
                               (if (or harvestable
                                       (= 0 (uniform-int 1000)))
-                                (repeat (uniform-int 1 2) (ig/gen-bamboo))
+                                [(ig/gen-bamboo)]
                                 [])
                           (= (get target-cell :type) :palm-tree)
                             (concat
                               (if (or harvestable
                                       (= 0 (uniform-int 1000)))
-                                (repeat (uniform-int 1 2) (ig/gen-unhusked-coconut))
-                                [])
-                              (if (or harvestable
-                                      (= 0 (uniform-int 1500)))
-                                (repeat (uniform-int 1 2) (ig/gen-plant-fiber))
+                                [(dg/rand-nth [(ig/gen-unhusked-coconut) (ig/gen-plant-fiber)])]
                                 []))
                           (and (= (get target-cell :type) :tall-grass)
                                (= direction :center))
                             (concat
                               (if (or harvestable
                                       (= 0 (uniform-int 1000)))
-                                (repeat (uniform-int 1 5) (ig/gen-grass))
-                                [])
-                              (if (or harvestable
-                                      (= 0 (uniform-int 1000)))
-                                (repeat (uniform-int 1 5) (ig/gen-plant-fiber))
+                                [(dg/rand-nth [(ig/gen-grass) (ig/gen-plant-fiber)])]
                                 []))
                           (and (= (get target-cell :type) :gravel)
                                (= direction :center))
                             (concat
                               (if (or harvestable
                                       (= 0 (uniform-int 1000)))
-                                (repeat (uniform-int 1 5) (ig/gen-rock))
-                                [])
-                              (if (or harvestable
-                                      (= 0 (uniform-int 2000)))
-                                (repeat (uniform-int 1 5) (ig/gen-obsidian))
+                                [(dg/rand-nth [(ig/gen-rock) (ig/gen-obsidian)])]
                                 []))
                           :else [])
                         [])]
@@ -1490,8 +1473,8 @@
       (update-in [:world :player :hunger] (partial + 0.01))
       (update-in [:world :player :thirst] (partial + 0.05)))
     (-> state
-      (update-in [:world :player :hunger] (partial + 0.05 (* 0.2 (count (player-inventory state)))))
-      (update-in [:world :player :thirst] (partial + 0.2))
+      (update-in [:world :player :hunger] (partial + 0.05 (* 0.02 (count (player-inventory state)))))
+      (update-in [:world :player :thirst] (partial + 0.1))
       ((fn [state] (update-in state
                               [:world :player :status]
                               (fn [status]
@@ -1540,7 +1523,7 @@
                 hunger     (get-in state [:world :player :hunger])
                 max-hunger (get-in state [:world :player :max-hunger])
                 _          (info "hunger" hunger "max-hunger" max-hunger)
-                dwtl       (+ dwtl (if (> (/ hunger max-hunger) 0.5)
+                dwtl       (+ dwtl (if (> (/ hunger max-hunger) 0.8)
                                      1
                                      0))
                 thirst     (get-in state [:world :player :thirst])
@@ -2192,13 +2175,13 @@
                 (contains? #{:gravel :tree :palm-tree :tall-grass} cell-type)
                 (update-cell state x y
                   (fn drop-harvest-items [cell]
-                    (if (= (uniform-int 0 1000) 0)
+                    (if (= (uniform-int 0 100000) 0)
                       (assoc cell :harvestable true)
                       cell)))
                 ;; drop fruit
                 (contains? #{:fruit-tree} cell-type)
                 ;; chance of dropped a fruit
-                (if (= (uniform-int 0 20) 0)
+                (if (= (uniform-int 0 1000) 0)
                   ;; make the fruit item and find an adjacent free cell to drop it into
                   (let [item    (assoc (ig/id->item (get cell :fruit-type)) :rot-time (+ (get-time state) (uniform-int 10 30)))
                         adj-xys (remove (fn [[x y]] (or (not (xy-in-viewport? state x y))

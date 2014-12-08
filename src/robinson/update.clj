@@ -11,7 +11,7 @@
     robinson.player
     [robinson.dialog :exclude [-main]]
     robinson.npc
-    robinson.combat
+    [robinson.combat :exclude [-main]]
     robinson.crafting
     [robinson.magic :only [do-magic magic-left magic-down     
                                   magic-up magic-right magic-inventory]]
@@ -574,6 +574,10 @@
                 (-> state
                   (assoc-current-state :apply-item-normal)
                   (ui-hint "Pick a direction to use the saw."))
+              (= id :obsidian-axe)
+                (-> state
+                  (assoc-current-state :apply-item-normal)
+                  (ui-hint "Pick a direction to use the axe."))
               (ig/is-sharp? item)
                 (-> state
                   (assoc-current-state :apply-item-inventory)
@@ -775,6 +779,9 @@
                                       state)
       [:stick          \>         ] (-> state
                                       (dig-hole)
+                                      (assoc-current-state :normal))
+      [:obsidian-axe   trans->dir?] (-> state
+                                      (saw (translate-directions keyin))
                                       (assoc-current-state :normal))
       [:saw            trans->dir?] (-> state
                                       (saw (translate-directions keyin))

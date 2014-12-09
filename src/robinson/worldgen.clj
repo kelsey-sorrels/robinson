@@ -72,6 +72,24 @@
       (cons 'vcond (next (next clauses))))
     [0 0 0]))
 
+(defmacro vor
+  "Evaluates vector expresions one at a time. If any expressions are true, return [1 1 1], [0 0 0] otherwise."
+  ([] [0 0 0])
+  ([x] `(cliskf/vif ~x [1 1 1] [0 0 0]))
+  ([x & next]
+   `(cliskf/vif ~x [1 1 1] (vor ~@next))))
+
+(defmacro vand
+  "Evaluates vector expresions one at a time. If all expressions are true, return [1 1 1], [0 0 0] otherwise."
+  ([] [0 0 0])
+  ([x] `(cliskf/vif ~x [1 1 1] [0 0 0]))
+  ([x & next]
+    `(cliskf/vif ~x (vand ~@next) [0 0 0])))
+
+(defmacro vnot
+  [x]
+  `(cliskf/vif ~x [0 0 0] [1 1 1]))
+
 (defn init-ocean
   []
   (let [max-x 80
@@ -88,20 +106,25 @@
 
 (def island-node
   (cliskf/vectorize
-    (cliskf/vlet [c (center (invert (cliskf/offset (cliskf/scale 0.43 (cliskf/v* [0.5 0.5 0.5] cliskp/vsnoise)) cliskf/radius)))]
+    (cliskf/vlet [c  (center (invert (cliskf/offset (cliskf/scale 0.43 (cliskf/v* [0.5 0.5 0.5] cliskp/vsnoise)) cliskf/radius)))
+                  c1 (cliskf/offset [0.5 0.5] (cliskf/v+ [-0.5 -0.5 -0.5] (cliskf/scale 0.04 cliskp/noise)))
+                  c2 (cliskf/offset [-0.5 -0.5] (cliskf/v+ [-0.5 -0.5 -0.5] (cliskf/scale 0.06 cliskp/noise)))]
       (vcond
-        ;; interior jungle
-        (cliskf/v+ [-0.7 -0.7 -0.7]  (cliskf/v* c (cliskf/v+ [0.4 0.4 0.4] (cliskf/scale 0.03 cliskp/noise))))
-          [0 0.4 0.1]
-        ;; interior trees/green
-        (cliskf/v+ [-0.7 -0.7 -0.7]  (cliskf/v* c (cliskf/v+ [0.4 0.4 0.4] (cliskf/offset [0.5 0.5] (cliskf/scale 0.04 cliskp/noise)))))
-          [0 0.5 0]
-        ;; interior meadows
-        (cliskf/v+ [-0.56 -0.56 -0.56]  (cliskf/v* c (cliskf/v+ [0.3 0.3 0.3] (cliskf/offset [-0.5 -0.5] (cliskf/scale 0.06 cliskp/noise)))))
-          [0.2 0.7 0.2]
-        ;; interior dirt/brown
+        ;; interior biomes
         (cliskf/v+ [-0.55 -0.55 -0.55]  c)
-          [0.3 0.2 0.1]
+          (vcond
+            (vand c1 c2)
+            ;; interior jungle
+            [0 0.4 0.1]
+            (vand c1 (vnot c2))
+            ;; interior trees/green
+            [0 0.5 0]
+            (vand (vnot c1) c2)
+            ;; interior meadows
+            [0.2 0.7 0.2]
+            (vnot (vand c1 c2))
+            ;; dirt
+            [0.3 0.2 0.1])
         ;; shore/yellow
         (cliskf/v+ [-0.5 -0.5 -0.5]  c)
           [0.7 0.6 0.0]
@@ -441,7 +464,7 @@
   (info "unloading" id)
   (log-time "unloading"
   (async/>!! save-place-chan [id (get-in state [:world :places id])])
-  ;; TODO: remove all npcs in place
+  ;; Remove all npcs in place being unloaded
   (->
     (reduce (fn [state npc] (if (= (apply xy->place-id state (pos->xy (get npc :pos)))
                                    id)

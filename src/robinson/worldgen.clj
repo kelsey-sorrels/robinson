@@ -90,6 +90,10 @@
   [x]
   `(cliskf/vif ~x [0 0 0] [1 1 1]))
 
+(defmacro v>
+  [x y]
+  `(cliskf/vif (cliskf/v+ (invert ~x) ~y) [1 1 1] [0 0 0]))
+
 (defn init-ocean
   []
   (let [max-x 80
@@ -103,6 +107,38 @@
                 {:type :water}))))
       [])))
 
+(def jungle
+  [0.0 0.4 0.1])
+
+(def heavy-forest
+  [0.0 0.5 0.0])
+
+(def meadow
+  [0.2 0.7 0.2])
+
+(def swamp
+  [0.4 0.2 0.1])
+
+(def bamboo-grove
+  [0.2 0.7 0.0])
+
+(def light-forest
+  [0.0 0.6 0.0])
+
+(def rocky
+  [0.5 0.5 0.5])
+
+(def dirt
+  [0.3 0.2 0.1])
+
+(def sand
+  [0.7 0.6 0.0])
+
+(def surf
+  [0.0 0.5 0.6])
+
+(def ocean
+  [0.0 0.4 0.5])
 
 (def island-node
   (cliskf/vectorize
@@ -113,27 +149,32 @@
         ;; interior biomes
         (cliskf/v+ [-0.55 -0.55 -0.55]  c)
           (vcond
-            (vand c1 c2)
+            (vand c1 c2 (v> c1 c2))
             ;; interior jungle
-            [0 0.4 0.1]
+            jungle
+            (vand c1 c2)
+            heavy-forest
+            (vand c1 (vnot c2) (v> c1 c2))
+            light-forest
             (vand c1 (vnot c2))
-            ;; interior trees/green
-            [0 0.5 0]
+            bamboo-grove
+            (vand (vnot c1) c2 (v> c1 c2))
+            meadow
             (vand (vnot c1) c2)
-            ;; interior meadows
-            [0.2 0.7 0.2]
+            rocky
+            (vand (vnot c1) (vnot c2) (v> c1 c2))
+            swamp
             (vnot (vand c1 c2))
-            ;; dirt
-            [0.3 0.2 0.1])
+            dirt)
         ;; shore/yellow
         (cliskf/v+ [-0.5 -0.5 -0.5]  c)
-          [0.7 0.6 0.0]
+            sand
         ;; surf/light blue
         (cliskf/v+ [-0.42 -0.42 -0.42]  c)
-          [0 0.5 0.6]
+          surf
         ;; else ocean
         [1 1 1]
-          [0 0.4 0.5]))))
+          ocean))))
 
 (def island-fns
   (vec (map cliskn/compile-fn (:nodes island-node))))
@@ -151,8 +192,8 @@
           (fn [[x y]]
             (let [s (mapv #(.calc ^clisk.IFunction % (double (/ x max-x)) (double (/ y max-y)) (double 0.0) (double 0.0))
                               island-fns)]
-            (or (= s [0.0 0.4 0.5])
-                (= s [0.0 0.5 0.6]))))
+            (or (= s surf)
+                (= s ocean))))
           samples)
         [sx sy] (first non-water-samples)]
     (xy->pos sx sy)))
@@ -172,8 +213,8 @@
           (fn [[x y]]
             (let [s (mapv #(.calc ^clisk.IFunction % (double (/ x max-x)) (double (/ y max-y)) (double 0.0) (double 0.0))
                               island-fns)]
-            (or (= s [0.0 0.4 0.5])
-                (= s [0.0 0.5 0.6]))))
+            (or (= s surf)
+                (= s ocean))))
           samples)
         [sx sy] (first non-water-samples)]
     (xy->pos sx sy)))
@@ -200,39 +241,64 @@
                        :else
                        (let [s (mapv #(.calc ^clisk.IFunction % (double (/ x max-x)) (double (/ y max-y)) (double 0.0) (double 0.0))
                                          island-fns)]
-                         (case s
-                           [0.0 0.4 0.5] {:type :water}
-                           [0.0 0.5 0.6] {:type :surf}
-                           [0.7 0.6 0.0] {:type :sand}
-                           [0.3 0.2 0.1] (case (uniform-int 3)
+                         (condp = s
+                           ocean         {:type :water}
+                           surf          {:type :surf}
+                           sand          {:type :sand}
+                           dirt          (case (uniform-int 3)
                                            0 {:type :dirt}
                                            1 {:type :gravel}
                                            2 {:type :tall-grass})
-                           [0.2 0.7 0.2] (case (uniform-int 5)
+                           bamboo-grove  (case (uniform-int 5)
                                            0 {:type :dirt}
                                            1 {:type :tall-grass}
                                            2 {:type :tall-grass}
                                            3 {:type :short-grass}
                                            4 {:type :short-grass})
-                           ;; jungle
-                           [0.0 0.4 0.1] (case (uniform-int 6)
+                           rocky         (case (uniform-int 5)
+                                           0 {:type :dirt}
+                                           1 {:type :mountain}
+                                           2 {:type :tall-grass}
+                                           3 {:type :short-grass}
+                                           4 {:type :short-grass})
+                           swamp         (case (uniform-int 5)
+                                           0 {:type :dirt}
+                                           1 {:type :surf}
+                                           2 {:type :tree}
+                                           3 {:type :tall-grass}
+                                           4 {:type :short-grass})
+                           meadow        (case (uniform-int 5)
+                                           0 {:type :dirt}
+                                           1 {:type :tall-grass}
+                                           2 {:type :tall-grass}
+                                           3 {:type :short-grass}
+                                           4 {:type :short-grass})
+                           jungle        (case (uniform-int 5)
                                            0 {:type :palm-tree}
                                            1 {:type :fruit-tree :fruit-type (dg/rand-nth [:red-fruit :orange-fruit :yellow-fruit
                                                                                           :green-fruit :blue-fruit :purple-fruit
                                                                                           :white-fruit :black-fruit])}
                                            2 {:type :tall-grass}
                                            3 {:type :short-grass}
-                                           4 {:type :gravel}
-                                           5 {:type :bamboo})
-                           ;; forest
-                           [0.0 0.5 0.0] (case (uniform-int 5)
+                                           4 {:type :gravel})
+                           heavy-forest  (case (uniform-int 5)
                                            0 {:type :tree}
                                            1 {:type :fruit-tree :fruit-type (dg/rand-nth [:red-fruit :orange-fruit :yellow-fruit
                                                                                           :green-fruit :blue-fruit :purple-fruit
                                                                                           :white-fruit :black-fruit])}
                                            2 {:type :tall-grass}
                                            3 {:type :short-grass}
-                                           4 {:type :gravel}))))]
+                                           4 {:type :gravel})
+                           light-forest  (case (uniform-int 7)
+                                           0 {:type :tree}
+                                           1 {:type :fruit-tree :fruit-type (dg/rand-nth [:red-fruit :orange-fruit :yellow-fruit
+                                                                                          :green-fruit :blue-fruit :purple-fruit
+                                                                                          :white-fruit :black-fruit])}
+                                           2 {:type :tall-grass}
+                                           3 {:type :tall-grass}
+                                           4 {:type :short-grass}
+                                           5 {:type :short-grass}
+                                           6 {:type :gravel}))))]
               ;; drop initial harvestable items
               (if (and (contains? #{:gravel :tree :palm-tree :tall-grass} (get cell :type))
                        (= (uniform-int 0 200) 0))

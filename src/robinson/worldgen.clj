@@ -92,7 +92,7 @@
 
 (defmacro v>
   [x y]
-  `(cliskf/vif (cliskf/v+ (invert ~x) ~y) [1 1 1] [0 0 0]))
+  `(cliskf/vif (cliskf/v- ~x ~y) [1 1 1] [0 0 0]))
 
 (defn init-ocean
   []

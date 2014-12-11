@@ -61,6 +61,10 @@
   [state item]
   (contains? (get-in state [:world :fruit :tongue-identifiable]) (get item :id)))
 
+(defn is-broken?
+  [item]
+  (not (pos? (get item :utility 1))))
+
 (defn arrow-poison-tipped?
   [state item]
   (and (contains? #{:red-tipped-arrow :orange-tipped-arrow :yellow-tipped-arrrow
@@ -72,9 +76,9 @@
                                                  
 (def ^:private items
   [
-   {:id  :stick                   :name  "stick"                      :name-plural "sticks" :fuel 100}
+   {:id  :stick                   :name  "stick"                      :name-plural "sticks" :fuel 100 :utility 100}
    {:id  :log                     :name  "log"                        :name-plural "logs" :fuel 500}
-   {:id  :sharpened-stick         :name  "sharpened stick"            :name-plural "sharpened sticks" :attack :spear :fuel 100}
+   {:id  :sharpened-stick         :name  "sharpened stick"            :name-plural "sharpened sticks" :attack :spear :fuel 100 :utility 100}
    {:id  :arrow                   :name  "arrow"                      :name-plural "arrows" :attack :spear :fuel 10}
    {:id  :red-tipped-arrow        :name  "red-tipped arrow"           :name-plural "red-tipped arrows" :attack :spear :fuel 10}
    {:id  :orange-topped-arrow     :name  "orange-tipped arrow"        :name-plural "orange-tipped arrows" :attack :spear :fuel 10}
@@ -82,7 +86,7 @@
    {:id  :green-tipped-arrow      :name  "green-tipped arrow"         :name-plural "green-tipped arrows" :attack :spear :fuel 10}
    {:id  :blue-tipped-arrow       :name  "blue-tipped arrow"          :name-plural "blue-tipped arrows" :attack :spear :fuel 10}
    {:id  :purple-tipped-arrow     :name  "prurple-tipped arrow"       :name-plural "arrows" :attack :spear :fuel 10}
-   {:id  :bow                     :name  "bow"                        :name-plural "bow" :fuel 10}
+   {:id  :bow                     :name  "bow"                        :name-plural "bow" :fuel 10 :utility 100}
    {:id  :plant-fiber             :name  "plant fiber"                :name-plural "plant fibers" :fuel 50}
    {:id  :unhusked-coconut        :name  "unhusked coconut"           :name-plural "husked coconuts"}
    {:id  :coconut                 :name  "coconut"                    :name-plural "coconuts" :thirst 30}
@@ -104,13 +108,13 @@
    {:id  :obsidian-blade          :name  "obsidian blade"             :name-plural "obsidian blades"}
    {:id  :rope                    :name  "rope"                       :name-plural "ropes" :fuel 10}
    {:id  :bamboo                  :name  "bamboo"                     :name-plural "bamboo"}
-   {:id  :obsidian-spear          :name  "obsidian spear"             :name-plural "obsidian spears"       :attack :spear :fuel 50}
-   {:id  :obsidian-axe            :name  "obsidian axe"               :name-plural "obsidian axes"         :attack :axe :fuel 50}
-   {:id  :obsidian-knife          :name  "obsidian knife"             :name-plural "obsidian knives"       :attack :knife :fuel 10}
+   {:id  :obsidian-spear          :name  "obsidian spear"             :name-plural "obsidian spears"       :attack :spear :fuel 50 :utility 100}
+   {:id  :obsidian-axe            :name  "obsidian axe"               :name-plural "obsidian axes"         :attack :axe :fuel 50 :utility 100}
+   {:id  :obsidian-knife          :name  "obsidian knife"             :name-plural "obsidian knives"       :attack :knife :fuel 10 :utility 100}
    {:id  :bamboo-water-collector  :name  "bamboo water collector"     :name-plural "bamboo water collectors"}
    {:id  :fishing-pole            :name  "fishing pole"               :name-plural "fishing poles" :fuel 50}
    {:id  :match                   :name  "match"                      :name-plural "matches" :fuel 10}
-   {:id  :knife                   :name  "knife"                      :name-plural "knives"                :attack :knife}
+   {:id  :knife                   :name  "knife"                      :name-plural "knives"                :attack :knife :utility 100}
    {:id  :plant-guide             :name  "plant guide"                :name-plural "plant guides" :fuel 100}
    {:id  :bandage                 :name  "bandage"                    :name-plural "bandages" :fuel 30}
    {:id  :fishing-line-and-hook   :name  "fishing line and hook"      :name-plural "fishing lines and hooks"}

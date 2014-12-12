@@ -663,7 +663,7 @@
 
 (defn saw
   "Saw nearby tree creating logs."
-  [state direction]
+  [state direction keyin]
   (let [player-x      (-> state :world :player :pos :x)
         player-y      (-> state :world :player :pos :y)
         target-x      (+ player-x (case direction
@@ -682,6 +682,8 @@
         (append-log "You saw the tree into logs.")
         ;; sawing = more hunger
         (update-in [:world :player :hunger] (partial + 10))
+        ;; decrease item utility
+        (dec-item-utility state keyin)
         (update-cell target-x
                      target-y
                      (fn [cell] (-> cell
@@ -781,10 +783,10 @@
                                       (dig-hole)
                                       (assoc-current-state :normal))
       [:obsidian-axe   trans->dir?] (-> state
-                                      (saw (translate-directions keyin))
+                                      (saw (translate-directions keyin) keyin)
                                       (assoc-current-state :normal))
       [:saw            trans->dir?] (-> state
-                                      (saw (translate-directions keyin))
+                                      (saw (translate-directions keyin) keyin)
                                       (assoc-current-state :normal))
       [ig/id-is-sharp? :*         ] (if-let [item (inventory-hotkey->item state keyin)]
                                       (-> state

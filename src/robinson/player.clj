@@ -151,6 +151,9 @@
         (map-in state [:world :player :inventory] (fn [item] (if (= id (get item :id))
                                                                (update-in item [:count] dec)
                                                                item))))))
+(defn dec-item-utility
+  [state keyin]
+  (update-inventory-item state (inventory-hotkey->item-id state keyin) (fn [item] (update-in item [:utility] (partial - 10)))))
 
 (defn update-npc-killed
   [state npc attack]

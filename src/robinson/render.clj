@@ -216,7 +216,7 @@
   ([screen title selected-hotkeys items x y width height {:keys [use-applicable center border center-title]
                                                           :or {:use-applicable false :border false :center false :center-title false}}]
    ;; items is list of {:s "string" :fg :black :bg :white}
-   (let [items    (map (fn [item] {:s (format "%c%c%s%s"
+   (let [items    (map (fn [item] {:s (format "%c%c%s%s %s"
                                               (or (item :hotkey)
                                                   \ )
                                               (if (contains? selected-hotkeys (item :hotkey))
@@ -225,7 +225,10 @@
                                               (if (contains? item :count)
                                                 (format "%dx " (int (get item :count)))
                                                 "")
-                                              (get item :name))
+                                              (get item :name)
+                                              (if (contains? item :utility)
+                                                (format "%d%%" (int (get item :utility)))
+                                                ""))
                                    :fg (if (or (not use-applicable)
                                                (get item :applicable))
                                          :black

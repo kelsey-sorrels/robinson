@@ -152,8 +152,10 @@
                                                                (update-in item [:count] dec)
                                                                item))))))
 (defn dec-item-utility
-  [state keyin]
-  (update-inventory-item state (inventory-hotkey->item-id state keyin) (fn [item] (update-in item [:utility] (partial - 10)))))
+ ([state keyin]
+  (dec-item-utility state keyin 1))
+ ([state keyin amount]
+  (update-inventory-item state (inventory-hotkey->item-id state keyin) (fn [item] (update-in item [:utility] (partial - amount))))))
 
 (defn update-npc-killed
   [state npc attack]

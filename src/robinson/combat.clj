@@ -179,9 +179,7 @@
   (let [defender             (get-in state defender-path)
         ;; 
         attacker             (get-in state attacker-path)
-        attacker-inventory   (get-in state (conj attacker-path :inventory) [])
-        attack-item          (first (filter (fn [item] (contains? item :wielded))
-                                                                        attacker-inventory))
+        attack-item          (wielded-item attacker)
         bow-wielded          (= :bow
                                 (let [item-id (get (or attack-item {}) :id)]
                                   (or item-id :non-bow)))
@@ -220,6 +218,8 @@
           ;; modify defender hp
           (update-in (conj defender-path :hp)
             (fn [hp] (- hp dmg)))
+          (arg-when-> [state] attack-item
+            (dec-item-utility (get attack-item :hotkey)))
           ;; provoke temperamental animal
           (arg-when-> [state] (= (get-in [state] (conj defender-path :temperament)) :hostile-after-attacked)
             (->

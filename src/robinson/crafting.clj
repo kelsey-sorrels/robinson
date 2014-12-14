@@ -127,14 +127,24 @@
 (defn craft-recipe
   "Perform the recipe."
   [state recipe]
-  (let [exhaust (get-in recipe [:recipe :exhaust])
-        add     (get-in recipe [:recipe :add])
+  (let [exhaust      (get-in recipe [:recipe :exhaust])
+        add          (get-in recipe [:recipe :add])
+        have-or      (get-in recipe [:recipe :have-or])
+        wielded-item (wielded-item (player-inventory state))
+        have-applicable-ids (clojure.set/intersection (set have-or)
+                                                       (set (map :id (player-inventory state))))
         _ (info "crafting" recipe)]
     (if (has-prerequisites? state recipe)
-      (let [state (-> state
-                    (add-by-ids add (get recipe :place :inventory))
-                    (exhaust-by-ids exhaust)
-                    ((fn [state] (reduce update-crafted state (map (fn [id] {:id id}) add)))))]
-        state)
+      ;; player has only one applicable item, or has many and is wielding one?
+      (if (or (= (count have-applicable-ids) 1)
+              wielded-item)
+        (let [state (-> state
+                      (dec-item-utility (or (and wielded-item (get wielded-item :id))
+                                            (first have-applicable-ids)))
+                      (add-by-ids add (get recipe :place :inventory))
+                      (exhaust-by-ids exhaust)
+                      ((fn [state] (reduce update-crafted state (map (fn [id] {:id id}) add)))))]
+          state)
+        (ui-hint state (format "You have multiple items that can be used to make this. Wield one of them")))
       (ui-hint state (format "You don't have the necessary items to make %s recipe." (get recipe :name))))))
 

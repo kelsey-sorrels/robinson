@@ -38,6 +38,15 @@
   [state]
   (pos->xy (player-pos state)))
 
+(defn player-inventory
+  [state]
+  (get-in state [:world :player :inventory]))
+
+(defn wielded-item
+  [actor]
+  (first (filter (fn [item] (contains? item :wielded))
+                 (get actor :inventory))))
+
 (defn- merge-items
   [item1 item2]
   (info "merging" item1 item2)
@@ -152,10 +161,19 @@
                                                                (update-in item [:count] dec)
                                                                item))))))
 (defn dec-item-utility
- ([state keyin]
-  (dec-item-utility state keyin 1))
- ([state keyin amount]
-  (update-inventory-item state (inventory-hotkey->item-id state keyin) (fn [item] (update-in item [:utility] (partial - amount))))))
+ ([state hotkey-or-id]
+  (dec-item-utility state hotkey-or-id 1))
+ ([state hotkey-or-id amount]
+  (info "decrementing utility for" hotkey-or-id)
+  (update-inventory-item state
+                         (cond
+                           (keyword? hotkey-or-id)
+                           hotkey-or-id
+                           (char? hotkey-or-id)
+                           (inventory-hotkey->item-id state hotkey-or-id))
+                         (fn [item]
+                           (info "decrementing utility for" item)
+                           (update-in item [:utility] (fn [utility] (- utility amount)))))))
 
 (defn update-npc-killed
   [state npc attack]

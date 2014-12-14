@@ -179,11 +179,11 @@
   (let [defender             (get-in state defender-path)
         ;; 
         attacker             (get-in state attacker-path)
-        bow-wielded          (= :bow
-                                (let [attacker-inventory (get-in state (conj attacker-path :inventory) [])
-                                      attack-item        (first (filter (fn [item] (contains? item :wielded))
+        attacker-inventory   (get-in state (conj attacker-path :inventory) [])
+        attack-item          (first (filter (fn [item] (contains? item :wielded))
                                                                         attacker-inventory))
-                                      item-id            (get (or attack-item {}) :id)]
+        bow-wielded          (= :bow
+                                (let [item-id (get (or attack-item {}) :id)]
                                   (or item-id :non-bow)))
         thrown-item          (when-not (keyword? attack)
                                attack)

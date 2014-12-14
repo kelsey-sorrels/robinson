@@ -172,6 +172,14 @@
                         (map f coll)))
          m ks nil))
 
+(defn reduce-in
+  "Reduce a value inside an associative datastructure. `more` can be either
+  a reducing function, a reducting function and an initial value."
+  ([m ks f]
+   (update-in m ks (fn [coll] (reduce f coll))))
+  ([m ks f v]
+   (update-in m ks (fn [coll] (reduce f v coll)))))
+
 (defn filter-in
   [m ks f]
   (fn-in (fn [coll _] (if (vector? coll)

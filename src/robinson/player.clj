@@ -1,7 +1,8 @@
 ;; Functions for manipulating player state
 (ns robinson.player
   (:use     robinson.common)
-  (:require [taoensso.timbre :as timbre]
+  (:require [clojure.data.generators :as dg]
+            [taoensso.timbre :as timbre]
             [pallet.thread-expr :as tx]))
 
 (timbre/refer-timbre)
@@ -165,15 +166,28 @@
   (dec-item-utility state hotkey-or-id 1))
  ([state hotkey-or-id amount]
   (info "decrementing utility for" hotkey-or-id)
-  (update-inventory-item state
-                         (cond
-                           (keyword? hotkey-or-id)
-                           hotkey-or-id
-                           (char? hotkey-or-id)
-                           (inventory-hotkey->item-id state hotkey-or-id))
-                         (fn [item]
-                           (info "decrementing utility for" item)
-                           (update-in item [:utility] (fn [utility] (- utility amount)))))))
+  (-> state
+    (update-inventory-item
+      (cond
+        (keyword? hotkey-or-id)
+        hotkey-or-id
+        (char? hotkey-or-id)
+        (inventory-hotkey->item-id state hotkey-or-id))
+      (fn [item]
+        (info "decrementing utility for" item)
+        (update-in item [:utility] (fn [utility] (- utility amount)))))
+     ;; remove any broken items
+    (reduce
+      (fn [state item]
+        (if (< (get item :utility) 1)
+          (-> state
+            (dec-item-count (get item :id))
+            (arg-when-> [state] (pos? (count (get item :recoverable-items)))
+              (add-to-inventory [(dg/rand-nth (get item :recoverable-items))])))
+          state))
+          ;; item breaks
+          ;; add parts
+      (player-inventory state)))))
 
 (defn update-npc-killed
   [state npc attack]

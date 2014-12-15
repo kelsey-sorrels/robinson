@@ -218,8 +218,13 @@
           ;; modify defender hp
           (update-in (conj defender-path :hp)
             (fn [hp] (- hp dmg)))
+          ;; attacks use wielded weapons
           (arg-when-> [state] attack-item
             (dec-item-utility (get attack-item :hotkey)))
+          ;; awaken player if attacked while sleeping
+          (arg-when-> [state] (and (contains? (set defender-path) :player)
+                                   (= (current-state state) :sleep))
+            (assoc-in [:world :current-state] :normal))
           ;; provoke temperamental animal
           (arg-when-> [state] (= (get-in [state] (conj defender-path :temperament)) :hostile-after-attacked)
             (->

@@ -285,6 +285,8 @@
       (put-string screen 41 23 " "      :black :gray)
       (put-string screen 42 23 "\u2665" (if (player-infected? state) :yellow :black) :gray)
       (put-string screen 43 23 " "      :black :gray)
+      (when (= (current-state state) :sleep)
+        (put-string screen 38 20 (format "Zzz%s" (apply str (repeat (mod (get-time state) 3) "." )))))
       ;; render will to live and hp
       (let [wtl        (get-in state [:world :player :will-to-live])
             max-wtl    (get-in state [:world :player :max-will-to-live])

@@ -166,28 +166,35 @@
   (dec-item-utility state hotkey-or-id 1))
  ([state hotkey-or-id amount]
   (info "decrementing utility for" hotkey-or-id)
-  (-> state
+  (let [id (cond
+             (keyword? hotkey-or-id)
+             hotkey-or-id
+             (char? hotkey-or-id)
+             (inventory-hotkey->item-id state hotkey-or-id)
+             :else
+             (throw (IllegalArgumentException. "hotkey-or-id was neither a keyword nor a character.")))]
+  (info "decrementing utility for item with id" id)
+  (as-> state state
     (update-inventory-item
-      (cond
-        (keyword? hotkey-or-id)
-        hotkey-or-id
-        (char? hotkey-or-id)
-        (inventory-hotkey->item-id state hotkey-or-id))
+      state
+      id
       (fn [item]
         (info "decrementing utility for" item)
         (update-in item [:utility] (fn [utility] (- utility amount)))))
      ;; remove any broken items
     (reduce
       (fn [state item]
-        (if (< (get item :utility) 1)
+        (info "Check to see if" item "has broken")
+        (if (< (get item :utility 2) 1)
           (-> state
+            ;; item breaks
             (dec-item-count (get item :id))
+            ;; add parts
             (arg-when-> [state] (pos? (count (get item :recoverable-items)))
               (add-to-inventory [(dg/rand-nth (get item :recoverable-items))])))
           state))
-          ;; item breaks
-          ;; add parts
-      (player-inventory state)))))
+      state
+      (player-inventory state))))))
 
 (defn update-npc-killed
   [state npc attack]

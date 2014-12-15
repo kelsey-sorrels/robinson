@@ -683,7 +683,7 @@
         ;; sawing = more hunger
         (update-in [:world :player :hunger] (partial + 10))
         ;; decrease item utility
-        (dec-item-utility state keyin)
+        (dec-item-utility :saw)
         (update-cell target-x
                      target-y
                      (fn [cell] (-> cell
@@ -1419,7 +1419,7 @@
 
 
 (defn scroll-log
-  [state keyin]
+  [state]
   (let [t (get-in state [:world :time])]
     (info "scroll-log t" t)
     (info "scroll-log logs-viewed" (get-in state [:world :logs-viewed]))
@@ -1470,24 +1470,38 @@
 (defn get-hungrier-and-thirstier
   "Increase player's hunger."
   [state]
-  (if (= (current-state state) :sleep)
-    (-> state
-      (update-in [:world :player :hunger] (partial + 0.01))
-      (update-in [:world :player :thirst] (partial + 0.05)))
-    (-> state
-      (update-in [:world :player :hunger] (partial + 0.05 (* 0.02 (count (player-inventory state)))))
-      (update-in [:world :player :thirst] (partial + 0.1))
-      ((fn [state] (update-in state
-                              [:world :player :status]
-                              (fn [status]
-                                (set (remove nil?
-                                     (conj status (condp <= (max (-> state :world :player :hunger)
-                                                                 (-> state :world :player :thirst))
-                                                    100 :dead
-                                                     80 :dying
-                                                     60 :starving
-                                                     40 :hungry
-                                                    nil)))))))))))
+  (let [hunger (get-in state [:world :player :hunger])
+        thirst (get-in state [:world :player :thirst])]
+    (as-> state state
+      (if (= (current-state state) :sleep)
+        (-> state
+          (update-in [:world :player :hunger] (partial + 0.01))
+          (update-in [:world :player :thirst] (partial + 0.05)))
+        (-> state
+          (update-in [:world :player :hunger] (partial + 0.05 (* 0.02 (count (player-inventory state)))))
+          (update-in [:world :player :thirst] (partial + 0.1))
+          ((fn [state] (update-in state
+                                  [:world :player :status]
+                                  (fn [status]
+                                    (set (remove nil?
+                                         (conj status (condp <= (max (-> state :world :player :hunger)
+                                                                     (-> state :world :player :thirst))
+                                                        100 :dead
+                                                         80 :dying
+                                                         60 :starving
+                                                         40 :hungry
+                                                        nil))))))))))
+      (let [new-hunger (get-in state [:world :player :hunger])]
+        (info "hunger" hunger "new-hunger" new-hunger)
+        (if (< hunger 80 new-hunger)
+          (append-log state "You need to eat now." :yellow)
+          state))
+      (let [new-thirst (get-in state [:world :player :thirst])]
+        (info "thirst" thirst "new-thirst" new-thirst)
+        (if (< thirst 80 new-thirst)
+          (append-log state "You need to drink something now." :blue)
+          state)))))
+
 
 (defn get-rescued
   [state]

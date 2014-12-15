@@ -2441,7 +2441,9 @@
                            :down       [close-down             :normal          true]
                            :up         [close-up               :normal          true]
                            :right      [close-right            :normal          true]}
-               :more-log  {:else       [scroll-log             identity         false]}
+               :more-log  {:enter      [scroll-log             identity         false]
+                           :escape     [scroll-log             identity         false]
+                           :space      [scroll-log             identity         false]}
                :log       {:else       [pass-state             :normal          false]}
                :rescued   {\y          [identity               :start-inventory false]
                            \n          [(constantly nil)       :normal          false]}

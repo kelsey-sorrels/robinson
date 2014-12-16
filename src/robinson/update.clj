@@ -1437,6 +1437,7 @@
   (-> state
     (update-in [:world :log]
       (fn [logs]
+        (info "updating :world :log. logs" logs)
         (mapcat
           (fn [logs-with-same-time]
             (vec
@@ -1447,11 +1448,13 @@
                                     70)
                                 (= (get last-log :color)
                                    (get log :color)))
+                            ;; conj short lines
                             (vec (conj (butlast logs-with-same-time)
                                         {:time (get log :time)
                                          :text (clojure.string/join " " [(get last-log :text)
                                                                          (get log :text)])
                                          :color (get log :color)}))
+                            ;; pass long lines through
                             (conj logs-with-same-time log))))
                       []
                       logs-with-same-time)))
@@ -2323,6 +2326,14 @@
                            \m          [identity               :log             false]
                            \?          [identity               :help            false]
                            \r          [repeat-commands        identity         false]
+                           \0          [(fn [state]
+                                          (-> state
+                                          (append-log "log1...........................")
+                                          (append-log "log2...........................")
+                                          (append-log "log3...........................")
+                                          (append-log "log4...........................")
+                                          (append-log "log5...........................")))
+                                          :normal true]
                            :escape     [identity               :quit?           false]}
                :inventory {:escape     [identity               :normal          false]}
                :describe  {:escape     [free-cursor            :normal          false]

@@ -923,7 +923,7 @@
         (if (= cur-state :more-log)
           (let [logs (vec (filter #(= (get % :time) current-time) (get-in state [:world :log])))
                 _ (info "logs-viewed" logs-viewed "current-time" current-time "logs" logs)
-                message (get logs (dec logs-viewed))]
+                message (nth logs (dec logs-viewed))]
             ;(debug "message" message)
             (put-string screen 0 0 (format "%s --More--" (message :text)) (get message :color) :black))
           (let [message (last (get-in state [:world :log]))]

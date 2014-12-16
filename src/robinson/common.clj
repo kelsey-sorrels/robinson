@@ -261,10 +261,11 @@
   ([state message color]
    (assoc-in state
              [:world :log]
-             (vec (take-last 23 (conj (-> state :world :log)
-                                     {:text message
-                                      :time (-> state :world :time)
-                                      :color color}))))))
+             (vec (take-last 23 (concat
+                                  (-> state :world :log)
+                                  [{:text message
+                                    :time (-> state :world :time)
+                                    :color color}]))))))
 
 (defn ui-hint
   [state msg]

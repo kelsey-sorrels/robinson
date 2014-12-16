@@ -1442,6 +1442,8 @@
           (fn [logs-with-same-time]
             (vec
               (reduce (fn [logs-with-same-time log]
+                        (info "updating logs-with-same-time" logs-with-same-time)
+                        (info "log" log)
                         (let [last-log (last logs-with-same-time)]
                           (if (and (< (+ (count (get last-log :text))
                                       (count (get log :text)))
@@ -1449,13 +1451,13 @@
                                 (= (get last-log :color)
                                    (get log :color)))
                             ;; conj short lines
-                            (vec (conj (butlast logs-with-same-time)
+                            (vec (conj (vec (butlast logs-with-same-time))
                                         {:time (get log :time)
                                          :text (clojure.string/join " " [(get last-log :text)
                                                                          (get log :text)])
                                          :color (get log :color)}))
                             ;; pass long lines through
-                            (conj logs-with-same-time log))))
+                            (vec (conj logs-with-same-time log)))))
                       []
                       logs-with-same-time)))
           (vals (group-by :time logs)))))
@@ -2334,6 +2336,8 @@
                                           (append-log "log4...........................")
                                           (append-log "log5...........................")))
                                           :normal true]
+                          \1           [(fn [state]
+                                          (assoc-in state [:world :log] [])) :normal true]
                            :escape     [identity               :quit?           false]}
                :inventory {:escape     [identity               :normal          false]}
                :describe  {:escape     [free-cursor            :normal          false]

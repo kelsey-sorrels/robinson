@@ -20,6 +20,9 @@ cp -R quests target/robinson-win/
 mkdir     target/robinson-win/log
 mkdir     target/robinson-win/save
 
+# set configuration to upload saves
+touch target/robinson-win/config/.feedbackparticipant
+
 # make zip
 cd target
 zip -r robinson-win robinson-win

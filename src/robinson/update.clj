@@ -24,10 +24,12 @@
             clojure.pprint
             clojure.core.memoize
             clojure.edn
+            [clojure.data.json :as json]
             clj-tiny-astar.path
             [clojure.core.async :as async]
             [clojure.java.io :as io]
             [clojure.data.generators :as dg]
+            [clj-http.client :as http]
             [pallet.thread-expr :as tx]
             [clojure.stacktrace :as st]
             [taoensso.timbre :as timbre]))
@@ -2592,6 +2594,14 @@
             (update-quests)
             (arg-when-> [state] (contains? (-> state :world :player :status) :dead)
               ((fn [state]
+                 ;; if UPLOADVERSION file is present, upload save/world.edn as json to aaron-santos.com:8888/upload
+                 (when (.exists (io/file "config/.feedbackparticipant"))
+                   (let [version (slurp "VERSION")
+                         body    (json/write-str (-> (get state :world)
+                                                   (assoc :version version)))]
+                     (http/post "http://aaron-santos.com:3000/robinson/worlds"
+                       {:body body
+                        :content-type :json})))
                  (doseq [file (filter (fn [file] (re-matches #".*edn" (.getName file))) (file-seq (io/file "save")))]
                    (.delete file))
                 state))

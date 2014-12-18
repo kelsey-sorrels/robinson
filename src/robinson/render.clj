@@ -986,6 +986,7 @@
     (doall (map-indexed
       (fn [idx line] (put-string screen 12 (+ idx 9) line))
       (clojure.string/split-lines start-text)))
+    (put-string screen 17 19 "Press any key to continue and ? to view help.")
     (refresh screen)))
 
 (defn render-game-over

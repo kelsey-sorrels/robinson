@@ -147,6 +147,7 @@
                                (when-let [k (cond
                                               (= (.getKeyCode e) KeyEvent/VK_ENTER)      :enter
                                               (= (.getKeyCode e) KeyEvent/VK_ESCAPE)     :escape
+                                              (= (.getKeyCode e) KeyEvent/VK_SPACE)      :space
                                               (= (.getKeyCode e) KeyEvent/VK_BACK_SPACE) :backspace
                                               (= (.getKeyCode e) KeyEvent/VK_NUMPAD1)    :numpad1
                                               (= (.getKeyCode e) KeyEvent/VK_NUMPAD2)    :numpad2

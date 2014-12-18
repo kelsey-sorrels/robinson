@@ -2338,6 +2338,9 @@
                                           :normal true]
                           \1           [(fn [state]
                                           (assoc-in state [:world :log] [])) :normal true]
+                          \2           [(fn [state]
+                                          (assoc-in state [:world :player :hunger] 100))
+                                          :normal true]
                            :escape     [identity               :quit?           false]}
                :inventory {:escape     [identity               :normal          false]}
                :describe  {:escape     [free-cursor            :normal          false]

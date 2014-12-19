@@ -2596,10 +2596,15 @@
               ((fn [state]
                  ;; if UPLOADVERSION file is present, upload save/world.edn as json to aaron-santos.com:8888/upload
                  (when (.exists (io/file "config/.feedbackparticipant"))
+                   (when (not (.exists (io/file "config/.userid")))
+                     (spit "config/.userid" (doto (java.util.UUID/randomUUID)
+                                                  (.toString))))
                    (let [version (slurp "VERSION")
+                         userid  (slurp "config/.userid")
+                         url     (format "https://aaron-santos.com:3000/saves/%s" userid) 
                          body    (json/write-str (-> (get state :world)
-                                                   (assoc :version version)))]
-                     (http/post "http://aaron-santos.com:3000/robinson/worlds"
+                                                     (assoc :version version)))]
+                     (http/post url
                        {:body body
                         :content-type :json})))
                  (doseq [file (filter (fn [file] (re-matches #".*edn" (.getName file))) (file-seq (io/file "save")))]

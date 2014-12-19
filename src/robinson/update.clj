@@ -24,6 +24,7 @@
             clojure.pprint
             clojure.core.memoize
             clojure.edn
+            clojure.walk
             [clojure.data.json :as json]
             clj-tiny-astar.path
             [clojure.core.async :as async]
@@ -2602,8 +2603,13 @@
                    (let [version (slurp "VERSION")
                          userid  (slurp "config/.userid")
                          url     (format "https://aaron-santos.com:3000/saves/%s" userid) 
-                         body    (json/write-str (-> (get state :world)
-                                                     (assoc :version version)))]
+                         body    (as-> (get state :world) world
+                                       (assoc world :version version)
+                                       (clojure.walk/postwalk (fn [v] (if (char? v)
+                                                                        (str v)
+                                                                        v))
+                                                               world)
+                                       (json/write-str world))]
                      (http/post url
                        {:body body
                         :content-type :json})))

@@ -2610,6 +2610,7 @@
                                                                         v))
                                                                world)
                                        (json/write-str world))]
+                     (System/setProperty "https.protocols" "TLSv1,TLSv1.1,TLSv1.2")
                      (http/post url
                        {:body body
                         :content-type :json})))

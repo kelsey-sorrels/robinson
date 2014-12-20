@@ -479,7 +479,7 @@
                     :max-hp 10
                     :will-to-live 100
                     :max-will-to-live 100
-                    :$ 50
+                    :money 50
                     :xp 0
                     :level 0
                     :hunger 0

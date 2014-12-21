@@ -493,6 +493,7 @@
                     :attacks #{:punch}
                     :status #{}
                     :stats {
+                      :timeline (list)
                       :num-animals-killed       {}
                       :num-items-crafted        {}
                       :num-items-harvested      {}

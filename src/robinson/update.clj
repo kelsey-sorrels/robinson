@@ -2595,28 +2595,35 @@
             (update-quests)
             (arg-when-> [state] (contains? (-> state :world :player :status) :dead)
               ((fn [state]
-                 (let [devmode false]
-                   ;; if UPLOADVERSION file is present, upload save/world.edn as json to aaron-santos.com:8888/upload
-                   (when (or (.exists (io/file "config/.feedbackparticipant"))
-                             devmode)
-                     (when (not (.exists (io/file "config/.userid")))
-                       (spit "config/.userid" (doto (java.util.UUID/randomUUID)
-                                                    (.toString))))
-                     (let [version (if devmode "SNAPSHOT"  (slurp "VERSION"))
-                           userid  (slurp "config/.userid")
-                           url     (format "http://aaron-santos.com:3000/saves/%s" userid) 
-                           body    (as-> (get state :world) world
-                                         (assoc world :version version)
-                                         (clojure.walk/postwalk (fn [v] (if (char? v)
-                                                                          (str v)
-                                                                          v))
-                                                                 world)
-                                         (json/write-str world))]
-                       (System/setProperty "https.protocols" "TLSv1,TLSv1.1,TLSv1.2")
-                       (http/post url
-                         {:insecure? true
-                          :body body
-                          :content-type :json}))))
+                 ;; if UPLOADVERSION file is present, upload save/world.edn as json to aaron-santos.com:8888/upload
+                 (when (.exists (io/file "config/.feedbackparticipant"))
+                   (when (not (.exists (io/file "config/.userid")))
+                     (spit "config/.userid" (doto (java.util.UUID/randomUUID)
+                                                  (.toString))))
+                   (let [version (if (.exists (io/file "VERSION"))
+                                   (slurp "VERSION")
+                                   "SNAPSHOT")
+                         userid  (slurp "config/.userid")
+                         url     (format "https://aaron-santos.com/saves/%s" userid)
+                         body    (as-> (get state :world) world
+                                       (assoc world :version version)
+                                       (clojure.walk/postwalk (fn [v] (if (char? v)
+                                                                        (str v)
+                                                                        v))
+                                                               world)
+                                       (json/write-str world))]
+                     (info "Uploading save file version" version "userid" userid "to" url)
+                     (async/thread 
+                       (try
+                         (info "Starting upload")
+                         (System/setProperty "https.protocols" "TLSv1.2")
+                         (http/post url
+                           {:insecure? true
+                            :body body
+                            :content-type :json})
+                         (info "Done uploading save file")
+                         (catch Exception e
+                           (error "Caught exception while uploading save" e))))))
                  (doseq [file (filter (fn [file] (re-matches #".*edn" (.getName file))) (file-seq (io/file "save")))]
                    (.delete file))
                 state))

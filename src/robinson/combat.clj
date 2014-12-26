@@ -287,8 +287,8 @@
             (assoc-in [:world :cause-of-death] (format "%s %s %s" (noun->indefinite-article (get attacker :name))
                                                                  (get attacker :name)
                                                                  (name attack)))
-            (update-in [:world :player :status]
-              (fn [status] (conj status :dead)))))))))
+            (conj-in [:world :player :status] :dead)
+            (update-player-died :combat)))))))
 
 (defn -main [& more]
   (let [player {:id :player

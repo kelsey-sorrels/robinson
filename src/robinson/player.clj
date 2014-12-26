@@ -48,6 +48,22 @@
   (first (filter (fn [item] (contains? item :wielded))
                  (get actor :inventory))))
 
+(defn player-hunger
+  [state]
+  (get-in state [:world :player :hunger]))
+
+(defn player-thirst
+  [state]
+  (get-in state [:world :player :thirst]))
+
+(defn player-max-hunger
+  [state]
+  (get-in state [:world :player :max-hunger]))
+
+(defn player-max-thirst
+  [state]
+  (get-in state [:world :player :max-thirst]))
+
 (defn- merge-items
   [item1 item2]
   (info "merging" item1 item2)
@@ -245,4 +261,14 @@
       (conj-in   [:world :player :stats :timeline] {:time (get-in state [:world :time])
                                                     :type :food-eaten
                                                     :food item}))))
+
+(defn update-player-died
+  [state reason]
+  (conj-in state [:world :player :stats :timeline] {:time (get-in state [:world :time])
+                                                    :type :player-died}))
+
+(defn update-player-won
+  [state]
+  (conj-in state [:world :player :stats :timeline] {:time (get-in state [:world :time])
+                                                    :type :player-won}))
 

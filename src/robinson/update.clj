@@ -1487,18 +1487,17 @@
           (update-in [:world :player :thirst] (partial + 0.05)))
         (-> state
           (update-in [:world :player :hunger] (partial + 0.05 (* 0.02 (count (player-inventory state)))))
-          (update-in [:world :player :thirst] (partial + 0.1))
-          ((fn [state] (update-in state
-                                  [:world :player :status]
-                                  (fn [status]
-                                    (set (remove nil?
-                                         (conj status (condp <= (max (-> state :world :player :hunger)
-                                                                     (-> state :world :player :thirst))
-                                                        100 :dead
-                                                         80 :dying
-                                                         60 :starving
-                                                         40 :hungry
-                                                        nil))))))))))
+          (update-in [:world :player :thirst] (partial + 0.1))))
+      (if (> (player-hunger state) (player-max-hunger state))
+        (-> state
+          (conj-in [:world :player :status] :dead)
+          (update-player-died :hunger))
+        state)
+      (if (> (player-thirst state) (player-max-thirst state))
+        (-> state
+          (conj-in [:world :player :status] :dead)
+          (update-player-died :thirst))
+        state)
       (let [new-hunger (get-in state [:world :player :hunger])]
         (info "hunger" hunger "new-hunger" new-hunger)
         (if (< hunger 80 new-hunger)
@@ -1509,7 +1508,6 @@
         (if (< thirst 80 new-thirst)
           (append-log state "You need to drink something now." :blue)
           state)))))
-
 
 (defn get-rescued
   [state]
@@ -1577,7 +1575,9 @@
                  (fn [status]
                    (set (if (neg? (get-in state [:world :player :will-to-live]))
                           (conj status :dead)
-                          status)))))))
+                          status))))
+      (arg-when-> [state] (contains? (set (get-in state [:world :player :status])) :dead)
+         (update-player-died :zero-will-to-live)))))
 
 (defn log-will-to-live-flavor
   "Log a flavor message when will-to-live increases or decreases by a lot."
@@ -2625,6 +2625,7 @@
                          (catch Exception e
                            (error "Caught exception while uploading save" e))))))
                  (doseq [file (filter (fn [file] (re-matches #".*edn" (.getName file))) (file-seq (io/file "save")))]
+                   (info "Deleting" file)
                    (.delete file))
                 state))
               (update-in [:world :player :status]

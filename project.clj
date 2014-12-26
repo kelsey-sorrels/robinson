@@ -42,6 +42,7 @@
              "-XX:+UseConcMarkSweepGC"
              "-XX:+CMSConcurrentMTEnabled"
              "-XX:MaxGCPauseMillis=20"
+             "-Dhttps.protocols=TLSv1"
              "-Dsun.java2d.opengl=true"
              ;"-Dsun.java2d.trace=log"
              "-Dsun.java2d.opengl.fbobject=true"])

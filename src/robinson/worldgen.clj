@@ -258,7 +258,7 @@
                   t         (first (mapv #(.calc ^clisk.IFunction % (double (/ x max-x)) (double (/ y max-y)) (double 0.0) (double 0.0))
                                       tree-fns))
                   biome     (vec->keyword s)
-                  _         (info biome t)
+                  ;_         (info biome t)
                   cell-type (case biome
                               :ocean         {:type :water}
                               :surf          {:type :surf}

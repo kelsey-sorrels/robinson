@@ -140,8 +140,23 @@
 (def ocean
   [0.0 0.4 0.5])
 
+(defn vec->keyword
+  [v]
+  (condp = v
+    jungle       :jungle
+    heavy-forest :heavy-forest
+    meadow       :meadow
+    swamp        :swamp
+    bamboo-grove :bamboo-grove
+    light-forest :light-forest
+    rocky        :rocky
+    dirt         :dirt
+    sand         :sand
+    surf         :surf
+    ocean        :ocean))
+
 (def tree-node
-  (cliskf/vectorize (cliskf/offset [-0.5 -0.5] (cliskf/v+ [-0.5 -0.5 -0.5] (cliskf/scale 0.1 cliskp/noise)))))
+  (cliskf/vectorize (cliskf/offset [-0.5 -0.5] (cliskf/v+ [-0.5 -0.5 -0.5] (cliskf/scale 0.01 cliskp/noise)))))
 
 (def island-node
   (cliskf/vectorize
@@ -242,75 +257,77 @@
                                       island-fns)
                   t         (first (mapv #(.calc ^clisk.IFunction % (double (/ x max-x)) (double (/ y max-y)) (double 0.0) (double 0.0))
                                       tree-fns))
-                  cell-type (condp = s
-                              ocean         {:type :water}
-                              surf          {:type :surf}
-                              sand          {:type :sand}
-                              dirt          (case (uniform-int 3)
-                                              0 {:type :dirt}
-                                              1 {:type :gravel}
-                                              2 {:type :tall-grass})
-                              bamboo-grove  (if (< t 0.5)
-                                              (dg/rand-nth [
-                                                {:type :dirt}
-                                                {:type :tall-grass}
-                                                {:type :tall-grass}
-                                                {:type :short-grass}
-                                                {:type :short-grass}])
-                                              {:type :bamboo})
-                              rocky         (if (< t 0.7)
-                                              (dg/rand-nth [
-                                                {:type :dirt}
-                                                {:type :tall-grass}
-                                                {:type :short-grass}
-                                                {:type :short-grass}])
-                                               {:type :mountain})
-                              swamp         (dg/rand-nth [
-                                                {:type :dirt}
-                                                {:type :surf}
-                                                {:type :tree}
-                                                {:type :tall-grass}
-                                                {:type :short-grass}])
-                              meadow        (case (uniform-int 5)
-                                              0 {:type :dirt}
-                                              1 {:type :tall-grass}
-                                              2 {:type :tall-grass}
-                                              3 {:type :short-grass}
-                                              4 {:type :short-grass})
-                              jungle        (if (< t 0.7)
-                                              (dg/rand-nth [
-                                                {:type :tall-grass}
-                                                {:type :short-grass}
-                                                {:type :gravel}])
-                                              (dg/rand-nth [
-                                                {:type :tall-grass}
-                                                {:type :palm-tree}
-                                                {:type :fruit-tree :fruit-type (dg/rand-nth [:red-fruit :orange-fruit :yellow-fruit
-                                                                                             :green-fruit :blue-fruit :purple-fruit
-                                                                                             :white-fruit :black-fruit])}]))
-                              heavy-forest  (if (< t 0.7)
-                                              (dg/rand-nth [
-                                                {:type :tall-grass}
-                                                {:type :tree}
-                                                {:type :fruit-tree :fruit-type (dg/rand-nth [:red-fruit :orange-fruit :yellow-fruit
-                                                                                             :green-fruit :blue-fruit :purple-fruit
-                                                                                             :white-fruit :black-fruit])}])
-                                              (dg/rand-nth [
-                                                {:type :tall-grass}
-                                                {:type :short-grass}
-                                                {:type :gravel}]))
-                              light-forest  (if (< t 0.7)
-                                              (dg/rand-nth [
-                                                {:type :tall-grass}
-                                                {:type :tree}
-                                                {:type :fruit-tree :fruit-type (dg/rand-nth [:red-fruit :orange-fruit :yellow-fruit
-                                                                                             :green-fruit :blue-fruit :purple-fruit
-                                                                                             :white-fruit :black-fruit])}])
-                                              (dg/rand-nth [
-                                                {:type :tall-grass}
-                                                {:type :tall-grass}
-                                                {:type :short-grass}
-                                                {:type :short-grass}])))
+                  biome     (vec->keyword s)
+                  _         (info biome t)
+                  cell-type (case biome
+                              :ocean         {:type :water}
+                              :surf          {:type :surf}
+                              :sand          {:type :sand}
+                              :dirt          (case (uniform-int 3)
+                                               0 {:type :dirt}
+                                               1 {:type :gravel}
+                                               2 {:type :short-grass})
+                              :bamboo-grove  (if (< t 0.0)
+                                               (dg/rand-nth [
+                                                 {:type :dirt}
+                                                 {:type :tall-grass}
+                                                 {:type :tall-grass}
+                                                 {:type :short-grass}
+                                                 {:type :short-grass}])
+                                               {:type :bamboo})
+                              :rocky         (if (< t 0.1)
+                                               (dg/rand-nth [
+                                                 {:type :dirt}
+                                                 {:type :tall-grass}
+                                                 {:type :short-grass}
+                                                 {:type :short-grass}])
+                                                {:type :mountain})
+                              :swamp         (dg/rand-nth [
+                                               {:type :dirt}
+                                               {:type :surf}
+                                               {:type :tree}
+                                               {:type :tall-grass}
+                                               {:type :short-grass}])
+                              :meadow        (dg/rand-nth [
+                                               {:type :dirt}
+                                               {:type :tall-grass}
+                                               {:type :tall-grass}
+                                               {:type :short-grass}
+                                               {:type :short-grass}])
+                              :jungle        (if (< t 0.1)
+                                               (dg/rand-nth [
+                                                 {:type :tall-grass}
+                                                 {:type :short-grass}
+                                                 {:type :gravel}])
+                                               (dg/rand-nth [
+                                                 {:type :tall-grass}
+                                                 {:type :palm-tree}
+                                                 {:type :fruit-tree :fruit-type (dg/rand-nth [:red-fruit :orange-fruit :yellow-fruit
+                                                                                              :green-fruit :blue-fruit :purple-fruit
+                                                                                              :white-fruit :black-fruit])}]))
+                              :heavy-forest  (if (< t 0.1)
+                                               (dg/rand-nth [
+                                                 {:type :tall-grass}
+                                                 {:type :tree}
+                                                 {:type :fruit-tree :fruit-type (dg/rand-nth [:red-fruit :orange-fruit :yellow-fruit
+                                                                                              :green-fruit :blue-fruit :purple-fruit
+                                                                                              :white-fruit :black-fruit])}])
+                                               (dg/rand-nth [
+                                                 {:type :tall-grass}
+                                                 {:type :short-grass}
+                                                 {:type :gravel}]))
+                              :light-forest  (if (< t 0.1)
+                                               (dg/rand-nth [
+                                                 {:type :tall-grass}
+                                                 {:type :tree}
+                                                 {:type :fruit-tree :fruit-type (dg/rand-nth [:red-fruit :orange-fruit :yellow-fruit
+                                                                                              :green-fruit :blue-fruit :purple-fruit
+                                                                                              :white-fruit :black-fruit])}])
+                                               (dg/rand-nth [
+                                                 {:type :tall-grass}
+                                                 {:type :tall-grass}
+                                                 {:type :short-grass}
+                                                 {:type :short-grass}])))
                      cell (cond
                             ;; lava
                             (not-every? #(farther-than? (xy->pos x y) (apply xy->pos %) 3) lava-xys)
@@ -319,8 +336,20 @@
                             {:type :mountain}
                             :else cell-type)]
               ;; drop initial harvestable items
-              (if (and (contains? #{:gravel :tree :palm-tree :tall-grass} (get cell :type))
-                           (= (uniform-int 0 200) 0))
+              (if (or (and (= :gravel (get cell :type))
+                           (= :rocky biome)
+                           (= (uniform-int 0 50) 0))
+                      (and (= :tree (get cell :type))
+                           (= :heavy-forest biome)
+                           (= (uniform-int 0 50) 0))
+                      (and (= :tall-grass (get cell :type))
+                           (= :meadow biome)
+                           (= (uniform-int 0 50) 0))
+                      (and (= :palm-tree (get cell :type))
+                           (= :jungle biome)
+                           (= (uniform-int 0 50) 0))
+                      (and (contains? #{:gravel :tree :palm-tree :tall-grass} (get cell :type))
+                           (= (uniform-int 0 200) 0)))
                 (assoc cell :harvestable true)
                 cell)))
             (for [y (range y (+ y height))

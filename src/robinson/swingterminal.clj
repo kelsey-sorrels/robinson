@@ -41,6 +41,7 @@
   (put-string [this x y string]
               [this x y string fg bg]
               [this x y string fg bg style])
+  (put-chars [this characters])
   (wait-for-key [this])
   (set-cursor [this xy])
   (refresh [this])
@@ -226,6 +227,29 @@
                                           line)))
                                     line
                                     (map-indexed vector s)))))))))
+        (put-chars [this characters]
+          (swap! character-map
+            (fn [cm]
+              (reduce (fn [cm [row row-characters]]
+                        (if (< -1 row rows)
+                          (assoc cm
+                                 row
+                                 (persistent!
+                                   (reduce
+                                     (fn [line c]
+                                       (if (< -1 (get c :x) columns)
+                                           (let [fg        (get c :fg)
+                                                 bg        (get c :bg)
+                                                 fg-color  (Color. (long (fg 0)) (long (fg 1)) (long (fg 2)))
+                                                 bg-color  (Color. (long (bg 0)) (long (bg 1)) (long (bg 2)))
+                                                 character (TerminalCharacter. (first (get c :c)) fg-color bg-color {})]
+                                             (assoc! line (get c :x) character))
+                                           line))
+                                     (transient (get cm row))
+                                     row-characters)))
+                          cm))
+                      cm
+                      (group-by :y characters)))))
         (wait-for-key [this]
           (.take key-queue))
         (set-cursor [this xy]

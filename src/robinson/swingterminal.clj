@@ -47,7 +47,15 @@
   (refresh [this])
   (clear [this]))
 
-(defrecord TerminalCharacter [character fg-color bg-color style])
+;; Normally this would be a record, but until http://dev.clojure.org/jira/browse/CLJ-1224 is fixed
+;; it is not performant to memoize records because hashCode values are not cached and are recalculated
+;; each time.
+(defn make-terminal-character
+  [character fg-color bg-color style]
+  {:character character
+   :fg-color  fg-color
+   :bg-color  bg-color
+   :style     style})
 
 (defmacro for-loop [[sym init check change :as params] & steps]
  `(loop [~sym ~init value# nil]
@@ -81,14 +89,49 @@
           _                (info "Using font" (.getFontName normal-font))
           default-fg-color (Color. (long default-fg-color-r) (long default-fg-color-g) (long default-fg-color-b))
           default-bg-color (Color. (long default-bg-color-g) (long default-bg-color-g) (long default-bg-color-b))
-          character-map    (atom (vec (repeat rows (vec (repeat columns (TerminalCharacter. \space default-fg-color default-bg-color #{}))))))
+          character-map    (atom (vec (repeat rows (vec (repeat columns (make-terminal-character \space default-fg-color default-bg-color #{}))))))
           cursor-xy        (atom nil)
-          offscreen-buffer (atom nil)
+          ;; draws a character to an image and returns the image. 
+          glyph-cache      (memoize (fn [component font-metrics highlight char-width char-height c]
+                             (info "Creating glyph for" c)
+                             (let [glyph-image                       (.createImage component char-width char-height)
+                                   offscreen-graphics-2d ^Graphics2D (.getGraphics glyph-image)
+                                   x                                 0
+                                   y                                 (long (- char-height (.getDescent font-metrics)))
+                                   fg-color                          (if highlight
+                                                                       (get c :bg-color)
+                                                                       (get c :fg-color))
+                                   bg-color                          (if  highlight
+                                                                       (get c :fg-color)
+                                                                       (get c :bg-color))
+                                   s                                 (str (get c :character))
+                                   style                             (get c :style)]
+                               ;(println "filling rect" (* col char-width) (* row char-height) char-width char-height bg-color)
+                               (doto offscreen-graphics-2d
+                                 (.setFont normal-font)
+                                 (.setRenderingHint RenderingHints/KEY_ANTIALIASING RenderingHints/VALUE_ANTIALIAS_ON)
+                                 (.setRenderingHint RenderingHints/KEY_RENDERING RenderingHints/VALUE_RENDER_QUALITY)
+                                 (.setColor bg-color)
+                                 (.fillRect 0 0 char-width char-height))
+                               (when (not= s " ")
+                                 ;(println "drawing" s "@" x y fg-color bg-color)
+                                 (doto offscreen-graphics-2d
+                                   (.setColor fg-color)
+                                   (.drawString s x y)))
+                               (when (contains? style :underline)
+                                 (let [y (dec  char-height)]
+                                   (doto offscreen-graphics-2d
+                                     (.setColor fg-color)
+                                     (.drawLine 0
+                                                y
+                                                char-width
+                                                y))))
+                               (.dispose offscreen-graphics-2d)
+                               glyph-image)))
           key-queue        (LinkedBlockingQueue.)
           on-key-fn        (or on-key-fn
                                (fn default-on-key-fn [k]
                                  (.add key-queue k)))
-          image-observer   (atom nil)
           terminal-renderer (proxy [JComponent] []
                              (getPreferredSize []
                                (let [graphics      ^Graphics    (proxy-super getGraphics)
@@ -100,56 +143,25 @@
                                  (Dimension. screen-width screen-height)))
                              (paintComponent [^Graphics graphics]
                                (log-time "blit"
-                                 (let [graphics-2d ^Graphics2D   (.create graphics)
-                                       font-metrics ^FontMetrics (.getFontMetrics graphics normal-font)
-                                       screen-width              (* columns (.charWidth font-metrics \space))
-                                       screen-height             (* rows (.getHeight font-metrics))
-                                       char-width                (/ screen-width columns)
-                                       char-height               (/ screen-height rows)
-                                       _                         (compare-and-set! offscreen-buffer nil (proxy-super createVolatileImage screen-width screen-height))
-                                       offscreen-graphics-2d     (.getGraphics @offscreen-buffer)]
-                                   (doto offscreen-graphics-2d
-                                     (.setFont normal-font)
-                                     (.setColor default-bg-color)
-                                     (.setRenderingHint RenderingHints/KEY_ANTIALIASING RenderingHints/VALUE_ANTIALIAS_ON)
-                                     (.setRenderingHint RenderingHints/KEY_RENDERING RenderingHints/VALUE_RENDER_QUALITY)
+                                 (let [graphics-2d ^Graphics2D           (.create graphics)
+                                       font-metrics ^FontMetrics         (.getFontMetrics graphics normal-font)
+                                       screen-width                      (* columns (.charWidth font-metrics \space))
+                                       screen-height                     (* rows (.getHeight font-metrics))
+                                       char-width                        (/ screen-width columns)
+                                       char-height                       (/ screen-height rows)]
+                                   (doto graphics
                                      (.fillRect 0 0 screen-width screen-height))
                                    ;(doseq [row (range rows)]
                                    ;  (println (apply str (map #(get % :character) (get @character-map row)))))
                                    (doseq [row (range rows)
                                            col (range columns)]
-                                     (let [c        (get-in @character-map [row col])
-                                           x        (long (* col char-width))
-                                           y        (long (- (* (inc row) char-height) (.getDescent font-metrics)))
-                                           fg-color (if (= @cursor-xy [col row])
-                                                      (get c :bg-color)
-                                                      (get c :fg-color))
-                                           bg-color (if  (= @cursor-xy [col row])
-                                                      (get c :fg-color)
-                                                      (get c :bg-color))
-                                           s        (str (get c :character))
-                                           style    (get c :style)]
-                                       (when (not= bg-color default-bg-color)
-                                         ;(println "filling rect" (* col char-width) (* row char-height) char-width char-height bg-color)
-                                         (doto offscreen-graphics-2d
-                                           (.setColor bg-color)
-                                           (.fillRect (* col char-width) (* row char-height) char-width char-height)))
-                                       (when (not= s " ")
-                                         ;(println "drawing" s "@" x y fg-color bg-color)
-                                         (doto offscreen-graphics-2d
-                                           (.setColor fg-color)
-                                           (.drawString s x y)))
-                                       (when (contains? style :underline)
-                                         (let [y (dec (* (inc row) char-height))]
-                                           (doto offscreen-graphics-2d
-                                             (.setColor fg-color)
-                                             (.drawLine (* col char-width)
-                                                        y
-                                                        (* (inc col) char-width)
-                                                        y))))))
-                                   (.drawImage graphics @offscreen-buffer 0 0 @image-observer)
-                                   #_(.dispose graphics-2d)))))
-          _                (reset! image-observer terminal-renderer)
+                                     (let [c         (get-in @character-map [row col])
+                                           x         (long (* col char-width))
+                                           y         (long (- (* (inc row) char-height) (.getDescent font-metrics)))
+                                           highlight (= @cursor-xy [col row])
+                                           char-img  (glyph-cache this font-metrics highlight char-width char-height c)]
+                                       (.drawImage graphics char-img x (- y char-height) this)))
+                                   (.dispose graphics-2d)))))
           keyListener      (reify KeyListener
                              (keyPressed [this e]
                                ;(println "keyPressed keyCode" (.getKeyCode e) "escape" KeyEvent/VK_ESCAPE "escape?" (= (.getKeyCode e) KeyEvent/VK_ESCAPE))
@@ -190,7 +202,6 @@
                              (.. (getContentPane) (setLayout (BorderLayout.)))
                              (.. (getContentPane) (add terminal-renderer BorderLayout/CENTER))
                              (.addKeyListener keyListener)
-                             (.pack)
                              (.setDefaultCloseOperation JFrame/EXIT_ON_CLOSE)
                              (.setLocationByPlatform true)
                              (.setLocationRelativeTo nil)
@@ -222,7 +233,7 @@
                                     (fn [line [i c]]
                                       (let [x (+ i col)]
                                         (if (< -1 x columns)
-                                          (let [character (TerminalCharacter. c fg-color bg-color style)]
+                                          (let [character (make-terminal-character c fg-color bg-color style)]
                                             (assoc! line (+ i col) character))
                                           line)))
                                     line
@@ -242,7 +253,7 @@
                                                  bg        (get c :bg)
                                                  fg-color  (Color. (long (fg 0)) (long (fg 1)) (long (fg 2)))
                                                  bg-color  (Color. (long (bg 0)) (long (bg 1)) (long (bg 2)))
-                                                 character (TerminalCharacter. (first (get c :c)) fg-color bg-color {})]
+                                                 character (make-terminal-character (first (get c :c)) fg-color bg-color {})]
                                              (assoc! line (get c :x) character))
                                            line))
                                      (transient (get cm row))
@@ -258,7 +269,7 @@
           (SwingUtilities/invokeLater
             (fn refresh-fn [] (.repaint terminal-renderer))))
         (clear [this]
-          (let [c (TerminalCharacter. \space default-fg-color default-bg-color #{})]
+          (let [c (make-terminal-character \space default-fg-color default-bg-color #{})]
           (doseq [row (range rows)
                   col (range columns)]
             (reset! character-map (assoc-in @character-map [row col] c)))))))))

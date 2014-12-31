@@ -2174,13 +2174,14 @@
   [state]
   (info "updating cells")
   (let [xys      (viewport-xys state)
+        get-cell-m (memoize (fn [x y] (get-cell state x y)))
         fire-xys (set (filter (fn filter-fire-cells
                         [[x y]]
-                        (= (get (get-cell state x y) :type) :fire))
+                        (= (get (get-cell-m x y) :type) :fire))
                         xys))]
     (reduce 
       (fn cell-reduction-fn [state [x y]] 
-        (let [cell       (get-cell state x y)
+        (let [cell       (get-cell-m x y)
               cell-type  (get cell :type)
               cell-items (get cell :items)]
           #_(info "updating cell" cell "@" x y)

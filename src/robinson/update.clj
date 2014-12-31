@@ -2173,15 +2173,23 @@
   "Fill holes with a small amount of water. Drop fruit. Drop harvest items."
   [state]
   (info "updating cells")
-  (let [xys      (viewport-xys state)
-        get-cell-m (memoize (fn [x y] (get-cell state x y)))
+  (let [;xys      (viewport-xys state)
+        ;get-cell-m (memoize (fn [x y] (get-cell state x y)))
+        {{v-x :x v-y :y} :pos}
+                       (get-in state [:world :viewport])
+        viewport-cells (apply concat
+                         (map-indexed (fn [vy line]
+                                        (map-indexed (fn [vx cell]
+                                                       [cell (+ v-x vx) (+ v-y vy)])
+                                                     line))
+                                      (cells-in-viewport state)))
         fire-xys (set (filter (fn filter-fire-cells
-                        [[x y]]
-                        (= (get (get-cell-m x y) :type) :fire))
-                        xys))]
+                                [[cell x y]]
+                                (= (get cell :type) :fire))
+                              viewport-cells))]
     (reduce 
-      (fn cell-reduction-fn [state [x y]] 
-        (let [cell       (get-cell-m x y)
+      (fn cell-reduction-fn [state [cell x y]]
+        (let [;cell       (get-cell-m x y)
               cell-type  (get cell :type)
               cell-items (get cell :items)]
           #_(info "updating cell" cell "@" x y)
@@ -2253,7 +2261,7 @@
                                                          (get-time state)))
                                             items)))))))))
       state
-      xys)))
+      viewport-cells)))
 
 (defn update-quests
   "Execute the `pred` function for the current stage of each quest. If 

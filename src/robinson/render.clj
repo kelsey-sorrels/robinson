@@ -59,15 +59,15 @@
   (min (max 0 v) 255))
 
 (defn rgb->mono
-  [rbg]
-  (let [avg (/ (reduce + rbg) 3)]
+  [[r g b]]
+  (let [avg (bit-shift-right (+ (max r g b) (min r g b)) 1)]
    [avg avg avg]))
 
 (defn darken-rgb
   ([rgb]
-  (vec (map #(/ % 10) rgb)))
+  (vec (map #(int (/ % 10)) rgb)))
   ([rgb d]
-  (vec (map #(limit-color (* % d)) rgb))))
+  (vec (map #(int (limit-color (* % d))) rgb))))
 
 (defn color->rgb
   [color]

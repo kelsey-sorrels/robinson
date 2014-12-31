@@ -351,7 +351,11 @@
                       (and (contains? #{:gravel :tree :palm-tree :tall-grass} (get cell :type))
                            (= (uniform-int 0 200) 0)))
                 (assoc cell :harvestable true)
-                cell)))
+                (if (and (= :gravel (get cell :type))
+                         (not-every? #(farther-than? (xy->pos x y) (apply xy->pos %) 10) lava-xys)
+                         (= (uniform-int 0 50) 0))
+                  (assoc cell :harvestable true :near-lava true)
+                  cell))))
             (for [y (range y (+ y height))
                   x (range x (+ x width))]
               [x y]))))))))

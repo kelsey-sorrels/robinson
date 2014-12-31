@@ -64,6 +64,12 @@
   (apply get-place state (player-xy state)))
 
 (defn place-id->anchor-xy
+  "For a given place-id return the world coordinates of the upper-left-hand corner of the place.
+    Here
+      +--> +---------->
+           |
+           |   place cells
+           /"
   [state place-id]
   (let [{v-width     :width
          v-height    :height}
@@ -117,3 +123,43 @@
     (for [x (range v-width)
           y (range v-height)]
       [x y (+ x v-x) (+ y v-y)])))
+
+(defn cells-in-viewport
+  "Return a collection of cells in the viewport as a two-dimensional array"
+  [state]
+  (let [{v-width     :width
+         v-height    :height
+         {v-x :x v-y :y} :pos}
+                          (get-in state [:world :viewport])
+        ;; upper left place
+        ul-place-id       (xy->place-id state v-x v-y)
+        [px py]           ul-place-id
+        ur-place-id       [(inc px) py]
+        ll-place-id       [px       (inc py)]
+        lr-place-id       [(inc px) (inc py)]
+        [start-x start-y] [(mod v-x v-width) (mod v-y v-height)]
+        ul-place          (get-in state [:world :places ul-place-id])
+        ur-place          (get-in state [:world :places ur-place-id])
+        ll-place          (get-in state [:world :places ll-place-id])
+        lr-place          (get-in state [:world :places lr-place-id])]
+    ;(info "v-x" v-x "v-y" v-y)
+    ;(info "v-width" v-width "v-height" v-height)
+    ;(info "ul-place-id" ul-place-id)
+    ;(info "ur-place-id" ur-place-id)
+    ;(info "lr-place-id" lr-place-id)
+    ;(info "ll-place-id" ll-place-id)
+    ;(info "start-x" start-x "start-y" start-y)
+    ;(info "ul-place" ul-place)
+    ;(info "ur-place" ur-place)
+    ;(info "ll-place" ll-place)
+    ;(info "lr-place" lr-place)
+    (concat 
+      (map (fn [line1 line2] (concat (subvec line1 start-x)
+                                     (subvec line2 0 start-x)))
+           (subvec ul-place start-y)
+           (subvec ur-place start-y))
+      (map (fn [line3 line4] (concat (subvec line3 start-x)
+                                     (subvec line4 0 start-x)))
+           (subvec ll-place 0 start-y)
+           (subvec lr-place 0 start-y)))))
+

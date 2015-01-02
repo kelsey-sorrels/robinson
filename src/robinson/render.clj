@@ -659,10 +659,8 @@
         [player-x player-y] (player-xy state)
         {{v-x :x v-y :y} :pos}
                        (get-in state [:world :viewport])
-        ;xys            (viewport-xys state)
         characters     (persistent!
                          (reduce (fn [characters [cell vx vy wx wy]]
-                                   ;(debug "viewport-xys" xys)
                                    ;(debug "begin-render")
                                    ;(clear (state :screen))
                                    ;;(trace "rendering place" (current-place state))
@@ -683,6 +681,9 @@
                                                           :obsidian-knife  [")"]
                                                           :obsidian-axe    [")"]
                                                           :obsidian-spear  [")"]
+                                                          :flint-knife     [")"]
+                                                          :flint-axe       [")"]
+                                                          :flint-spear     [")"]
                                                           :sharpened-stick [")"]
                                                           :plant-fiber     [","]
                                                           :sword           [")"]

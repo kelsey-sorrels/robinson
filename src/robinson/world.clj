@@ -423,6 +423,17 @@
   [state]
   (map (fn [[x y]] (get-cell state x y)) (player-adjacent-xys-ext state)))
 
+(defn cells-in-range-of-player
+  "Return a collection of cells with within `distance` from the player."
+  [state distance]
+  (let [[x y]      (player-xy state)
+        player-pos (player-pos state)]
+    (map (fn [[x y]] (get-cell state x y))
+         (remove (fn [pos] farther-than? player-pos pos distance)
+                 (map (fn [[x y]] (xy->pos x y))
+                      (rect->xys [(- x distance) (- y distance)]
+                                 [(+ x distance) (+ y distance)]))))))
+
 (defn player-adjacent-pos
   [state direction]
   (let [{x :x y :y} (player-pos state)

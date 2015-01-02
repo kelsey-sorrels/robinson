@@ -1,6 +1,7 @@
 (ns robinson.common-test
   (:use clojure.test
-        robinson.common))
+        robinson.common
+        robinson.world))
 
 (deftest test-adjacent-to-player-0
   (is (false? (adjacent-to-player? {:world {:player {:pos {:x 26, :y 9}}}}

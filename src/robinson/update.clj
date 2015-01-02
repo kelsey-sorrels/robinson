@@ -1541,7 +1541,13 @@
     (-> state
       (update-in [:world :player :will-to-live]
         (fn [will-to-live]
-          (let [dwtl       0.05 ;; you've been on the island. It sucks and you want to get off.
+          (let [dwtl       0.02 ;; you've been on the island. It sucks and you want to get off.
+                ;; if it is night and the player is not within range of a fire, things are extra tough.
+                dwtl       (if (and (is-night? state)
+                                    (not-any? #(= (get % :type) :fire)
+                                              (cells-in-range-of-player state 3)))
+                             (+ dwtl 0.02)
+                             dwtl)
                 hp         (get-in state [:world :player :hp])
                 max-hp     (get-in state [:world :player :max-hp])
                 _          (info "hp" hp "max-hp" max-hp)

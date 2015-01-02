@@ -581,6 +581,10 @@
                 (-> state
                   (assoc-current-state :apply-item-normal)
                   (ui-hint "Pick a direction to use the axe."))
+              (= id :flint)
+                (-> state
+                  (assoc-current-state :apply-item-inventory)
+                  (ui-hint "Pick an item on which to apply the flint."))
               (ig/is-sharp? item)
                 (-> state
                   (assoc-current-state :apply-item-inventory)
@@ -636,7 +640,7 @@
       :else
       state)))
 
-(defn apply-match
+(defn start-fire
   "Light something on fire, creating chaos."
   [state direction]
   (let [player-x      (-> state :world :player :pos :x)
@@ -653,17 +657,23 @@
     (cond
       (type->flammable? (get target-cell :type))
       (-> state
-        (append-log (format "You strike the match and light the %s." (clojure.string/replace (name (get target-cell :type))
+        (append-log (format "You light the %s." (clojure.string/replace (name (get target-cell :type))
                                                                                             #"-"
                                                                                             " ")))
-        (dec-item-count :match)
         (assoc-cell target-x target-y :type :fire :fuel (if (= (get target-cell :type)
                                                                :campfire)
                                                           (uniform-int 500 600)
                                                           (uniform-int 100 300))))
       :else
-      state)))
+      (append-log state "You don't think that is flammable."))))
 
+(defn apply-match
+  "Light something on fire, creating chaos."
+  [state direction]
+  (-> state
+    (dec-item-count :match)
+    (start-fire direction)))
+    
 (defn saw
   "Saw nearby tree creating logs."
   [state direction keyin]
@@ -707,6 +717,19 @@
       (append-log (format "Identified %s." (name (get item :id)))))
     (append-log state (format "You're not able to identify the %s." (name (get item :id))))))
 
+
+(defn apply-flint
+  "Apply flint to the inventory item."
+  [state item]
+  (info "applying flint to" item)
+  (if (ig/is-metal? item)
+    (-> state
+      (assoc-apply-item {:id :flint-and-steel})
+      (assoc-current-state :apply-item-normal)
+      (ui-hint "Pick a direction to start a fire."))
+    (-> state
+      (append-log "You're not sure how to apply that")
+      (assoc-current-state :normal))))
 
 (defn apply-sharp-item
   "Apply a sharp item to the inventory item."
@@ -773,36 +796,42 @@
     (info "apply-item" [item keyin])
     (info "is-direction?" ((comp is-direction? translate-directions) keyin))
     (first-vec-match [(get item :id) keyin]
-      [:fishing-pole   trans->dir?] (apply-fishing-pole state (translate-directions keyin))
-      [:match          trans->dir?] (-> state
-                                      (apply-match (translate-directions keyin))
-                                      (assoc-current-state :normal))
-      [:plant-guide    :*         ] (if-let [item (inventory-hotkey->item state keyin)]
-                                      (-> state
-                                        (apply-plant-guide item)
-                                        (assoc-current-state  :normal))
-                                      state)
-      [:stick          \>         ] (-> state
-                                      (dig-hole)
-                                      (assoc-current-state :normal))
-      [:obsidian-axe   trans->dir?] (-> state
-                                      (saw (translate-directions keyin) keyin)
-                                      (assoc-current-state :normal))
-      [:saw            trans->dir?] (-> state
-                                      (saw (translate-directions keyin) keyin)
-                                      (assoc-current-state :normal))
-      [ig/id-is-sharp? :*         ] (if-let [item (inventory-hotkey->item state keyin)]
-                                      (-> state
-                                        (apply-sharp-item item)
-                                        (assoc-current-state :normal))
-                                      state)
+      [:fishing-pole    trans->dir?] (apply-fishing-pole state (translate-directions keyin))
+      [:match           trans->dir?] (-> state
+                                       (apply-match (translate-directions keyin))
+                                       (assoc-current-state :normal))
+      [:plant-guide     :*         ] (if-let [item (inventory-hotkey->item state keyin)]
+                                       (-> state
+                                         (apply-plant-guide item)
+                                         (assoc-current-state  :normal))
+                                       state)
+      [:stick           \>         ] (-> state
+                                       (dig-hole)
+                                       (assoc-current-state :normal))
+      [:obsidian-axe    trans->dir?] (-> state
+                                       (saw (translate-directions keyin) keyin)
+                                       (assoc-current-state :normal))
+      [:saw             trans->dir?] (-> state
+                                       (saw (translate-directions keyin) keyin)
+                                       (assoc-current-state :normal))
+      [:flint           :*         ] (if-let [item (inventory-hotkey->item state keyin)]
+                                       (apply-flint state item)
+                                       state)
+      [:flint-and-steel trans->dir?] (-> state
+                                       (start-fire (translate-directions keyin))
+                                       (assoc-current-state :normal))
+      [ig/id-is-sharp?  :*         ] (if-let [item (inventory-hotkey->item state keyin)]
+                                       (-> state
+                                         (apply-sharp-item item)
+                                         (assoc-current-state :normal))
+                                       state)
       ;; apply fruit to body
-      [ig/id-is-fruit? \a         ] (-> state
-                                      (apply-fruit-to-skin item)
-                                      (assoc-current-state :normal))
-      [ig/id-is-fruit? \b         ] (-> state
-                                      (apply-fruit-to-tongue item)
-                                      (assoc-current-state :normal))
+      [ig/id-is-fruit?  \a         ] (-> state
+                                       (apply-fruit-to-skin item)
+                                       (assoc-current-state :normal))
+      [ig/id-is-fruit?  \b         ] (-> state
+                                       (apply-fruit-to-tongue item)
+                                       (assoc-current-state :normal))
       [#{:red-frog-corpse
          :orange-frog-corpse
          :yellow-frog-corpse
@@ -814,7 +843,9 @@
                                         (apply-frog-corpse (get item :id) target-item)
                                         (assoc-current-state  :normal))
                                       state)
-      [:*              :*         ] (ui-hint state "You're not sure how to apply it to that."))))
+      [:*              :*         ] (-> state
+                                      (ui-hint "You're not sure how to apply it to that.")
+                                      (assoc-current-state :normal)))))
 
 (defn quaff-only-adjacent-cell
   "Drink all adjacent cells."
@@ -1451,8 +1482,8 @@
           (fn [logs-with-same-time]
             (vec
               (reduce (fn [logs-with-same-time log]
-                        (info "updating logs-with-same-time" logs-with-same-time)
-                        (info "log" log)
+                        (trace "updating logs-with-same-time" logs-with-same-time)
+                        (trace "log" log)
                         (let [last-log (last logs-with-same-time)]
                           (if (and (< (+ (count (get last-log :text))
                                       (count (get log :text)))
@@ -2365,6 +2396,8 @@
                           \2           [(fn [state]
                                           (assoc-in state [:world :player :hunger] 100))
                                           :normal true]
+                          \3           [(fn [state]
+                                          (add-to-inventory state [(ig/gen-flint)])) :normal true]
                            :escape     [identity               :quit?           false]}
                :inventory {:escape     [identity               :normal          false]}
                :describe  {:escape     [free-cursor            :normal          false]
@@ -2387,7 +2420,7 @@
                            :else       [apply-item             identity         true]}
                :apply-item-inventory
                           {:escape     [identity               :normal          false]
-                           :else       [apply-item             :normal          true]}
+                           :else       [apply-item             identity        true]}
                :apply-item-body
                           {:escape     [identity               :normal          false]
                            \a          [(fn [state]

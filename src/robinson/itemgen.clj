@@ -32,6 +32,9 @@
                :obsidian-knife
                :obsidian-axe
                :obsidian-spear
+               :flint-knife
+               :flint-axe
+               :flint-spear
                :sharpened-stick}
              id))
 
@@ -104,13 +107,18 @@
    {:id  :raft                    :name  "raft"                       :name-plural "rafts"}
    {:id  :rock                    :name  "rock"                       :name-plural "rocks"}
    {:id  :obsidian                :name  "obsidian stone"             :name-plural "obsidian stones"}
+   {:id  :flint                   :name  "flint stone"                :name-plural "flint stones"}
    {:id  :grass                   :name  "grass"                      :name-plural "grass" :fuel 20}
    {:id  :obsidian-blade          :name  "obsidian blade"             :name-plural "obsidian blades"}
+   {:id  :flint-blade             :name  "flint blade"                :name-plural "flint blades"}
    {:id  :rope                    :name  "rope"                       :name-plural "ropes" :fuel 10}
    {:id  :bamboo                  :name  "bamboo"                     :name-plural "bamboo"}
-   {:id  :obsidian-spear          :name  "obsidian spear"             :name-plural "obsidian spears"       :attack :spear :fuel 50 :utility 100 :recoverable-items [:stick :obsidian-blade]}
-   {:id  :obsidian-axe            :name  "obsidian axe"               :name-plural "obsidian axes"         :attack :axe :fuel 50 :utility 100 :recoverable-items [:stick :obsidian-blade]}
-   {:id  :obsidian-knife          :name  "obsidian knife"             :name-plural "obsidian knives"       :attack :knife :fuel 10 :utility 100 :recoverable-items [:stick :obsidian-blade]}
+   {:id  :obsidian-spear          :name  "obsidian spear"             :name-plural "obsidian spears"       :attack :spear :fuel 50 :utility 50 :recoverable-items [:stick :obsidian-blade]}
+   {:id  :obsidian-axe            :name  "obsidian axe"               :name-plural "obsidian axes"         :attack :axe :fuel 50 :utility 50 :recoverable-items [:stick :obsidian-blade]}
+   {:id  :obsidian-knife          :name  "obsidian knife"             :name-plural "obsidian knives"       :attack :knife :fuel 10 :utility 50 :recoverable-items [:stick :obsidian-blade]}
+   {:id  :flint-spear             :name  "flint spear"                :name-plural "flint spears"         :attack :spear :fuel 50 :utility 100 :recoverable-items [:stick :flint-blade]}
+   {:id  :flint-axe               :name  "flint axe"                  :name-plural "flint axes"           :attack :axe :fuel 50 :utility 100 :recoverable-items [:stick :flint-blade]}
+   {:id  :flint-knife             :name  "flint knife"                :name-plural "flint knives"         :attack :knife :fuel 10 :utility 100 :recoverable-items [:stick :flint-blade]}
    {:id  :bamboo-water-collector  :name  "bamboo water collector"     :name-plural "bamboo water collectors"}
    {:id  :fishing-pole            :name  "fishing pole"               :name-plural "fishing poles" :fuel 50}
    {:id  :match                   :name  "match"                      :name-plural "matches" :fuel 10}
@@ -165,7 +173,10 @@
                :sharpened-stick
                :obsidian-spear
                :obsidian-axe
-               :obsidian-knife}
+               :obsidian-knife
+               :flint-spear
+               :flint-axe
+               :flint-knife}
              (get item :id)))
 
 (defn is-drinkable?

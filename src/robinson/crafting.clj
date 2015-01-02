@@ -135,15 +135,19 @@
                                                        (set (map :id (player-inventory state))))
         _ (info "crafting" recipe)]
     (if (has-prerequisites? state recipe)
-      ;; player has only one applicable item, or has many and is wielding one?
-      (if (or (= (count have-applicable-ids) 1)
+      ;; player has only one applicable item, or has many and is wielding one, or the recipe doesn't require the player to have any items?
+      (if (or (zero? (count have-or))
+              (= (count have-applicable-ids) 1)
               wielded-item)
-        (let [state (-> state
-                      (dec-item-utility (or (and wielded-item (get wielded-item :id))
-                                            (first have-applicable-ids)))
-                      (add-by-ids add (get recipe :place :inventory))
-                      (exhaust-by-ids exhaust)
-                      ((fn [state] (reduce update-crafted state (map (fn [id] {:id id}) add)))))]
+        (let [state (as-> state state
+                      (if (or (= (count have-applicable-ids) 1)
+                              wielded-item)
+                        (dec-item-utility state (or (and wielded-item (get wielded-item :id))
+                                                    (first have-applicable-ids)))
+                        state)
+                      (add-by-ids state add (get recipe :place :inventory))
+                      (exhaust-by-ids state exhaust)
+                      (reduce update-crafted state (map (fn [id] {:id id}) add)))]
           state)
         (ui-hint state (format "You have multiple items that can be used to make this. Wield one of them")))
       (ui-hint state (format "You don't have the necessary items to make %s recipe." (get recipe :name))))))

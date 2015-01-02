@@ -41,6 +41,14 @@
 (defn is-sharp? [item]
   (id-is-sharp? (get item :id)))
 
+(defn id-is-metal? [id]
+  (contains? #{:knife
+               :saw}
+             id))
+
+(defn is-metal? [item]
+  (id-is-metal? (get item :id)))
+
 (defn id-is-fruit?
   [id]
   (contains? #{:red-fruit :orange-fruit :yellow-fruit

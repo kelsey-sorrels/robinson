@@ -1063,11 +1063,17 @@
                                 []))
                           (and (= (get target-cell :type) :gravel)
                                (= direction :center))
-                            (concat
-                              (if (or harvestable
-                                      (= 0 (uniform-int 1000)))
-                                [(dg/rand-nth [(ig/gen-rock) (ig/gen-obsidian)])]
-                                []))
+                             (if (get target-cell :near-lava)
+                               (concat
+                                 (if (or harvestable
+                                         (= 0 (uniform-int 1000)))
+                                   [(dg/rand-nth [(ig/gen-rock) (ig/gen-obsidian)])]
+                                   []))
+                               (concat
+                                 (if (or harvestable
+                                         (= 0 (uniform-int 1000)))
+                                   [(dg/rand-nth [(ig/gen-rock) (ig/gen-flint)])]
+                                   [])))
                           :else [])
                         [])]
     (info "harvested" harvest-items)
@@ -2206,11 +2212,11 @@
                   (fn increase-still-water [cell] (assoc cell :water (min 20 (+ 0.2 (* (dg/float) 0.1) (get cell :water 0.0))))))
                 ;; drop harvest items
                 (contains? #{:gravel :tree :palm-tree :tall-grass} cell-type)
-                (update-cell state x y
-                  (fn drop-harvest-items [cell]
-                    (if (= (uniform-int 0 100000) 0)
-                      (assoc cell :harvestable true)
-                      cell)))
+                (if (= (uniform-int 0 100000) 0)
+                  (update-cell state x y
+                    (fn drop-harvest-items [cell]
+                      (assoc cell :harvestable true)))
+                  state)
                 ;; drop fruit
                 (contains? #{:fruit-tree} cell-type)
                 ;; chance of dropped a fruit

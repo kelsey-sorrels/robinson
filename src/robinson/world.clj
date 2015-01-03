@@ -244,34 +244,34 @@
   (map (fn [[x y]] (get-in place [y x]))
     (adjacent-xys-ext x y)))
 
-(defn direction->cells
-  [state direction]
-  {:pre [(contains? #{:left :right :up :down} direction)]}
-  (let [{x :x y :y} (get-in state [:world :player :pos])
-        place (get-place state x y)]
-   (vec
-     (case direction
-       :left  (reverse (take x (get place y)))
-       :right (rest (drop x (get place y)))
-       :up    (reverse (take y (map #(nth % x) place)))
-       :down  (rest (drop y (map #(nth % x) place)))))))
-
 (defn direction->xys
-  [state direction]
-  {:pre [(contains? #{:left :right :up :down} direction)]}
-  (let [{x :x y :y} (get-in state [:world :player :pos])
-        place (get-place state x y)
-        max-x (count (first place))
-        max-y (count place)]
-    (case direction
-      :left  (reverse (map (fn [x] [x y]) (range 0 x)))
-      :right (map (fn [x] [x y]) (range (inc x) max-x))
-      :up    (reverse (map (fn [y] [x y]) (range 0 y)))
-      :down  (map (fn [y] [x y]) (range (inc y) max-y)))))
+  ([state direction]
+   (direction->xys state direction 5))
+  ([state direction distance]
+   {:pre [(contains? #{:left :right :up :down} direction)]}
+   (let [{x :x y :y}      (get-in state [:world :player :pos])
+         {width :width
+          height :height} (get state :world)
+         min-x            (max 0 (- x distance))
+         min-y            (max 0 (- y distance))
+         max-x            (min width (+ x distance))
+         max-y            (min height (+ y distance))]
+     (case direction
+       :left  (reverse (map (fn [x] [x y]) (range min-x x)))
+       :right (map (fn [x] [x y]) (range (inc x) (inc max-x)))
+       :up    (reverse (map (fn [y] [x y]) (range min-y y)))
+       :down  (map (fn [y] [x y]) (range (inc y) (inc max-y)))))))
+
+(defn direction->cells
+  ([state direction]
+   (direction->cells state direction 5))
+  ([state direction distance]
+   {:pre [(contains? #{:left :right :up :down} direction)]}
+   (map (fn [[x y]] (get-cell state x y)) (direction->xys state direction distance))))
 
 (defn direction->cellsxy
   [state direction]
-  (map (fn [[x y]] [(get-in state [:world :places (xy->place-id state x y) y x]) x y])
+  (map (fn [[x y]] [(get-cell state x y) x y])
        (direction->xys state direction)))
 
 (defn npc-at-xy

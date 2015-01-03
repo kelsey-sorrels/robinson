@@ -1,3 +1,6 @@
+[![Build Status](https://travis-ci.org/aaron-santos/robinson.svg?branch=master)](https://travis-ci.org/aaron-santos/robinson)
+
+
 Robinson
 ===============
 

@@ -37,7 +37,16 @@
      {:name "fishing pole"           :hotkey \f :recipe {:exhaust [:fishing-line-and-hook :stick]
                                                          :add [:fishing-pole]}
                                                 :place :inventory}
-     {:name "campfire"               :hotkey \g :recipe {:exhaust [:match :stick :log :log :rock :rock :rock]
+     {:name "fire plough"            :hotkey \g :recipe {:exhaust [:stick :stick]
+                                                         :add [:fire-plough]}
+                                                :place :inventory}
+     {:name "hand drill"             :hotkey \h :recipe {:exhaust [:stick :stick]
+                                                         :add [:hand-drill]}
+                                                :place :inventory}
+     {:name "bow drill"              :hotkey \i :recipe {:exhaust [:stick :stick :stick :rope :rock]
+                                                         :add [:bow-drill]}
+                                                :place :inventory}
+     {:name "campfire"               :hotkey \j :recipe {:exhaust [:match :stick :log :log :rock :rock :rock]
                                                          :add [:campfire]}
                                                 :place :cell-type}]
    :shelter [

@@ -719,6 +719,9 @@
                                                           :$               ["$"  :yellow :black #{:bold}]
                                                           :amulet          ["\"" :blue   :black #{:bold}]
                                                           :food            ["%"]
+                                                          :fire-plough     [","]
+                                                          :hand-drill      [","]
+                                                          :bow-drill       [","]
                                                           ["?"])
                                                         (case (cell :type)
                                                          :vertical-wall   ["|"]

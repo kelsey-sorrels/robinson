@@ -128,6 +128,10 @@
    {:id  :flint-axe               :name  "flint axe"                  :name-plural "flint axes"           :attack :axe :fuel 50 :utility 100 :recoverable-items [:stick :flint-blade]}
    {:id  :flint-knife             :name  "flint knife"                :name-plural "flint knives"         :attack :knife :fuel 10 :utility 100 :recoverable-items [:stick :flint-blade]}
    {:id  :bamboo-water-collector  :name  "bamboo water collector"     :name-plural "bamboo water collectors"}
+   {:id  :hand-drill              :name  "hand drill"                 :name-plural "hand drills" :utility 3}
+   {:id  :fire-plough             :name  "fire plough"                :name-plural "fire ploughs" :utility 3}
+   {:id  :bow-drill               :name  "bow drill"                  :name-plural "bow drills" :utility 5}
+   {:id  :hand-drill              :name  "hand drill"                 :name-plural "hand-drills" :utility 5}
    {:id  :fishing-pole            :name  "fishing pole"               :name-plural "fishing poles" :fuel 50}
    {:id  :match                   :name  "match"                      :name-plural "matches" :fuel 10}
    {:id  :knife                   :name  "knife"                      :name-plural "knives"                :attack :knife :utility 100}

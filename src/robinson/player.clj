@@ -60,6 +60,14 @@
   [state]
   (get-in state [:world :player :max-hunger]))
 
+(defn player-update-hunger
+  [state f]
+  (update-in state [:world :player :hunger] f))
+
+(defn player-update-thirst
+  [state f]
+  (update-in state [:world :player :thirst] f))
+
 (defn player-max-thirst
   [state]
   (get-in state [:world :player :max-thirst]))

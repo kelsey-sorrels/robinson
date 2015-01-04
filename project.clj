@@ -6,6 +6,7 @@
                  [lein-idefiles "0.2.1"]
                  [lein-marginalia "0.7.1"]
                  [lein-kibit "0.0.8"]
+                 [lein-cloverage "1.0.2"]
                  [lein-tarsier "0.10.0"]]
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [org.clojure/core.async "0.1.346.0-17112a-alpha"]

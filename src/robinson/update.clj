@@ -565,6 +565,18 @@
                 (-> state
                   (assoc-current-state :apply-item-normal)
                   (ui-hint "Pick a direction to use the match."))
+              (= id :fire-plough)
+                (-> state
+                  (assoc-current-state :apply-item-normal)
+                  (ui-hint "Pick a direction to use the fire plough"))
+              (= id :hand-drill)
+                (-> state
+                  (assoc-current-state :apply-item-normal)
+                  (ui-hint "Pick a direction to use the fire plough"))
+              (= id :bow-drill)
+                (-> state
+                  (assoc-current-state :apply-item-normal)
+                  (ui-hint "Pick a direction to use the fire plough"))
               (= id :plant-guide)
                 (-> state
                   (assoc-current-state :apply-item-inventory)
@@ -672,6 +684,29 @@
   [state direction]
   (-> state
     (dec-item-count :match)
+    (start-fire direction)))
+    
+(defn apply-fire-plough
+  "Light something on fire, creating chaos."
+  [state direction]
+  (-> state
+    (player-update-thirst inc)
+    (dec-item-utility :fire-plough)
+    (start-fire direction)))
+    
+(defn apply-hand-drill
+  "Light something on fire, creating chaos."
+  [state direction]
+  (-> state
+    (player-update-hunger inc)
+    (dec-item-utility :hand-drill)
+    (start-fire direction)))
+    
+(defn apply-bow-drill
+  "Light something on fire, creating chaos."
+  [state direction]
+  (-> state
+    (dec-item-utility :bow-drill)
     (start-fire direction)))
     
 (defn saw
@@ -799,6 +834,15 @@
       [:fishing-pole    trans->dir?] (apply-fishing-pole state (translate-directions keyin))
       [:match           trans->dir?] (-> state
                                        (apply-match (translate-directions keyin))
+                                       (assoc-current-state :normal))
+      [:fire-plough     trans->dir?] (-> state
+                                       (apply-fire-plough (translate-directions keyin))
+                                       (assoc-current-state :normal))
+      [:hand-drill      trans->dir?] (-> state
+                                       (apply-hand-drill (translate-directions keyin))
+                                       (assoc-current-state :normal))
+      [:bow-drill       trans->dir?] (-> state
+                                       (apply-bow-drill (translate-directions keyin))
                                        (assoc-current-state :normal))
       [:plant-guide     :*         ] (if-let [item (inventory-hotkey->item state keyin)]
                                        (-> state

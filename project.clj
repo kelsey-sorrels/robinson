@@ -6,13 +6,14 @@
                  [lein-idefiles "0.2.1"]
                  [lein-marginalia "0.7.1"]
                  [lein-kibit "0.0.8"]
+                 [lein-typed "0.3.5"]
                  [lein-cloverage "1.0.2"]
                  [lein-tarsier "0.10.0"]]
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [org.clojure/core.async "0.1.346.0-17112a-alpha"]
                  [org.clojure/core.memoize "0.5.6"]
                  [org.clojure/tools.reader "0.8.13"]
-                 [org.clojure/core.typed "0.2.72"]
+                 [org.clojure/core.typed "0.2.77"]
                  [org.clojure/data.generators "0.1.2"]
                  [org.clojure/math.combinatorics "0.0.8"]
                  [org.clojure/clojure-contrib "1.2.0"]
@@ -37,6 +38,9 @@
         ;robinson.swingterminal
         ;robinson.npc
    ;     robinson.core]
+  :core.typed {:check [robinson.common robinson.crafting robinson.itemgen robinson.mapgen robinson.npc robinson.startgame robinson.update robinson.world
+                       robinson.combat robinson.core robinson.describe robinson.endgame robinson.lineofsight robinson.main robinson.monstergen
+                       robinson.player robinson.render robinson.swingterminal robinson.viewport robinson.worldgen]}
   :jvm-opts [
              ;"-agentpath:/home/santos/bin/yjp-2014-build-14096/bin/linux-x86-64/libyjpagent.so"
              "-XX:+UseParNewGC"

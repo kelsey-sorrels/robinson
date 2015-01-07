@@ -1,16 +1,20 @@
 ;; Utility functions and functions for manipulating state
 (ns robinson.common
   (:use     clojure.contrib.core)
-  (:require [ clojure.data.generators :as dg]
+  (:require [clojure.data.generators :as dg]
+            [clojure.core.typed :as t]
             [taoensso.timbre :as timbre]
             [pallet.thread-expr :as tx])
   (:import  (clojure.lang ITransientCollection)))
 
+(t/ann ^:no-check taoensso.timbre/refer-timbre [-> t/Any])
 (timbre/refer-timbre)
 
+(t/ann uniform-int (t/Fn [Integer -> Integer]
+                         [Integer Integer -> Integer]))
 (defn uniform-int
  ([hi] (uniform-int 0 hi))
- ([lo hi] (int (dg/uniform lo hi))))
+ ([lo hi] {:pre [(< lo hi)]} (int (dg/uniform lo hi))))
 
 (defmacro log-time
   "Log the time it takes to execute body."
@@ -64,7 +68,6 @@
     [arg [sym] condition form else-form]
     (arg-if- 'clojure.core/-> arg sym condition form else-form)))
 
-
 (defn vec-match?
   [test-expr expr]
   (let [arg-match? (fn [[test-term term]]
@@ -83,32 +86,39 @@
 (defn noun->indefinite-article [noun] (if (contains? #{\a \e \i \o \u} (first noun))
                                         "an"
                                         "a"))
+(t/defalias Pos (t/HMap :mandatory {:x Integer :y Integer}))
 
+(t/ann pos->xy (t/Fn [Pos -> (t/Vec Number)]))
 (defn pos->xy
   [{x :x y :y}]
   [x y])
 
+(t/ann xy->pos (t/Fn [Number Number -> Pos]))
 (defn xy->pos
   [x y]
   {:x x :y y})
 
+(t/ann chebyshev-distance (t/Fn [Pos Pos -> Number]))
 (defn chebyshev-distance
   "Chebyshev/chessboard distance between 2 points"
   [p1 p2]
   (max (Math/abs (- (:x p1) (:x p2)))
        (Math/abs (- (:y p1) (:y p2)))))
 
+(t/ann distance-sq (t/Fn [Pos Pos -> Number]))
 (defn distance-sq
   [p1 p2]
   (let [sq (fn [x] (* x x))]
   (+ (sq (- (:x p1) (:x p2)))
      (sq (- (:y p1) (:y p2))))))
 
+(t/ann distance (t/Fn [Pos Pos -> Number]))
 (defn distance
   "Euclidean distance between 2 points"
   [p1 p2]
   (Math/sqrt (distance-sq p1 p2)))
 
+(t/ann farther-than? (t/Fn [Pos Pos Number -> Boolean]))
 (defn farther-than?
   "Are the two points farther in distance than l?"
   [p1 p2 l]
@@ -254,6 +264,49 @@
              #_(debug "assoc-in place" args)
              (apply assoc-in place args))) place extras))
 
+(t/defalias HasHotkey (t/HMap :mandatory {:hotkey Character}))
+(t/defalias Item (t/HMap :mandatory {:id t/Kw :name String :name-plural String}
+                  :optional  {:fuel Number :utility Number :attack t/Kw :hunger Number :thirst Number
+                              :recoverable-item (t/Vec t/Kw) :type t/Kw}))
+(t/defalias Cell (t/HMap :mandatory {:type t/Kw}
+                         :optional {:items (t/Vec Item)}))
+(t/defalias Place (t/Vec (t/Vec (t/U Cell nil))))
+(t/defalias Npc   (t/HMap :mandatory {:race t/Kw :name String :name-plural String :energy Number :speed Number :strength Number :toughness Number
+                              :attacks (t/Set t/Kw) :temperment t/Kw :movement-policy t/Kw :range-threshold-status (t/Set t/Kw)}))
+(t/defalias Player (t/HMap :mandatory {:id t/Kw :name String :race t/Kw :class t/Kw :movement-policy t/Kw :in-party Boolean
+                    :inventory (t/Vec (t/I Item HasHotkey)) :dexterity Number :speed Number :size Number
+                    :strength Number :toughness Number :hp Number :max-hp Number :will-to-live Number
+                    :max-will-to-live Number :money Number :xp Number :level Number :hunger Number
+                    :max-hunger Number :thirst Number :max-thirst Number :pos Pos :starting-pos Pos
+                    :place t/Kw :body-parts (t/Set t/Kw) :attacks (t/Set t/Kw) :status (t/Set t/Kw)
+                    :stats (t/HMap :mandatory {:timeline (t/Vec t/Any) :num-animals-killed (t/Map t/Kw Number)
+                                             :num-items-crafted (t/Map t/Kw Number)
+                                             :num-items-harvested (t/Map t/Kw Number)
+                                             :num-kills-by-attack-type (t/Map t/Kw Number)
+                                             :num-items-eaten (t/Map t/Kw Number)})
+                    :wounds (t/Map t/Kw Number)}))
+(t/defalias World (t/HMap :mandatory {:seed Number :block-size (t/Map t/Kw Number) :width Number :height Number
+                               :viewport (t/HMap :mandatory {:width Number :height Number :pos Pos})
+                               :places (t/Map t/Kw Place)
+                               :current-place t/Kw
+                               :volcano-pos Pos
+                               :lava-points (t/Vec Pos)
+                               :time Integer
+                               :current-state t/Kw
+                               :selected-hotkeys (t/Set Character)
+                               :remaining-hotkeys (t/Set Character)
+                               :log (t/Vec t/Any)
+                               :ui-hint (t/U String nil)
+                               :dialog-log (t/Vec t/Any)
+                               :player Player
+                               :fruit (t/HMap :mandatory {:poisonous (t/Set t/Kw) :skin-identifiable (t/Set t/Kw) :tounge-identifiable (t/Set t/Kw) :identified (t/Set t/Kw)})
+                               :frogs (t/HMap :mandatory {:poisonous (t/Set t/Kw)})
+                               :quests (t/Map t/Kw t/Any)
+                               :npcs (t/Vec Npc)}))
+(t/defalias State (HMap :mandatory {:world World :screen t/Any}))
+
+(t/ann append-log (t/Fn [State String -> State]
+                        [State String t/Kw -> State]))
 (defn append-log
   "Append a message to the in-game log. The last five log messages are retained."
   ([state message]
@@ -267,14 +320,17 @@
                                     :time (-> state :world :time)
                                     :color color}]))))))
 
+(t/ann ui-hint (t/Fn [State String -> State]))
 (defn ui-hint
   [state msg]
   (assoc-in state [:world :ui-hint] msg))
 
+(t/ann clear-ui-hint (t/Fn [State String -> State]))
 (defn clear-ui-hint
   [state]
   (ui-hint state nil))
 
+(t/ann wrap-line (t/Fn [Integer String -> (t/Vec String)]))
 (defn wrap-line [size text]
   (loop [left size line [] lines []
          words (clojure.string/split text #"\s+")]

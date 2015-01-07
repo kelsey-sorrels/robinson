@@ -4,12 +4,20 @@
             robinson.world
             robinson.itemgen
             robinson.player)
-  (:require [pallet.thread-expr :as tx]
+  (:require [clojure.core.typed :as t]
+            [pallet.thread-expr :as tx]
             [taoensso.timbre :as timbre]))
 
 (timbre/refer-timbre)
 
-(def recipes
+(t/defalias Recipe (t/HMap :mandatory {:name String :hotkey Character :recipe (t/Map t/Kw (t/Vec t/Kw))}))
+
+(t/ann recipes (t/HMap :mandatory {:weapons        (t/Vec Recipe)
+                                   :survival       (t/Vec Recipe)
+                                   :shelter        (t/Vec Recipe)
+                                   :traps          (t/Vec Recipe)
+                                   :transportation (t/Vec Recipe)}))
+(def recipes 
   {:weapons  [
      {:name "obsidian spear"         :hotkey \a :recipe {:exhaust [:obsidian-blade :stick :rope] :add [:obsidian-spear]}}
      {:name "obsidian axe"           :hotkey \b :recipe {:exhaust [:obsidian-blade :stick :rope] :add [:obsidian-axe]}}
@@ -64,7 +72,7 @@
      {:name "raft"               :hotkey \a :recipe {:exhaust [:rope :log :log
                                                                :log :log :log]
                                                          :add [:raft]} :place :drop}]})
-
+(t/ann has-prerequisites? (t/Fn [State Recipe -> Boolean]))
 (defn has-prerequisites?
   "Return true if the player has the ability to make the recipe."
   [state recipe]

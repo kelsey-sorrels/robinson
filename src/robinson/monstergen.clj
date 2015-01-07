@@ -99,22 +99,41 @@
                              :blue-frog
                              :purple-frog
                              :bird
+                             :rat
+                             :rat
+                             :rat
+                             :rat
+                             :rat
                              :gecko]
                           1 [:rat
+                             :rat
+                             :gecko
                              :mosquito]
                           2 [:spider
+                             :rat
+                             :gecko
                              :centipede]
-                          3 [:tarantula
+                          3 [:spider
+                             :tarantula
+                             :rat
+                             :gecko
                              :scorpion]
                           4 [:cobra
+                             :tarantula
+                             :rat
                              :snake]
                           5 [:bat
+                             :cobra
+                             :rat
                              :turtle]
                           6 [:monitor-lizard
+                             :rat
                              :crocodile]
                           7 [:parrot
+                             :rat
                              :mongoose]
-                          8 [:komodo-dragon]
+                          8 [:komodo-dragon
+                             :rat]
                           9 [:boar
                              :monkey]}
         water-monster-ids {

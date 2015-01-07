@@ -267,7 +267,7 @@
                                                0 {:type :dirt}
                                                1 {:type :gravel}
                                                2 {:type :short-grass})
-                              :bamboo-grove  (if (< t 0.0)
+                              :bamboo-grove  (if (< t 0.1)
                                                (dg/rand-nth [
                                                  {:type :dirt}
                                                  {:type :tall-grass}

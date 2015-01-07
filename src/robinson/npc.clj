@@ -147,13 +147,9 @@
 
 (defn monster-level
   [state]
-  (let [{x :x y :y}    (player-pos state)
-        {sx :x sy :y}  (player-starting-pos state)
-        mid-x          (/ (get-in state [:world :width]) 2)
-        mid-y          (/ (get-in state [:world :height]) 2)
-        player-angle   (Math/atan2 (- x mid-x) (- y mid-y))
-        starting-angle (Math/atan2 (- sx mid-x) (- sy mid-y))]
-    (* 10 (/ (Math/abs (- player-angle starting-angle)) (* 2 Math/PI)))))
+  (let [pos            (player-pos state)
+        starting-pos   (player-starting-pos state)]
+    (max 0 (min 10 (int (/ (distance pos starting-pos) 50))))))
 
 (defn add-npcs
   "Randomly add monsters to the current place's in floor cells."
@@ -170,7 +166,7 @@
 (defn add-npcs-random
   "Randomly add monsters inside the viewport."
   [state]
-  (if (and (< (uniform-int 100) (if (is-night? state) 8 4))
+  (if (and (< (uniform-int 100) (if (is-night? state) 18 8))
            (< (count (-> state :world :npcs))
               20))
     (add-npcs state)

@@ -10,11 +10,12 @@
 (t/ann ^:no-check taoensso.timbre/refer-timbre [-> t/Any])
 (timbre/refer-timbre)
 
-(t/ann uniform-int (t/Fn [Integer -> Integer]
-                         [Integer Integer -> Integer]))
+(t/ann ^:no-check clojure.data.generators/uniform [Long Long -> Long])
+(t/ann uniform-int (t/IFn [Long -> Long]
+                          [Long Long -> Long]))
 (defn uniform-int
- ([hi] (uniform-int 0 hi))
- ([lo hi] {:pre [(< lo hi)]} (int (dg/uniform lo hi))))
+ ([hi] {:pre [(pos? hi)]} (uniform-int 0 hi))
+ ([lo hi] {:pre [(< lo hi)]} (dg/uniform lo hi)))
 
 (defmacro log-time
   "Log the time it takes to execute body."
@@ -24,6 +25,7 @@
        (println ~msg)
        result#)))
 
+(t/ann log-io (t/All [x y ...] [String [y ... y -> x] -> [y ... y -> x]]))
 (defn log-io
   "Log function inputs and outputs by wrapping an function f."
   [msg f]
@@ -68,9 +70,10 @@
     [arg [sym] condition form else-form]
     (arg-if- 'clojure.core/-> arg sym condition form else-form)))
 
+(t/ann vec-match? [(t/Vec t/Any) (t/Vec t/Any) -> Boolean])
 (defn vec-match?
   [test-expr expr]
-  (let [arg-match? (fn [[test-term term]]
+  (let [arg-match? (t/fn [[test-term term] :- (t/I (t/Vec t/Any) (t/ExactCount 2))] :- Boolean
     (cond
       (fn? test-term)  (test-term term)
       (= :* test-term) true
@@ -83,47 +86,53 @@
   `(condp vec-match? ~match
      ~@body))
 
+(t/ann noun->indefinite-article (t/Pred String))
 (defn noun->indefinite-article [noun] (if (contains? #{\a \e \i \o \u} (first noun))
                                         "an"
                                         "a"))
 (t/defalias Pos (t/HMap :mandatory {:x Integer :y Integer}))
 
-(t/ann pos->xy (t/Fn [Pos -> (t/Vec Number)]))
+(t/ann pos->xy (t/IFn [Pos -> (t/Vec Number)]))
 (defn pos->xy
   [{x :x y :y}]
   [x y])
 
-(t/ann xy->pos (t/Fn [Number Number -> Pos]))
+(t/ann xy->pos (t/IFn [Number Number -> Pos]))
 (defn xy->pos
   [x y]
   {:x x :y y})
 
-(t/ann chebyshev-distance (t/Fn [Pos Pos -> Number]))
+(t/ann chebyshev-distance (t/IFn [Pos Pos -> Number]))
 (defn chebyshev-distance
   "Chebyshev/chessboard distance between 2 points"
   [p1 p2]
   (max (Math/abs (- (:x p1) (:x p2)))
        (Math/abs (- (:y p1) (:y p2)))))
 
-(t/ann distance-sq (t/Fn [Pos Pos -> Number]))
+(t/ann distance-sq (t/IFn [Pos Pos -> Number]))
 (defn distance-sq
   [p1 p2]
   (let [sq (fn [x] (* x x))]
   (+ (sq (- (:x p1) (:x p2)))
      (sq (- (:y p1) (:y p2))))))
 
-(t/ann distance (t/Fn [Pos Pos -> Number]))
+(t/ann distance (t/IFn [Pos Pos -> Number]))
 (defn distance
   "Euclidean distance between 2 points"
   [p1 p2]
   (Math/sqrt (distance-sq p1 p2)))
 
-(t/ann farther-than? (t/Fn [Pos Pos Number -> Boolean]))
+(t/ann farther-than? [Pos Pos Number -> Boolean])
 (defn farther-than?
   "Are the two points farther in distance than l?"
   [p1 p2 l]
   (> (distance-sq p1 p2) (* l l)))
 
+(t/ann fill-missing (t/All [x y z] (t/IFn [(t/Pred x)
+                                           (t/IFn [x y -> z])
+                                           (t/Seq y)
+                                           (t/Seq x) -> (t/Seq z)])))
+                                   
 (defn fill-missing
   "For each item in coll for which (pred item) returns true, replace that
    element with the result of (f item vcoll-item) where vcoll-item
@@ -160,6 +169,8 @@
                             (cons (f x y) (if (empty? xs) [] (fill-missing pred f ys xs)))
                             (cons x (if (empty? xs) [] (fill-missing pred f vcoll xs)))))))
 
+(t/ann fn-in (t/All[x]
+               [[t/Any x -> t/Any] (t/Map t/Any t/Any) (t/Vec t/Any) -> x]))
 (defn fn-in
   "Applies a function to a value in a nested associative structure and an input value.
    ks sequence of keys and v is the second arguement to f. The nested value will be
@@ -167,14 +178,20 @@
   [f m ks v]
   (update-in m ks (fn [coll] (f coll v))))
 
+(t/ann concat-in (t/All [x]
+                   (t/IFn [x (t/Vec t/Any) t/Any -> x])))
 (defn concat-in
   [m ks v]
   (fn-in concat m ks v))
 
+(t/ann conj-in (t/All [x]
+                 (t/IFn [x (t/Vec t/Any) t/Any -> x])))
 (defn conj-in
   [m ks v]
   (fn-in conj m ks v))
 
+(t/ann map-in (t/All [x]
+                [x (t/Vec t/Any) [t/Any -> t/Any] -> x]))
 (defn map-in
   [m ks f]
   (fn-in (fn [coll _] (if (vector? coll)
@@ -182,6 +199,9 @@
                         (map f coll)))
          m ks nil))
 
+(t/ann reduce-in (t/All [x]
+                   (t/IFn [x (t/Vec t/Any) (t/IFn [t/Any -> t/Any]) -> x]
+                         [x (t/Vec t/Any) (t/IFn [t/Any -> t/Any]) t/Any -> x])))
 (defn reduce-in
   "Reduce a value inside an associative datastructure. `more` can be either
   a reducing function, a reducting function and an initial value."
@@ -190,30 +210,32 @@
   ([m ks f v]
    (update-in m ks (fn [coll] (reduce f v coll)))))
 
+(t/ann filter-in (t/All [x]
+                   (t/IFn [x (t/Vec t/Any) (t/IFn [t/Any -> t/Any]) -> x])))
 (defn filter-in
   [m ks f]
   (fn-in (fn [coll _] (if (vector? coll)
                         (vec (filter f coll))
                         (filter f coll))) m ks nil))
 
+(t/ann remove-in (t/All [x]
+                   [x (t/Vec t/Any) [t/Any -> t/Any] -> x]))
 (defn remove-in
   [m ks f]
   (fn-in (fn [coll _] (if (vector? coll)
                         (vec (remove f coll))
                         (remove f coll))) m ks nil))
 
+(t/ann some-in (t/All [x]
+                 (t/IFn [x (t/Vec t/Any) (t/IFn [t/Any -> t/Any]) -> x])))
 (defn some-in
   [m ks f]
   (fn-in (fn [coll _] (if (vector? coll)
                         (vec (some f coll))
                         (some f coll))) m ks nil))
 
-(defn remove-in
-  [m ks f]
-  (fn-in (fn [coll _] (if (vector? coll)
-                        (vec (remove f coll))
-                        (remove f coll))) m ks nil))
-
+(t/ann update-in-matching (t/All [a b]
+                            (t/IFn [a (t/Vec t/Any) (t/IFn [b -> Boolean]) (t/IFn [b -> t/Any]) -> a])))
 (defn update-in-matching
   [m ks p f]
   (if (fn? p)
@@ -305,7 +327,7 @@
                                :npcs (t/Vec Npc)}))
 (t/defalias State (HMap :mandatory {:world World :screen t/Any}))
 
-(t/ann append-log (t/Fn [State String -> State]
+(t/ann append-log (t/IFn [State String -> State]
                         [State String t/Kw -> State]))
 (defn append-log
   "Append a message to the in-game log. The last five log messages are retained."
@@ -320,17 +342,17 @@
                                     :time (-> state :world :time)
                                     :color color}]))))))
 
-(t/ann ui-hint (t/Fn [State String -> State]))
+(t/ann ui-hint (t/IFn [State String -> State]))
 (defn ui-hint
   [state msg]
   (assoc-in state [:world :ui-hint] msg))
 
-(t/ann clear-ui-hint (t/Fn [State String -> State]))
+(t/ann clear-ui-hint (t/IFn [State String -> State]))
 (defn clear-ui-hint
   [state]
   (ui-hint state nil))
 
-(t/ann wrap-line (t/Fn [Integer String -> (t/Vec String)]))
+(t/ann wrap-line (t/IFn [Integer String -> (t/Vec String)]))
 (defn wrap-line [size text]
   (loop [left size line [] lines []
          words (clojure.string/split text #"\s+")]

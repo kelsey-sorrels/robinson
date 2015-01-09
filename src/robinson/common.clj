@@ -25,12 +25,13 @@
        (println ~msg)
        result#)))
 
-(t/ann log-io (t/All [x y ...] [String [y ... y -> x] -> [y ... y -> x]]))
+(t/ann log-io (t/All [a x y ...]
+                [String [a y ... y -> x] -> [a (t/U nil (t/I (t/CountRange 1) (t/HSeq (y ... y)))) -> x]]))
 (defn log-io
   "Log function inputs and outputs by wrapping an function f."
   [msg f]
-  (fn [& args]
-    (let [result (apply f args)]
+    (fn [a & args]
+    (let [result (apply f a args)]
       (println (format "(%s %s)=>%s" msg (str args) (str result)))
       result)))
 
@@ -70,7 +71,7 @@
     [arg [sym] condition form else-form]
     (arg-if- 'clojure.core/-> arg sym condition form else-form)))
 
-(t/ann vec-match? [(t/Vec t/Any) (t/Vec t/Any) -> Boolean])
+(t/ann ^:no-check vec-match? [(t/Vec t/Any) (t/Vec t/Any) -> Boolean])
 (defn vec-match?
   [test-expr expr]
   (let [arg-match? (t/fn [[test-term term] :- (t/I (t/Vec t/Any) (t/ExactCount 2))] :- Boolean
@@ -86,37 +87,38 @@
   `(condp vec-match? ~match
      ~@body))
 
-(t/ann noun->indefinite-article (t/Pred String))
+(t/ann noun->indefinite-article [String -> String])
 (defn noun->indefinite-article [noun] (if (contains? #{\a \e \i \o \u} (first noun))
                                         "an"
                                         "a"))
-(t/defalias Pos (t/HMap :mandatory {:x Integer :y Integer}))
 
-(t/ann pos->xy (t/IFn [Pos -> (t/Vec Number)]))
+(t/defalias Pos (t/HMap :mandatory {:x Integer :y Integer} :complete? true))
+
+(t/ann pos->xy [Pos -> (t/I (t/Vec Number)(t/ExactCount 2))])
 (defn pos->xy
   [{x :x y :y}]
   [x y])
 
-(t/ann xy->pos (t/IFn [Number Number -> Pos]))
+(t/ann xy->pos [Integer Integer -> Pos])
 (defn xy->pos
   [x y]
   {:x x :y y})
 
-(t/ann chebyshev-distance (t/IFn [Pos Pos -> Number]))
+(t/ann chebyshev-distance [Pos Pos -> Number])
 (defn chebyshev-distance
   "Chebyshev/chessboard distance between 2 points"
   [p1 p2]
-  (max (Math/abs (- (:x p1) (:x p2)))
-       (Math/abs (- (:y p1) (:y p2)))))
+  (max (Math/abs (- (get p1 :x) (get p2 :x)))
+       (Math/abs (- (get p1 :y) (get p2 :y)))))
 
-(t/ann distance-sq (t/IFn [Pos Pos -> Number]))
+(t/ann distance-sq [Pos Pos -> Number])
 (defn distance-sq
   [p1 p2]
-  (let [sq (fn [x] (* x x))]
+  (let [sq (t/fn [x :- Number] :- Number (* x x))]
   (+ (sq (- (:x p1) (:x p2)))
      (sq (- (:y p1) (:y p2))))))
 
-(t/ann distance (t/IFn [Pos Pos -> Number]))
+(t/ann distance [Pos Pos -> Double])
 (defn distance
   "Euclidean distance between 2 points"
   [p1 p2]
@@ -128,10 +130,10 @@
   [p1 p2 l]
   (> (distance-sq p1 p2) (* l l)))
 
-(t/ann fill-missing (t/All [x y z] (t/IFn [(t/Pred x)
-                                           (t/IFn [x y -> z])
-                                           (t/Seq y)
-                                           (t/Seq x) -> (t/Seq z)])))
+(t/ann fill-missing (t/All [x y z] [(t/Pred x)
+                                   (t/IFn [x y -> z])
+                                   (t/Seq y)
+                                   (t/Seq x) -> (t/Seq z)]))
                                    
 (defn fill-missing
   "For each item in coll for which (pred item) returns true, replace that
@@ -162,15 +164,15 @@
     (if (empty? coll)
           coll
           (let [x  (first coll)
-                          xs (rest coll)
-                          y  (first vcoll)
-                          ys (rest vcoll)]
+                xs (next coll)
+                y  (first vcoll)
+                ys (next vcoll)]
                   (if (pred x)
                             (cons (f x y) (if (empty? xs) [] (fill-missing pred f ys xs)))
                             (cons x (if (empty? xs) [] (fill-missing pred f vcoll xs)))))))
 
-(t/ann fn-in (t/All[x]
-               [[t/Any x -> t/Any] (t/Map t/Any t/Any) (t/Vec t/Any) -> x]))
+(t/ann fn-in (t/All[x y]
+               [[t/Any x -> t/Any] (t/Vec t/Any) x -> y]))
 (defn fn-in
   "Applies a function to a value in a nested associative structure and an input value.
    ks sequence of keys and v is the second arguement to f. The nested value will be

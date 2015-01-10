@@ -26,14 +26,14 @@
        result#)))
 
 (t/ann log-io (t/All [a x y ...]
-                [String [a y ... y -> x] -> [a (t/U nil (t/I (t/CountRange 1) (t/HSeq (y ... y)))) -> x]]))
+                [String [(t/U (t/EmptySeqable a) (t/HSeq (y ... y))) -> x] -> [(t/U (t/EmptySeqable a) (t/HSeq (y ... y))) -> x]]))
 (defn log-io
   "Log function inputs and outputs by wrapping an function f."
   [msg f]
-    (fn [a & args]
-    (let [result (apply f a args)]
-      (println (format "(%s %s)=>%s" msg (str args) (str result)))
-      result)))
+  (fn [args]
+  (let [result (apply f args)]
+    (println (format "(%s %s)=>%s" msg (str args) (str result)))
+    result)))
 
 (letfn [(arg-when- [threader arg sym condition body]
   `(let [~sym ~arg
@@ -94,7 +94,7 @@
 
 (t/defalias Pos (t/HMap :mandatory {:x Integer :y Integer} :complete? true))
 
-(t/ann pos->xy [Pos -> (t/I (t/Vec Number)(t/ExactCount 2))])
+(t/ann pos->xy [Pos -> (t/I (t/Vec Integer)(t/ExactCount 2))])
 (defn pos->xy
   [{x :x y :y}]
   [x y])
@@ -104,17 +104,21 @@
   [x y]
   {:x x :y y})
 
-(t/ann chebyshev-distance [Pos Pos -> Number])
+(t/ann ^:no-check Math/abs (t/IFn [Double -> Double]
+                                  [Float -> Float]
+                                  [Integer -> Integer]
+                                  [Long -> Long]))
+(t/ann chebyshev-distance [Pos Pos -> Integer])
 (defn chebyshev-distance
   "Chebyshev/chessboard distance between 2 points"
   [p1 p2]
   (max (Math/abs (- (get p1 :x) (get p2 :x)))
        (Math/abs (- (get p1 :y) (get p2 :y)))))
 
-(t/ann distance-sq [Pos Pos -> Number])
+(t/ann distance-sq [Pos Pos -> t/AnyInteger])
 (defn distance-sq
   [p1 p2]
-  (let [sq (t/fn [x :- Number] :- Number (* x x))]
+  (let [sq (t/fn [x :- t/AnyInteger] :- t/AnyInteger (* x x))]
   (+ (sq (- (:x p1) (:x p2)))
      (sq (- (:y p1) (:y p2))))))
 
@@ -122,7 +126,7 @@
 (defn distance
   "Euclidean distance between 2 points"
   [p1 p2]
-  (Math/sqrt (distance-sq p1 p2)))
+  (Math/sqrt (double (distance-sq p1 p2))))
 
 (t/ann farther-than? [Pos Pos Number -> Boolean])
 (defn farther-than?
@@ -130,10 +134,10 @@
   [p1 p2 l]
   (> (distance-sq p1 p2) (* l l)))
 
-(t/ann fill-missing (t/All [x y z] [(t/Pred x)
-                                   (t/IFn [x y -> z])
+(t/ann fill-missing (t/All [x y] [(t/Pred x)
+                                   (t/IFn [x y -> x])
                                    (t/Seq y)
-                                   (t/Seq x) -> (t/Seq z)]))
+                                   (t/I t/EmptyCount (t/Seq x)) -> (t/Seq x)]))
                                    
 (defn fill-missing
   "For each item in coll for which (pred item) returns true, replace that
@@ -172,7 +176,7 @@
                             (cons x (if (empty? xs) [] (fill-missing pred f vcoll xs)))))))
 
 (t/ann fn-in (t/All[x y]
-               [[t/Any x -> t/Any] (t/Vec t/Any) x -> y]))
+               [[t/Any x -> t/Any] y (t/Vec t/Any) x -> y]))
 (defn fn-in
   "Applies a function to a value in a nested associative structure and an input value.
    ks sequence of keys and v is the second arguement to f. The nested value will be
@@ -181,7 +185,7 @@
   (update-in m ks (fn [coll] (f coll v))))
 
 (t/ann concat-in (t/All [x]
-                   (t/IFn [x (t/Vec t/Any) t/Any -> x])))
+                   [x (t/Vec t/Any) t/Any -> x]))
 (defn concat-in
   [m ks v]
   (fn-in concat m ks v))

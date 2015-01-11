@@ -26,7 +26,7 @@
        result#)))
 
 (t/ann log-io (t/All [a x y ...]
-                [String [(t/U (t/EmptySeqable a) (t/HSeq (y ... y))) -> x] -> [(t/U (t/EmptySeqable a) (t/HSeq (y ... y))) -> x]]))
+                [String [(t/U t/EmptySeqable (t/HSeq (y ... y))) -> x] -> [(t/U t/EmptySeqable (t/HSeq (y ... y))) -> x]]))
 (defn log-io
   "Log function inputs and outputs by wrapping an function f."
   [msg f]
@@ -108,12 +108,12 @@
                                   [Float -> Float]
                                   [Integer -> Integer]
                                   [Long -> Long]))
-(t/ann chebyshev-distance [Pos Pos -> Integer])
+(t/ann chebyshev-distance [Pos Pos -> Long])
 (defn chebyshev-distance
   "Chebyshev/chessboard distance between 2 points"
   [p1 p2]
-  (max (Math/abs (- (get p1 :x) (get p2 :x)))
-       (Math/abs (- (get p1 :y) (get p2 :y)))))
+  (max (Math/abs (long (- (get p1 :x) (get p2 :x))))
+       (Math/abs (long (- (get p1 :y) (get p2 :y))))))
 
 (t/ann distance-sq [Pos Pos -> t/AnyInteger])
 (defn distance-sq
@@ -175,8 +175,11 @@
                             (cons (f x y) (if (empty? xs) [] (fill-missing pred f ys xs)))
                             (cons x (if (empty? xs) [] (fill-missing pred f vcoll xs)))))))
 
-(t/ann fn-in (t/All[x y]
-               [[t/Any x -> t/Any] y (t/Vec t/Any) x -> y]))
+(t/ann ^:no-check clojure.core/update-in (t/All [x [y :< (clojure.lang.Associative t/Any t/Any)]]
+                                           [y (t/Seqable t/Any) [t/Any -> t/Any] -> y]))
+(t/ann fn-in (t/All [x
+                     [y :< (clojure.lang.Associative t/Any t/Any)]]
+               [[t/Any x -> t/Any] y (t/Seqable t/Any) x -> y]))
 (defn fn-in
   "Applies a function to a value in a nested associative structure and an input value.
    ks sequence of keys and v is the second arguement to f. The nested value will be
@@ -184,20 +187,20 @@
   [f m ks v]
   (update-in m ks (fn [coll] (f coll v))))
 
-(t/ann concat-in (t/All [x]
-                   [x (t/Vec t/Any) t/Any -> x]))
+(t/ann concat-in (t/All [[x :< (clojure.lang.Associative t/Any t/Any)]]
+                   [x (t/Seqable t/Any) (t/Seqable t/Any) -> x]))
 (defn concat-in
   [m ks v]
   (fn-in concat m ks v))
 
 (t/ann conj-in (t/All [x]
-                 (t/IFn [x (t/Vec t/Any) t/Any -> x])))
+                 (t/IFn [x (clojure.lang.Associative t/Any t/Any) t/Any -> x])))
 (defn conj-in
   [m ks v]
   (fn-in conj m ks v))
 
 (t/ann map-in (t/All [x]
-                [x (t/Vec t/Any) [t/Any -> t/Any] -> x]))
+                [x (clojure.lang.Associative t/Any t/Any) [t/Any -> t/Any] -> x]))
 (defn map-in
   [m ks f]
   (fn-in (fn [coll _] (if (vector? coll)
@@ -206,8 +209,8 @@
          m ks nil))
 
 (t/ann reduce-in (t/All [x]
-                   (t/IFn [x (t/Vec t/Any) (t/IFn [t/Any -> t/Any]) -> x]
-                         [x (t/Vec t/Any) (t/IFn [t/Any -> t/Any]) t/Any -> x])))
+                   (t/IFn [x (clojure.lang.Associative t/Any t/Any) (t/IFn [t/Any -> t/Any]) -> x]
+                          [x (clojure.lang.Associative t/Any t/Any) (t/IFn [t/Any -> t/Any]) t/Any -> x])))
 (defn reduce-in
   "Reduce a value inside an associative datastructure. `more` can be either
   a reducing function, a reducting function and an initial value."
@@ -217,7 +220,7 @@
    (update-in m ks (fn [coll] (reduce f v coll)))))
 
 (t/ann filter-in (t/All [x]
-                   (t/IFn [x (t/Vec t/Any) (t/IFn [t/Any -> t/Any]) -> x])))
+                   (t/IFn [x (clojure.lang.Associative t/Any t/Any) (t/IFn [t/Any -> t/Any]) -> x])))
 (defn filter-in
   [m ks f]
   (fn-in (fn [coll _] (if (vector? coll)
@@ -225,7 +228,7 @@
                         (filter f coll))) m ks nil))
 
 (t/ann remove-in (t/All [x]
-                   [x (t/Vec t/Any) [t/Any -> t/Any] -> x]))
+                   [x (clojure.lang.Associative t/Any t/Any) [t/Any -> t/Any] -> x]))
 (defn remove-in
   [m ks f]
   (fn-in (fn [coll _] (if (vector? coll)
@@ -233,7 +236,7 @@
                         (remove f coll))) m ks nil))
 
 (t/ann some-in (t/All [x]
-                 (t/IFn [x (t/Vec t/Any) (t/IFn [t/Any -> t/Any]) -> x])))
+                 (t/IFn [x (clojure.lang.Associative t/Any t/Any) (t/IFn [t/Any -> t/Any]) -> x])))
 (defn some-in
   [m ks f]
   (fn-in (fn [coll _] (if (vector? coll)
@@ -241,7 +244,7 @@
                         (some f coll))) m ks nil))
 
 (t/ann update-in-matching (t/All [a b]
-                            (t/IFn [a (t/Vec t/Any) (t/IFn [b -> Boolean]) (t/IFn [b -> t/Any]) -> a])))
+                            (t/IFn [a (clojure.lang.Associative t/Any t/Any) (t/IFn [b -> Boolean]) (t/IFn [b -> t/Any]) -> a])))
 (defn update-in-matching
   [m ks p f]
   (if (fn? p)

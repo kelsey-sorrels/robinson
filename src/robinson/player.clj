@@ -7,10 +7,20 @@
 
 (timbre/refer-timbre)
 
+(defn neg-hp?
+  "Return `true` if the player has negative hp."
+  [state]
+  (neg? (get-in state [:world :player :hp])))
+
 (defn player-dead?
   "Return `true` if the player has a status of `:dead`."
   [state]
   (contains? (-> state :world :player :status) :dead))
+
+(defn kill-player
+  "Kill the player by setting the status to `:dead`."
+  [state]
+  (conj-in state [:world :player :status] :dead))
 
 (defn player-wounded?
   [state]

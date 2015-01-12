@@ -262,7 +262,7 @@
                          (append-log state "You have been wounded." :red)
                          state))))
       ;; defender dead? (0 or less hp)
-      (not (pos? (- hp dmg)))
+      :else
         (if (contains? (set defender-path) :npcs)
           ;; defender is npc
           (-> state
@@ -287,7 +287,7 @@
             (assoc-in [:world :cause-of-death] (format "%s %s %s" (noun->indefinite-article (get attacker :name))
                                                                  (get attacker :name)
                                                                  (name attack)))
-            (conj-in [:world :player :status] :dead)
+            (kill-player)
             (update-player-died :combat)))))))
 
 (defn -main [& more]

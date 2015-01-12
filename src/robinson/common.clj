@@ -30,7 +30,7 @@
 (defn log-io
   "Log function inputs and outputs by wrapping an function f."
   [msg f]
-  (fn [args]
+  (fn [& args]
   (let [result (apply f args)]
     (println (format "(%s %s)=>%s" msg (str args) (str result)))
     result)))
@@ -168,18 +168,17 @@
     (if (empty? coll)
           coll
           (let [x  (first coll)
-                xs (next coll)
+                xs (rest coll)
                 y  (first vcoll)
-                ys (next vcoll)]
+                ys (rest vcoll)]
                   (if (pred x)
                             (cons (f x y) (if (empty? xs) [] (fill-missing pred f ys xs)))
                             (cons x (if (empty? xs) [] (fill-missing pred f vcoll xs)))))))
 
 (t/ann ^:no-check clojure.core/update-in (t/All [x [y :< (clojure.lang.Associative t/Any t/Any)]]
                                            [y (t/Seqable t/Any) [t/Any -> t/Any] -> y]))
-(t/ann fn-in (t/All [x
-                     [y :< (clojure.lang.Associative t/Any t/Any)]]
-               [[t/Any x -> t/Any] y (t/Seqable t/Any) x -> y]))
+(t/ann fn-in (t/All [[y :< (clojure.lang.Associative t/Any t/Any)]]
+               [[t/Any * -> t/Any] y (t/Seqable t/Any) t/Any -> y]))
 (defn fn-in
   "Applies a function to a value in a nested associative structure and an input value.
    ks sequence of keys and v is the second arguement to f. The nested value will be

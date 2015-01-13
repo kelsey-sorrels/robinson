@@ -31,6 +31,27 @@
                  [org.clojars.folcon/clojure-lanterna "0.9.5"]]
   :main robinson.core
   :repl-init robinson.core
+  :profile {
+    :dev {:plugins [[com.keminglabs/cljx "0.5.0"]]}
+    :clj  {:source-paths ["src/clj"
+                          "target/generated/src/clj"]
+           :test-paths ["test"]}
+    :cljs {:source-paths ["src/cljs"
+                          "target/generated/src/cljs"]
+           :dependencies [[org.clojure/clojurescript "0.0-2665"]]
+           :plugins [[lein-cljsbuild "1.0.4"]]
+           :cljsbuild {:builds {:dev {:source-paths ["src/cljs"
+                                                     "target/generated/src/cljs"]
+                                      :compiler {:output-to "target/main.js"
+                                                 :pretty-print true}}}}}
+    :cljx {:builds [{:source-paths ["src/cljx"]
+                     :output-path "target/classes"
+                     :rules :clj}
+                    {:source-paths ["src/cljx"]
+                     :output-path "target/classes"
+                     :rules :cljs}]}}
+  :prep-taks [["cljx" "once"]]
+
   ;:aot :all
 ;[;robinson.common
         ;robinson.update

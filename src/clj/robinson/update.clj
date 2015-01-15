@@ -2680,8 +2680,8 @@
               (if-wounded-get-infected)
               (if-infected-get-hurt)
               (if-near-too-much-fire-get-hurt)
-              (decrease-will-to-live)
               (update-npcs)
+              (decrease-will-to-live)
               (update-cells)
               ((fn [state] (info "Done updating cells") state))
               ;; TODO: Add appropriate level

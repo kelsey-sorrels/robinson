@@ -34,6 +34,10 @@
   :source-paths ["src/clj"
                  "target/generated/src/clj"]
   :test-paths ["test"]
+  :profiles {
+    :dev {:plugins [[com.keminglabs/cljx "0.5.0"]
+                    [org.clojure/clojurescript "0.0-2665"]
+                    [lein-cljsbuild "1.0.1"]]}}
   :cljsbuild {:builds {:dev {:source-paths ["src/cljs"
                                             "target/generated/src/cljs"]
                              :compiler {:output-to "target/main.js"
@@ -44,10 +48,6 @@
                   {:source-paths ["src/cljx"]
                    :output-path "target/classes"
                    :rules :cljs}]}
-  :profiles {
-    :dev {:plugins [[com.keminglabs/cljx "0.5.0"]
-                    [org.clojure/clojurescript "0.0-2665"]
-                    [lein-cljsbuild "1.0.1"]]}}
   :prep-taks [["cljx" "once"]]
 
   ;:aot :all

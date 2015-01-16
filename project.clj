@@ -48,7 +48,7 @@
                   {:source-paths ["src/cljx"]
                    :output-path "target/classes"
                    :rules :cljs}]}
-  :prep-taks [["cljx" "once"]]
+  :prep-tasks [["cljx" "once"]]
 
   ;:aot :all
 ;[;robinson.common

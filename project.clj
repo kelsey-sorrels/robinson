@@ -31,24 +31,37 @@
                  [org.clojars.folcon/clojure-lanterna "0.9.5"]]
   :main robinson.core
   :repl-init robinson.core
-  :source-paths ["src/clj"
-                 "target/generated/src/clj"]
-  :test-paths ["test"]
+  :source-paths
+  ["src/clj"
+   "target/generated-src/clj"
+   "target/generated-src/cljs"]
+
+  :test-paths
+  ["test"]
+
   :profiles {
-    :dev {:plugins [[com.keminglabs/cljx "0.5.0"]
-                    [org.clojure/clojurescript "0.0-2665"]
-                    [lein-cljsbuild "1.0.1"]]}}
-  :cljsbuild {:builds {:dev {:source-paths ["src/cljs"
-                                            "target/generated/src/cljs"]
-                             :compiler {:output-to "target/main.js"
-                                        :pretty-print true}}}}
-  :cljx {:builds [{:source-paths ["src/cljx"]
-                   :output-path "target/classes"
-                   :rules :clj}
-                  {:source-paths ["src/cljx"]
-                   :output-path "target/classes"
-                   :rules :cljs}]}
-  :prep-tasks [["cljx" "once"]]
+    :dev {:dependencies
+          [[org.clojure/clojurescript "0.0-2665"]]
+
+          :plugins
+          [[lein-cljsbuild "1.0.3"]
+           [com.keminglabs/cljx "0.4.0"]]}}
+
+  :auto-clean false
+
+  :cljx
+  {:builds [{:source-paths ["src/cljx"]
+             :output-path "target/generated-src/clj"
+             :rules :clj}
+            {:source-paths ["src/cljx"]
+             :output-path "target/generated-src/cljs"
+             :rules :cljs}]}
+
+  :cljsbuild {:builds [{:source-paths ["src/cljs"
+                                       "target/generated/src/cljs"]
+                        :compiler {:output-to "target/main.js"
+                                   :pretty-print true}}]}
+  ;:prep-tasks [["cljx" "once"]]
 
   ;:aot :all
 ;[;robinson.common
@@ -61,6 +74,7 @@
                        robinson.combat robinson.core robinson.describe robinson.endgame robinson.lineofsight robinson.main robinson.monstergen
                        robinson.player robinson.render robinson.swingterminal robinson.viewport robinson.worldgen]}
   :repl-options {:timeout 120000}
+  :global-vars {*warn-on-reflection* true}
   :jvm-opts [
              ;"-agentpath:/home/santos/bin/yjp-2014-build-14096/bin/linux-x86-64/libyjpagent.so"
              "-XX:+UseParNewGC"

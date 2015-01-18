@@ -4,8 +4,7 @@
   (:require [clojure.data.generators :as dg]
             [clojure.core.typed :as t]
             [taoensso.timbre :as timbre]
-            [pallet.thread-expr :as tx])
-  (:import  (clojure.lang ITransientCollection)))
+            [pallet.thread-expr :as tx]))
 
 (t/ann ^:no-check taoensso.timbre/refer-timbre [-> t/Any])
 (timbre/refer-timbre)

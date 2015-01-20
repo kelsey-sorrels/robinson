@@ -1,10 +1,10 @@
 (defproject robinson "0.0.1-SNAPSHOT"
   :description "robinson"
-  :plugins      [[lein-ancient "0.5.5"]
+  :plugins      [[lein-ancient "0.6.0"]
                  [lein-autoreload "0.1.0"]
                  [lein-bikeshed "0.1.8"]
                  [lein-idefiles "0.2.1"]
-                 [lein-marginalia "0.7.1"]
+                 [lein-marginalia "0.8.0"]
                  [lein-kibit "0.0.8"]
                  [lein-typed "0.3.5"]
                  [lein-cloverage "1.0.2"]

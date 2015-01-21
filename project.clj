@@ -39,16 +39,12 @@
   :test-paths
   ["test"]
 
-  :profiles {
-    :dev {:dependencies
-          [[org.clojure/clojurescript "0.0-2665"]]
+  ;:auto-clean false
 
-          :plugins
-          [[lein-cljsbuild "1.0.3"]
-           [com.keminglabs/cljx "0.5.0"]]}}
-
-  :auto-clean false
-
+  :cljsbuild {:builds [{:source-paths ["src/cljs"
+                                       "target/generated/src/cljs"]
+                        :compiler {:output-to "target/main.js"
+                                   :pretty-print true}}]}
   :cljx
   {:builds [{:source-paths ["src/cljx"]
              :output-path "target/generated-src/clj"
@@ -57,11 +53,18 @@
              :output-path "target/generated-src/cljs"
              :rules :cljs}]}
 
-  :cljsbuild {:builds [{:source-paths ["src/cljs"
-                                       "target/generated/src/cljs"]
-                        :compiler {:output-to "target/main.js"
-                                   :pretty-print true}}]}
-  ;:prep-tasks [["cljx" "once"]]
+  :prep-tasks [["cljx" "once"]]
+
+  :profiles {
+    :dev {:dependencies
+          [#_[org.clojure/clojurescript "0.0-2657"]]
+
+          :plugins
+          [[com.keminglabs/cljx "0.5.0"]
+           [com.cemerick/piggieback "0.1.5-SNAPSHOT"]
+           [lein-cljsbuild "1.0.4"]]
+          :repl-options {:nrepl-middleware [cljx.repl-middleware/wrap-cljx]}}}
+
 
   ;:aot :all
 ;[;robinson.common
@@ -73,8 +76,7 @@
   :core.typed {:check [robinson.common robinson.crafting robinson.itemgen robinson.mapgen robinson.npc robinson.startgame robinson.update robinson.world
                        robinson.combat robinson.core robinson.describe robinson.endgame robinson.lineofsight robinson.main robinson.monstergen
                        robinson.player robinson.render robinson.swingterminal robinson.viewport robinson.worldgen]}
-  :repl-options {:timeout 120000}
-  :global-vars {*warn-on-reflection* true}
+  :repl-options {:timeout 920000}
   :jvm-opts [
              ;"-agentpath:/home/santos/bin/yjp-2014-build-14096/bin/linux-x86-64/libyjpagent.so"
              "-XX:+UseParNewGC"

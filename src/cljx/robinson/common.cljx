@@ -9,13 +9,6 @@
 (t/ann ^:no-check taoensso.timbre/refer-timbre [-> t/Any])
 (timbre/refer-timbre)
 
-(t/ann ^:no-check clojure.data.generators/uniform [Long Long -> Long])
-(t/ann uniform-int (t/IFn [Long -> Long]
-                          [Long Long -> Long]))
-(defn uniform-int
- ([hi] {:pre [(pos? hi)]} (uniform-int 0 hi))
- ([lo hi] {:pre [(< lo hi)]} (dg/uniform lo hi)))
-
 (defmacro log-time
   "Log the time it takes to execute body."
   [msg & body]

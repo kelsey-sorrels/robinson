@@ -107,6 +107,20 @@
   (create-random 42))
 
 (defn uniform-int
- ([hi] {:pre [(pos? hi)]} (next-int! *rnd* 0 hi))
- ([lo hi] {:pre [(< lo hi)]} (next-int! *rnd* lo hi)))
+ ([hi] {:pre [(pos? hi)]} (next-int! *rnd* hi))
+ ([lo hi] {:pre [(< lo hi)]} (+ lo (next-int! *rnd* (- hi lo)))))
+
+(defn- swap [v i1 i2]
+  (assoc v i2 (nth v i1) i1 (nth v i2)))
+
+(defn rnd-shuffle
+  ([coll]
+  (rnd-shuffle *rnd* coll))
+  ([rnd coll]
+  (loop [i (count coll)
+         coll coll]
+    (if (> i 1)
+      (recur (dec i) (swap coll (dec i) (next-int! rnd i)))
+      coll))))
+
 

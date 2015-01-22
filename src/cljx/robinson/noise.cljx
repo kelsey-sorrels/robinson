@@ -14,6 +14,7 @@
 (def ^:private grad3 [[ 1  1  0]
                       [-1  1  0]
                       [ 1 -1  0]
+                      [-1 -1  0]
                       [ 1  0  1]
                       [-1  0  1]
                       [ 1  0 -1]
@@ -54,7 +55,7 @@
                       [-1,  1, -1,  0]
                       [-1, -1,  1,  0]
                       [-1, -1, -1,  0]])
-(def ^:private f2 (dec (* 0.5 #+clj  (Math/sqrt 3.0)
+(def ^:private f2 (* 0.5 (dec #+clj  (Math/sqrt 3.0)
                               #+cljs (.sqrt js/Math 3.0))))
 (def ^:private g2 (/ (- 3.0
                         #+clj  (Math/sqrt 3.0)
@@ -93,13 +94,13 @@
   (create-noise rr/*rnd*))
   ([rnd]
   (let [p           (rr/rnd-shuffle rnd (vec (range 256)))
-        perm        (concat p p)
+        perm        (vec (concat p p))
         perm-mod-12 (mapv (fn [n] (mod n 12)) perm)]
     (reify Noise
       (snoise [this xin yin]
         (let [s (* f2 (+ xin yin))
-              i (fast-floor (* xin s))
-              j (fast-floor (* yin s))
+              i (fast-floor (+ xin s))
+              j (fast-floor (+ yin s))
               t (* (+ i j) g2)
               X0 (- i t)
               Y0 (- j t)
@@ -134,3 +135,22 @@
         [this x y]
         (+ 0.5 (* 0.5 (snoise this x y))))))))
 
+
+
+
+;; REPL code for displaying noise as ascii art
+;;(def px (partition 200 (for [x (range -100 100) y (range -100 100)] (noise n (/ x 10) (/ y 10)))))
+
+;;(def ascii-chars [\# \A \@ \$ \% \= \+ \* \: \, \. \space])
+
+;;(def n (create-noise))
+
+;;(doseq [line px]
+;;(println
+;;  (apply str (map (fn [c]
+;;                    (let [idx (if (zero? c)
+;;                                  (dec (count ascii-chars)) 
+;;                                  (- (count ascii-chars)
+;;                                     (* c (count ascii-chars))))]
+;;                      (nth ascii-chars (max idx 0))))
+;;                  line))))

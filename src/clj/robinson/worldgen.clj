@@ -15,10 +15,6 @@
             [clojure.java.io :as io]
             [clojure.data.generators :as dg]
             [taoensso.timbre :as timbre]
-            [clisk.core :as clisk]
-            [clisk.patterns :as cliskp]
-            [clisk.node :as cliskn]
-            [clisk.functions :as cliskf]
             [taoensso.timbre :as timbre]
             [pallet.thread-expr :as tx]
             [taoensso.nippy :as nippy])
@@ -47,52 +43,14 @@
       (concat (line-segments x1 y1 rmx rmy)
               (line-segments rmx rmy x2 y2)))))
 
-;; clisk utils
-(defn invert [a] (cliskf/v+ [1 1 1] (cliskf/v* [-1 -1 -1] a)))
+;; noise utils
+(defn invert [s] (+ 1 (* -1 s)))
 
 (defn center [f]
   (cliskf/offset [-0.5 -0.5] (cliskf/scale 0.5 f)))
 
 (defn center-radius []
   (cliskf/radius (center [cliskf/x cliskf/y])))
-
-(defmacro vcond
-  "Takes a set of test/expr pairs. It evaluates each test one at a
-  time. If a test returns logical true, cond evaluates and returns
-  the value of the corresponding expr and doesn't evaluate any of the
-  other tests or exprs. (cond) returns nil."
-  {:added "1.0"}
-  [& clauses]
-  (if clauses
-    (list 'cliskf/vif (first clauses)
-      (if (next clauses)
-        (second clauses)
-        (throw (IllegalArgumentException.
-          "vcond requires an even number of forms")))
-      (cons 'vcond (next (next clauses))))
-    [0 0 0]))
-
-(defmacro vor
-  "Evaluates vector expresions one at a time. If any expressions are true, return [1 1 1], [0 0 0] otherwise."
-  ([] [0 0 0])
-  ([x] `(cliskf/vif ~x [1 1 1] [0 0 0]))
-  ([x & next]
-   `(cliskf/vif ~x [1 1 1] (vor ~@next))))
-
-(defmacro vand
-  "Evaluates vector expresions one at a time. If all expressions are true, return [1 1 1], [0 0 0] otherwise."
-  ([] [0 0 0])
-  ([x] `(cliskf/vif ~x [1 1 1] [0 0 0]))
-  ([x & next]
-    `(cliskf/vif ~x (vand ~@next) [0 0 0])))
-
-(defmacro vnot
-  [x]
-  `(cliskf/vif ~x [0 0 0] [1 1 1]))
-
-(defmacro v>
-  [x y]
-  `(cliskf/vif (cliskf/v- ~x ~y) [1 1 1] [0 0 0]))
 
 (defn init-ocean
   []

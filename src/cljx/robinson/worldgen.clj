@@ -10,6 +10,7 @@
         [robinson.mapgen :exclude [-main]]
         clojure.contrib.core)
   (:require 
+            [robinson.noise :as rn]
             [robinson.itemgen :as ig]
             [clojure.core.async :as async]
             [clojure.java.io :as io]
@@ -46,11 +47,41 @@
 ;; noise utils
 (defn invert [s] (+ 1 (* -1 s)))
 
-(defn center [f]
-  (cliskf/offset [-0.5 -0.5] (cliskf/scale 0.5 f)))
+(defn offset
+  [xy-or-fn f]
+  (cond (type xy-or-fn)
+    vector? (let [[x y] xy-or-fn]
+              (fn [[xi yi]]
+                (f [(+ xi x) (+ yi y)])))
+    fn?     (fn [[xi yi]]
+                (let [[x y] (xy-or-fn [xi yi])]
+                  (f [(+ xi x) (+ yi y)])))))
 
-(defn center-radius []
-  (cliskf/radius (center [cliskf/x cliskf/y])))
+(defn scale [s f]
+  (fn [[x y]]
+    (f [(* s x) (* s y)])))
+
+(defn center [f]
+  (fn [[x y]]
+    (offset [-0.5 -0.5] (scale 0.5 f))))
+
+(defn distance []
+  (fn [[x y]]
+    #+clj  (Math/sqrt (+ (* x x) (* y y)))
+    #+cljs (.sqrt js/Math (+ (* x x) (* y y)))))
+
+(defn distance []
+  (fn [[x y]]
+    (Math/sqrt (+ (* x x) (* y y)))))
+
+(defn center-distance []
+  (fn [[x y]]
+    (center distance)))
+
+(defn vectorize
+  [& more]
+  (vec more))
+  
 
 (defn init-ocean
   []

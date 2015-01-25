@@ -81,7 +81,61 @@
 (defn vectorize
   [& more]
   (vec more))
-  
+
+(defn vsnoise
+  [noise]
+  (fn [[x y]]
+    (vectorize (snoise noise x y) (snoise noise (+ x 12.301) (+ y 70.261)))))
+
+(defn vnoise
+  [noise]
+  (fn [[x y]]
+    (vectorize (noise noise x y) (noise noise (+ x -78.678) (+ y 7.6789)))))
+
+(defn v+
+  [xy-or-fn-0 xy-or-fn-1]
+  (case
+    (and (vector xy-or-fn-0)
+         (vector xy-or-fn-1))
+      (mapv + xy-or-fn-0 xy-or-fn-1)
+    (and (vector? xy-or-fn-0)
+         (fn? xy-or-fn-1))
+      (fn [[xi yi]]
+        (let [[x0 y0] xy-or-fn-0
+              [x1 x1] (xy-or-fn-1 xi yi)]
+          [(+ x0 x1) (+ y0 y1)]))
+    (and (fn? xy-or-fn-0)
+         (vector? xy-or-fn-1))
+      (fn [[xi yi]]
+        (let [[x0 y0] (xy-or-fn-0 xi yi)
+              [x1 x1] xy-or-fn-1]
+          [(+ x0 x1) (+ y0 y1)]))
+    (and (fn? xy-or-fn-0)
+         (fn? xy-or-fn-1))
+      (fn [[xi yi]]
+        (let [[x0 y0] (xy-or-fn-0 xi yi)
+              [x1 x1] (xy-or-fn-1 xi yi)]
+          [(+ x0 x1) (+ y0 y1)]))))
+
+(defn v*
+  [s xy-or-f]
+  (case
+    (vector? xy-or-f)
+      (let [[x y] xy-or-f]
+        [(* s x) (* s y)])
+    (fn? f)
+      (fn [[xi yi]]
+        [(* s xi) (* s yi)])))
+
+(defn v-
+  [xy-or-fn-0 xy-or-fn-1]
+  (case
+    (and (vector xy-or-fn-0)
+         (vector xy-or-fn-1))
+      (mapv - xy-or-fn-0 xy-or-fn-1)
+    :else
+      (v+ xy-or-fn-0 (v* -1 xy-or-fn-1))))
+
 
 (defn init-ocean
   []
@@ -144,10 +198,11 @@
     surf         :surf
     ocean        :ocean))
 
-(def tree-node
-  (cliskf/vectorize (cliskf/offset [-0.5 -0.5] (cliskf/v+ [-0.5 -0.5 -0.5] (cliskf/scale 0.01 cliskp/noise)))))
+(defn sample-tree
+  (offset [-0.5 -0.5] (v+ [-0.5 -0.5 -0.5] (scale 0.01 noise))))
 
-(def island-node
+(defn sample-island
+  [noise]
   (cliskf/vectorize
     (cliskf/vlet [c  (center (invert (cliskf/offset (cliskf/scale 0.43 (cliskf/v* [0.5 0.5 0.5] cliskp/vsnoise)) cliskf/radius)))
                   c1 (cliskf/offset [0.5 0.5] (cliskf/v+ [-0.5 -0.5 -0.5] (cliskf/scale 0.06 cliskp/noise)))

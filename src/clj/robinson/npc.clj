@@ -7,7 +7,8 @@
         robinson.world
         [robinson.monstergen :exclude [-main]]
         [robinson.dialog :exclude [-main]])
-  (:require [clojure.data.generators :as dg]
+  (:require [robinson.random :as rr]
+            [clojure.data.generators :as dg]
             [taoensso.timbre :as timbre]))
 
 (timbre/refer-timbre)
@@ -166,7 +167,7 @@
 (defn add-npcs-random
   "Randomly add monsters inside the viewport."
   [state]
-  (if (and (< (uniform-int 100) (if (is-night? state) 18 8))
+  (if (and (< (rr/uniform-int 100) (if (is-night? state) 18 8))
            (< (count (-> state :world :npcs))
               20))
     (add-npcs state)

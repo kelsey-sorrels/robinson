@@ -7,7 +7,6 @@
         robinson.player
         [robinson.lineofsight :exclude [-main]]
         robinson.npc
-        [robinson.mapgen :exclude [-main]]
         clojure.contrib.core)
   (:require 
             [robinson.noise :as rn]
@@ -18,8 +17,8 @@
             [taoensso.timbre :as timbre]
             [taoensso.timbre :as timbre]
             [pallet.thread-expr :as tx]
-            [taoensso.nippy :as nippy])
-  (:import [java.io DataInputStream DataOutputStream]))
+            [taoensso.nippy :as nippy]))
+  ;(:import [java.io DataInputStream DataOutputStream]))
 
 
 
@@ -49,13 +48,14 @@
 
 (defn offset
   [xy-or-fn f]
-  (cond (type xy-or-fn)
-    vector? (let [[x y] xy-or-fn]
-              (fn [[xi yi]]
-                (f [(+ xi x) (+ yi y)])))
-    fn?     (fn [[xi yi]]
-                (let [[x y] (xy-or-fn [xi yi])]
-                  (f [(+ xi x) (+ yi y)])))))
+  (let [t (type xy-or-fn)]
+  (cond
+    (vector? t) (let [[x y] xy-or-fn]
+                  (fn [[xi yi]]
+                    (f [(+ xi x) (+ yi y)])))
+    (fn? t)     (fn [[xi yi]]
+                 (let [[x y] (xy-or-fn [xi yi])]
+                   (f [(+ xi x) (+ yi y)]))))))
 
 (defn scale [s f]
   (fn [[x y]]

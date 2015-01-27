@@ -46,6 +46,25 @@
 ;; noise utils
 (defn invert [s] (+ 1 (* -1 s)))
 
+(defn wrap-constant
+  [c]
+  (fn [& _]
+    (constantly c)))
+
+(defn wrap-arg
+  [xy-or-fn]
+  (cond
+    (vector? xy-or-fn)
+      (wrap-constant xy-or-fn)
+    (fn? xy-or-fn)
+      xy-or-fn))
+
+
+;(defmacro defnv
+;  [s expr]
+;  (let [args] (repeat ...
+;  `(defn ~s ~args
+
 (defn offset
   [xy-or-fn f]
   (let [t (type xy-or-fn)]
@@ -204,45 +223,39 @@
 (defn sample-island
   [noise]
   (cliskf/vectorize
-    (cliskf/vlet [c  (center (invert (cliskf/offset (cliskf/scale 0.43 (cliskf/v* [0.5 0.5 0.5] cliskp/vsnoise)) cliskf/radius)))
-                  c1 (cliskf/offset [0.5 0.5] (cliskf/v+ [-0.5 -0.5 -0.5] (cliskf/scale 0.06 cliskp/noise)))
-                  c2 (cliskf/offset [-0.5 -0.5] (cliskf/v+ [-0.5 -0.5 -0.5] (cliskf/scale 0.08 cliskp/noise)))]
-      (vcond
+    (cliskf/vlet [c  (center (invert (offset (scale 0.43 (v* [0.5 0.5 0.5] (vsnoise noise) (distance))))))
+                  c1 (offset [0.5 0.5] (v+ [-0.5 -0.5 -0.5] (scale 0.06 noise)))
+                  c2 (offset [-0.5 -0.5] (v+ [-0.5 -0.5 -0.5] (scale 0.08 noise)))]
+      (cond
         ;; interior biomes
-        (cliskf/v+ [-0.55 -0.55 -0.55]  c)
-          (vcond
-            (vand c1 c2 (v> c1 c2))
+        (> -0.55  c)
+          (cond
+            (and (pos? c1) (pos? c2) (> c1 c2))
             ;; interior jungle
             jungle
-            (vand c1 c2)
+            (and (pos? c1) (pos? c2))
             heavy-forest
-            (vand c1 (vnot c2) (v> c1 c2))
+            (and (pos? c1) (neg? c2) (> c1 c2))
             light-forest
-            (vand c1 (vnot c2))
+            (and (pos? c1) (neg? c2))
             bamboo-grove
-            (vand (vnot c1) c2 (v> c1 c2))
+            (and (neg? c1) (pos? c2) (v> c1 c2))
             meadow
-            (vand (vnot c1) c2)
+            (and (neg? c1) (pos? c2))
             rocky
-            (vand (vnot c1) (vnot c2) (v> c1 c2))
+            (and (neg? c1) (neg? c2) (> c1 c2))
             swamp
-            (vnot (vand c1 c2))
+            :else
             dirt)
         ;; shore/yellow
-        (cliskf/v+ [-0.5 -0.5 -0.5]  c)
+        (> -0.5  c)
             sand
         ;; surf/light blue
-        (cliskf/v+ [-0.42 -0.42 -0.42]  c)
+        (> -0.42 c)
           surf
         ;; else ocean
-        [1 1 1]
+        :else
           ocean))))
-
-(def tree-fns
-  (vec (map cliskn/compile-fn (:nodes tree-node))))
-
-(def island-fns
-  (vec (map cliskn/compile-fn (:nodes island-node))))
 
 (defn find-starting-pos [seed max-x max-y]
   (let [angle (dg/rand-nth (range (* 2 Math/PI)))

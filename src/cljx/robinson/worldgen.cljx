@@ -221,11 +221,11 @@
   (offset [-0.5 -0.5] (v+ [-0.5 -0.5 -0.5] (scale 0.01 noise))))
 
 (defn sample-island
-  [noise]
+  [noise x y]
   (cliskf/vectorize
-    (cliskf/vlet [c  (center (invert (offset (scale 0.43 (v* [0.5 0.5 0.5] (vsnoise noise) (distance))))))
-                  c1 (offset [0.5 0.5] (v+ [-0.5 -0.5 -0.5] (scale 0.06 noise)))
-                  c2 (offset [-0.5 -0.5] (v+ [-0.5 -0.5 -0.5] (scale 0.08 noise)))]
+    (cliskf/vlet [c  ((center (invert (offset (scale 0.43 (v* [0.5 0.5 0.5] (vsnoise noise) (distance)))))) x y)
+                  c1 ((offset [0.5 0.5] (v+ [-0.5 -0.5 -0.5] (scale 0.06 noise))) x y)
+                  c2 ((offset [-0.5 -0.5] (v+ [-0.5 -0.5 -0.5] (scale 0.08 noise))) x y)]
       (cond
         ;; interior biomes
         (> -0.55  c)
@@ -239,7 +239,7 @@
             light-forest
             (and (pos? c1) (neg? c2))
             bamboo-grove
-            (and (neg? c1) (pos? c2) (v> c1 c2))
+            (and (neg? c1) (pos? c2) (> c1 c2))
             meadow
             (and (neg? c1) (pos? c2))
             rocky

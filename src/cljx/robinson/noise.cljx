@@ -139,18 +139,24 @@
 
 
 ;; REPL code for displaying noise as ascii art
-;;(def px (partition 200 (for [x (range -100 100) y (range -100 100)] (noise n (/ x 10) (/ y 10)))))
+;(def px (partition 200 (for [x (range -100 100) y (range -100 100)] (noise n (/ x 10) (/ y 10)))))
 
-;;(def ascii-chars [\# \A \@ \$ \% \= \+ \* \: \, \. \space])
+(def ^:private ascii-chars [\# \A \@ \$ \% \= \+ \* \: \, \. \space])
 
 ;;(def n (create-noise))
 
-;;(doseq [line px]
-;;(println
-;;  (apply str (map (fn [c]
-;;                    (let [idx (if (zero? c)
-;;                                  (dec (count ascii-chars)) 
-;;                                  (- (count ascii-chars)
-;;                                     (* c (count ascii-chars))))]
-;;                      (nth ascii-chars (max idx 0))))
-;;                  line))))
+(defn print-fn
+  [f width height]
+  (let [px (partition height (for [x (range (- (/ width 2)) (/ width 2))
+                                   y (range (- (/ height 2)) (/ height 2))]
+                               (f (/ x 10) (/ y 10))))]
+    (doseq [line px]
+      (println
+        (apply str (map (fn [c]
+                          (let [idx (if (zero? c)
+                                        (dec (count ascii-chars)) 
+                                        (- (count ascii-chars)
+                                           (* c (count ascii-chars))))]
+                            (nth ascii-chars (max idx 0))))
+                        line))))))
+

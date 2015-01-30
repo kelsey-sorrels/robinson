@@ -157,6 +157,6 @@
                                         (dec (count ascii-chars)) 
                                         (- (count ascii-chars)
                                            (* c (count ascii-chars))))]
-                            (nth ascii-chars (max idx 0))))
+                            (nth ascii-chars (min (max idx 0) (dec (count ascii-chars))))))
                         line))))))
 

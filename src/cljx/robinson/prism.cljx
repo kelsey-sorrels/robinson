@@ -6,7 +6,10 @@
             [robinson.noise :as rn]
             [taoensso.timbre :as timbre]))
 
-(defn invert [s] (+ 1 (* -1 s)))
+(defn invert
+  [f]
+  (fn [[x y]]
+    (+ 1 (- (f [x y])))))
 
 (defn wrap-constant
   [c]
@@ -20,12 +23,6 @@
       (wrap-constant xy-or-fn)
     (fn? xy-or-fn)
       xy-or-fn))
-
-
-;(defmacro defnv
-;  [s expr]
-;  (let [args] (repeat ...
-;  `(defn ~s ~args
 
 (defn offset
   [xy-or-fn f]
@@ -56,19 +53,15 @@
   (fn [[x y]]
     (center (radius (xy->pos x y)))))
 
-(defn vectorize
-  [& more]
-  (vec more))
-
 (defn vsnoise
   [fnoise]
   (fn [[x y]]
-    (vectorize (fnoise x y) (fnoise (+ x 12.301) (+ y 70.261)))))
+    (vec(fnoise x y) (fnoise (+ x 12.301) (+ y 70.261)))))
 
 (defn vnoise
   [noise]
   (fn [[x y]]
-    (vectorize (rn/noise noise x y) (rn/noise noise (+ x -78.678) (+ y 7.6789)))))
+    (vec(rn/noise noise x y) (rn/noise noise (+ x -78.678) (+ y 7.6789)))))
 
 (defn v+
   [xy-or-fn-0 xy-or-fn-1]

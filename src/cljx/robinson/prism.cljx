@@ -29,14 +29,15 @@
 
 (defn offset
   [xy-or-fn f]
-  (let [t (type xy-or-fn)]
   (cond
-    (vector? t) (let [[x y] xy-or-fn]
-                  (fn [[xi yi]]
-                    (f [(+ xi x) (+ yi y)])))
-    (fn? t)     (fn [[xi yi]]
-                 (let [[x y] (xy-or-fn [xi yi])]
-                   (f [(+ xi x) (+ yi y)]))))))
+    (vector? xy-or-fn)
+      (let [[x y] xy-or-fn]
+        (fn [[xi yi]]
+          (f [(+ xi x) (+ yi y)])))
+    (fn? xy-or-fn)
+      (fn [[xi yi]]
+        (let [[x y] (xy-or-fn [xi yi])]
+          (f [(+ xi x) (+ yi y)])))))
 
 (defn scale [s f]
   (fn [[x y]]
@@ -60,9 +61,9 @@
   (vec more))
 
 (defn vsnoise
-  [noise]
+  [fnoise]
   (fn [[x y]]
-    (vectorize (rn/snoise noise x y) (rn/snoise noise (+ x 12.301) (+ y 70.261)))))
+    (vectorize (fnoise x y) (fnoise (+ x 12.301) (+ y 70.261)))))
 
 (defn vnoise
   [noise]
@@ -159,6 +160,6 @@
 
 (defn -main [& args]
   (let [n (rn/create-noise)]
-    #_(rn/print-fn (fn [x y] (rn/noise n x y)) 200 200)
-    (rn/print-fn (coerce (radius)) 200 200)))
+    #_(rn/print-fn (fn [x y] (rn/noise n x y)) 180 180)
+    (rn/print-fn (coerce (invert (offset (vsnoise (partial rn/noise n))  (scale 0.2 (radius))))) 180 180)))
 

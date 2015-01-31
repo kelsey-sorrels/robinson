@@ -50,7 +50,8 @@
 
 (defn scale [s f]
   (fn [[x y]]
-    (f [(* s x) (* s y)])))
+    (let [s (/ 1 s)]
+      (f [(* s x) (* s y)]))))
 
 (defn center [f]
   (fn [[x y]]

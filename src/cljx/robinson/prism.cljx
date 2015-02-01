@@ -24,6 +24,18 @@
     (fn? xy-or-fn)
       xy-or-fn))
 
+(defn coerce [f]
+  (fn [x y]
+    (f [x y])))
+
+(defn noise [n]
+  (fn [[x y]]
+    (rn/noise n x y)))
+
+(defn snoise [n]
+  (fn [[x y]]
+    (rn/snoise n x y)))
+
 (defn offset
   [xy-or-fn f]
   (cond
@@ -56,12 +68,12 @@
 (defn vsnoise
   [fnoise]
   (fn [[x y]]
-    (vec(fnoise x y) (fnoise (+ x 12.301) (+ y 70.261)))))
+    (vec (fnoise x y) (fnoise (+ x 12.301) (+ y 70.261)))))
 
 (defn vnoise
   [noise]
   (fn [[x y]]
-    (vec(rn/noise noise x y) (rn/noise noise (+ x -78.678) (+ y 7.6789)))))
+    (vec (rn/noise noise x y) (rn/noise noise (+ x -78.678) (+ y 7.6789)))))
 
 (defn v+
   [xy-or-fn-0 xy-or-fn-1]
@@ -107,8 +119,14 @@
     :else
       (v+ xy-or-fn-0 (v* -1 xy-or-fn-1))))
 
-#_(defn sample-tree
-  (offset [-0.5 -0.5] (v+ [-0.5 -0.5 -0.5] (scale 0.01 noise))))
+(defn s+
+  [s f]
+  (fn [[x y]]
+    (let [v (f [x y])]
+      (+ s v))))
+
+(defn sample-tree [n]
+  (offset [-0.5 -0.5] (s+ -0.5 (scale 0.01 (noise n)))))
 
 #_(defn sample-island
   [noise x y]
@@ -147,12 +165,10 @@
         :else
           ocean))))
 
-(defn coerce [f]
-  (fn [x y]
-    (f [x y])))
 
 (defn -main [& args]
   (let [n (rn/create-noise)]
     #_(rn/print-fn (fn [x y] (rn/noise n x y)) 180 180)
-    (rn/print-fn (coerce (invert (offset (vsnoise (partial rn/noise n))  (scale 0.2 (radius))))) 180 180)))
+    (rn/print-fn (coerce (sample-tree n)) 180 180)
+    #_(rn/print-fn (coerce (invert (offset (vsnoise (partial rn/noise n))  (scale 0.2 (radius))))) 180 180)))
 

@@ -131,9 +131,9 @@
 #_(defn sample-island
   [noise x y]
   (cliskf/vectorize
-    (cliskf/vlet [c  ((center (invert (offset (scale 0.43 (v* [0.5 0.5 0.5] (vsnoise noise) (radius)))))) x y)
-                  c1 ((offset [0.5 0.5] (v+ [-0.5 -0.5 -0.5] (scale 0.06 noise))) x y)
-                  c2 ((offset [-0.5 -0.5] (v+ [-0.5 -0.5 -0.5] (scale 0.08 noise))) x y)]
+    (cliskf/vlet [c  ((invert (scale 0.43 (offset (vnoise noise) (radius)))) x y)
+                  c1 ((offset [0.5 0.5] (s+ -0.5 (scale 0.06 noise))) x y)
+                  c2 ((offset [-0.5 -0.5] (s+ -0.5 (scale 0.08 noise))) x y)]
       (cond
         ;; interior biomes
         (> -0.55  c)
@@ -164,7 +164,6 @@
         ;; else ocean
         :else
           ocean))))
-
 
 (defn -main [& args]
   (let [n (rn/create-noise)]

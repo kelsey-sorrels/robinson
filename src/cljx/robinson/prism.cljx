@@ -66,21 +66,21 @@
   (fn [[x y]]
     (center (radius (xy->pos x y)))))
 
-(defn vsnoise
-  [fnoise]
-  (fn [[x y]]
-    (vec (fnoise x y) (fnoise (+ x 12.301) (+ y 70.261)))))
-
 (defn vnoise
-  [noise]
+  [n]
   (fn [[x y]]
-    (vec (rn/noise noise x y) (rn/noise noise (+ x -78.678) (+ y 7.6789)))))
+    (vector (rn/noise n x y) (rn/noise n (+ x 12.301) (+ y 70.261)))))
+
+(defn vsnoise
+  [n]
+  (fn [[x y]]
+  (vector (rn/snoise n x y) (rn/snoise n (+ x 12.301) (+ y 70.261)))))
 
 (defn v+
   [xy-or-fn-0 xy-or-fn-1]
   (cond
-    (and (vector xy-or-fn-0)
-         (vector xy-or-fn-1))
+    (and (vector? xy-or-fn-0)
+         (vector? xy-or-fn-1))
       (mapv + xy-or-fn-0 xy-or-fn-1)
     (and (vector? xy-or-fn-0)
          (fn? xy-or-fn-1))
@@ -114,8 +114,8 @@
 (defn v-
   [xy-or-fn-0 xy-or-fn-1]
   (case
-    (and (vector xy-or-fn-0)
-         (vector xy-or-fn-1))
+    (and (vector? xy-or-fn-0)
+         (vector? xy-or-fn-1))
       (mapv - xy-or-fn-0 xy-or-fn-1)
     :else
       (v+ xy-or-fn-0 (v* -1 xy-or-fn-1))))
@@ -129,46 +129,60 @@
 (defn sample-tree [n]
   (offset [-0.5 -0.5] (s+ -0.5 (scale 0.01 (noise n)))))
 
-#_(defn sample-island
-  [noise x y]
-  (cliskf/vectorize
-    (cliskf/vlet [c  ((invert (scale 0.43 (offset (vnoise noise) (radius)))) x y)
-                  c1 ((offset [0.5 0.5] (s+ -0.5 (scale 0.06 noise))) x y)
-                  c2 ((offset [-0.5 -0.5] (s+ -0.5 (scale 0.08 noise))) x y)]
-      (cond
-        ;; interior biomes
-        (> -0.55  c)
-          (cond
-            (and (pos? c1) (pos? c2) (> c1 c2))
-            ;; interior jungle
-            jungle
-            (and (pos? c1) (pos? c2))
-            heavy-forest
-            (and (pos? c1) (neg? c2) (> c1 c2))
-            light-forest
-            (and (pos? c1) (neg? c2))
-            bamboo-grove
-            (and (neg? c1) (pos? c2) (> c1 c2))
-            meadow
-            (and (neg? c1) (pos? c2))
-            rocky
-            (and (neg? c1) (neg? c2) (> c1 c2))
-            swamp
-            :else
-            dirt)
-        ;; shore/yellow
-        (> -0.5  c)
-            sand
-        ;; surf/light blue
-        (> -0.42 c)
-          surf
-        ;; else ocean
-        :else
-          ocean))))
+(defn sample-island
+  [n x y]
+  (let [c  ((coerce (scale 4.3 (offset (vnoise n) (radius)))) x y)
+        c1 ((coerce (offset [0.5 0.5] (s+ -0.5 (scale 0.6 (noise n))))) x y)
+        c2 ((coerce (offset [-110.5 -640.5] (s+ -0.5 (scale 0.8 (noise n))))) x y)]
+    (cond
+      ;; interior biomes
+      (> 0.55  c)
+        (cond
+          (and (pos? c1) (pos? c2) (> c1 c2))
+          ;; interior jungle
+          :jungle
+          (and (pos? c1) (pos? c2))
+          :heavy-forest
+          (and (pos? c1) (neg? c2) (> c1 c2))
+          :light-forest
+          (and (pos? c1) (neg? c2))
+          :bamboo-grove
+          (and (neg? c1) (pos? c2) (> c1 c2))
+          :meadow
+          (and (neg? c1) (pos? c2))
+          :rocky
+          (and (neg? c1) (neg? c2) (> c1 c2))
+          :swamp
+          :else
+          :dirt)
+      ;; shore/yellow
+      (> 0.6  c)
+          :sand
+      ;; surf/light blue
+      (> 0.68 c)
+        :surf
+      ;; else ocean
+      :else
+        :ocean)))
+
+(defn map-biome [k]
+  (case k
+    :jungle \j
+    :heavy-forest \F
+    :light-forest \f
+    :bamboo-grove \b
+    :meadow \m
+    :rocky \^
+    :swamp \s
+    :dirt \.
+    :sand \,
+    :surf \=
+    :ocean \~))
 
 (defn -main [& args]
   (let [n (rn/create-noise)]
     #_(rn/print-fn (fn [x y] (rn/noise n x y)) 180 180)
-    (rn/print-fn (coerce (sample-tree n)) 180 180)
-    #_(rn/print-fn (coerce (invert (offset (vsnoise (partial rn/noise n))  (scale 0.2 (radius))))) 180 180)))
+    #_(rn/print-fn (coerce (sample-tree n)) 180 180)
+    (rn/print-fn map-biome (fn [x y] (sample-island n x y)) 180 180)
+    #_(rn/print-fn (coerce (invert (offset (vsnoise n)  (scale 0.2 (radius))))) 180 180)))
 

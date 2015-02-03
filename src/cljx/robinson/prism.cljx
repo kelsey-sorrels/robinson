@@ -132,15 +132,15 @@
 (defn sample-island
   [n x y]
   (let [c  ((coerce (scale 4.3 (offset (vnoise n) (radius)))) x y)
-        c1 ((coerce (s+ -0.5 (offset [0.5 0.5] (scale 0.6 (noise n))))) x y)
-        c2 ((coerce (s+ -0.5 (offset [-110.5 -640.5] (scale 0.8 (noise n))))) x y)
-        cgt (> c1 c2)]
+        c1 ((coerce (offset [0.5 0.5] (scale 0.6 (snoise n)))) x y)
+        c2 ((coerce (offset [-110.5 -640.5] (scale 0.8 (snoise n)))) x y)
+        cgt #+clj (> (Math/abs c1) (Math/abs c2))
+            #+cljs (> (.abs js/Math c1) (.abs js/Math c2))]
     (cond
       ;; interior biomes
       (> 0.55  c)
         (cond
           (and (pos? c1) (pos? c2) cgt)
-          ;; interior jungle
           :jungle
           (and (pos? c1) (pos? c2))
           :heavy-forest

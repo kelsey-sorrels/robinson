@@ -146,17 +146,19 @@
 ;;(def n (create-noise))
 
 (defn print-fn
-  [f width height]
+  ([f width height]
+  (print-fn (fn [v] 
+              (let [idx (if (zero? v)
+                            (dec (count ascii-chars)) 
+                            (- (count ascii-chars)
+                               (* v (count ascii-chars))))]
+                (nth ascii-chars (min (max idx 0) (dec (count ascii-chars))))))
+            f width height))
+  ([map-f f width height]
   (let [px (partition height (for [x (range (- (/ width 2)) (/ width 2))
                                    y (range (- (/ height 2)) (/ height 2))]
                                (f (/ x 10) (/ y 10))))]
     (doseq [line px]
       (println
-        (apply str (map (fn [c]
-                          (let [idx (if (zero? c)
-                                        (dec (count ascii-chars)) 
-                                        (- (count ascii-chars)
-                                           (* c (count ascii-chars))))]
-                            (nth ascii-chars (min (max idx 0) (dec (count ascii-chars))))))
-                        line))))))
+        (apply str (map map-f line)))))))
 

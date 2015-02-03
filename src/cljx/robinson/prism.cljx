@@ -132,26 +132,27 @@
 (defn sample-island
   [n x y]
   (let [c  ((coerce (scale 4.3 (offset (vnoise n) (radius)))) x y)
-        c1 ((coerce (offset [0.5 0.5] (s+ -0.5 (scale 0.6 (noise n))))) x y)
-        c2 ((coerce (offset [-110.5 -640.5] (s+ -0.5 (scale 0.8 (noise n))))) x y)]
+        c1 ((coerce (s+ -0.5 (offset [0.5 0.5] (scale 0.6 (noise n))))) x y)
+        c2 ((coerce (s+ -0.5 (offset [-110.5 -640.5] (scale 0.8 (noise n))))) x y)
+        cgt (> c1 c2)]
     (cond
       ;; interior biomes
       (> 0.55  c)
         (cond
-          (and (pos? c1) (pos? c2) (> c1 c2))
+          (and (pos? c1) (pos? c2) cgt)
           ;; interior jungle
           :jungle
           (and (pos? c1) (pos? c2))
           :heavy-forest
-          (and (pos? c1) (neg? c2) (> c1 c2))
+          (and (pos? c1) (neg? c2) cgt)
           :light-forest
           (and (pos? c1) (neg? c2))
           :bamboo-grove
-          (and (neg? c1) (pos? c2) (> c1 c2))
+          (and (neg? c1) (pos? c2) cgt)
           :meadow
           (and (neg? c1) (pos? c2))
           :rocky
-          (and (neg? c1) (neg? c2) (> c1 c2))
+          (and (neg? c1) (neg? c2) cgt)
           :swamp
           :else
           :dirt)

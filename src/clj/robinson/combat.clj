@@ -3,6 +3,7 @@
   (:use     
     clojure.pprint
     robinson.common
+    robinson.random
     robinson.world
     robinson.player
     [robinson.itemgen :exclude [-main]])

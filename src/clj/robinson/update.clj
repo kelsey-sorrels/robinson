@@ -5,6 +5,7 @@
     [clojure.string :only [lower-case]]
     clojure.contrib.core
     robinson.common
+    robinson.random
     robinson.world
     robinson.viewport
     robinson.describe
@@ -1037,56 +1038,6 @@
           state))))
     state))
 
-(defn use-stairs
-  "If there are stairs in the player's cell, change the world's `:current-place`
-   to the cell's `:dest-place` value."
-  [state]
-  (let [[player-cell x y] (player-cellxy state)
-        orig-place-id     (-> state :world :current-place)]
-    (if (contains? #{:down-stairs :up-stairs} (player-cell :type))
-      (let [dest-place-id     (player-cell :dest-place)
-            ;; manipulate state so that if there isn't a destination place, create one
-            _ (debug "dest-place-id" dest-place-id)
-            _ (debug "name" (name dest-place-id))
-            _ (debug "int" (read-string (name dest-place-id)))
-            ;; save the current place to disk
-            _                 (spit (format "save/%s.place.edn" orig-place-id)
-                                    (with-out-str (pprint (-> state :world :places orig-place-id))))
-            ;; load the place into state. From file if exists or gen a new random place.
-            state             (assoc-in state [:world :places dest-place-id]
-                                (if (.exists (io/as-file (format "save/%s.place.edn" (str dest-place-id))))
-                                  (clojure.edn/read-string {:readers {'Monster mg/map->Monster}}
-                                    (slurp (format "save/%s.place.edn" (str dest-place-id))))
-                                  (init-random-n (read-string (name dest-place-id)))))
- 
-            dest-place        (-> state :world :places dest-place-id)
-
-            ;; find the location in the destination place that points to the original place
-            dest-cellxy       (first (filter #(and (not (nil? (first %)))
-                                                 (contains? #{:up-stairs :down-stairs} ((first %) :type))
-                                                 (= ((first %) :dest-place) orig-place-id))
-                                    (with-xy dest-place)))
-            _ (debug "dest-cellxy" dest-cellxy)
-            dest-x             (second dest-cellxy)
-            dest-y             (last dest-cellxy)
-            party-pos          (adjacent-navigable-pos-extended dest-place {:x dest-x :y dest-y})]
-        (debug "dest-x" dest-x "dest-y" dest-y)
-        (debug "party-pos" party-pos)
-        (debug "npcs" (with-out-str (pprint (-> state :world :npcs))))
-        (-> state
-          ;; unload the current place
-          (dissoc-in [:world :places orig-place-id])
-          ;; change the place
-          (assoc-in [:world :current-place] (player-cell :dest-place))
-          ;; move player to cell where stairs go back to original place
-          (assoc-in [:world :player :pos] {:x dest-x :y dest-y})
-          ;; move all party members to new place too
-          (map-indexed-in-p [:world :npcs]
-                            (fn [npc] (contains? npc :in-party?))
-                            (fn [i npc] (assoc npc :pos (nth party-pos i)
-                                                   :place (player-cell :dest-place))))))
-      state)))
-
 (defn init-cursor
   "Initialize the selection cursor at the player's current location."
   [state]
@@ -1822,6 +1773,7 @@
                                y (range (- (get pos :y) (int (Math/ceil sight-distance)))
                                         (+ (get pos :y) (int (Math/ceil sight-distance))))]
                             [x y])
+        _ (info "test-cells" test-cells)
         visible-cells    (filter (fn [[x y]] (and (not (nil? (get-cell state x y)))
                                                   (not (farther-than? pos
                                                                       {:x x :y y}
@@ -1833,6 +1785,7 @@
                                                     (pos :y)
                                                     x y)))
                                  test-cells)
+        _ (info "visible-cells" visible-cells)
         dwtl             (/ (reduce (fn [acc [x y]] (+ acc (- (dec new-time)
                                                            (get (get-cell state x y) :discovered (- new-time 10000)))))
                                  0 visible-cells)
@@ -2411,8 +2364,6 @@
                            \w          [identity               :wield           false]
                            \x          [identity               :harvest         false]
                            \a          [identity               :apply           false]
-                           \>          [use-stairs             :normal          true]
-                           \<          [use-stairs             :normal          true]
                            \;          [init-cursor            :describe        false]
                            \R          [identity               :sleep           false]
                            \s          [search                 :normal          true]

@@ -1,7 +1,6 @@
 ;; Utility functions and functions for manipulating state
 (ns robinson.worldgen
   (:use 
-        robinson.common
         robinson.viewport
         robinson.world
         robinson.player
@@ -9,7 +8,10 @@
         robinson.npc
         clojure.contrib.core)
   (:require 
+            [robinson.common :as rc]
+            [robinson.random :as rr]
             [robinson.noise :as rn]
+            [robinson.prism :as rp]
             [robinson.itemgen :as ig]
             [clojure.core.async :as async]
             [clojure.java.io :as io]
@@ -17,8 +19,8 @@
             [taoensso.timbre :as timbre]
             [taoensso.timbre :as timbre]
             [pallet.thread-expr :as tx]
-            [taoensso.nippy :as nippy]))
-  ;(:import [java.io DataInputStream DataOutputStream]))
+            [taoensso.nippy :as nippy])
+  (:import [java.io DataInputStream DataOutputStream]))
 
 
 
@@ -32,128 +34,29 @@
 
 (defn line-segments [x1 y1 x2 y2]
   #_(println "line-segments" x1 y1 x2 y2)
-  (if (not (farther-than? (xy->pos x1 y1) (xy->pos x2 y2) 5))
+  (if (not (rc/farther-than? (rc/xy->pos x1 y1) (rc/xy->pos x2 y2) 5))
     ;; too short to split, return direct line betweem two points.
     [[x1 y1] [x2 y2]]
     ;; subdivide
     (let [mx       (/ (+ x1 x2) 2)
           my       (/ (+ y1 y2) 2)
-          r        (min 20 (distance (xy->pos x1 y1) (xy->pos mx my)))
+          r        (min 20 (rc/distance (rc/xy->pos x1 y1) (rc/xy->pos mx my)))
           [rmx rmy] (rand-xy-in-circle mx my (dec r))]
       (concat (line-segments x1 y1 rmx rmy)
               (line-segments rmx rmy x2 y2)))))
 
-;; noise utils
-(defn invert [s] (+ 1 (* -1 s)))
-
-(defn wrap-constant
-  [c]
-  (fn [& _]
-    (constantly c)))
-
-(defn wrap-arg
-  [xy-or-fn]
-  (cond
-    (vector? xy-or-fn)
-      (wrap-constant xy-or-fn)
-    (fn? xy-or-fn)
-      xy-or-fn))
-
-
-;(defmacro defnv
-;  [s expr]
-;  (let [args] (repeat ...
-;  `(defn ~s ~args
-
-(defn offset
-  [xy-or-fn f]
-  (let [t (type xy-or-fn)]
-  (cond
-    (vector? t) (let [[x y] xy-or-fn]
-                  (fn [[xi yi]]
-                    (f [(+ xi x) (+ yi y)])))
-    (fn? t)     (fn [[xi yi]]
-                 (let [[x y] (xy-or-fn [xi yi])]
-                   (f [(+ xi x) (+ yi y)]))))))
-
-(defn scale [s f]
-  (fn [[x y]]
-    (f [(* s x) (* s y)])))
-
-(defn center [f]
-  (fn [[x y]]
-    (offset [-0.5 -0.5] (scale 0.5 f))))
-
-(defn distance []
-  (fn [[x y]]
-    #+clj  (Math/sqrt (+ (* x x) (* y y)))
-    #+cljs (.sqrt js/Math (+ (* x x) (* y y)))))
-
-(defn distance []
-  (fn [[x y]]
-    (Math/sqrt (+ (* x x) (* y y)))))
-
-(defn center-distance []
-  (fn [[x y]]
-    (center distance)))
-
-(defn vectorize
-  [& more]
-  (vec more))
-
-(defn vsnoise
-  [noise]
-  (fn [[x y]]
-    (vectorize (snoise noise x y) (snoise noise (+ x 12.301) (+ y 70.261)))))
-
-(defn vnoise
-  [noise]
-  (fn [[x y]]
-    (vectorize (noise noise x y) (noise noise (+ x -78.678) (+ y 7.6789)))))
-
-(defn v+
-  [xy-or-fn-0 xy-or-fn-1]
-  (case
-    (and (vector xy-or-fn-0)
-         (vector xy-or-fn-1))
-      (mapv + xy-or-fn-0 xy-or-fn-1)
-    (and (vector? xy-or-fn-0)
-         (fn? xy-or-fn-1))
-      (fn [[xi yi]]
-        (let [[x0 y0] xy-or-fn-0
-              [x1 x1] (xy-or-fn-1 xi yi)]
-          [(+ x0 x1) (+ y0 y1)]))
-    (and (fn? xy-or-fn-0)
-         (vector? xy-or-fn-1))
-      (fn [[xi yi]]
-        (let [[x0 y0] (xy-or-fn-0 xi yi)
-              [x1 x1] xy-or-fn-1]
-          [(+ x0 x1) (+ y0 y1)]))
-    (and (fn? xy-or-fn-0)
-         (fn? xy-or-fn-1))
-      (fn [[xi yi]]
-        (let [[x0 y0] (xy-or-fn-0 xi yi)
-              [x1 x1] (xy-or-fn-1 xi yi)]
-          [(+ x0 x1) (+ y0 y1)]))))
-
-(defn v*
-  [s xy-or-f]
-  (case
-    (vector? xy-or-f)
-      (let [[x y] xy-or-f]
-        [(* s x) (* s y)])
-    (fn? f)
-      (fn [[xi yi]]
-        [(* s xi) (* s yi)])))
-
-(defn v-
-  [xy-or-fn-0 xy-or-fn-1]
-  (case
-    (and (vector xy-or-fn-0)
-         (vector xy-or-fn-1))
-      (mapv - xy-or-fn-0 xy-or-fn-1)
-    :else
-      (v+ xy-or-fn-0 (v* -1 xy-or-fn-1))))
+(defn add-extras
+  "Adds extras to a place like items, and special cell types
+   extras are in the format of `[[[x y] object] [[x y] object] &]`
+   objects are cells with a type and maybe items `{:type :floor :items []}`"
+  [place extras]
+  ;; create a list of functions that can be applied to assoc extras, then create a composition of
+  ;; so that setting can pass through each fn in turn.
+  #_(debug "add-extras" place extras)
+  (reduce (fn [place [[x y] & r]]
+           (let [args (concat [[y x]] r)]
+             #_(debug "assoc-in place" args)
+             (apply assoc-in place args))) place extras))
 
 
 (defn init-ocean
@@ -169,158 +72,110 @@
                 {:type :water}))))
       [])))
 
-(def jungle
-  [0.0 0.4 0.1])
-
-(def heavy-forest
-  [0.0 0.5 0.0])
-
-(def meadow
-  [0.2 0.7 0.2])
-
-(def swamp
-  [0.4 0.2 0.1])
-
-(def bamboo-grove
-  [0.2 0.7 0.0])
-
-(def light-forest
-  [0.0 0.6 0.0])
-
-(def rocky
-  [0.5 0.5 0.5])
-
-(def dirt
-  [0.3 0.2 0.1])
-
-(def sand
-  [0.7 0.6 0.0])
-
-(def surf
-  [0.0 0.5 0.6])
-
-(def ocean
-  [0.0 0.4 0.5])
-
-(defn vec->keyword
-  [v]
-  (condp = v
-    jungle       :jungle
-    heavy-forest :heavy-forest
-    meadow       :meadow
-    swamp        :swamp
-    bamboo-grove :bamboo-grove
-    light-forest :light-forest
-    rocky        :rocky
-    dirt         :dirt
-    sand         :sand
-    surf         :surf
-    ocean        :ocean))
-
-(defn sample-tree
-  (offset [-0.5 -0.5] (v+ [-0.5 -0.5 -0.5] (scale 0.01 noise))))
+(defn sample-tree [n x y]
+  ((rp/coerce (rp/offset [-0.5 -0.5] (rp/scale 0.01 (rp/noise n)))) x y))
 
 (defn sample-island
-  [noise x y]
-  (cliskf/vectorize
-    (cliskf/vlet [c  ((center (invert (offset (scale 0.43 (v* [0.5 0.5 0.5] (vsnoise noise) (distance)))))) x y)
-                  c1 ((offset [0.5 0.5] (v+ [-0.5 -0.5 -0.5] (scale 0.06 noise))) x y)
-                  c2 ((offset [-0.5 -0.5] (v+ [-0.5 -0.5 -0.5] (scale 0.08 noise))) x y)]
-      (cond
-        ;; interior biomes
-        (> -0.55  c)
-          (cond
-            (and (pos? c1) (pos? c2) (> c1 c2))
-            ;; interior jungle
-            jungle
-            (and (pos? c1) (pos? c2))
-            heavy-forest
-            (and (pos? c1) (neg? c2) (> c1 c2))
-            light-forest
-            (and (pos? c1) (neg? c2))
-            bamboo-grove
-            (and (neg? c1) (pos? c2) (> c1 c2))
-            meadow
-            (and (neg? c1) (pos? c2))
-            rocky
-            (and (neg? c1) (neg? c2) (> c1 c2))
-            swamp
-            :else
-            dirt)
-        ;; shore/yellow
-        (> -0.5  c)
-            sand
-        ;; surf/light blue
-        (> -0.42 c)
-          surf
-        ;; else ocean
-        :else
-          ocean))))
+  [n x y]
+  (let [c  ((rp/coerce (rp/scale 43.0 (rp/offset (rp/vnoise n) (rp/radius)))) x y)
+        c1 ((rp/coerce (rp/offset [0.5 0.5] (rp/scale 0.6 (rp/snoise n)))) x y)
+        c2 ((rp/coerce (rp/offset [-110.5 -640.5] (rp/scale 0.8 (rp/snoise n)))) x y)
+        cgt #+clj (> (Math/abs c1) (Math/abs c2))
+            #+cljs (> (.abs js/Math c1) (.abs js/Math c2))]
+    (cond
+      ;; interior biomes
+      (> 0.55  c)
+        (cond
+          (and (pos? c1) (pos? c2) cgt)
+          :jungle
+          (and (pos? c1) (pos? c2))
+          :heavy-forest
+          (and (pos? c1) (neg? c2) cgt)
+          :light-forest
+          (and (pos? c1) (neg? c2))
+          :bamboo-grove
+          (and (neg? c1) (pos? c2) cgt)
+          :meadow
+          (and (neg? c1) (pos? c2))
+          :rocky
+          (and (neg? c1) (neg? c2) cgt)
+          :swamp
+          :else
+          :dirt)
+      ;; shore/yellow
+      (> 0.6  c)
+          :sand
+      ;; surf/light blue
+      (> 0.68 c)
+        :surf
+      ;; else ocean
+      :else
+        :ocean)))
 
 (defn find-starting-pos [seed max-x max-y]
   (let [angle (dg/rand-nth (range (* 2 Math/PI)))
         radius (/ (min max-x max-y) 2)
-        [cx cy] [(/ max-x 2) (/ max-y 2)]
-        [x y]   [(+ (* radius (Math/cos angle)) cx)
-                 (+ (* radius (Math/sin angle)) cy)]
-        points  (line-segment [x y] [cx cy])
+        [x y]   [(* radius (Math/cos angle))
+                 (* radius (Math/sin angle))]
+        points  (line-segment [x y] [0 0])
         samples (take-nth 5 points)
-        _       (cliskp/seed-simplex-noise! seed)
+        n       (rn/create-noise (rr/create-random seed))
+        _ (info "samples" samples)
         non-water-samples (remove
           (fn [[x y]]
-            (let [s (mapv #(.calc ^clisk.IFunction % (double (/ x max-x)) (double (/ y max-y)) (double 0.0) (double 0.0))
-                              island-fns)]
-            (or (= s surf)
-                (= s ocean))))
+            (let [s (sample-island n x y)]
+              (info "sample" x y s)
+              (or (= s :surf)
+                  (= s :ocean))))
           samples)
         [sx sy] (first non-water-samples)]
-    (xy->pos sx sy)))
+    (rc/xy->pos sx sy)))
 
 (defn find-lava-terminal-pos [seed starting-pos max-x max-y]
+  {:pre [(rc/has-keys? starting-pos [:x :y])]
+   :post [(rc/has-keys? % [:x :y])]}
   (let [{x :x y :y}  starting-pos
-        player-angle (Math/atan2 (- x (/ max-x 2)) (- y (/ max-y 2)))
+        _ (info "seed" seed "starting-pos" starting-pos "max-x" max-x "max-y" max-y)
+        player-angle #+clj  (Math/atan2 (- x (/ max-x 2)) (- y (/ max-y 2)))
+                     #+cljs (.atan2 js/Math (- x (/ max-x 2)) (- y (/ max-y 2)))
         angle        (- player-angle 0.03)
         radius       (/ (min max-x max-y) 2)
-        [cx cy]      [(/ max-x 2) (/ max-y 2)]
-        [x y]        [(+ (* radius (Math/cos angle)) cx)
-                      (+ (* radius (Math/sin angle)) cy)]
-        points       (line-segment [x y] [cx cy])
+        [x y]        [(* radius #+clj  (Math/cos angle)
+                                #+cljs (.cos js/Math angle))
+                      (* radius #+clj  (Math/sin angle)
+                                #+cljs (.sin js/Math angle))]
+        points       (line-segment [x y] [0 0])
         samples       points
-        _            (cliskp/seed-simplex-noise! seed)
+        n            (rn/create-noise (rr/create-random seed))
         non-water-samples (remove
           (fn [[x y]]
-            (let [s (mapv #(.calc ^clisk.IFunction % (double (/ x max-x)) (double (/ y max-y)) (double 0.0) (double 0.0))
-                              island-fns)]
-            (or (= s surf)
-                (= s ocean))))
+            (let [s (sample-island n x y)]
+            (or (= s :surf)
+                (= s :ocean))))
           samples)
         [sx sy] (first non-water-samples)]
-    (xy->pos sx sy)))
+    (rc/xy->pos sx sy)))
 
 (defn init-island
   "Create an island block. `x` and `y` denote the coordinates of the upper left cell in the block."
-  [state x y width height max-x max-y]
-  (info "init-island" x y width height max-x max-y)
+  [state x y width height]
+  (info "init-island" x y width height)
   (let [seed                  (get-in state [:world :seed])
-        _                     (cliskp/seed-simplex-noise! seed)
+        n                     (rn/create-noise (rr/create-random seed))
         volcano-pos           (get-in state [:world :volcano-pos])
         lava-xys              (get-in state [:world :lava-points])]
-    (binding [clisk/*anti-alias* 0]
     (vec
      (pmap vec
        (partition width
          (map (fn [[x y]]
-            (let [s         (mapv #(.calc ^clisk.IFunction % (double (/ x max-x)) (double (/ y max-y)) (double 0.0) (double 0.0))
-                                      island-fns)
-                  t         (first (mapv #(.calc ^clisk.IFunction % (double (/ x max-x)) (double (/ y max-y)) (double 0.0) (double 0.0))
-                                      tree-fns))
-                  biome     (vec->keyword s)
+            (let [biome     (sample-island n x y)
+                  t         (sample-tree n x y)
                   ;_         (info biome t)
                   cell-type (case biome
                               :ocean         {:type :water}
                               :surf          {:type :surf}
                               :sand          {:type :sand}
-                              :dirt          (case (uniform-int 3)
+                              :dirt          (case (rr/uniform-int 3)
                                                0 {:type :dirt}
                                                1 {:type :gravel}
                                                2 {:type :short-grass})
@@ -387,86 +242,35 @@
                                                  {:type :short-grass}])))
                      cell (cond
                             ;; lava
-                            (not-every? #(farther-than? (xy->pos x y) (apply xy->pos %) 3) lava-xys)
+                            (not-every? #(rc/farther-than? (rc/xy->pos x y) (apply rc/xy->pos %) 3) lava-xys)
                             {:type :lava}
-                            (not (farther-than? (xy->pos x y) volcano-pos 7))
+                            (not (rc/farther-than? (rc/xy->pos x y) volcano-pos 7))
                             {:type :mountain}
                             :else cell-type)]
               ;; drop initial harvestable items
               (if (or (and (= :gravel (get cell :type))
                            (= :rocky biome)
-                           (= (uniform-int 0 50) 0))
+                           (= (rr/uniform-int 0 50) 0))
                       (and (= :tree (get cell :type))
                            (= :heavy-forest biome)
-                           (= (uniform-int 0 50) 0))
+                           (= (rr/uniform-int 0 50) 0))
                       (and (= :tall-grass (get cell :type))
                            (= :meadow biome)
-                           (= (uniform-int 0 50) 0))
+                           (= (rr/uniform-int 0 50) 0))
                       (and (= :palm-tree (get cell :type))
                            (= :jungle biome)
-                           (= (uniform-int 0 50) 0))
+                           (= (rr/uniform-int 0 50) 0))
                       (and (contains? #{:gravel :tree :palm-tree :tall-grass} (get cell :type))
-                           (= (uniform-int 0 200) 0)))
+                           (= (rr/uniform-int 0 200) 0)))
                 (assoc cell :harvestable true)
                 (if (and (= :gravel (get cell :type))
-                         (not-every? #(farther-than? (xy->pos x y) (apply xy->pos %) 10) lava-xys)
-                         (= (uniform-int 0 50) 0))
+                         (not-every? #(rc/farther-than? (rc/xy->pos x y) (apply rc/xy->pos %) 10) lava-xys)
+                         (= (rr/uniform-int 0 50) 0))
                   (assoc cell :harvestable true :near-lava true)
                   cell))))
             (for [y (range y (+ y height))
                   x (range x (+ x width))]
-              [x y]))))))))
-
-
-(defn init-random-0
-  "Create a random grid suitable for a starting level.
-   Contains a down stairs, and identifies the starting location as
-   the spot that would have been reserved for up stairs."
-  []
-  (let [place       (random-place 50 27)
-        _ (debug "place" place)
-        _ (debug "(place :up-stairs)" (place :up-stairs))
-        _ (debug "(place :down-stairs)" (place :down-stairs))
-        down-stairs (assoc-in (place :down-stairs) [1 :dest-place] :1)
-        starting-location [[(-> place :up-stairs first first)
-                            (-> place :up-stairs first second)]
-                           {:type :floor :starting-location true}]
-        _ (debug "starting-location" starting-location)
-        place       (place :place)
-        _ (debug "place" place)]
-    (add-extras place [down-stairs starting-location])))
-
-(defn init-random-n
-  "Creates a random grid suitable for a non-starting level.
-   Contains a down stairs, an up stairs, and five random items
-   placed in floor cells."
-  [level]
-  (let [place       (random-place 50 27)
-        _ (debug "place" place)
-        _ (debug "(place :up-stairs)" (place :up-stairs))
-        _ (debug "(place :down-stairs)" (place :down-stairs))
-        _ (debug "level" level)
-        _ (debug "former place id" (keyword (str (dec level))))
-        up-stairs   (assoc-in (place :up-stairs) [1 :dest-place] (keyword (str (dec level))))
-        _ (debug "up-stairs" up-stairs)
-        down-stairs (assoc-in (place :down-stairs) [1 :dest-place] (keyword (str (inc level))))
-        place       (place :place)
-        drops       [] #_(map (fn [pos]
-                           [pos {:type :floor :items [(ig/gen-item)]}])
-                           (take 5 (dg/shuffle
-                              (map (fn [[_ x y]] [x y]) (filter (fn [[cell x y]] (and (not (nil? cell))
-                                                                                      (= (cell :type) :floor)))
-                                                                (with-xy place))))))
-        cash-drops  [] #_(map (fn [pos]
-                           [pos {:type :floor :items [(ig/gen-cash (* level 10))]}])
-                           (take 5 (dg/shuffle
-                              (map (fn [[_ x y]] [x y]) (filter (fn [[cell x y]] (and (not (nil? cell))
-                                                                                      (= (cell :type) :floor)))
-                                                                (with-xy place))))))
-        _ (debug "drops" drops)
-        _ (debug "cash-drops" cash-drops)
-        _ (debug "place" place)]
-    (add-extras place (concat [down-stairs up-stairs] drops cash-drops))))
+              [x y])))))))
 
 (defn init-world
   "Create a randomly generated world.
@@ -517,13 +321,13 @@
         _                      (info "lava-points" lava-points)
         min-state              {:world {:viewport {:width width :height height}
                                         :seed seed
-                                        :volcano-pos (apply xy->pos volcano-xy)
+                                        :volcano-pos (apply rc/xy->pos volcano-xy)
                                         :lava-points lava-points}}
-        place-id               (apply xy->place-id min-state (pos->xy starting-pos))
-        [sx sy]                (pos->xy starting-pos)
+        place-id               (apply xy->place-id min-state (rc/pos->xy starting-pos))
+        [sx sy]                (rc/pos->xy starting-pos)
         [vx vy]                [(int (- sx (/ width 2))) (int (- sy (/ height 2)))]
         _ (debug "starting-pos" starting-pos)
-        place-0                (init-island min-state vx vy width height max-x max-y)
+        place-0                (init-island min-state vx vy width height)
         fruit-ids              [:red-fruit :orange-fruit :yellow-fruit :green-fruit :blue-fruit :purple-fruit :white-fruit :black-fruit]
         poisoned-fruit         (set (take (/ (count fruit-ids) 2) (dg/shuffle fruit-ids)))
         skin-identifiable      (set (take (/ (count poisoned-fruit) 2) (dg/shuffle poisoned-fruit)))
@@ -542,7 +346,7 @@
            :places {place-id place-0}
                     ;:1 (init-place-1)}
            :current-place :0_0
-           :volcano-pos (apply xy->pos volcano-xy)
+           :volcano-pos (apply rc/xy->pos volcano-xy)
            :lava-points lava-points
            :time 0
            :current-state :start
@@ -612,17 +416,16 @@
   ;; load the place into state. From file if exists or gen a new random place.
   (let [place
     (if (.exists (io/as-file (format "save/%s.place.edn" (str id))))
-      (log-time "read-string time" ;;(clojure.edn/read-string {:readers {'Monster mg/map->Monster}} s)))
+      (rc/log-time "read-string time" ;;(clojure.edn/read-string {:readers {'Monster mg/map->Monster}} s)))
         (with-open [o (io/input-stream (format "save/%s.place.edn" (str id)))]
           (nippy/thaw-from-in! (DataInputStream. o))))
       (let [[ax ay]            (place-id->anchor-xy state id)
             [v-width v-height] (viewport-wh state)
             w-width            (get-in state [:world :width])
             w-height           (get-in state [:world :height])]
-        (log-time "init-island time" (init-island state
+        (rc/log-time "init-island time" (init-island state
                                                   ax ay
-                                                  v-width v-height
-                                                 w-width w-height))))]
+                                                  v-width v-height))))]
       (info "loaded place. width:" (count (first place)) "height:" (count place))
       place))
 
@@ -638,11 +441,11 @@
 (defn unload-place
   [state id]
   (info "unloading" id)
-  (log-time "unloading"
+  (rc/log-time "unloading"
   (async/>!! save-place-chan [id (get-in state [:world :places id])])
   ;; Remove all npcs in place being unloaded
   (->
-    (reduce (fn [state npc] (if (= (apply xy->place-id state (pos->xy (get npc :pos)))
+    (reduce (fn [state npc] (if (= (apply xy->place-id state (rc/pos->xy (get npc :pos)))
                                    id)
                                 (remove-npc state npc)
                                 state))
@@ -670,12 +473,12 @@
 
 
 (defn -main [& args]
-  (let [_ (cliskp/seed-simplex-noise!)]
-    (log-time "show-time" (clisk/show island-node))
+  (let [n (rn/create-noise)]
+    nil
     #_(dorun
       (map (comp (partial apply str) println)
         (partition 70
-          (log-time "for"
+          (rc/log-time "for"
             (for [y (range 28)
                   x (range 70)
                   :let [[s _ _] (vec (map #(.calc ^clisk.IFunction % (double (/ x 70)) (double (/ y 28)) (double 0.0) (double 0.0))

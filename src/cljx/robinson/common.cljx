@@ -84,6 +84,9 @@
                                         "an"
                                         "a"))
 
+(defn has-keys? [m keys]
+  (apply = (map count [keys (select-keys m keys)])))
+
 (t/defalias Pos (t/HMap :mandatory {:x Integer :y Integer} :complete? true))
 
 (t/ann pos->xy [Pos -> (t/I (t/Vec Integer)(t/ExactCount 2))])
@@ -271,20 +274,6 @@
     (remove-first (partial = e) coll)
     (let [[l1 l2] (split-with (complement e) coll)]
       (concat l1 (rest l2)))))
-
-
-(defn add-extras
-  "Adds extras to a place like items, and special cell types 
-   extras are in the format of `[[[x y] object] [[x y] object] &]` 
-   objects are cells with a type and maybe items `{:type :floor :items []}`"
-  [place extras]
-  ;; create a list of functions that can be applied to assoc extras, then create a composition of
-  ;; so that setting can pass through each fn in turn.
-  #_(debug "add-extras" place extras)
-  (reduce (fn [place [[x y] & r]]
-           (let [args (concat [[y x]] r)]
-             #_(debug "assoc-in place" args)
-             (apply assoc-in place args))) place extras))
 
 (t/defalias HasHotkey (t/HMap :mandatory {:hotkey Character}))
 (t/defalias Item (t/HMap :mandatory {:id t/Kw :name String :name-plural String}

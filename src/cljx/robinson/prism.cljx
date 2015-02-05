@@ -127,7 +127,7 @@
       (+ s v))))
 
 (defn sample-tree [n]
-  (offset [-0.5 -0.5] (s+ -0.5 (scale 0.01 (noise n)))))
+  (offset [-0.5 -0.5] (scale 0.01 (snoise n))))
 
 (defn sample-island
   [n x y]

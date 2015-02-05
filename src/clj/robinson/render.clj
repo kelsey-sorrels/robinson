@@ -801,6 +801,7 @@
                                                                     [cell vx vy (+ v-x vx) (+ vy v-y)])
                                                                   line))
                                                    (cells-in-viewport state)))))]
+    ;(info "putting chars" characters)
     (put-chars screen characters)
     ;; draw character
     ;(debug (-> state :world :player))

@@ -114,7 +114,7 @@
 
 (defn find-starting-pos [seed max-x max-y]
   (let [angle (dg/rand-nth (range (* 2 Math/PI)))
-        radius (/ (min max-x max-y) 2)
+        radius (min max-x max-y)
         [x y]   [(* radius (Math/cos angle))
                  (* radius (Math/sin angle))]
         points  (line-segment [x y] [0 0])
@@ -302,10 +302,11 @@
   ;; Assign hotkeys to inventory and remove from remaining hotkeys
   (let [width                  80
         height                 23
-        max-x                  800
-        max-y                  800
-        x                      (/ max-x 2)
-        y                      (/ max-y 2)
+        ;; min-x and min-y are -400 and -400
+        max-x                  400
+        max-y                  400
+        x                      0
+        y                      0
         inventory              []
         remaining-hotkeys      (vec (seq "abcdefghijklmnopqrstuvwxyzABCdEFGHIJKLMNOPQRSTUVWQYZ"))
         hotkey-groups          (split-at (count inventory) remaining-hotkeys)

@@ -979,7 +979,7 @@
         selected-hotkeys (get-in state [:world :selected-hotkeys])
         start-inventory  (sg/start-inventory)]
     (clear (state :screen))
-    (put-string screen 20 5 "Pick up to three things to take:")
+    (put-string screen 20 5 "Choose up to three things to take with you:")
     (render-list screen 20 7 60 (count start-inventory)
                                 (map (fn [item] {:s (format "%c%c%s" (get item :hotkey)
                                                                        (if (contains? selected-hotkeys (get item :hotkey))

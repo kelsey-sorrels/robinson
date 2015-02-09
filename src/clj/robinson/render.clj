@@ -659,18 +659,25 @@
         [player-x player-y] (player-xy state)
         {{v-x :x v-y :y} :pos}
                        (get-in state [:world :viewport])
+        cells          (apply concat
+                         (map-indexed (fn [vy line]
+                                        (map-indexed (fn [vx cell]
+                                                       [cell vx vy (+ v-x vx) (+ vy v-y)])
+                                                     line))
+                                      (cells-in-viewport state)))
+        ;_ (info "cells" cells)
         characters     (persistent!
                          (reduce (fn [characters [cell vx vy wx wy]]
                                    ;(debug "begin-render")
                                    ;(clear (state :screen))
                                    ;;(trace "rendering place" (current-place state))
                                    ;; draw map
-                                   ;(debug "render-cell" cell vx vy wx wy)
+                                   ;(info "render-cell" cell vx vy wx wy)
                                    (if (or (nil? cell)
                                            (not (cell :discovered)))
                                      (conj! characters {:x vx :y vy :c " " :fg [0 0 0] :bg [0 0 0]})
                                      (let [cell-items (cell :items)
-                                           ;_ (info "cell" cell)
+                                           _ (info "cell" cell)
                                            out-char (apply fill-put-string-color-style-defaults
                                                       (if (and cell-items
                                                                (seq cell-items)
@@ -795,12 +802,7 @@
                                                              shaded-out-char)]
                                          (conj! characters {:x vx :y vy :c (get shaded-out-char 0) :fg (get shaded-out-char 1) :bg (get shaded-out-char 2)}))))
                                     (transient [])
-                                    (apply concat
-                                      (map-indexed (fn [vy line]
-                                                     (map-indexed (fn [vx cell]
-                                                                    [cell vx vy (+ v-x vx) (+ vy v-y)])
-                                                                  line))
-                                                   (cells-in-viewport state)))))]
+                                    cells))]
     ;(info "putting chars" characters)
     (put-chars screen characters)
     ;; draw character

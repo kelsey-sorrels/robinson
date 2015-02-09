@@ -136,13 +136,19 @@
         [x y]    [(- x ax) (- y ay)]]
     (update-in state [:world :places place-id y x] f)))
 
+(defn assoc-cell-fn
+  [state ks v]
+  {:pre [(not (nil? (get-in state ks)))]}
+  (assoc-in state ks v))
+
 (defn assoc-cell
   [state x y & keyvals]
   (let [place-id (xy->place-id state x y)
         [ax ay]  (place-id->anchor-xy state place-id)
-        [x y]    [(- x ax) (- y ay)]]
+        [px py]    [(- x ax) (- y ay)]]
+    (info "assoc-cell" "place-id" place-id "x" x "y" y "ax" ax "ay" ay "px" px "py" py "kvs" keyvals)
     (reduce (fn [state [k v]]
-              (assoc-in state [:world :places place-id y x k] v))
+              (assoc-in state [:world :places place-id py px k] v))
             state
             (partition 2 keyvals))))
 

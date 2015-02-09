@@ -124,7 +124,7 @@
          v-height    :height
          {v-x :x v-y :y} :pos}
         (get-in state [:world :viewport])]
-    (info "viewport-world-xys v-x" v-x "v-y" v-y)
+    (info "viewport-world-xys v-x" v-x "v-y" v-y "v-width" v-width "v-height" v-height)
     (for [x (range v-width)
           y (range v-height)]
       [x y (+ x v-x) (+ y v-y)])))
@@ -142,23 +142,26 @@
         ur-place-id       [(inc px) py]
         ll-place-id       [px       (inc py)]
         lr-place-id       [(inc px) (inc py)]
-        [start-x start-y] [(mod v-x v-width) (mod v-y v-height)]
+        [ax ay] (place-id->anchor-xy state lr-place-id)
+        _ (info "v-x" v-x "v-y" v-y)
+        _ (info "v-width" v-width "v-height" v-height)
+        _ (info "ax" ax "ay" ay)
+        start-x            (- v-width (- ax v-x))
+        start-y            (- v-height (- ay v-y))
+        ;start-x           (mod v-x v-width)
+        ;start-y           (mod v-y v-height)
+        ;start-x           (if (pos? v-x)
+        ;                    start-x
+        ;                    (- v-width start-x))
+        ;start-y           (if (pos? v-y)
+        ;                    start-y
+        ;                    (- v-height start-y))
+        _ (info "start-x" start-x "start-y" start-y)
         ul-place          (get-in state [:world :places ul-place-id])
         ur-place          (get-in state [:world :places ur-place-id])
         ll-place          (get-in state [:world :places ll-place-id])
-        lr-place          (get-in state [:world :places lr-place-id])]
-    ;(info "v-x" v-x "v-y" v-y)
-    ;(info "v-width" v-width "v-height" v-height)
-    ;(info "ul-place-id" ul-place-id)
-    ;(info "ur-place-id" ur-place-id)
-    ;(info "lr-place-id" lr-place-id)
-    ;(info "ll-place-id" ll-place-id)
-    ;(info "start-x" start-x "start-y" start-y)
-    ;(info "ul-place" ul-place)
-    ;(info "ur-place" ur-place)
-    ;(info "ll-place" ll-place)
-    ;(info "lr-place" lr-place)
-    (concat 
+        lr-place          (get-in state [:world :places lr-place-id])
+    cells (concat 
       (map (fn [line1 line2] (concat (subvec line1 start-x)
                                      (subvec line2 0 start-x)))
            (subvec ul-place start-y)
@@ -166,5 +169,15 @@
       (map (fn [line3 line4] (concat (subvec line3 start-x)
                                      (subvec line4 0 start-x)))
            (subvec ll-place 0 start-y)
-           (subvec lr-place 0 start-y)))))
+           (subvec lr-place 0 start-y)))]
+    (info "ul-place-id" ul-place-id)
+    (info "ur-place-id" ur-place-id)
+    (info "lr-place-id" lr-place-id)
+    (info "ll-place-id" ll-place-id)
+    ;(info "ul-place" ul-place)
+    ;(info "ur-place" ur-place)
+    ;(info "ll-place" ll-place)
+    ;(info "lr-place" lr-place)
+    ;(info "cells" cells)
+    cells))
 

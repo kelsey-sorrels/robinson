@@ -110,6 +110,10 @@
  ([hi] {:pre [(pos? hi)]} (next-int! *rnd* hi))
  ([lo hi] {:pre [(< lo hi)]} (+ lo (next-int! *rnd* (- hi lo)))))
 
+(defn uniform-double
+ ([hi] {:pre [(pos? hi)]} (* hi (next-double! *rnd*)))
+ ([lo hi] {:pre [(< lo hi)]} (+ lo (* (next-double! *rnd*) (- hi lo)))))
+
 (defn- swap [v i1 i2]
   (assoc v i2 (nth v i1) i1 (nth v i2)))
 

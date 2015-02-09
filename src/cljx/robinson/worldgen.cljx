@@ -73,13 +73,13 @@
       [])))
 
 (defn sample-tree [n x y]
-  ((rp/coerce (rp/offset [-0.5 -0.5] (rp/scale 0.01 (rp/noise n)))) x y))
+  ((rp/coerce (rp/offset [-0.5 -0.5] (rp/scale 0.1 (rp/noise n)))) x y))
 
 (defn sample-island
   [n x y]
-  (let [c  ((rp/coerce (rp/scale 43.0 (rp/offset (rp/vnoise n) (rp/radius)))) x y)
-        c1 ((rp/coerce (rp/offset [0.5 0.5] (rp/scale 0.6 (rp/snoise n)))) x y)
-        c2 ((rp/coerce (rp/offset [-110.5 -640.5] (rp/scale 0.8 (rp/snoise n)))) x y)
+  (let [c  ((rp/coerce (rp/scale 333.0 (rp/offset (rp/vnoise n) (rp/radius)))) x y)
+        c1 ((rp/coerce (rp/offset [0.5 0.5] (rp/scale 6 (rp/snoise n)))) x y)
+        c2 ((rp/coerce (rp/offset [-110.5 -640.5] (rp/scale 8 (rp/snoise n)))) x y)
         cgt #+clj (> (Math/abs c1) (Math/abs c2))
             #+cljs (> (.abs js/Math c1) (.abs js/Math c2))]
     (cond
@@ -113,14 +113,14 @@
         :ocean)))
 
 (defn find-starting-pos [seed max-x max-y]
-  (let [angle (dg/rand-nth (range (* 2 Math/PI)))
+  (let [angle (rr/uniform-double (* 2 Math/PI))
         radius (min max-x max-y)
         [x y]   [(* radius (Math/cos angle))
                  (* radius (Math/sin angle))]
         points  (line-segment [x y] [0 0])
         samples (take-nth 5 points)
         n       (rn/create-noise (rr/create-random seed))
-        _ (info "samples" samples)
+        _ (info "find-starting-pos samples" samples)
         non-water-samples (remove
           (fn [[x y]]
             (let [s (sample-island n x y)]
@@ -315,8 +315,10 @@
         ;; calculate place-id and viewport position using minimal state information
         
         starting-pos           (find-starting-pos seed max-x max-y)
+        _                      (info "starting-pos" starting-pos)
         volcano-xy             [x y]
         lava-terminal-pos      (find-lava-terminal-pos seed starting-pos max-x max-y)
+        _                      (info "volcano-xy" volcano-xy "lava-terminal-pos" lava-terminal-pos)
         lava-segments          (partition 2 (apply line-segments [(first volcano-xy) (second volcano-xy) (get lava-terminal-pos :x) (get lava-terminal-pos :y)]))
         lava-points            (map first lava-segments)
         _                      (info "lava-points" lava-points)

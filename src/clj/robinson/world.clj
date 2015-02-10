@@ -148,7 +148,7 @@
         [px py]    [(- x ax) (- y ay)]]
     (info "assoc-cell" "place-id" place-id "x" x "y" y "ax" ax "ay" ay "px" px "py" py "kvs" keyvals)
     (reduce (fn [state [k v]]
-              (assoc-in state [:world :places place-id py px k] v))
+              (assoc-cell-fn state [:world :places place-id py px k] v))
             state
             (partition 2 keyvals))))
 

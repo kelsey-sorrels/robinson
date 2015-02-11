@@ -136,9 +136,14 @@
         [x y]    [(- x ax) (- y ay)]]
     (update-in state [:world :places place-id y x] f)))
 
+(defn matching-keys
+  [m ks]
+  (let [ks-coll (map #(take % ks) (range (count ks)))]
+    (remove nil? (map #(get-in m %) ks-coll))))
+
 (defn assoc-cell-fn
   [state ks v]
-  {:pre [(not (nil? (get-in state ks)))]}
+  {:pre [(not (nil? (get-in state (butlast ks))))]}
   (assoc-in state ks v))
 
 (defn assoc-cell
@@ -148,6 +153,7 @@
         [px py]    [(- x ax) (- y ay)]]
     (info "assoc-cell" "place-id" place-id "x" x "y" y "ax" ax "ay" ay "px" px "py" py "kvs" keyvals)
     (reduce (fn [state [k v]]
+              #_(info "matching-keys" (matching-keys state [:world :places place-id py px k]))
               (assoc-cell-fn state [:world :places place-id py px k] v))
             state
             (partition 2 keyvals))))

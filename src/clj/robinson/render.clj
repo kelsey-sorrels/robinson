@@ -677,7 +677,7 @@
                                            (not (cell :discovered)))
                                      (conj! characters {:x vx :y vy :c " " :fg [0 0 0] :bg [0 0 0]})
                                      (let [cell-items (cell :items)
-                                           _ (info "cell" cell)
+                                           ;_ (info "cell" cell)
                                            out-char (apply fill-put-string-color-style-defaults
                                                       (if (and cell-items
                                                                (seq cell-items)

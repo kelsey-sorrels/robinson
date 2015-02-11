@@ -110,7 +110,12 @@
    dies and a new game is started."
   [state]
   (-> state
-    (assoc :world (init-world (System/currentTimeMillis)))
+    (assoc :world (loop []
+                    (if-let [w (try
+                                 (init-world (System/currentTimeMillis))
+                                 (catch Throwable t nil))]
+                      w
+                      (recur))))
     (load-unload-places)
     (as-> state
       (reduce (fn [state _] (add-npcs state))

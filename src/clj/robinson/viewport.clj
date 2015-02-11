@@ -162,8 +162,17 @@
         ll-place          (get-in state [:world :places ll-place-id])
         lr-place          (get-in state [:world :places lr-place-id])
     cells (concat 
-      (map (fn [line1 line2] (concat (subvec line1 start-x)
-                                     (subvec line2 0 start-x)))
+      (map (fn [line1 line2]
+           (when-not (vector? line1)
+              (info "line1 not vector" line1)
+              (throw (Exception. (spit line1))))
+           (when-not (vector? line2)
+              (info "line2 not vector" line2)
+              (throw (Exception. spit line2)))
+
+             (concat (subvec line1 start-x)
+                     (subvec line2 0 start-x)))
+           
            (subvec ul-place start-y)
            (subvec ur-place start-y))
       (map (fn [line3 line4] (concat (subvec line3 start-x)
@@ -175,9 +184,13 @@
     (info "lr-place-id" lr-place-id)
     (info "ll-place-id" ll-place-id)
     ;(info "ul-place" ul-place)
+    ;(info "\n\n")
     ;(info "ur-place" ur-place)
+    ;(info "\n\n")
     ;(info "ll-place" ll-place)
+    ;(info "\n\n")
     ;(info "lr-place" lr-place)
+    ;(info "\n\n")
     ;(info "cells" cells)
     cells))
 

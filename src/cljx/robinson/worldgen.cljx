@@ -78,8 +78,8 @@
 (defn sample-island
   [n x y]
   (let [c  ((rp/coerce (rp/scale 333.0 (rp/offset (rp/vnoise n) (rp/radius)))) x y)
-        c1 ((rp/coerce (rp/offset [0.5 0.5] (rp/scale 6 (rp/snoise n)))) x y)
-        c2 ((rp/coerce (rp/offset [-110.5 -640.5] (rp/scale 8 (rp/snoise n)))) x y)
+        c1 ((rp/coerce (rp/offset [0.5 0.5] (rp/scale 22 (rp/snoise n)))) x y)
+        c2 ((rp/coerce (rp/offset [-110.5 -640.5] (rp/scale 26 (rp/snoise n)))) x y)
         cgt #+clj (> (Math/abs c1) (Math/abs c2))
             #+cljs (> (.abs js/Math c1) (.abs js/Math c2))]
     (cond

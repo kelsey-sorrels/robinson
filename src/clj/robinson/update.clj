@@ -250,7 +250,7 @@
                                :down-right 1
                                0))
         target-cell (get-cell state target-x target-y)]
-    (info "moving to" (get target-cell :type))
+    (info "moving to" target-x target-y "type:" (get target-cell :type))
     (info "inside-safe-zone?" (xy-in-safe-zone? state target-x target-y) target-x target-y)
     (info "not collide?" (not (collide? state target-x target-y {:include-npcs? false})))
     (info "not mounted-on-raft?" (not (player-mounted-on-raft? state)))

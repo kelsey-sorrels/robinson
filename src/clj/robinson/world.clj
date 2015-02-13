@@ -114,6 +114,13 @@
   (doall 
     (pmap (fn [e] (apply f e)) (with-xy grid))))
 
+(defn matching-keys
+  [m ks]
+  (let [ks-coll (map #(take % ks) (range (inc (count ks))))]
+    (vec (last (remove nil? (map #(if-not (nil? (get-in m %))
+                         %
+                         nil) ks-coll))))))
+
 (defn get-cell
   "Retrieve the cell at the position `[x y]` in absolute world coordinates. If `[x y]` is outside the bounds
    of the in-memory places, return `nil`."
@@ -124,10 +131,11 @@
    (let [[ax ay]  (place-id->anchor-xy state place-id)]
      (get-cell state place-id ax ay x y)))
   ([state place-id ax ay x y]
-  ;(info "get-cell" place-id ax ay x y)
-   (let [[x y]    [(- x ax) (- y ay)]]
+  (info "get-cell" place-id ax ay x y)
+   (let [[px py]    [(- x ax) (- y ay)]]
      ;(info "get-cell" x y)
-     (get-in state [:world :places place-id y x]))))
+     (info "matching-keys" (matching-keys state [:world :places place-id py px]))
+     (get-in state [:world :places place-id py px]))))
 
 (defn update-cell
   [state x y f]
@@ -135,11 +143,6 @@
         [ax ay]  (place-id->anchor-xy state place-id)
         [x y]    [(- x ax) (- y ay)]]
     (update-in state [:world :places place-id y x] f)))
-
-(defn matching-keys
-  [m ks]
-  (let [ks-coll (map #(take % ks) (range (count ks)))]
-    (remove nil? (map #(get-in m %) ks-coll))))
 
 (defn assoc-cell-fn
   [state ks v]

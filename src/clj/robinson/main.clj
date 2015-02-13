@@ -13,6 +13,7 @@
             [clojure.stacktrace :as st]
             [robinson.swingterminal :as swingterminal]
             [clojure.java.io :as io]
+            [clojure.pprint :as pp]
             clojure.edn
             [taoensso.timbre :as timbre]
             [taoensso.nippy :as nippy]
@@ -33,8 +34,8 @@
     (info "World saved at time" (get-in state [:world :time]))
     #_(as-> state state
       (get state :world)
-      (prn-str state)
-      (spit "save/world.edn" state))
+      (pp/write state :stream nil)
+      (spit "save/world.edn.out" state))
     (try
       (with-open [o (io/output-stream "save/world.edn")]
         (nippy/freeze-to-out! (DataOutputStream. o) (get state :world)))

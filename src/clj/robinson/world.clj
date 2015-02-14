@@ -131,9 +131,8 @@
    (let [[ax ay]  (place-id->anchor-xy state place-id)]
      (get-cell state place-id ax ay x y)))
   ([state place-id ax ay x y]
-  (info "get-cell" place-id ax ay x y)
    (let [[px py]    [(- x ax) (- y ay)]]
-     ;(info "get-cell" x y)
+     (info "get-cell" place-id ax ay x y px py)
      (info "matching-keys" (matching-keys state [:world :places place-id py px]))
      (get-in state [:world :places place-id py px]))))
 
@@ -154,7 +153,7 @@
   (let [place-id (xy->place-id state x y)
         [ax ay]  (place-id->anchor-xy state place-id)
         [px py]    [(- x ax) (- y ay)]]
-    (info "assoc-cell" "place-id" place-id "x" x "y" y "ax" ax "ay" ay "px" px "py" py "kvs" keyvals)
+    #_(info "assoc-cell" "place-id" place-id "x" x "y" y "ax" ax "ay" ay "px" px "py" py "kvs" keyvals)
     (reduce (fn [state [k v]]
               #_(info "matching-keys" (matching-keys state [:world :places place-id py px k]))
               (assoc-cell-fn state [:world :places place-id py px k] v))

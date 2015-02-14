@@ -54,10 +54,10 @@
     ;(info y)
     ;(info v-height)
     [(if (neg? x)
-       (dec (int (/ x v-width)))
+       (dec (int (/ (inc x) v-width)))
        (int (/ x v-width)))
      (if (neg? y)
-       (dec (int (/ y v-height)))
+       (dec (int (/ (inc y) v-height)))
        (int (/ y v-height)))]))
 
 (defn get-place

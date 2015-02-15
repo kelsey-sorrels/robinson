@@ -79,7 +79,7 @@
   :jvm-opts [
              ;"-agentpath:/home/santos/bin/yjp-2014-build-14096/bin/linux-x86-64/libyjpagent.so"
              "-Xdebug"
-             "-Xrunjdwp:transport=dt_socket,server=y,suspend=n"
+             "-Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=5005"
              "-XX:+UseParNewGC"
              "-XX:+UseConcMarkSweepGC"
              "-XX:+CMSConcurrentMTEnabled"

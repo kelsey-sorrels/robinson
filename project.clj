@@ -20,6 +20,7 @@
                  [org.clojars.vishk/algotools "0.1.0"]
                  [org.clojure/data.json "0.2.5"]
                  [clj-http "1.0.1"]
+                 [cljs-webgl "0.1.5-SNAPSHOT"]
                  [com.palletops/thread-expr "1.3.0"]
                  [ns-tracker "0.2.2"]
                  [tinter "0.1.1-SNAPSHOT"]

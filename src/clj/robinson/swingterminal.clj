@@ -1,6 +1,7 @@
 ;; Functions for rendering state to screen
 (ns robinson.swingterminal
-  (:use     robinson.common)
+  (:use     robinson.common
+            robinson.aterminal)
   (:require [taoensso.timbre :as timbre])
   (:import  
             java.util.concurrent.LinkedBlockingQueue
@@ -35,17 +36,6 @@
 (defn mac-os?
   []
   (not (nil? (re-find #"[Mm]ac" (System/getProperty "os.name")))))
-
-(defprotocol ATerminal
-  (get-size [this])
-  (put-string [this x y string]
-              [this x y string fg bg]
-              [this x y string fg bg style])
-  (put-chars [this characters])
-  (wait-for-key [this])
-  (set-cursor [this xy])
-  (refresh [this])
-  (clear [this]))
 
 ;; Normally this would be a record, but until http://dev.clojure.org/jira/browse/CLJ-1224 is fixed
 ;; it is not performant to memoize records because hashCode values are not cached and are recalculated

@@ -28,7 +28,7 @@
                  [dorothy "0.0.6"]
                  [com.taoensso/timbre "3.3.1"]
                  [com.taoensso/nippy "2.7.1"]
-                 [org.clojars.folcon/clojure-lanterna "0.9.5"]]
+                 [rm-hull/monet "0.2.1"]]
   :main robinson.core
   :repl-init robinson.core
   :source-paths

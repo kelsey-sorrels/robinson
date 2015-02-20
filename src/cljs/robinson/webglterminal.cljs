@@ -2,7 +2,14 @@
 (ns robinson.webglterminal
   (:use     robinson.common
             robinson.aterminal)
-  (:require [taoensso.timbre :as timbre]))
+  (:require [taoensso.timbre :as timbre]
+            [monet.canvas :as canvas]))
+
+(def character-canvas-dom (.getElementById js/document "character-canvas"))
+(def character-canvas (canvas/init character-canvas-dom "2d"))
+
+(def terminal-canvas-dom (.getElementById js/document "terminal-canvas"))
+(def terminal-canvas (canvas/init terminal-canvas-dom "2d"))
 
 (timbre/refer-timbre)
 (set! *warn-on-reflection* true)
@@ -35,6 +42,7 @@
                "\u2500"
                "\u2500")))
 
+;; A sequence of [\character x y] where [x y] is the position in the character atlas.
 (def character-layout
   (let [character-matrix (partition (int (inc (.sqrt js/Math (count characters)))) characters)]
     (mapcat
@@ -45,6 +53,13 @@
                                   line))
                    character-matrix))))
 
+;; A map from \character to [x1 y1 x2 y2] in the character atlas where
+;;    [x1 y1]
+;;    +--------+
+;;    |        |
+;;    |        |
+;;    +--------+
+;;              [x2 y2]
 (def character->pos
   (reduce (fn [m [c x y]]
             (assoc m c [x y (+ x 12) (+ y 16)]))
@@ -83,12 +98,15 @@
           _                (info "Using font" (.getFontName normal-font))
           default-fg-color (Color. (long default-fg-color-r) (long default-fg-color-g) (long default-fg-color-b))
           default-bg-color (Color. (long default-bg-color-g) (long default-bg-color-g) (long default-bg-color-b))
+          ;; create texture atlas
+          _                (doseq [[c x y] character->pos]
+                             (canvas/text character-canvas {:text (str c) :x x :y y}))
           character-map    (atom (vec (repeat rows (vec (repeat columns (make-terminal-character \space default-fg-color default-bg-color #{}))))))
           cursor-xy        (atom nil)
-          ;; draws a character to an image and returns the image. 
-          glyph-cache      (memoize (fn [component font-metrics highlight char-width char-height c]
-                             (info "Creating glyph for" c)
-                             (let [glyph-image                       (.createImage component char-width char-height)
+          ;; draws a character using webgl. 
+          draw-character   (fn [ctx c [x y]]
+                             (info "Drawing character" c)
+                             #_(let [glyph-image                       (.createImage component char-width char-height)
                                    offscreen-graphics-2d ^Graphics2D (.getGraphics glyph-image)
                                    x                                 0
                                    y                                 (long (- char-height (.getDescent font-metrics)))
@@ -121,7 +139,7 @@
                                                 char-width
                                                 y))))
                                (.dispose offscreen-graphics-2d)
-                               glyph-image)))
+                               glyph-image))
           key-queue        (LinkedBlockingQueue.)
           on-key-fn        (or on-key-fn
                                (fn default-on-key-fn [k]

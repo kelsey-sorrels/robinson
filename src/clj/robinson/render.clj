@@ -25,7 +25,7 @@
             [robinson.itemgen :as ig]
             [robinson.swingterminal :as swingterminal])
   (:refer   clojure.set)
-  (:import robinson.swingterminal.ATerminal))
+  (:import robinson.aterminal.ATerminal))
 
 
 (timbre/refer-timbre)
@@ -92,11 +92,11 @@
      [string fg bg styles])))
 
 (defn put-string
-  ([^robinson.swingterminal.ATerminal screen x y string]
+  ([^robinson.aterminal.ATerminal screen x y string]
      (put-string screen x y string :white :black #{}))
-  ([^robinson.swingterminal.ATerminal screen x y string fg bg]
+  ([^robinson.aterminal.ATerminal screen x y string fg bg]
      (put-string screen x y string fg bg #{}))
-  ([^robinson.swingterminal.ATerminal screen x y string fg bg styles]
+  ([^robinson.aterminal.ATerminal screen x y string fg bg styles]
    {:pre [(clojure.set/superset? #{:underline :bold} styles)]}
    (let [fg        (color->rgb fg)
          bg        (color->rgb bg)]
@@ -109,19 +109,19 @@
                   styles))))
       
 (defn put-chars
-  [^robinson.swingterminal.ATerminal screen characters]
+  [^robinson.aterminal.ATerminal screen characters]
   (.put-chars screen characters))
 
 (defn get-size
-  [^robinson.swingterminal.ATerminal screen]
+  [^robinson.aterminal.ATerminal screen]
   (.get-size screen))
 
 (defn refresh
-  [^robinson.swingterminal.ATerminal screen]
+  [^robinson.aterminal.ATerminal screen]
   (.refresh screen))
 
 (defn clear
-  [^robinson.swingterminal.ATerminal screen]
+  [^robinson.aterminal.ATerminal screen]
   (.clear screen))
 
 (defn class->rgb

@@ -12,6 +12,7 @@
             [clojure.data.generators :as dg]
             [clojure.stacktrace :as st]
             [robinson.swingterminal :as swingterminal]
+            [robinson.aterminal :as aterminal]
             [clojure.java.io :as io]
             [clojure.pprint :as pp]
             clojure.edn
@@ -66,7 +67,7 @@
   ([state]
    (let [keyin (or (when (= (current-state state) :sleep)
                      \.)
-                   (swingterminal/wait-for-key (state :screen)))]
+                   (aterminal/wait-for-key (state :screen)))]
      (if keyin
        (tick state keyin)
        state)))

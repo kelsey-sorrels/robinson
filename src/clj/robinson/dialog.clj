@@ -3,9 +3,7 @@
   (:use robinson.common
         dorothy.core)
   (:require ;[lanterna.screen :as s]
-            [taoensso.timbre :as timbre])
-  (:import com.googlecode.lanterna.screen.Screen
-           com.googlecode.lanterna.terminal.swing.SwingTerminal))
+            [taoensso.timbre :as timbre]))
 
 (timbre/refer-timbre)
 
@@ -104,7 +102,7 @@
 ;; Functions for running through npc dialog in a lanterna screen.
 ;; ==============================================================
 
-(defn run-dialog
+#_(defn run-dialog
   "Runs through a dialog indefinitely."
   [dialog]
   (let [fsm (dialog->fsm dialog)
@@ -128,7 +126,7 @@
         (recur (step-fsm state fsm input))))
      (.stopScreen screen)))
 
-(defn -main
+#_(defn -main
   "Draw a sample dialog tree and then run through it using a lanterna screen."
   [& args]
   (let [dialog {:initial-state :start-not-given

@@ -19,6 +19,7 @@
                  [org.clojure/clojure-contrib "1.2.0"]
                  [org.clojars.vishk/algotools "0.1.0"]
                  [org.clojure/data.json "0.2.5"]
+                 [org.clojure/clojurescript "0.0-2197"]
                  [clj-http "1.0.1"]
                  [cljs-webgl "0.1.5-SNAPSHOT"]
                  [com.palletops/thread-expr "1.3.0"]
@@ -42,7 +43,7 @@
   ;:auto-clean false
 
   :cljsbuild {:builds [{:source-paths ["src/cljs"
-                                       "target/generated/src/cljs"]
+                                       "target/generated-src/cljs"]
                         :compiler {:output-to "target/main.js"
                                    :pretty-print true}}]}
   :cljx

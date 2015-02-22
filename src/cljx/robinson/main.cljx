@@ -11,7 +11,8 @@
   (:require 
             [clojure.data.generators :as dg]
             [clojure.stacktrace :as st]
-            [robinson.swingterminal :as swingterminal]
+            #+clj  [robinson.swingterminal :as swingterminal]
+            #+cljs [robinson.webglterminal :as webglterminal]
             [robinson.aterminal :as aterminal]
             [clojure.java.io :as io]
             [clojure.pprint :as pp]
@@ -145,7 +146,13 @@
         settings (clojure.edn/read-string
                    (slurp "config/settings.edn"))
         terminal  (or screen
+                      #+clj
                       (swingterminal/make-terminal 80 24 [255 255 255] [0 0 0] nil
+                                               (get settings :windows-font)
+                                               (get settings :else-font)
+                                               (get settings :font-size))
+                      #+clj
+                      (webglterminal/make-terminal 80 24 [255 255 255] [0 0 0] nil
                                                (get settings :windows-font)
                                                (get settings :else-font)
                                                (get settings :font-size)))

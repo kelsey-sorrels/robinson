@@ -151,7 +151,7 @@
                                                (get settings :windows-font)
                                                (get settings :else-font)
                                                (get settings :font-size))
-                      #+clj
+                      #+cljs
                       (webglterminal/make-terminal 80 24 [255 255 255] [0 0 0] nil
                                                (get settings :windows-font)
                                                (get settings :else-font)

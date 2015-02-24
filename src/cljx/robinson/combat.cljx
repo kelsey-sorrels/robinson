@@ -1,14 +1,11 @@
 ;; Functions that manipulate state to do what the user commands.
 (ns robinson.combat
-  (:use     
-    clojure.pprint
-    robinson.common
-    robinson.random
-    robinson.world
-    robinson.player
-    [robinson.itemgen :exclude [-main]])
-  (:require clojure.pprint
-            clojure.contrib.core
+  (:require [clojure.pprint :refer :all]
+            [robinson.common :refer :all]
+            [robinson.random :refer :all]
+            [robinson.world :refer :all]
+            [robinson.player :refer :all]
+            [robinson.itemgen :refer :all :exclude [-main]]
             [clojure.data.generators :as dg]
             [clojure.stacktrace :as st]
             [taoensso.timbre :as timbre]

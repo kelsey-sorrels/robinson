@@ -1,27 +1,26 @@
 ;; Functions that manipulate state to do what the user commands.
 (ns robinson.update
-  (:use     
-    clojure.pprint
-    [clojure.string :only [lower-case]]
-    clojure.contrib.core
-    robinson.common
-    robinson.random
-    robinson.world
-    robinson.viewport
-    robinson.describe
-    robinson.player
-    [robinson.dialog :exclude [-main]]
-    robinson.npc
-    [robinson.combat :exclude [-main]]
-    robinson.crafting
-    [robinson.magic :only [do-magic magic-left magic-down     
-                                  magic-up magic-right magic-inventory]]
-    [robinson.worldgen :exclude [-main]]
-    robinson.lineofsight)
   (:require 
             [robinson.itemgen  :as ig]
             [robinson.monstergen :as mg]
             [robinson.startgame :as sg]
+            [clojure.pprint :refer :all]
+            [clojure.string :refer [lower-case]]
+            [clojure.contrib.core :refer :all]
+            [robinson.common :refer :all]
+            [robinson.random :refer :all]
+            [robinson.world :refer :all]
+            [robinson.viewport :refer :all]
+            [robinson.describe :refer :all]
+            [robinson.player :refer :all]
+            [robinson.dialog :refer :all :exclude [-main]]
+            [robinson.npc :refer :all]
+            [robinson.combat :refer :all :exclude [-main]]
+            [robinson.crafting :refer :all]
+            [robinson.magic :refer [do-magic magic-left magic-down
+                                    magic-up magic-right magic-inventory]]
+            [robinson.worldgen :refer :all :exclude [-main]]
+            [robinson.lineofsight :refer :all]
             clojure.pprint
             clojure.core.memoize
             clojure.edn

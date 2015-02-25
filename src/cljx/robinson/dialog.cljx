@@ -1,9 +1,8 @@
 ;; Functions for drawing dialog trees as finite state machines
 (ns robinson.dialog
-  (:use robinson.common
-        dorothy.core)
-  (:require ;[lanterna.screen :as s]
-            [taoensso.timbre :as timbre]))
+  (:require [taoensso.timbre :as timbre]
+            [robinson.common :refer :all]
+            [dorothy.core :refer :all]))
 
 (timbre/refer-timbre)
 

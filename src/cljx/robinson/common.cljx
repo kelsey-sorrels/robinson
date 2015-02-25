@@ -1,8 +1,8 @@
 ;; Utility functions and functions for manipulating state
 (ns robinson.common
-  (:use     clojure.contrib.core)
   (:require [clojure.data.generators :as dg]
             [clojure.core.typed :as t]
+            [clojure.contrib.core :refer :all]
             [taoensso.timbre :as timbre]
             [pallet.thread-expr :as tx]))
 

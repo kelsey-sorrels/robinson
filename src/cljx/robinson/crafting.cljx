@@ -1,12 +1,12 @@
 ;; Functions for generating random items.
 (ns robinson.crafting
-  (:use     robinson.common
-            robinson.world
-            robinson.itemgen
-            robinson.player)
   (:require [clojure.core.typed :as t]
             [pallet.thread-expr :as tx]
-            [taoensso.timbre :as timbre]))
+            [taoensso.timbre :as timbre]
+            [robinson.common :refer :all]
+            [robinson.world :refer :all]
+            [robinson.itemgen :refer :all]
+            [robinson.player :refer :all]))
 
 (timbre/refer-timbre)
 

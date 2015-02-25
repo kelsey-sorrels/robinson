@@ -1,8 +1,8 @@
 ;; Functions for making random noise
 (ns robinson.noise
-  (:use     clojure.contrib.core)
   (:require [robinson.random :as rr]
-            [taoensso.timbre :as timbre]))
+            [taoensso.timbre :as timbre]
+            [clojure.contrib.core :refer :all]))
 
 (timbre/refer-timbre)
 

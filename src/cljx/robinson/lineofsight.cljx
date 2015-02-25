@@ -1,8 +1,8 @@
 (ns robinson.lineofsight
-  (:use robinson.common
-        robinson.world)
   (:require [clojure.contrib.math :as math]
-            clojure.pprint))
+            clojure.pprint
+            [robinson.common :refer :all]
+            [robinson.world  :refer :all]))
 
 ;; The functions here can severely slow down the game if 
 ;; implemented poorly. Reflection can slow down evaluation,

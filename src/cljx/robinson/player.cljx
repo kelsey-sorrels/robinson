@@ -1,9 +1,9 @@
 ;; Functions for manipulating player state
 (ns robinson.player
-  (:use     robinson.common)
   (:require [clojure.data.generators :as dg]
             [taoensso.timbre :as timbre]
-            [pallet.thread-expr :as tx]))
+            [pallet.thread-expr :as tx]
+            [robinson.common :refer :all]))
 
 (timbre/refer-timbre)
 

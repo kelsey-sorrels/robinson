@@ -1,15 +1,15 @@
 ;; Functions for querying and manipulating npc state
 (ns robinson.npc
-  (:use clojure.walk
-        robinson.common
-        robinson.player
-        robinson.viewport
-        robinson.world
-        [robinson.monstergen :exclude [-main]]
-        [robinson.dialog :exclude [-main]])
   (:require [robinson.random :as rr]
-            [clojure.data.generators :as dg]
-            [taoensso.timbre :as timbre]))
+    [clojure.data.generators :as dg]
+    [taoensso.timbre :as timbre]
+    [clojure.walk :refer :all]
+    [robinson.common :refer :all]
+    [robinson.player :refer :all]
+    [robinson.viewport :refer :all]
+    [robinson.world :refer :all]
+    [robinson.monstergen :refer :all :exclude [-main]]
+    [robinson.dialog :refer :all :exclude [-main]]))
 
 (timbre/refer-timbre)
 

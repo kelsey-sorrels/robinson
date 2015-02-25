@@ -1,18 +1,17 @@
 ;; Utility functions and functions for manipulating state
 (ns robinson.worldgen
-  (:use 
-        robinson.viewport
-        robinson.world
-        robinson.player
-        [robinson.lineofsight :exclude [-main]]
-        robinson.npc
-        clojure.contrib.core)
   (:require 
             [robinson.common :as rc]
             [robinson.random :as rr]
             [robinson.noise :as rn]
             [robinson.prism :as rp]
             [robinson.itemgen :as ig]
+            [robinson.viewport :refer :all]
+            [robinson.world :refer :all]
+            [robinson.player :refer :all]
+            [robinson.lineofsight :refer :all :exclude [-main]]
+            [robinson.npc :refer :all]
+            [clojure.contrib.core :refer :all]
             [clojure.core.async :as async]
             [clojure.java.io :as io]
             [clojure.data.generators :as dg]
@@ -20,9 +19,8 @@
             [taoensso.timbre :as timbre]
             [pallet.thread-expr :as tx]
             [taoensso.nippy :as nippy])
+  #+clj
   (:import [java.io DataInputStream DataOutputStream]))
-
-
 
 (timbre/refer-timbre)
 

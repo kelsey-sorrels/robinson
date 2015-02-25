@@ -1,7 +1,7 @@
 ;; Functions for manipulating player state
 (ns robinson.endgame
-  (:use     robinson.common)
-  (:require [robinson.monstergen :as mg]
+  (:require [robinson.common :refer :all]
+            [robinson.monstergen :as mg]
             [robinson.itemgen :as ig]
             [taoensso.timbre :as timbre]
             [clojure.data.generators :as dg]

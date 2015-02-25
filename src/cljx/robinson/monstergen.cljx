@@ -1,9 +1,9 @@
 ;; Functions for generating random monsters
 (ns robinson.monstergen
-  (:use     robinson.common)
   (:require [clojure.math.combinatorics :as combo]
             [clojure.data.generators :as dg]
-            [taoensso.timbre :as timbre]))
+            [taoensso.timbre :as timbre]
+            [robinson.common :refer :all]))
 
 (timbre/refer-timbre)
 

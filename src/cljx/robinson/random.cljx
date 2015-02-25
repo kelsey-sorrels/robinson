@@ -1,7 +1,7 @@
 ;; Utility functions and functions for manipulating state
 (ns robinson.random
-  (:use     clojure.contrib.core)
-  (:require [clojure.data.generators :as dg]
+  (:require [clojure.contrib.core :refer :all]
+            [clojure.data.generators :as dg]
             [clojure.core.typed :as t]
             [taoensso.timbre :as timbre]
             [pallet.thread-expr :as tx]))

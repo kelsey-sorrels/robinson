@@ -1,15 +1,16 @@
 ;; Utility functions and functions for manipulating state
 (ns robinson.world
-  (:use     clojure.contrib.core
-            robinson.common
-            robinson.player
-            robinson.viewport)
   (:require [clojure.data.generators :as dg]
             [clojure.core.async :as async]
             [clojure.java.io :as io]
             [taoensso.timbre :as timbre]
             [pallet.thread-expr :as tx]
-            [taoensso.nippy :as nippy])
+            [taoensso.nippy :as nippy]
+            [clojure.contrib.core :refer :all]
+            [robinson.common :refer :all]
+            [robinson.player :refer :all]
+            [robinson.viewport :refer :all])
+  #+clj
   (:import [java.io DataInputStream DataOutputStream]))
 
 

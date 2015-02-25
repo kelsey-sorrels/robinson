@@ -1,8 +1,7 @@
 ;; Utility functions and functions for manipulating vector and scalar fields
 (ns robinson.prism
-  (:use 
-        robinson.common)
   (:require 
+            [robinson.common :refer :all]
             [robinson.noise :as rn]
             [taoensso.timbre :as timbre]))
 

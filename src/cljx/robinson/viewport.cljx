@@ -1,8 +1,8 @@
 ;; Utility functions and functions for manipulating state
 (ns robinson.viewport
-  (:use     clojure.contrib.core
-            robinson.player)
-  (:require [ clojure.data.generators :as dg]
+  (:require [clojure.contrib.core :refer :all]
+            [clojure.data.generators :as dg]
+            [robinson.player :refer :all]
             [taoensso.timbre :as timbre]
             [pallet.thread-expr :as tx]))
 

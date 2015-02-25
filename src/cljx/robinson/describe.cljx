@@ -1,16 +1,15 @@
 ;; Functions that help construct description messages.
 (ns robinson.describe
-  (:use
-    [clojure.string :only [lower-case]]
-    clojure.contrib.core
-    robinson.common
-    robinson.world
-    robinson.npc
-    robinson.player)
   (:require
     [robinson.itemgen  :as ig]
     [robinson.monstergen :as mg]
-    [taoensso.timbre :as timbre]))
+    [taoensso.timbre :as timbre]
+    [clojure.string :refer [lower-case]]
+    [clojure.contrib.core :refer :all]
+    [robinson.common :refer :all]
+    [robinson.world :refer :all]
+    [robinson.npc :refer :all]
+    [robinson.player :refer :all]))
 
 (timbre/refer-timbre)
 

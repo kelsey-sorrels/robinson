@@ -1,7 +1,7 @@
 ;; Functions for helping with start of game
 (ns robinson.startgame
-  (:use     robinson.common)
-  (:require [robinson.monstergen :as mg]
+  (:require [robinson.common :refer :all]
+            [robinson.monstergen :as mg]
             [robinson.itemgen :as ig]
             [clojure.data.generators :as dg]
             [taoensso.timbre :as timbre]

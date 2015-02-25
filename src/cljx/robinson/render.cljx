@@ -1,31 +1,32 @@
 ;; Functions for rendering state to screen
 (ns robinson.render
-  (:import  (java.awt Color Image)
-            (java.awt.image BufferedImage)
-            (javax.swing ImageIcon))
-  (:use     robinson.common
-            robinson.world
-            robinson.viewport
-            robinson.player
-            robinson.endgame
-            robinson.magic
-            robinson.crafting
-            [robinson.itemgen :only [can-be-wielded?
-                                     id->name]]
-            [robinson.lineofsight :exclude [-main]]
-            [robinson.dialog :exclude [-main]]
-            robinson.npc
-            tinter.core
-            [clojure.pprint :only [print-table]])
   (:require 
             [clojure.reflect :as r]
             [clojure.data.generators :as dg]
             [taoensso.timbre :as timbre]
             [robinson.startgame :as sg]
             [robinson.itemgen :as ig]
-            [robinson.swingterminal :as swingterminal])
+            [robinson.swingterminal :as swingterminal]
+            [robinson.common :refer :all]
+            [robinson.world :refer :all]
+            [robinson.viewport :refer :all]
+            [robinson.player :refer :all]
+            [robinson.endgame :refer :all]
+            [robinson.magic :refer :all]
+            [robinson.crafting :refer :all]
+            [robinson.itemgen :refer [can-be-wielded?
+                                      id->name]]
+            [robinson.lineofsight :refer :all :exclude [-main]]
+            [robinson.dialog :refer :all :exclude [-main]]
+            [robinson.npc :refer :all]
+            [tinter.core :refer :all]
+            [clojure.pprint :only [print-table]])
   (:refer   clojure.set)
-  (:import robinson.aterminal.ATerminal))
+  (:import robinson.aterminal.ATerminal)
+  #+clj
+  (:import  (java.awt Color Image)
+            (java.awt.image BufferedImage)
+            (javax.swing ImageIcon)))
 
 
 (timbre/refer-timbre)

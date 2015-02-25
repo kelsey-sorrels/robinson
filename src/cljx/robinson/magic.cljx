@@ -1,11 +1,11 @@
 ;; Functions for querying and manipulating magic
 (ns robinson.magic
-  (:use robinson.common
-        robinson.world
-        robinson.combat
-        robinson.npc
-        pallet.thread-expr)
-  (:require [taoensso.timbre :as timbre]))
+  (:require [taoensso.timbre :as timbre]
+            [robinson.common :refer :all]
+            [robinson.world :refer :all]
+            [robinson.combat :refer :all]
+            [robinson.npc :refer :all]
+            [pallet.thread-expr :refer :all]))
 
 (timbre/refer-timbre)
 

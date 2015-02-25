@@ -1,13 +1,4 @@
 (ns robinson.main
-  (:use    clojure.pprint
-           robinson.common
-           robinson.world
-           [robinson.worldgen :exclude [-main]]
-           robinson.dialog
-           robinson.npc
-           robinson.update
-           [robinson.monstergen :exclude [-main]]
-           robinson.render)
   (:require 
             [clojure.data.generators :as dg]
             [clojure.stacktrace :as st]
@@ -19,7 +10,17 @@
             clojure.edn
             [taoensso.timbre :as timbre]
             [taoensso.nippy :as nippy]
-            [clojure.core.async :as async])
+            [clojure.core.async :as async]
+            [clojure.pprint :refer :all]
+            [robinson.common :refer :all]
+            [robinson.world :refer :all]
+            [robinson.worldgen :refer :all :exclude [-main]]
+            [robinson.dialog :refer :all]
+            [robinson.npc :refer :all]
+            [robinson.update :refer :all]
+            [robinson.monstergen :refer :all :exclude [-main]]
+            [robinson.render :refer :all])
+  #+clj
   (:import [java.io DataInputStream DataOutputStream]))
 
 

@@ -1,7 +1,7 @@
 ;; Functions for generating random items.
 (ns robinson.itemgen
-  (:use     robinson.common)
-  (:require [robinson.monstergen :as mg]
+  (:require [robinson.common :refer :all]
+            [robinson.monstergen :as mg]
             [clojure.data.generators :as dg]
             [clojure.math.combinatorics :as combo]))
 

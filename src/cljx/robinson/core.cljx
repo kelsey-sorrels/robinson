@@ -2,8 +2,8 @@
 ;;
 ;(set! *warn-on-reflection* true)
 (ns robinson.core
-  (:use robinson.main
-        clojure.stacktrace)
+  (:require [robinson.main :refer :all]
+            [clojure.stacktrace :refer :all])
   (:gen-class))
 
 ;; Conveinience ref for accessing the last state when in repl.

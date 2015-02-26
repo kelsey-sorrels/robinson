@@ -1,18 +1,30 @@
 ;; Functions for rendering state to screen
 (ns robinson.webglterminal
-  (:use     robinson.common
-            robinson.aterminal)
-  (:require [taoensso.timbre :as timbre]
+  (:require ;[robinson.common :as rc :refer [error warn info debug trace]]
+            [robinson.aterminal :as rat]
             [monet.canvas :as canvas]))
 
-(def character-canvas-dom (.getElementById js/document "character-canvas"))
+
+(defn error [& e]
+  (.log js/console (apply str (map str e))))
+
+(def info error)
+(def warn error)
+(def debug error)
+(def trace error)
+
+(info "getting character-canvas")
+
+(defn by-id [id]
+  (.getElementById js/document (name id)))
+
+(def character-canvas-dom (by-id :character-canvas))
 (def character-canvas (canvas/init character-canvas-dom "2d"))
 
-(def terminal-canvas-dom (.getElementById js/document "terminal-canvas"))
+(def terminal-canvas-dom (by-id :terminal-canvas))
 (def terminal-canvas (canvas/init terminal-canvas-dom "2d"))
 
-(timbre/refer-timbre)
-(set! *warn-on-reflection* true)
+;(timbre/refer-timbre)
 
 (def characters
   (map identity 
@@ -45,13 +57,12 @@
 ;; A sequence of [\character x y] where [x y] is the position in the character atlas.
 (def character-layout
   (let [character-matrix (partition (int (inc (.sqrt js/Math (count characters)))) characters)]
-    (mapcat
-      identity
-      (map-indexed (fn [line y]
-                     (map-indexed (fn [c x]
-                                    [c (* x 12) (* y 16)])
-                                  line))
-                   character-matrix))))
+      (mapv concat
+        (map-indexed (fn [y line]
+                       (map-indexed (fn [x c]
+                                      [c (* x 12) (* y 16)])
+                                    line))
+                     character-matrix))))
 
 ;; A map from \character to [x1 y1 x2 y2] in the character atlas where
 ;;    [x1 y1]
@@ -92,12 +103,10 @@
                  windows-font
                  else-font
                  font-size]
-    (let [normal-font      (if is-windows
-                              (Font. windows-font Font/PLAIN font-size)
-                              (Font. else-font Font/PLAIN font-size))
-          _                (info "Using font" (.getFontName normal-font))
-          default-fg-color (Color. (long default-fg-color-r) (long default-fg-color-g) (long default-fg-color-b))
-          default-bg-color (Color. (long default-bg-color-g) (long default-bg-color-g) (long default-bg-color-b))
+    (let [normal-font      "20px Georgia"
+          _                (info "Using font" normal-font)
+          default-fg-color [(long default-fg-color-r) (long default-fg-color-g) (long default-fg-color-b)]
+          default-bg-color [(long default-bg-color-g) (long default-bg-color-g) (long default-bg-color-b)]
           ;; create texture atlas
           _                (doseq [[c x y] character->pos]
                              (canvas/text character-canvas {:text (str c) :x x :y y}))
@@ -140,11 +149,11 @@
                                                 y))))
                                (.dispose offscreen-graphics-2d)
                                glyph-image))
-          key-queue        (LinkedBlockingQueue.)
+          key-queue        []#_(LinkedBlockingQueue.)
           on-key-fn        (or on-key-fn
                                (fn default-on-key-fn [k]
                                  (.add key-queue k)))
-          terminal-renderer (proxy [JComponent] []
+          terminal-renderer nil #_(proxy [JComponent] []
                              (getPreferredSize []
                                (let [graphics      ^Graphics    (proxy-super getGraphics)
                                      font-metrics  ^FontMetrics (.getFontMetrics graphics normal-font)
@@ -174,7 +183,7 @@
                                            char-img  (glyph-cache this font-metrics highlight char-width char-height c)]
                                        (.drawImage graphics char-img x (- y char-height) this)))
                                    (.dispose graphics-2d)))))
-          keyListener      (reify KeyListener
+          keyListener      nil #_(reify KeyListener
                              (keyPressed [this e]
                                ;(println "keyPressed keyCode" (.getKeyCode e) "escape" KeyEvent/VK_ESCAPE "escape?" (= (.getKeyCode e) KeyEvent/VK_ESCAPE))
                                (when-let [k (cond
@@ -209,8 +218,8 @@
                                    (if ctrlDown
                                        (on-key-fn (char (+ (int \a) -1 (int character))))
                                        (on-key-fn character))))))
-          icon            (.getImage (java.awt.Toolkit/getDefaultToolkit) "images/icon.png")
-          frame            (doto (JFrame. "Robinson")
+          icon            nil #_(.getImage (java.awt.Toolkit/getDefaultToolkit) "images/icon.png")
+          frame           nil #_(doto (JFrame. "Robinson")
                              (.. (getContentPane) (setLayout (BorderLayout.)))
                              (.. (getContentPane) (add terminal-renderer BorderLayout/CENTER))
                              (.addKeyListener keyListener)
@@ -224,7 +233,7 @@
                              (.setFocusTraversalKeysEnabled false)
                              (.setResizable false)
                              (.pack))]
-      (reify ATerminal
+      (reify rat/ATerminal
         (get-size [this]
           [columns rows])
         (put-string [this col row string]
@@ -233,8 +242,8 @@
           (.put-string this col row string fg bg #{}))
         (put-string [this col row string fg bg style]
           (when (< -1 row rows)
-            (let [fg-color (Color. (long (fg 0)) (long (fg 1)) (long (fg 2)))
-                  bg-color (Color. (long (bg 0)) (long (bg 1)) (long (bg 2)))
+            (let [fg-color fg
+                  bg-color bg
                   s ^String string
                   string-length (.length s)
                   line           (transient (get @character-map row))]
@@ -263,8 +272,8 @@
                                        (if (< -1 (get c :x) columns)
                                            (let [fg        (get c :fg)
                                                  bg        (get c :bg)
-                                                 fg-color  (Color. (long (fg 0)) (long (fg 1)) (long (fg 2)))
-                                                 bg-color  (Color. (long (bg 0)) (long (bg 1)) (long (bg 2)))
+                                                 fg-color  fg
+                                                 bg-color  bg
                                                  character (make-terminal-character (first (get c :c)) fg-color bg-color {})]
                                              (assoc! line (get c :x) character))
                                            line))
@@ -278,7 +287,8 @@
         (set-cursor [this xy]
           (reset! cursor-xy xy))
         (refresh [this]
-          (SwingUtilities/invokeLater
+          nil
+          #_(SwingUtilities/invokeLater
             (fn refresh-fn [] (.repaint terminal-renderer))))
         (clear [this]
           (let [c (make-terminal-character \space default-fg-color default-bg-color #{})]
@@ -290,12 +300,12 @@
 (defn -main
   "Show a terminal and echo input."
   [& args]
-  (let [terminal ^robinson.swingterminal.ATerminal (make-terminal 80 20)]
+  (let [terminal ^rat/ATerminal (make-terminal 80 20)]
     (.clear terminal)
     (.put-string terminal 5 5 "Hello world")
     (.refresh terminal)
     (loop []
-      (let [key-in (wait-for-key terminal)]
+      (let [key-in (rat/wait-for-key terminal)]
         (.clear terminal)
         (.put-string terminal 5 5 "Hello world")
         (.put-string terminal 5 10 (str key-in))

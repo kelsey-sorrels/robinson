@@ -19,7 +19,7 @@
                  [org.clojure/clojure-contrib "1.2.0"]
                  [org.clojars.vishk/algotools "0.1.0"]
                  [org.clojure/data.json "0.2.5"]
-                 [org.clojure/clojurescript "0.0-2197"]
+                 [org.clojure/clojurescript "0.0-2913"]
                  [clj-http "1.0.1"]
                  [cljs-webgl "0.1.5-SNAPSHOT"]
                  [com.palletops/thread-expr "1.3.0"]
@@ -44,7 +44,10 @@
 
   :cljsbuild {:builds [{:source-paths ["src/cljs"
                                        "target/generated-src/cljs"]
-                        :compiler {:output-to "target/main.js"
+                        :compiler {:output-to "main.js"
+                                   :output-dir "target"
+                                   :optimizations :none
+                                   :source-map true
                                    :pretty-print true}}]}
   :cljx
   {:builds [{:source-paths ["src/cljx"]
@@ -80,8 +83,8 @@
   :repl-options {:timeout 920000}
   :jvm-opts [
              ;"-agentpath:/home/santos/bin/yjp-2014-build-14096/bin/linux-x86-64/libyjpagent.so"
-             "-Xdebug"
-             "-Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=5005"
+             ;"-Xdebug"
+             ;"-Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=5005"
              "-XX:+UseParNewGC"
              "-XX:+UseConcMarkSweepGC"
              "-XX:+CMSConcurrentMTEnabled"

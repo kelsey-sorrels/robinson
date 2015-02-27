@@ -27,8 +27,8 @@
                  [tinter "0.1.1-SNAPSHOT"]
                  [clj-tiny-astar "0.1.1-SNAPSHOT"]
                  [dorothy "0.0.6"]
-                 [com.taoensso/timbre "3.3.1"]
-                 [com.taoensso/nippy "2.7.1"]
+                 [com.taoensso/timbre "3.4.0"]
+                 [com.taoensso/nippy "2.8.0"]
                  [rm-hull/monet "0.2.1"]]
   :main robinson.core
   :repl-init robinson.core

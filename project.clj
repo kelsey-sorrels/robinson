@@ -27,6 +27,7 @@
                  [tinter "0.1.1-SNAPSHOT"]
                  [clj-tiny-astar "0.1.1-SNAPSHOT"]
                  [dorothy "0.0.6"]
+                 [shodan "0.4.1"]
                  [com.taoensso/timbre "3.4.0"]
                  [com.taoensso/nippy "2.8.0"]
                  [rm-hull/monet "0.2.1"]]
@@ -44,10 +45,10 @@
 
   :cljsbuild {:builds [{:source-paths ["src/cljs"
                                        "target/generated-src/cljs"]
-                        :compiler {:output-to "main.js"
-                                   :output-dir "target"
-                                   :optimizations :none
-                                   :source-map true
+                        :compiler {:output-to "target/main.js"
+                                   ;:output-dir "target"
+                                   :optimizations :simple
+                                   ;:source-map true
                                    :pretty-print true}}]}
   :cljx
   {:builds [{:source-paths ["src/cljx"]

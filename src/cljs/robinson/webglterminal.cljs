@@ -22,7 +22,9 @@
 
 (def characters
   (map identity 
-       (concat "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789~!@#$%^&*()_-+=[]{}|:;,./<>?'\""
+       (concat "abcdefghijklmnopqrstuvwxyz"
+               "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+               "~!@#$%^&*()_-+=[]{}|:;,./<>?'\""
                "\u00A7"
                "\u039B"
                "\u03B1"
@@ -46,13 +48,14 @@
                "\u2500"
                "\u2500"
                "\u2500"
-               "\u2500")))
+               "\u2500"
+)))
 
 
 ;; A sequence of [\character x y] where [x y] is the position in the character atlas.
 (def character-layout
-  (let [character-matrix (partition (int (inc (.sqrt js/Math (count characters)))) characters)]
-      (mapv concat
+  (let [character-matrix (partition-all (int (inc (.sqrt js/Math (count characters)))) characters)]
+        (mapv concat
         (map-indexed (fn [y line]
                        (map-indexed (fn [x c]
                                       [c (* x 12) (* y 16)])
@@ -75,6 +78,8 @@
           {}
           character-layout))
 
+(log/info (str character-layout))
+
 ;; Adjust canvas to fit character atlas size
 (let [width (* 12 (count (first character-layout)))
       height (* 16 (count character-layout))]
@@ -90,15 +95,17 @@
                                       (-> ctx
                                         (canvas/fill-style "#191d21")
                                         (canvas/fill-rect val)))))
-  (doseq [[[c x y]] character->pos]
-    (canvas/add-entity character-canvas (keyword (str :char- c))
+  (doseq [line character-layout]
+    (doseq [[c x y] line]
+    (log/info c x y)
+    (canvas/add-entity character-canvas (keyword (str :char- (int x) (int y)))
                        (canvas/entity {:c c :x x :y y :w 12 :h 16}   ; val
                                       nil                       ; update function
                                       (fn [ctx {:keys [c x y]}]             ; draw function
                                         #_(log/info "Drawing char" c "@" x y)
                                         (-> ctx
                                           (canvas/fill-style "#f9fdf1")
-                                          (canvas/text {:text (str c) :x x :y y})))))))
+                                          (canvas/text {:text (str c) :x x :y (+ 16 y)}))))))))
   
 
 

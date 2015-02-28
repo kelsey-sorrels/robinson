@@ -2,21 +2,15 @@
 (ns robinson.webglterminal
   (:require ;[robinson.common :as rc :refer [error warn info debug trace]]
             [robinson.aterminal :as rat]
+            [goog.dom :as dom]
+            [shodan.console :as log :include-macros true]
             [monet.canvas :as canvas]))
 
 
-(defn error [& e]
-  (.log js/console (apply str (map str e))))
-
-(def info error)
-(def warn error)
-(def debug error)
-(def trace error)
-
-(info "getting character-canvas")
+(log/info "getting character-canvas")
 
 (defn by-id [id]
-  (.getElementById js/document (name id)))
+  (dom/getElement (name id)))
 
 (def character-canvas-dom (by-id :character-canvas))
 (def character-canvas (canvas/init character-canvas-dom "2d"))
@@ -54,6 +48,7 @@
                "\u2500"
                "\u2500")))
 
+
 ;; A sequence of [\character x y] where [x y] is the position in the character atlas.
 (def character-layout
   (let [character-matrix (partition (int (inc (.sqrt js/Math (count characters)))) characters)]
@@ -63,6 +58,9 @@
                                       [c (* x 12) (* y 16)])
                                     line))
                      character-matrix))))
+
+
+
 
 ;; A map from \character to [x1 y1 x2 y2] in the character atlas where
 ;;    [x1 y1]
@@ -76,6 +74,32 @@
             (assoc m c [x y (+ x 12) (+ y 16)]))
           {}
           character-layout))
+
+;; Adjust canvas to fit character atlas size
+(let [width (* 12 (count (first character-layout)))
+      height (* 16 (count character-layout))]
+  (log/info "width" width "height" height)
+  (dom/setProperties 
+    character-canvas-dom
+    (clj->js {:width width
+              :height height}))
+  (canvas/add-entity character-canvas :background
+                     (canvas/entity {:x 0 :y 0 :w 600 :h 600} ; val
+                                    nil                       ; update function
+                                    (fn [ctx val]             ; draw function
+                                      (-> ctx
+                                        (canvas/fill-style "#191d21")
+                                        (canvas/fill-rect val)))))
+  (doseq [[[c x y]] character->pos]
+    (canvas/add-entity character-canvas (keyword (str :char- c))
+                       (canvas/entity {:c c :x x :y y :w 12 :h 16}   ; val
+                                      nil                       ; update function
+                                      (fn [ctx {:keys [c x y]}]             ; draw function
+                                        #_(log/info "Drawing char" c "@" x y)
+                                        (-> ctx
+                                          (canvas/fill-style "#f9fdf1")
+                                          (canvas/text {:text (str c) :x x :y y})))))))
+  
 
 
 ;; Normally this would be a record, but until http://dev.clojure.org/jira/browse/CLJ-1224 is fixed
@@ -104,7 +128,7 @@
                  else-font
                  font-size]
     (let [normal-font      "20px Georgia"
-          _                (info "Using font" normal-font)
+          _                (log/info "Using font" normal-font)
           default-fg-color [(long default-fg-color-r) (long default-fg-color-g) (long default-fg-color-b)]
           default-bg-color [(long default-bg-color-g) (long default-bg-color-g) (long default-bg-color-b)]
           ;; create texture atlas
@@ -114,7 +138,7 @@
           cursor-xy        (atom nil)
           ;; draws a character using webgl. 
           draw-character   (fn [ctx c [x y]]
-                             (info "Drawing character" c)
+                             (log/info "Drawing character" c)
                              #_(let [glyph-image                       (.createImage component char-width char-height)
                                    offscreen-graphics-2d ^Graphics2D (.getGraphics glyph-image)
                                    x                                 0
@@ -311,3 +335,4 @@
         (.put-string terminal 5 10 (str key-in))
         (.refresh terminal))
         (recur))))
+

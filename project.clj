@@ -47,7 +47,9 @@
                                        "target/generated-src/cljs"]
                         :compiler {:output-to "target/main.js"
                                    ;:output-dir "target"
-                                   :optimizations :simple
+                                   :foreign-libs [{
+                                     :file "src/js/gl-matrix-min.js" :provides ["mat4","mat3","vec3"]}]
+                                   ;:optimizations :simple
                                    ;:source-map true
                                    :pretty-print true}}]}
   :cljx

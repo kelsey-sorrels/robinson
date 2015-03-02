@@ -1,10 +1,22 @@
 ;; Functions for rendering state to screen
 (ns robinson.webglterminal
   (:require ;[robinson.common :as rc :refer [error warn info debug trace]]
+            [vec3]
+            [mat4]
             [robinson.aterminal :as rat]
             [goog.dom :as dom]
             [shodan.console :as log :include-macros true]
-            [monet.canvas :as canvas]))
+            [monet.canvas :as canvas]
+            [cljs-webgl.context :as context]
+            [cljs-webgl.constants.capability :as capability]
+            [cljs-webgl.texture :as texture]
+            [cljs-webgl.shaders :as shaders]
+            [cljs-webgl.constants.draw-mode :as draw-mode]
+            [cljs-webgl.constants.data-type :as data-type]
+            [cljs-webgl.constants.buffer-object :as buffer-object]
+            [cljs-webgl.constants.shader :as shader]
+            [cljs-webgl.buffers :as buffers]
+            [cljs-webgl.typed-arrays :as ta]))
 
 
 (log/info "getting character-canvas")
@@ -12,11 +24,15 @@
 (defn by-id [id]
   (dom/getElement (name id)))
 
+
+(defn next-pow-2 [v]
+  (int (.pow js/Math 2 (count (.toString v 2)))))
+
 (def character-canvas-dom (by-id :character-canvas))
 (def character-canvas (canvas/init character-canvas-dom "2d"))
 
 (def terminal-canvas-dom (by-id :terminal-canvas))
-(def terminal-canvas (canvas/init terminal-canvas-dom "2d"))
+;(def terminal-canvas (canvas/init terminal-canvas-dom "2d"))
 
 ;(timbre/refer-timbre)
 
@@ -24,7 +40,7 @@
   (map identity 
        (concat "abcdefghijklmnopqrstuvwxyz"
                "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-               "~!@#$%^&*()_-+=[]{}|:;,./<>?'\""
+               " ~!@#$%^&*()_-+=[]{}|:;,./<>?'\""
                "\u00A7"
                "\u039B"
                "\u03B1"
@@ -42,14 +58,7 @@
                "\u2584"
                "\u2592"
                "\u2648"
-               "\u2665"
-               "\u2500"
-               "\u2500"
-               "\u2500"
-               "\u2500"
-               "\u2500"
-               "\u2500"
-)))
+               "\u2665")))
 
 
 ;; A sequence of [\character x y] where [x y] is the position in the character atlas.
@@ -81,8 +90,8 @@
 (log/info (str character-layout))
 
 ;; Adjust canvas to fit character atlas size
-(let [width (* 12 (count (first character-layout)))
-      height (* 16 (count character-layout))]
+(let [width  (next-pow-2 (* 12 (count (first character-layout))))
+      height (next-pow-2 (* 16 (count character-layout)))]
   (log/info "width" width "height" height)
   (dom/setProperties 
     character-canvas-dom
@@ -106,8 +115,69 @@
                                         (-> ctx
                                           (canvas/fill-style "#f9fdf1")
                                           (canvas/text {:text (str c) :x x :y (+ 16 y)}))))))))
-  
 
+(defn init-shaders [gl]
+  (let [fragment-shader (shaders/get-shader gl "shader-fs")
+        vertex-shader (shaders/get-shader gl "shader-vs")]
+  (shaders/create-program gl fragment-shader vertex-shader)))
+
+(defn get-perspective-matrix [gl]
+  (let [viewport-width (context/get-drawing-buffer-width gl)
+        viewport-height (context/get-drawing-buffer-height gl)]
+    (mat4/perspective
+      (mat4/create)
+      45
+      (/ viewport-width viewport-height)
+      0.1
+      100.0)))
+
+
+(defn get-position-matrix [v]
+  (let [m (mat4/create)]
+    (mat4/identity m)
+    (mat4/translate m m (clj->js v))))
+  
+(let [gl                  (context/get-context terminal-canvas-dom)
+      characters-texture  (texture/create-texture gl character-canvas)
+      ;; TODO: create 12x16 quad 
+      shader-prog         (init-shaders gl)
+      triangle-vertex-buffer
+        (buffers/create-buffer gl
+          (ta/float32 [ 0.0, 1.0, 0.0,
+                       -1.0, -1.0, 0.0,
+                       1.0, -1.0, 0.0 ])
+        buffer-object/array-buffer
+        buffer-object/static-draw
+        3)
+      square-vertex-buffer
+        (buffers/create-buffer gl
+          (ta/float32 [ 1.0, 1.0, 0.0,
+                       -1.0, 1.0, 0.0,
+                       1.0, -1.0, 0.0,
+                       -1.0, -1.0, 0.0])
+        buffer-object/array-buffer
+        buffer-object/static-draw
+        3)
+      vertex-position-attribute (shaders/get-attrib-location gl shader-prog "aVertexPosition")]
+  (buffers/clear-color-buffer gl 0.0 0.0 0.0 1.0)
+  (buffers/draw!
+    gl
+    :shader shader-prog
+    :draw-mode draw-mode/triangles
+    :capabilities {capability/depth-test true}
+    :count (.-numItems triangle-vertex-buffer)
+    :attributes [{:buffer triangle-vertex-buffer :location vertex-position-attribute}]
+    :uniforms [{:name "uPMatrix" :type :mat4 :values (get-perspective-matrix gl)}
+    {:name "uMVMatrix" :type :mat4 :values (get-position-matrix [-1.5 0.0 -7.0])}])
+  (buffers/draw!
+    gl
+    :shader shader-prog
+    :draw-mode draw-mode/triangle-strip
+    :capabilities {capability/depth-test true}
+    :count (.-numItems square-vertex-buffer)
+    :attributes [{:buffer square-vertex-buffer :location vertex-position-attribute}]
+    :uniforms [{:name "uPMatrix" :type :mat4 :values (get-perspective-matrix gl)}
+    {:name "uMVMatrix" :type :mat4 :values (get-position-matrix [1.5 0.0 -7.0])}]))
 
 ;; Normally this would be a record, but until http://dev.clojure.org/jira/browse/CLJ-1224 is fixed
 ;; it is not performant to memoize records because hashCode values are not cached and are recalculated
@@ -138,9 +208,7 @@
           _                (log/info "Using font" normal-font)
           default-fg-color [(long default-fg-color-r) (long default-fg-color-g) (long default-fg-color-b)]
           default-bg-color [(long default-bg-color-g) (long default-bg-color-g) (long default-bg-color-b)]
-          ;; create texture atlas
-          _                (doseq [[c x y] character->pos]
-                             (canvas/text character-canvas {:text (str c) :x x :y y}))
+          ;; TODO: create texture atlas
           character-map    (atom (vec (repeat rows (vec (repeat columns (make-terminal-character \space default-fg-color default-bg-color #{}))))))
           cursor-xy        (atom nil)
           ;; draws a character using webgl. 

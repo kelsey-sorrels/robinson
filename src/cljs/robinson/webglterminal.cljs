@@ -10,11 +10,14 @@
             [cljs-webgl.context :as context]
             [cljs-webgl.constants.capability :as capability]
             [cljs-webgl.texture :as texture]
+            [cljs-webgl.constants.texture-parameter-name :as texture-parameter-name]
+            [cljs-webgl.constants.texture-filter :as texture-filter]
             [cljs-webgl.shaders :as shaders]
             [cljs-webgl.constants.draw-mode :as draw-mode]
             [cljs-webgl.constants.data-type :as data-type]
             [cljs-webgl.constants.buffer-object :as buffer-object]
             [cljs-webgl.constants.shader :as shader]
+            [cljs-webgl.constants.webgl :as webgl]
             [cljs-webgl.buffers :as buffers]
             [cljs-webgl.typed-arrays :as ta]))
 
@@ -29,7 +32,7 @@
   (int (.pow js/Math 2 (count (.toString v 2)))))
 
 (def character-canvas-dom (by-id :character-canvas))
-(def character-canvas (canvas/init character-canvas-dom "2d"))
+(def character-canvas (:ctx (canvas/monet-canvas character-canvas-dom "2d")))
 
 (def terminal-canvas-dom (by-id :terminal-canvas))
 ;(def terminal-canvas (canvas/init terminal-canvas-dom "2d"))
@@ -91,30 +94,22 @@
 
 ;; Adjust canvas to fit character atlas size
 (let [width  (next-pow-2 (* 12 (count (first character-layout))))
-      height (next-pow-2 (* 16 (count character-layout)))]
+      height (next-pow-2 (* 16 (count character-layout)))
+      ctx    character-canvas]
   (log/info "width" width "height" height)
   (dom/setProperties 
     character-canvas-dom
     (clj->js {:width width
               :height height}))
-  (canvas/add-entity character-canvas :background
-                     (canvas/entity {:x 0 :y 0 :w 600 :h 600} ; val
-                                    nil                       ; update function
-                                    (fn [ctx val]             ; draw function
-                                      (-> ctx
-                                        (canvas/fill-style "#191d21")
-                                        (canvas/fill-rect val)))))
+  (-> ctx
+    (canvas/fill-style "#191d21")
+    (canvas/fill-rect {:x 0 :y 0 :w 600 :h 600}))
   (doseq [line character-layout]
     (doseq [[c x y] line]
     (log/info c x y)
-    (canvas/add-entity character-canvas (keyword (str :char- (int x) (int y)))
-                       (canvas/entity {:c c :x x :y y :w 12 :h 16}   ; val
-                                      nil                       ; update function
-                                      (fn [ctx {:keys [c x y]}]             ; draw function
-                                        #_(log/info "Drawing char" c "@" x y)
-                                        (-> ctx
-                                          (canvas/fill-style "#f9fdf1")
-                                          (canvas/text {:text (str c) :x x :y (+ 16 y)}))))))))
+    (-> ctx
+      (canvas/fill-style "#f9fdf1")
+      (canvas/text {:text (str c) :x (+ 2 x) :y (+ 9 y)})))))
 
 (defn init-shaders [gl]
   (let [fragment-shader (shaders/get-shader gl "shader-fs")
@@ -136,48 +131,67 @@
   (let [m (mat4/create)]
     (mat4/identity m)
     (mat4/translate m m (clj->js v))))
+
+(defn animate [draw-fn]
+  (letfn [(loop [frame]
+            (fn []
+              (.requestAnimationFrame js/window (loop (inc frame)))
+              (draw-fn frame)))]
+         ((loop 0))))
   
-(let [gl                  (context/get-context terminal-canvas-dom)
-      characters-texture  (texture/create-texture gl character-canvas)
+(let [_ (dom/setProperties 
+          terminal-canvas-dom
+          (clj->js {:width (* 80 12)
+                    :height (* 26 16)}))
+      gl                  (context/get-context terminal-canvas-dom)
+      characters-texture  (texture/create-texture gl
+                                                  :image character-canvas-dom
+                                                  ;;:generate-mipmaps? true
+                                                  ;;:pixel-store-modes {webgl/unpack-flip-y-webgl true}
+                                                  :parameters {texture-parameter-name/texture-mag-filter texture-filter/nearest
+                                                               texture-parameter-name/texture-min-filter texture-filter/nearest})
       ;; TODO: create 12x16 quad 
+      tw (float (/ 12 256))
+      th (float (/ 16 256))
+      u0 (* 5 tw)
+      v0 (* 3 th)
+      u1 (+ u0 tw)
+      v1 (+ v0 th)
+      ;tw 0.5
+      ;th 0.5
       shader-prog         (init-shaders gl)
-      triangle-vertex-buffer
-        (buffers/create-buffer gl
-          (ta/float32 [ 0.0, 1.0, 0.0,
-                       -1.0, -1.0, 0.0,
-                       1.0, -1.0, 0.0 ])
-        buffer-object/array-buffer
-        buffer-object/static-draw
-        3)
       square-vertex-buffer
         (buffers/create-buffer gl
-          (ta/float32 [ 1.0, 1.0, 0.0,
-                       -1.0, 1.0, 0.0,
-                       1.0, -1.0, 0.0,
-                       -1.0, -1.0, 0.0])
-        buffer-object/array-buffer
-        buffer-object/static-draw
-        3)
-      vertex-position-attribute (shaders/get-attrib-location gl shader-prog "aVertexPosition")]
-  (buffers/clear-color-buffer gl 0.0 0.0 0.0 1.0)
-  (buffers/draw!
-    gl
-    :shader shader-prog
-    :draw-mode draw-mode/triangles
-    :capabilities {capability/depth-test true}
-    :count (.-numItems triangle-vertex-buffer)
-    :attributes [{:buffer triangle-vertex-buffer :location vertex-position-attribute}]
-    :uniforms [{:name "uPMatrix" :type :mat4 :values (get-perspective-matrix gl)}
-    {:name "uMVMatrix" :type :mat4 :values (get-position-matrix [-1.5 0.0 -7.0])}])
-  (buffers/draw!
-    gl
-    :shader shader-prog
-    :draw-mode draw-mode/triangle-strip
-    :capabilities {capability/depth-test true}
-    :count (.-numItems square-vertex-buffer)
-    :attributes [{:buffer square-vertex-buffer :location vertex-position-attribute}]
-    :uniforms [{:name "uPMatrix" :type :mat4 :values (get-perspective-matrix gl)}
-    {:name "uMVMatrix" :type :mat4 :values (get-position-matrix [1.5 0.0 -7.0])}]))
+          (ta/float32 [1.2, 1.6, 0.0,
+                       0.0, 1.6, 0.0,
+                       1.2, 0.0, 0.0,
+                       0.0, 0.0, 0.0])
+          buffer-object/array-buffer
+          buffer-object/static-draw
+          3)
+      square-texture-buffer
+        (buffers/create-buffer gl
+          (ta/float32 [u1 v0
+                       u0 v0
+                       u1 v1
+                       u0 v1])
+          buffer-object/array-buffer
+          buffer-object/static-draw
+          2)
+      vertex-position-attribute (shaders/get-attrib-location gl shader-prog "aVertexPosition")
+      texture-coord-attribute   (shaders/get-attrib-location gl shader-prog "aTextureCoord")]
+  (animate (fn [frame]
+    (buffers/clear-color-buffer gl 0.0 0.0 0.0 1.0)
+    (buffers/draw!
+      gl
+      :shader shader-prog
+      :draw-mode draw-mode/triangle-strip
+      :count (.-numItems square-vertex-buffer)
+      :attributes [{:buffer square-vertex-buffer :location vertex-position-attribute}
+                   {:buffer square-texture-buffer :location texture-coord-attribute}]
+      :uniforms [{:name "uPMatrix" :type :mat4 :values (get-perspective-matrix gl)}
+                 {:name "uMVMatrix" :type :mat4 :values (get-position-matrix [1.5 0.0 -5.0])}]
+      :textures [{:name "uSampler" :texture characters-texture}]))))
 
 ;; Normally this would be a record, but until http://dev.clojure.org/jira/browse/CLJ-1224 is fixed
 ;; it is not performant to memoize records because hashCode values are not cached and are recalculated

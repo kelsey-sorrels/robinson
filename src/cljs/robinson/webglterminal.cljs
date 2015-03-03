@@ -116,13 +116,15 @@
         vertex-shader (shaders/get-shader gl "shader-vs")]
   (shaders/create-program gl fragment-shader vertex-shader)))
 
-(defn get-perspective-matrix [gl]
+(defn get-ortho-matrix [gl]
   (let [viewport-width (context/get-drawing-buffer-width gl)
         viewport-height (context/get-drawing-buffer-height gl)]
-    (mat4/perspective
+    (mat4/ortho
       (mat4/create)
-      45
-      (/ viewport-width viewport-height)
+      0
+      viewport-width
+      viewport-height
+      0
       0.1
       100.0)))
 
@@ -162,19 +164,19 @@
       shader-prog         (init-shaders gl)
       square-vertex-buffer
         (buffers/create-buffer gl
-          (ta/float32 [1.2, 1.6, 0.0,
-                       0.0, 1.6, 0.0,
-                       1.2, 0.0, 0.0,
-                       0.0, 0.0, 0.0])
+          (ta/float32 [12.0, 16.0, 0.0,
+                       0.0,  16.0, 0.0,
+                       12.0, 0.0,  0.0,
+                       0.0,  0.0,  0.0])
           buffer-object/array-buffer
           buffer-object/static-draw
           3)
       square-texture-buffer
         (buffers/create-buffer gl
-          (ta/float32 [u1 v0
-                       u0 v0
-                       u1 v1
-                       u0 v1])
+          (ta/float32 [u1 v1
+                       u0 v1
+                       u1 v0
+                       u0 v0])
           buffer-object/array-buffer
           buffer-object/static-draw
           2)
@@ -189,8 +191,8 @@
       :count (.-numItems square-vertex-buffer)
       :attributes [{:buffer square-vertex-buffer :location vertex-position-attribute}
                    {:buffer square-texture-buffer :location texture-coord-attribute}]
-      :uniforms [{:name "uPMatrix" :type :mat4 :values (get-perspective-matrix gl)}
-                 {:name "uMVMatrix" :type :mat4 :values (get-position-matrix [1.5 0.0 -5.0])}]
+      :uniforms [{:name "uPMatrix" :type :mat4 :values (get-ortho-matrix gl)}
+                 {:name "uMVMatrix" :type :mat4 :values (get-position-matrix [12.0 16.0 -1.0])}]
       :textures [{:name "uSampler" :texture characters-texture}]))))
 
 ;; Normally this would be a record, but until http://dev.clojure.org/jira/browse/CLJ-1224 is fixed

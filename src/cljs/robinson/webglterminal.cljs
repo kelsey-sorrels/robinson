@@ -64,7 +64,7 @@
                "\u2665")))
 
 
-;; A sequence of [\character x y] where [x y] is the position in the character atlas.
+;; A 2d nested sequence of [\character x y] where [x y] is the position in the character atlas.
 (def character-layout
   (let [character-matrix (partition-all (int (inc (.sqrt js/Math (count characters)))) characters)]
         (mapv concat
@@ -74,42 +74,44 @@
                                     line))
                      character-matrix))))
 
+(log/info "character-layout" (str character-layout))
+(log/info "cl" (str (mapcat concat character-layout)))
 
-
-
-;; A map from \character to [x1 y1 x2 y2] in the character atlas where
-;;    [x1 y1]
+;; A map from \character to [u0 v0 u1 v1] in the character atlas where
+;;    [u0 v0]
 ;;    +--------+
 ;;    |        |
 ;;    |        |
 ;;    +--------+
-;;              [x2 y2]
-(def character->pos
+;;              [u1 v1]
+(def character->uvs
   (reduce (fn [m [c x y]]
             (assoc m c [x y (+ x 12) (+ y 16)]))
           {}
-          character-layout))
+          (mapcat concat character-layout)))
 
-(log/info (str character-layout))
+(log/info "character->uvs" (str character->uvs))
 
-;; Adjust canvas to fit character atlas size
-(let [width  (next-pow-2 (* 12 (count (first character-layout))))
-      height (next-pow-2 (* 16 (count character-layout)))
-      ctx    character-canvas]
-  (log/info "width" width "height" height)
-  (dom/setProperties 
-    character-canvas-dom
-    (clj->js {:width width
-              :height height}))
-  (-> ctx
-    (canvas/fill-style "#191d21")
-    (canvas/fill-rect {:x 0 :y 0 :w 600 :h 600}))
-  (doseq [line character-layout]
-    (doseq [[c x y] line]
-    (log/info c x y)
+(defn draw-character-canvas!
+  []
+  ;; Adjust canvas to fit character atlas size
+  (let [width  (next-pow-2 (* 12 (count (first character-layout))))
+        height (next-pow-2 (* 16 (count character-layout)))
+        ctx    character-canvas]
+    (log/info "width" width "height" height)
+    (dom/setProperties 
+      character-canvas-dom
+      (clj->js {:width width
+                :height height}))
     (-> ctx
-      (canvas/fill-style "#f9fdf1")
-      (canvas/text {:text (str c) :x (+ 2 x) :y (+ 9 y)})))))
+      (canvas/fill-style "#191d21")
+      (canvas/fill-rect {:x 0 :y 0 :w 600 :h 600}))
+    (doseq [line character-layout]
+      (doseq [[c x y] line]
+      (log/info c x y)
+      (-> ctx
+        (canvas/fill-style "#f9fdf1")
+        (canvas/text {:text (str c) :x (+ 2 x) :y (+ 9 y)}))))))
 
 (defn init-shaders [gl]
   (let [fragment-shader (shaders/get-shader gl "shader-fs")
@@ -141,60 +143,6 @@
               (draw-fn frame)))]
          ((loop 0))))
   
-(let [_ (dom/setProperties 
-          terminal-canvas-dom
-          (clj->js {:width (* 80 12)
-                    :height (* 26 16)}))
-      gl                  (context/get-context terminal-canvas-dom)
-      characters-texture  (texture/create-texture gl
-                                                  :image character-canvas-dom
-                                                  ;;:generate-mipmaps? true
-                                                  ;;:pixel-store-modes {webgl/unpack-flip-y-webgl true}
-                                                  :parameters {texture-parameter-name/texture-mag-filter texture-filter/nearest
-                                                               texture-parameter-name/texture-min-filter texture-filter/nearest})
-      ;; TODO: create 12x16 quad 
-      tw (float (/ 12 256))
-      th (float (/ 16 256))
-      u0 (* 5 tw)
-      v0 (* 3 th)
-      u1 (+ u0 tw)
-      v1 (+ v0 th)
-      ;tw 0.5
-      ;th 0.5
-      shader-prog         (init-shaders gl)
-      square-vertex-buffer
-        (buffers/create-buffer gl
-          (ta/float32 [12.0, 16.0, 0.0,
-                       0.0,  16.0, 0.0,
-                       12.0, 0.0,  0.0,
-                       0.0,  0.0,  0.0])
-          buffer-object/array-buffer
-          buffer-object/static-draw
-          3)
-      square-texture-buffer
-        (buffers/create-buffer gl
-          (ta/float32 [u1 v1
-                       u0 v1
-                       u1 v0
-                       u0 v0])
-          buffer-object/array-buffer
-          buffer-object/static-draw
-          2)
-      vertex-position-attribute (shaders/get-attrib-location gl shader-prog "aVertexPosition")
-      texture-coord-attribute   (shaders/get-attrib-location gl shader-prog "aTextureCoord")]
-  (animate (fn [frame]
-    (buffers/clear-color-buffer gl 0.0 0.0 0.0 1.0)
-    (buffers/draw!
-      gl
-      :shader shader-prog
-      :draw-mode draw-mode/triangle-strip
-      :count (.-numItems square-vertex-buffer)
-      :attributes [{:buffer square-vertex-buffer :location vertex-position-attribute}
-                   {:buffer square-texture-buffer :location texture-coord-attribute}]
-      :uniforms [{:name "uPMatrix" :type :mat4 :values (get-ortho-matrix gl)}
-                 {:name "uMVMatrix" :type :mat4 :values (get-position-matrix [12.0 16.0 -1.0])}]
-      :textures [{:name "uSampler" :texture characters-texture}]))))
-
 ;; Normally this would be a record, but until http://dev.clojure.org/jira/browse/CLJ-1224 is fixed
 ;; it is not performant to memoize records because hashCode values are not cached and are recalculated
 ;; each time.
@@ -225,11 +173,66 @@
           default-fg-color [(long default-fg-color-r) (long default-fg-color-g) (long default-fg-color-b)]
           default-bg-color [(long default-bg-color-g) (long default-bg-color-g) (long default-bg-color-b)]
           ;; TODO: create texture atlas
+          _                (draw-character-canvas!)
           character-map    (atom (vec (repeat rows (vec (repeat columns (make-terminal-character \space default-fg-color default-bg-color #{}))))))
           cursor-xy        (atom nil)
-          ;; draws a character using webgl. 
-          draw-character   (fn [ctx c [x y]]
-                             (log/info "Drawing character" c)
+          ;; adjust canvas height
+          _                (dom/setProperties 
+                             terminal-canvas-dom
+                             (clj->js {:width (* 80 12)
+                                       :height (* 26 16)}))
+          ;; create gl context
+          gl                  (context/get-context terminal-canvas-dom)
+          ;; create texture atlas as gl texture
+          characters-texture  (texture/create-texture gl
+                                                      :image character-canvas-dom
+                                                      ;;:generate-mipmaps? true
+                                                      ;;:pixel-store-modes {webgl/unpack-flip-y-webgl true}
+                                                      :parameters {texture-parameter-name/texture-mag-filter texture-filter/nearest
+                                                                   texture-parameter-name/texture-min-filter texture-filter/nearest})
+          ;; TODO: create 12x16 quad 
+          ;tw 0.5
+          ;th 0.5
+          shader-prog         (init-shaders gl)
+          square-vertex-buffer
+            (buffers/create-buffer gl
+              (ta/float32 [12.0, 16.0, 0.0,
+                           0.0,  16.0, 0.0,
+                           12.0, 0.0,  0.0,
+                           0.0,  0.0,  0.0])
+              buffer-object/array-buffer
+              buffer-object/static-draw
+              3)
+          square-texture-buffer-fn (memoize (fn [[u0 v0 u1 v1]]
+                                              (let [u0 (/ u0 256)
+                                                    v0 (/ v0 256)
+                                                    u1 (/ u1 256)
+                                                    v1 (/ v1 256)]
+                                            (buffers/create-buffer gl
+                                              (ta/float32 [u1 v1
+                                                           u0 v1
+                                                           u1 v0
+                                                           u0 v0])
+                                              buffer-object/array-buffer
+                                              buffer-object/static-draw
+                                              2))))
+          vertex-position-attribute (shaders/get-attrib-location gl shader-prog "aVertexPosition")
+          texture-coord-attribute   (shaders/get-attrib-location gl shader-prog "aTextureCoord")
+
+          draw-character   (fn [c x y]
+                             (let [uvs (character->uvs (get c :character))]
+                             ;(log/info "character->pos" (str character->pos))
+                             ;(log/info "Drawing character" (str c) "uvs" (str uvs))
+                             (buffers/draw!
+                               gl
+                               :shader shader-prog
+                               :draw-mode draw-mode/triangle-strip
+                               :count (.-numItems square-vertex-buffer)
+                               :attributes [{:buffer square-vertex-buffer :location vertex-position-attribute}
+                                            {:buffer (square-texture-buffer-fn uvs) :location texture-coord-attribute}]
+                               :uniforms [{:name "uPMatrix" :type :mat4 :values (get-ortho-matrix gl)}
+                                          {:name "uMVMatrix" :type :mat4 :values (get-position-matrix [x y -1.0])}]
+                               :textures [{:name "uSampler" :texture characters-texture}]))
                              #_(let [glyph-image                       (.createImage component char-width char-height)
                                    offscreen-graphics-2d ^Graphics2D (.getGraphics glyph-image)
                                    x                                 0
@@ -243,12 +246,6 @@
                                    s                                 (str (get c :character))
                                    style                             (get c :style)]
                                ;(println "filling rect" (* col char-width) (* row char-height) char-width char-height bg-color)
-                               (doto offscreen-graphics-2d
-                                 (.setFont normal-font)
-                                 (.setRenderingHint RenderingHints/KEY_ANTIALIASING RenderingHints/VALUE_ANTIALIAS_ON)
-                                 (.setRenderingHint RenderingHints/KEY_RENDERING RenderingHints/VALUE_RENDER_QUALITY)
-                                 (.setColor bg-color)
-                                 (.fillRect 0 0 char-width char-height))
                                (when (not= s " ")
                                  ;(println "drawing" s "@" x y fg-color bg-color)
                                  (doto offscreen-graphics-2d
@@ -261,9 +258,7 @@
                                      (.drawLine 0
                                                 y
                                                 char-width
-                                                y))))
-                               (.dispose offscreen-graphics-2d)
-                               glyph-image))
+                                                y))))))
           key-queue        []#_(LinkedBlockingQueue.)
           on-key-fn        (or on-key-fn
                                (fn default-on-key-fn [k]
@@ -286,18 +281,9 @@
                                        char-width                        (/ screen-width columns)
                                        char-height                       (/ screen-height rows)]
                                    (doto graphics
-                                     (.fillRect 0 0 screen-width screen-height))
+                                     (.fillRect 0 0 screen-width screen-height))))))
                                    ;(doseq [row (range rows)]
                                    ;  (println (apply str (map #(get % :character) (get @character-map row)))))
-                                   (doseq [row (range rows)
-                                           col (range columns)]
-                                     (let [c         (get-in @character-map [row col])
-                                           x         (long (* col char-width))
-                                           y         (long (- (* (inc row) char-height) (.getDescent font-metrics)))
-                                           highlight (= @cursor-xy [col row])
-                                           char-img  (glyph-cache this font-metrics highlight char-width char-height c)]
-                                       (.drawImage graphics char-img x (- y char-height) this)))
-                                   (.dispose graphics-2d)))))
           keyListener      nil #_(reify KeyListener
                              (keyPressed [this e]
                                ;(println "keyPressed keyCode" (.getKeyCode e) "escape" KeyEvent/VK_ESCAPE "escape?" (= (.getKeyCode e) KeyEvent/VK_ESCAPE))
@@ -352,15 +338,15 @@
         (get-size [this]
           [columns rows])
         (put-string [this col row string]
-          (.put-string this col row string [255 255 255] [0 0 0] #{}))
+          (rat/put-string this col row string [255 255 255] [0 0 0] #{}))
         (put-string [this col row string fg bg]
-          (.put-string this col row string fg bg #{}))
+          (rat/put-string this col row string fg bg #{}))
         (put-string [this col row string fg bg style]
           (when (< -1 row rows)
             (let [fg-color fg
                   bg-color bg
                   s ^String string
-                  string-length (.length s)
+                  string-length (.-length s)
                   line           (transient (get @character-map row))]
               (swap! character-map
                 (fn [cm]
@@ -398,13 +384,19 @@
                       cm
                       (group-by :y characters)))))
         (wait-for-key [this]
-          (.take key-queue))
+          \a
+         #_ (.take key-queue))
         (set-cursor [this xy]
           (reset! cursor-xy xy))
         (refresh [this]
-          nil
-          #_(SwingUtilities/invokeLater
-            (fn refresh-fn [] (.repaint terminal-renderer))))
+          (buffers/clear-color-buffer gl 0.0 0.0 0.0 1.0)
+          (doseq [row (range rows)
+                  col (range columns)]
+            (let [c         (get-in @character-map [row col])
+                  x         (long (* col 12))
+                  y         (long (* (inc row) 16))
+                  highlight (= @cursor-xy [col row])]
+              (draw-character c x (- y 16)))))
         (clear [this]
           (let [c (make-terminal-character \space default-fg-color default-bg-color #{})]
           (doseq [row (range rows)
@@ -415,15 +407,17 @@
 (defn -main
   "Show a terminal and echo input."
   [& args]
-  (let [terminal ^rat/ATerminal (make-terminal 80 20)]
-    (.clear terminal)
-    (.put-string terminal 5 5 "Hello world")
-    (.refresh terminal)
-    (loop []
+  (let [terminal (make-terminal 80 20)]
+    (animate (fn [frame]
+      (rat/clear terminal)
+      (rat/put-string terminal 5 5 "Hello world")
+      (rat/refresh terminal)))
+    #_(loop []
       (let [key-in (rat/wait-for-key terminal)]
-        (.clear terminal)
-        (.put-string terminal 5 5 "Hello world")
-        (.put-string terminal 5 10 (str key-in))
-        (.refresh terminal))
+        (rat/clear terminal)
+        (rat/put-string terminal 5 5 "Hello world")
+        (rat/put-string terminal 5 10 (str key-in))
+        (rat/refresh terminal))
         (recur))))
 
+(-main)

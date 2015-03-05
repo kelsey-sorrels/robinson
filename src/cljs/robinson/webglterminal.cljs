@@ -164,13 +164,6 @@
     (mat4/identity m)
     (mat4/translate m m (clj->js v))))
 
-(defn animate [draw-fn]
-  (letfn [(loop [frame]
-            (fn []
-              (.requestAnimationFrame js/window (loop (inc frame)))
-              (draw-fn frame)))]
-         ((loop 0))))
-  
 ;; Normally this would be a record, but until http://dev.clojure.org/jira/browse/CLJ-1224 is fixed
 ;; it is not performant to memoize records because hashCode values are not cached and are recalculated
 ;; each time.
@@ -200,11 +193,11 @@
           _                (log/info "Using font" normal-font)
           default-fg-color [(long default-fg-color-r) (long default-fg-color-g) (long default-fg-color-b)]
           default-bg-color [(long default-bg-color-g) (long default-bg-color-g) (long default-bg-color-b)]
-          ;; TODO: create texture atlas
+          ;; create texture atlas
           _                (draw-character-canvas!)
           character-map    (atom (vec (repeat rows (vec (repeat columns (make-terminal-character \space default-fg-color default-bg-color #{}))))))
           cursor-xy        (atom nil)
-          ;; adjust canvas height
+          ;; adjust terminal canvas height
           _                (dom/setProperties 
                              terminal-canvas-dom
                              (clj->js {:width (* 80 12)
@@ -214,14 +207,11 @@
           ;; create texture atlas as gl texture
           characters-texture  (texture/create-texture gl
                                                       :image character-canvas-dom
-                                                      ;;:generate-mipmaps? true
-                                                      ;;:pixel-store-modes {webgl/unpack-flip-y-webgl true}
                                                       :parameters {texture-parameter-name/texture-mag-filter texture-filter/nearest
                                                                    texture-parameter-name/texture-min-filter texture-filter/nearest})
-          ;; TODO: create 12x16 quad 
-          ;tw 0.5
-          ;th 0.5
+          ;; init shaders
           shader-prog         (init-shaders gl)
+          ;; We just need one vertex buffer, a texture-mapped quad will suffice for drawing a character.
           square-vertex-buffer
             (buffers/create-buffer gl
               (ta/float32 [12.0, 16.0, 0.0,
@@ -231,6 +221,7 @@
               buffer-object/array-buffer
               buffer-object/static-draw
               3)
+          ;; We'll need a set of texture coords -- one for each character, but we'll memoize on a 4-tuple of uvs.
           square-texture-buffer-fn (memoize (fn [[u0 v0 u1 v1]]
                                               (let [u0 (/ u0 256)
                                                     v0 (/ v0 256)
@@ -247,6 +238,7 @@
           vertex-position-attribute (shaders/get-attrib-location gl shader-prog "aVertexPosition")
           texture-coord-attribute   (shaders/get-attrib-location gl shader-prog "aTextureCoord")
 
+          ;; Draws character c at position [x y] on the terminal canvas using gl.
           draw-character   (fn [c x y]
                              (let [uvs (character->uvs (get c :character))]
                              ;(log/info "character->pos" (str character->pos))
@@ -286,47 +278,7 @@
                                      (.drawLine 0
                                                 y
                                                 char-width
-                                                y))))))
-          key-queue        []#_(LinkedBlockingQueue.)
-          on-key-fn        (or on-key-fn
-                               (fn default-on-key-fn [k]
-                                 (.add key-queue k)))
-          terminal-renderer nil #_(proxy [JComponent] []
-                             (getPreferredSize []
-                               (let [graphics      ^Graphics    (proxy-super getGraphics)
-                                     font-metrics  ^FontMetrics (.getFontMetrics graphics normal-font)
-                                     screen-width               (* columns (.charWidth font-metrics \space))
-                                     screen-height              (* rows (.getHeight font-metrics))
-                                     char-width                 (/ screen-width columns)
-                                     char-height                (/ screen-height rows)]
-                                 (Dimension. screen-width screen-height)))
-                             (paintComponent [^Graphics graphics]
-                               (log-time "blit"
-                                 (let [graphics-2d ^Graphics2D           (.create graphics)
-                                       font-metrics ^FontMetrics         (.getFontMetrics graphics normal-font)
-                                       screen-width                      (* columns (.charWidth font-metrics \space))
-                                       screen-height                     (* rows (.getHeight font-metrics))
-                                       char-width                        (/ screen-width columns)
-                                       char-height                       (/ screen-height rows)]
-                                   (doto graphics
-                                     (.fillRect 0 0 screen-width screen-height))))))
-                                   ;(doseq [row (range rows)]
-                                   ;  (println (apply str (map #(get % :character) (get @character-map row)))))
-          icon            nil #_(.getImage (java.awt.Toolkit/getDefaultToolkit) "images/icon.png")
-          frame           nil #_(doto (JFrame. "Robinson")
-                             (.. (getContentPane) (setLayout (BorderLayout.)))
-                             (.. (getContentPane) (add terminal-renderer BorderLayout/CENTER))
-                             (.addKeyListener keyListener)
-                             (.setDefaultCloseOperation JFrame/EXIT_ON_CLOSE)
-                             (.setLocationByPlatform true)
-                             (.setLocationRelativeTo nil)
-                             (.setAlwaysOnTop true)
-                             (.setAlwaysOnTop false)
-                             (.setVisible true)
-                             (.setIconImage icon)
-                             (.setFocusTraversalKeysEnabled false)
-                             (.setResizable false)
-                             (.pack))]
+                                                y))))))]
       (reify rat/ATerminal
         (get-size [this]
           [columns rows])

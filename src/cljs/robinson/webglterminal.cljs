@@ -4,7 +4,11 @@
             [vec3]
             [mat4]
             [robinson.aterminal :as rat]
+            [cljs.core.async :as async]
             [goog.dom :as dom]
+            [goog.events :as events]
+            [goog.events.EventType :as event-type]
+            [goog.events.KeyCodes :as key-codes]
             [shodan.console :as log :include-macros true]
             [monet.canvas :as canvas]
             [cljs-webgl.context :as context]
@@ -19,10 +23,34 @@
             [cljs-webgl.constants.shader :as shader]
             [cljs-webgl.constants.webgl :as webgl]
             [cljs-webgl.buffers :as buffers]
-            [cljs-webgl.typed-arrays :as ta]))
+            [cljs-webgl.typed-arrays :as ta])
+  (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
 
 
 (log/info "getting character-canvas")
+
+(def key-chan (async/chan))
+
+(events/listen js/window event-type/KEYPRESS (fn [ev]
+  (let [kc (.-keyCode ev)]
+    (when-let [kc (cond
+                    (= kc key-codes/ENTER)      :enter
+                    (= kc key-codes/ESCAPE)     :escape
+                    (= kc key-codes/SPACE)      :space
+                    (= kc key-codes/BACK_SPACE) :backspace
+                    (= kc key-codes/NUMPAD1)    :numpad1
+                    (= kc key-codes/NUMPAD2)    :numpad2
+                    (= kc key-codes/NUMPAD3)    :numpad3
+                    (= kc key-codes/NUMPAD4)    :numpad4
+                    (= kc key-codes/NUMPAD5)    :numpad5
+                    (= kc key-codes/NUMPAD6)    :numpad6
+                    (= kc key-codes/NUMPAD7)    :numpad7
+                    (= kc key-codes/NUMPAD8)    :numpad8
+                    (= kc key-codes/NUMPAD9)    :numpad9
+                    true (when (<= \a (.toLowerCase (char kc)) \z)
+                           (.toLowerCase (char kc))))]
+      (go
+        (async/>! key-chan kc))))))
 
 (defn by-id [id]
   (dom/getElement (name id)))
@@ -284,41 +312,6 @@
                                      (.fillRect 0 0 screen-width screen-height))))))
                                    ;(doseq [row (range rows)]
                                    ;  (println (apply str (map #(get % :character) (get @character-map row)))))
-          keyListener      nil #_(reify KeyListener
-                             (keyPressed [this e]
-                               ;(println "keyPressed keyCode" (.getKeyCode e) "escape" KeyEvent/VK_ESCAPE "escape?" (= (.getKeyCode e) KeyEvent/VK_ESCAPE))
-                               (when-let [k (cond
-                                              (= (.getKeyCode e) KeyEvent/VK_ENTER)      :enter
-                                              (= (.getKeyCode e) KeyEvent/VK_ESCAPE)     :escape
-                                              (= (.getKeyCode e) KeyEvent/VK_SPACE)      :space
-                                              (= (.getKeyCode e) KeyEvent/VK_BACK_SPACE) :backspace
-                                              (= (.getKeyCode e) KeyEvent/VK_NUMPAD1)    :numpad1
-                                              (= (.getKeyCode e) KeyEvent/VK_NUMPAD2)    :numpad2
-                                              (= (.getKeyCode e) KeyEvent/VK_NUMPAD3)    :numpad3
-                                              (= (.getKeyCode e) KeyEvent/VK_NUMPAD4)    :numpad4
-                                              (= (.getKeyCode e) KeyEvent/VK_NUMPAD5)    :numpad5
-                                              (= (.getKeyCode e) KeyEvent/VK_NUMPAD6)    :numpad6
-                                              (= (.getKeyCode e) KeyEvent/VK_NUMPAD7)    :numpad7
-                                              (= (.getKeyCode e) KeyEvent/VK_NUMPAD8)    :numpad8
-                                              (= (.getKeyCode e) KeyEvent/VK_NUMPAD9)    :numpad9
-                                              true (let [altDown (not= (bit-and (.getModifiersEx e) InputEvent/ALT_DOWN_MASK) 0)
-                                                         ctrlDown (not= (bit-and (.getModifiersEx e) InputEvent/CTRL_DOWN_MASK) 0)]
-                                                     ;(println "processing non-enter non-escape keypress")
-                                                     (when (and altDown ctrlDown (<= \A (.getKeyCode e) \Z))
-                                                       (.toLowerCase (char (.getKeyCode e))))))]
-
-                                 (on-key-fn k)))
-                             (keyReleased [this keyEvent]
-                               nil)
-                             (keyTyped [this e]
-                               (let [character (.getKeyChar e)
-                                     altDown   (not= (bit-and (.getModifiersEx e) InputEvent/ALT_DOWN_MASK) 0)
-                                     ctrlDown  (not= (bit-and (.getModifiersEx e) InputEvent/CTRL_DOWN_MASK) 0)
-                                     ignore    #{(char 10) (char 33) (char 27)}]
-                                 (when-not (contains? ignore character)
-                                   (if ctrlDown
-                                       (on-key-fn (char (+ (int \a) -1 (int character))))
-                                       (on-key-fn character))))))
           icon            nil #_(.getImage (java.awt.Toolkit/getDefaultToolkit) "images/icon.png")
           frame           nil #_(doto (JFrame. "Robinson")
                              (.. (getContentPane) (setLayout (BorderLayout.)))
@@ -384,19 +377,23 @@
                       cm
                       (group-by :y characters)))))
         (wait-for-key [this]
-          \a
-         #_ (.take key-queue))
+          (go-loop []
+            (let [c (async/<! key-chan)]
+              (if c
+                c
+                (recur)))))
         (set-cursor [this xy]
           (reset! cursor-xy xy))
         (refresh [this]
-          (buffers/clear-color-buffer gl 0.0 0.0 0.0 1.0)
-          (doseq [row (range rows)
-                  col (range columns)]
-            (let [c         (get-in @character-map [row col])
-                  x         (long (* col 12))
-                  y         (long (* (inc row) 16))
-                  highlight (= @cursor-xy [col row])]
-              (draw-character c x (- y 16)))))
+          (.requestAnimationFrame js/window (fn []
+            (buffers/clear-color-buffer gl 0.0 0.0 0.0 1.0)
+            (doseq [row (range rows)
+                    col (range columns)]
+              (let [c         (get-in @character-map [row col])
+                    x         (long (* col 12))
+                    y         (long (* (inc row) 16))
+                    highlight (= @cursor-xy [col row])]
+                (draw-character c x (- y 16)))))))
         (clear [this]
           (let [c (make-terminal-character \space default-fg-color default-bg-color #{})]
           (doseq [row (range rows)
@@ -408,12 +405,13 @@
   "Show a terminal and echo input."
   [& args]
   (let [terminal (make-terminal 80 20)]
-    (animate (fn [frame]
-      (rat/clear terminal)
-      (rat/put-string terminal 5 5 "Hello world")
-      (rat/refresh terminal)))
-    #_(loop []
-      (let [key-in (rat/wait-for-key terminal)]
+    (rat/clear terminal)
+    (rat/put-string terminal 5 5 "Hello world")
+    (rat/refresh terminal)
+    (go-loop []
+      (let [key-in (async/<! key-chan)]
+      ;(let [key-in (rat/wait-for-key terminal)]
+        (log/info "got key" key-in)
         (rat/clear terminal)
         (rat/put-string terminal 5 5 "Hello world")
         (rat/put-string terminal 5 10 (str key-in))

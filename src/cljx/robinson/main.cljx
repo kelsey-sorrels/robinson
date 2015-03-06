@@ -2,6 +2,7 @@
   (:require 
             [clojure.data.generators :as dg]
             [clojure.stacktrace :as st]
+            [clojure.core.async :as async :refer [go go-loop]]
             #+clj  [robinson.swingterminal :as swingterminal]
             #+cljs [robinson.webglterminal :as webglterminal]
             [robinson.aterminal :as aterminal]
@@ -10,7 +11,6 @@
             clojure.edn
             [taoensso.timbre :as timbre]
             [taoensso.nippy :as nippy]
-            [clojure.core.async :as async]
             [clojure.pprint :refer :all]
             [robinson.common :refer :all]
             [robinson.world :refer :all]
@@ -67,12 +67,14 @@
    world too, in case the  game is interrupted. Then we can load it next
    time we start up."
   ([state]
-   (let [keyin (or (when (= (current-state state) :sleep)
-                     \.)
-                   (aterminal/wait-for-key (state :screen)))]
-     (if keyin
-       (tick state keyin)
-       state)))
+    (let [keyin (or (when (= (current-state state) :sleep)
+                      \.)
+                    (let [key-chan (aterminal/get-key-chan (state :screen))]
+                      (info  "waiting for key-chan")
+                      (async/<!! key-chan)))]
+      (if keyin
+        (tick state keyin)
+        state)))
   ([state keyin]
     (try
       (info "got " (str keyin) " type " (type keyin))

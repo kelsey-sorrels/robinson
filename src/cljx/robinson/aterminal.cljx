@@ -7,7 +7,7 @@
               [this x y string fg bg]
               [this x y string fg bg style])
   (put-chars [this characters])
-  (wait-for-key [this])
+  (get-key-chan [this])
   (set-cursor [this xy])
   (refresh [this])
   (clear [this]))

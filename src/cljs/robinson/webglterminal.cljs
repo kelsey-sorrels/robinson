@@ -328,12 +328,8 @@
                           cm))
                       cm
                       (group-by :y characters)))))
-        (wait-for-key [this]
-          (go-loop []
-            (let [c (async/<! key-chan)]
-              (if c
-                c
-                (recur)))))
+        (get-key-chan [this]
+          key-chan)
         (set-cursor [this xy]
           (reset! cursor-xy xy))
         (refresh [this]
@@ -361,7 +357,7 @@
     (rat/put-string terminal 5 5 "Hello world")
     (rat/refresh terminal)
     (go-loop []
-      (let [key-in (async/<! key-chan)]
+      (let [key-in (async/<! (rat/get-key-chan terminal))]
       ;(let [key-in (rat/wait-for-key terminal)]
         (log/info "got key" key-in)
         (rat/clear terminal)

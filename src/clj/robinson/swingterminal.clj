@@ -2,7 +2,8 @@
 (ns robinson.swingterminal
   (:use     robinson.common
             robinson.aterminal)
-  (:require [taoensso.timbre :as timbre])
+  (:require [taoensso.timbre :as timbre]
+            [clojure.core.async :as async :refer [go go-loop]])
   (:import  
             java.util.concurrent.LinkedBlockingQueue
             java.awt.Color
@@ -46,13 +47,6 @@
    :fg-color  fg-color
    :bg-color  bg-color
    :style     style})
-
-(defmacro for-loop [[sym init check change :as params] & steps]
- `(loop [~sym ~init value# nil]
-    (if ~check
-      (let [new-value# (do ~@steps)]
-        (recur ~change new-value#))
-      value#)))
 
 (defn make-terminal
   ([]
@@ -118,10 +112,10 @@
                                                 y))))
                                (.dispose offscreen-graphics-2d)
                                glyph-image)))
-          key-queue        (LinkedBlockingQueue.)
+          key-chan         (async/chan)
           on-key-fn        (or on-key-fn
                                (fn default-on-key-fn [k]
-                                 (.add key-queue k)))
+                                 (async/put! key-chan k)))
           terminal-renderer (proxy [JComponent] []
                              (getPreferredSize []
                                (let [graphics      ^Graphics    (proxy-super getGraphics)
@@ -251,8 +245,8 @@
                           cm))
                       cm
                       (group-by :y characters)))))
-        (wait-for-key [this]
-          (.take key-queue))
+        (get-key-chan [this]
+          key-chan)
         (set-cursor [this xy]
           (reset! cursor-xy xy))
         (refresh [this]
@@ -272,8 +266,8 @@
     (.clear terminal)
     (.put-string terminal 5 5 "Hello world")
     (.refresh terminal)
-    (loop []
-      (let [key-in (wait-for-key terminal)]
+    (go-loop []
+      (let [key-in (async/<! (get-key-chan terminal))]
         (.clear terminal)
         (.put-string terminal 5 5 "Hello world")
         (.put-string terminal 5 10 (str key-in))

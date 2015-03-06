@@ -3,7 +3,8 @@
 ;(set! *warn-on-reflection* true)
 (ns robinson.core
   (:require [robinson.main :refer :all]
-            [clojure.stacktrace :refer :all])
+            [clojure.stacktrace :refer [print-stack-trace]])
+  #+clj
   (:gen-class))
 
 ;; Conveinience ref for accessing the last state when in repl.
@@ -27,9 +28,16 @@
   (loop [state (setup)]
     (reset! state-ref state)
     (if (nil? state)
-      (System/exit 0))
+      #+clj
+      (System/exit 0)
+      #+cljs
+      nil)
     ; tick the old state through the tick-fn to get the new state
     (recur (try (tick state)
       (catch Exception ex
         (do (print-stack-trace ex)
             (throw ex)))))))
+
+#+cljs
+(-main)
+

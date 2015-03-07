@@ -16,6 +16,8 @@
             [cljs-webgl.texture :as texture]
             [cljs-webgl.constants.texture-parameter-name :as texture-parameter-name]
             [cljs-webgl.constants.texture-filter :as texture-filter]
+            [cljs-webgl.constants.texture-target :as texture-target]
+            [cljs-webgl.constants.texture-unit :as texture-unit]
             [cljs-webgl.shaders :as shaders]
             [cljs-webgl.constants.draw-mode :as draw-mode]
             [cljs-webgl.constants.data-type :as data-type]
@@ -240,10 +242,17 @@
 
           ;; Draws character c at position [x y] on the terminal canvas using gl.
           draw-character   (fn [c x y]
-                             (let [uvs (character->uvs (get c :character))]
+                             (let [uvs        (character->uvs (get c :character))
+                                   uvs-buffer (square-texture-buffer-fn uvs)]
                              ;(log/info "character->pos" (str character->pos))
                              ;(log/info "Drawing character" (str c) "uvs" (str uvs))
-                             (buffers/draw!
+                             (.bindBuffer gl buffer-object/array-buffer, uvs-buffer)
+                             (.enableVertexAttribArray gl 1)
+                             (.vertexAttribPointer gl 1, 2, data-type/float, false, 0, 0)
+                             (.uniformMatrix4fv gl (.getUniformLocation gl shader-prog, "uMVMatrix"), nil, (get-position-matrix [x y -1.0]))
+                             (.drawArrays gl draw-mode/triangle-strip, 0, 4)
+
+                             #_(buffers/draw!
                                gl
                                :shader shader-prog
                                :draw-mode draw-mode/triangle-strip
@@ -335,13 +344,32 @@
         (refresh [this]
           (.requestAnimationFrame js/window (fn []
             (buffers/clear-color-buffer gl 0.0 0.0 0.0 1.0)
+            (let [uPMatrix (.getUniformLocation gl shader-prog "uPMatrix")
+                  _        (.uniformMatrix4fv gl uPMatrix nil (get-ortho-matrix gl))
+                  _        (.bindBuffer gl buffer-object/array-buffer, square-vertex-buffer)
+                  _        (.enableVertexAttribArray gl 0)
+                  _        (.vertexAttribPointer gl 0, 3, data-type/float, false, 0, 0)
+
+                  _        (.activeTexture gl texture-unit/texture0)
+                  _        (.bindTexture gl texture-target/texture-2d characters-texture)
+                  uSampler (.getUniformLocation gl shader-prog, "uSampler")
+                  _        (.uniform1i gl uSampler, 0)
+                  _        (.disable gl capability/sample-coverage)
+                  _        (.disable gl capability/blend)
+                  _        (.disable gl capability/cull-face)
+                  _        (.disable gl capability/stencil-test)
+                  _        (.enable gl capability/dither)
+                  _        (.disable gl capability/scissor-test)
+                  _        (.disable gl capability/depth-test)
+                  _        (.disable gl capability/polygon-offset-fill)
+                  _        (.disable gl capability/sample-alpha-to-coverage)]
             (doseq [row (range rows)
                     col (range columns)]
               (let [c         (get-in @character-map [row col])
                     x         (long (* col 12))
                     y         (long (* (inc row) 16))
                     highlight (= @cursor-xy [col row])]
-                (draw-character c x (- y 16)))))))
+                (draw-character c x (- y 16))))))))
         (clear [this]
           (let [c (make-terminal-character \space default-fg-color default-bg-color #{})]
           (doseq [row (range rows)

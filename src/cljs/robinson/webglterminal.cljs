@@ -134,7 +134,7 @@
       (clj->js {:width width
                 :height height}))
     (-> ctx
-      (canvas/fill-style "#191d21")
+      (canvas/fill-style "#000000")
       (canvas/fill-rect {:x 0 :y 0 :w 600 :h 600}))
     (doseq [line character-layout]
       (doseq [[c x y] line]
@@ -239,48 +239,38 @@
                                               2))))
           vertex-position-attribute (shaders/get-attrib-location gl shader-prog "aVertexPosition")
           texture-coord-attribute   (shaders/get-attrib-location gl shader-prog "aTextureCoord")
-
+          uMVMatrix                 (.getUniformLocation gl shader-prog, "uMVMatrix")
+          last-uvs-buffer           (atom nil)
+          last-fg-color             (atom nil)
+          last-bg-color             (atom nil)
           ;; Draws character c at position [x y] on the terminal canvas using gl.
           draw-character   (fn [c x y]
-                             (let [uvs        (character->uvs (get c :character))
-                                   uvs-buffer (square-texture-buffer-fn uvs)]
-                             ;(log/info "character->pos" (str character->pos))
-                             ;(log/info "Drawing character" (str c) "uvs" (str uvs))
-                             (.bindBuffer gl buffer-object/array-buffer, uvs-buffer)
-                             (.enableVertexAttribArray gl 1)
-                             (.vertexAttribPointer gl 1, 2, data-type/float, false, 0, 0)
-                             (.uniformMatrix4fv gl (.getUniformLocation gl shader-prog, "uMVMatrix"), nil, (get-position-matrix [x y -1.0]))
-                             (.drawArrays gl draw-mode/triangle-strip, 0, 4)
-
-                             #_(buffers/draw!
-                               gl
-                               :shader shader-prog
-                               :draw-mode draw-mode/triangle-strip
-                               :count (.-numItems square-vertex-buffer)
-                               :attributes [{:buffer square-vertex-buffer :location vertex-position-attribute}
-                                            {:buffer (square-texture-buffer-fn uvs) :location texture-coord-attribute}]
-                               :uniforms [{:name "uPMatrix" :type :mat4 :values (get-ortho-matrix gl)}
-                                          {:name "uMVMatrix" :type :mat4 :values (get-position-matrix [x y -1.0])}]
-                               :textures [{:name "uSampler" :texture characters-texture}]))
-                             #_(let [glyph-image                       (.createImage component char-width char-height)
-                                   offscreen-graphics-2d ^Graphics2D (.getGraphics glyph-image)
-                                   x                                 0
-                                   y                                 (long (- char-height (.getDescent font-metrics)))
-                                   fg-color                          (if highlight
-                                                                       (get c :bg-color)
-                                                                       (get c :fg-color))
-                                   bg-color                          (if  highlight
-                                                                       (get c :fg-color)
-                                                                       (get c :bg-color))
-                                   s                                 (str (get c :character))
-                                   style                             (get c :style)]
+                             (let [highlight (= [x y] @cursor-xy)
+                                   fg-color  (if highlight
+                                               (get c :bg-color)
+                                               (get c :fg-color))
+                                   bg-color  (if  highlight
+                                               (get c :fg-color)
+                                               (get c :bg-color))
+                                   s         (str (get c :character))
+                                   style     (get c :style)]
                                ;(println "filling rect" (* col char-width) (* row char-height) char-width char-height bg-color)
-                               (when (not= s " ")
+                               (when-not (and (= s " " )
+                                              (= bg-color default-bg-color))
                                  ;(println "drawing" s "@" x y fg-color bg-color)
-                                 (doto offscreen-graphics-2d
-                                   (.setColor fg-color)
-                                   (.drawString s x y)))
-                               (when (contains? style :underline)
+                                 ;(.setColor fg-color)
+                                 (let [uvs        (character->uvs (get c :character))
+                                       uvs-buffer (square-texture-buffer-fn uvs)]
+                                 ;(log/info "character->pos" (str character->pos))
+                                 ;(log/info "Drawing character" (str c) "uvs" (str uvs))
+                                   (when (not= @last-uvs-buffer uvs-buffer)
+                                     (reset! last-uvs-buffer uvs-buffer)
+                                     (.bindBuffer gl buffer-object/array-buffer, uvs-buffer)
+                                     (.vertexAttribPointer gl 1, 2, data-type/float, false, 0, 0))
+                                   (.uniformMatrix4fv gl uMVMatrix, nil, (get-position-matrix [x y -1.0]))
+                                   (.drawArrays gl draw-mode/triangle-strip, 0, 4)))
+
+                               #_(when (contains? style :underline)
                                  (let [y (dec  char-height)]
                                    (doto offscreen-graphics-2d
                                      (.setColor fg-color)
@@ -349,6 +339,7 @@
                   _        (.bindBuffer gl buffer-object/array-buffer, square-vertex-buffer)
                   _        (.enableVertexAttribArray gl 0)
                   _        (.vertexAttribPointer gl 0, 3, data-type/float, false, 0, 0)
+                  _        (.enableVertexAttribArray gl 1)
 
                   _        (.activeTexture gl texture-unit/texture0)
                   _        (.bindTexture gl texture-target/texture-2d characters-texture)

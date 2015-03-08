@@ -1,12 +1,7 @@
 ;; Utility functions and functions for manipulating state
 (ns robinson.random
-  (:require [clojure.contrib.core :refer :all]
-            [clojure.data.generators :as dg]
-            [clojure.core.typed :as t]
-            [taoensso.timbre :as timbre]
-            [pallet.thread-expr :as tx]))
+  (:refer-clojure :exclude [mask rand-nth]))
 
-(timbre/refer-timbre)
 
 (defrecord RandomState [seed have-next-next-gaussian next-next-gaussian])
 
@@ -34,15 +29,15 @@
                                       :else
                                       (throw "create-random requires either a number or RandomState"))
         next-next-gaussian      (cond (number? seed-or-state)
-                                      (ref 0)
+                                      (atom 0)
                                       (instance? RandomState seed-or-state)
-                                      (ref (get seed-or-state :next-next-gaussian))
+                                      (atom (get seed-or-state :next-next-gaussian))
                                       :else
                                       (throw "create-random requires either a number or RandomState"))
         have-next-next-gaussian (cond (number? seed-or-state)
-                                      (ref false)
+                                      (atom false)
                                       (instance? RandomState seed-or-state)
-                                      (ref (get seed-or-state :havenext-next-gaussian))
+                                      (atom (get seed-or-state :havenext-next-gaussian))
                                       :else
                                       (throw "create-random requires either a number or RandomState"))
         next! (fn [bits]
@@ -81,24 +76,23 @@
               (next! 27))
            (double (bit-shift-left 1 53))))
       (next-gaussian! [this]
-        (dosync
-          (if @have-next-next-gaussian
-            (do
-              (ref-set have-next-next-gaussian false)
-              @next-next-gaussian)
-            (loop [v1 (dec (* 2 (next-double! this)))
-                   v2 (dec (* 2 (next-double! this)))
-                   s  (+ (* v1 v1) (* v2 v2))]
-              (if (or (>= s 1) (zero? s))
-                (let [v1 (dec (* 2 (next-double! this)))
-                      v2 (dec (* 2 (next-double! this)))
-                      s  (+ (* v1 v1) (* v2 v2))]
-                  (recur v1 v2 s))
-                (let [multiplier #+clj (StrictMath/sqrt (* -2 (/ (StrictMath/log s) s)))
-                                 #+cljs (.sqrt js/Math (* -2 (/ (.log js/Math s) s)))]
-                  (ref-set next-next-gaussian (* v2 multiplier))
-                  (ref-set have-next-next-gaussian true)
-                  (* v1 multiplier)))))))
+        (if @have-next-next-gaussian
+          (do
+            (reset! have-next-next-gaussian false)
+            @next-next-gaussian)
+          (loop [v1 (dec (* 2 (next-double! this)))
+                 v2 (dec (* 2 (next-double! this)))
+                 s  (+ (* v1 v1) (* v2 v2))]
+            (if (or (>= s 1) (zero? s))
+              (let [v1 (dec (* 2 (next-double! this)))
+                    v2 (dec (* 2 (next-double! this)))
+                    s  (+ (* v1 v1) (* v2 v2))]
+                (recur v1 v2 s))
+              (let [multiplier #+clj (StrictMath/sqrt (* -2 (/ (StrictMath/log s) s)))
+                               #+cljs (.sqrt js/Math (* -2 (/ (.log js/Math s) s)))]
+                (reset! next-next-gaussian (* v2 multiplier))
+                (reset! have-next-next-gaussian true)
+                (* v1 multiplier))))))
      (get-state [this]
        (RandomState. @seed @next-next-gaussian @have-next-next-gaussian)))))
 
@@ -127,4 +121,8 @@
       (recur (dec i) (swap coll (dec i) (next-int! rnd i)))
       coll))))
 
-
+(defn rand-nth
+  ([coll]
+  (rand-nth *rnd* coll))
+  ([rnd coll]
+  (nth coll (uniform-int rnd (count coll)))))

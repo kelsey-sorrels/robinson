@@ -1,11 +1,11 @@
 ;; Functions for generating random monsters
 (ns robinson.monstergen
-  (:require [clojure.math.combinatorics :as combo]
-            [clojure.data.generators :as dg]
-            [taoensso.timbre :as timbre]
-            [robinson.common :refer :all]))
-
-(timbre/refer-timbre)
+  (:require [robinson.common :refer []]
+            [robinson.random :as rr]
+            #+clj
+            [taoensso.timbre :as log]
+            #+cljs
+            [shodan.console :as log :include-macros true]))
 
 (defn can-move-in-water?
   [race]
@@ -81,16 +81,17 @@
   (apply hash-map (mapcat (fn [[k v]] [k (first v)])
                           (group-by :race monsters))))
 
+#+clj
 (make-gen-fns *ns* race->monster-map)
 
 (defn id->monster [id]
-  #_(info "id->monster" id)
-  #_(info race->monster-map)
+  #_(log/info "id->monster" id)
+  #_(log/info race->monster-map)
   (get race->monster-map id))
 
 (defn gen-monster [level cell-type]
   "Generate one random monster."
-  (info "Generating monster at level" level)
+  (log/info "Generating monster at level" level)
   (let [land-monster-ids {
                           0 [:red-frog
                              :orange-frog
@@ -152,14 +153,14 @@
 
     (cond
       (contains? #{:water :surf} cell-type)
-      (id->monster (dg/rand-nth (get water-monster-ids (int (* level 9/10)))))
+      (id->monster (rr/rand-nth (get water-monster-ids (int (* level (/ 9 10))))))
       :else
-      (id->monster (dg/rand-nth (get land-monster-ids (int (* level 9/10))))))))
+      (id->monster (rr/rand-nth (get land-monster-ids (int (* level (/ 9 10)))))))))
 
 (defn gen-monsters
   "Generate `n` random monsters using `gen-monster`."
   [n]
-  (repeatedly n gen-monster 1 :floor))
+  (repeatedly n #(gen-monster 1 :floor)))
 
 (defn id->name
   [id]
@@ -169,6 +170,7 @@
   [id]
   (get (race->monster-map id) :name-plural))
 
+#+clj
 (defn -main
   "Generate five random monsters and display them."
   [& args]

@@ -1,9 +1,11 @@
 ;; Functions for generating random items.
 (ns robinson.itemgen
-  (:require [robinson.common :refer :all]
+  (:require [robinson.common :refer []]
             [robinson.monstergen :as mg]
-            [clojure.data.generators :as dg]
-            [clojure.math.combinatorics :as combo]))
+            #+cljs
+            [goog.string :as gstring]
+            #+cljs
+            [goog.string.format]))
 
 
 (defn gen-corpse
@@ -11,8 +13,10 @@
   [npc]
   {:id          (keyword (str (name (get npc :race)) "-corpse"))
    :type        :food
-   :name        (format "%s corpse" (name (get npc :race)))
-   :name-plural (format "%s corpses" (name (get npc :race)))
+   :name        #+clj  (format "%s corpse" (name (get npc :race)))
+                #+cljs (gstring/format "%s corpse" (name (get npc :race)))
+   :name-plural #+clj  (format "%s corpses" (name (get npc :race)))
+                #+cljs (gstring/format "%s corpses" (name (get npc :race)))
    ;; food=log((size+1)/10000)+15
    :hunger      (+ (Math/log10 (/ (inc (get npc :size)) 10000)) 15)})
 
@@ -21,7 +25,10 @@
 (defn is-corpse-poisonous?
   [state id]
   (contains? (get-in state [:world :frogs :poisonous])
-             (-> (clojure.string/split (name id) #"-") first keyword)))
+             (-> #+clj  (clojure.string/split (name id) #"-")
+                 #+cljs (gstring/split (name id) #"-")
+                 first
+                 keyword)))
 
 (defn is-quaffable? [item]
   (pos? (get item :thirst 0)))
@@ -82,7 +89,10 @@
                     :green-tipped-arrow :blue-tipped-arrow :purple-tipped-arrow}
                   (get item :id))
        (contains? (get-in state [:world :frogs :poisonous])
-                  (-> (clojure.string/split (name (get item :id)) #"-") first keyword))))
+                  (-> #+clj  (clojure.string/split (name (get item :id)) #"-")
+                      #+cljs (gstring/split (name (get item :id)) #"-")
+                      first
+                      keyword))))
        
                                                  
 (def ^:private items
@@ -163,7 +173,10 @@
   "Generate item from id."
   [id n]
   (if (is-corpse-id? id)
-    (mg/id->monster (keyword (first (clojure.string/split (name id) #"-"))))
+    (mg/id->monster (-> #+clj  (clojure.string/split (name id) #"-")
+                        #+cljs (gstring/split (name id) #"-")
+                        first
+                        keyword))
     (repeat n (get id->gen-fn id))))
 
 (defn id->item

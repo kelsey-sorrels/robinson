@@ -1,13 +1,10 @@
 ;; Functions that manipulate state to do what the user commands.
 (ns robinson.combat
-  (:require [clojure.pprint :refer :all]
-            [robinson.common :refer :all]
-            [robinson.random :refer :all]
-            [robinson.world :refer :all]
-            [robinson.player :refer :all]
-            [robinson.itemgen :refer :all :exclude [-main]]
-            [clojure.data.generators :as dg]
-            [clojure.stacktrace :as st]
+  (:require ;[robinson.common :refer :all]
+            [robinson.random :as rr]
+            ;[robinson.world :refer :all]
+            ;[robinson.player :refer :all]
+            [robinson.itemgen :refer []]
             [taoensso.timbre :as timbre]
             [robinson.monstergen :as mg]))
 
@@ -26,22 +23,22 @@
         defender-race      (get defender :race)
         attacker-name      (get attacker :name)
         defender-name      (get defender :name)
-        rand-punch-verb    (fn [] (dg/rand-nth ["wack" "punch" "hit" "pummel" "batter"
+        rand-punch-verb    (fn [] (rr/rand-nth ["wack" "punch" "hit" "pummel" "batter"
                                              "pound" "beat" "strike" "slug"]))
-        rand-axe-verb      (fn [] (dg/rand-nth ["hit" "strike" "slash" "tear into" "cleave" "cut"]))]
+        rand-axe-verb      (fn [] (rr/rand-nth ["hit" "strike" "slash" "tear into" "cleave" "cut"]))]
     (first-vec-match [attacker-race defender-race attack defender-body-part damage-type]
       [:human :*       :punch        :*        :miss] (format "You punch the %s but miss." defender-name)
-      [:human :*       :punch        :*        :hit]  (dg/rand-nth [(format "You %s the %s %s %s the %s."
+      [:human :*       :punch        :*        :hit]  (rr/rand-nth [(format "You %s the %s %s %s the %s."
                                                                      (rand-punch-verb)
                                                                      defender-name
-                                                                     (dg/rand-nth ["solidly" "swiftly" "repeatedly"
+                                                                     (rr/rand-nth ["solidly" "swiftly" "repeatedly"
                                                                                 "perfectly" "competently"])
-                                                                     (dg/rand-nth ["on" "in" "across"])
+                                                                     (rr/rand-nth ["on" "in" "across"])
                                                                      (name defender-body-part))
                                                                    (format "You %s the %s %s the %s."
                                                                      (rand-punch-verb)
                                                                      defender-name
-                                                                     (dg/rand-nth ["on" "in" "across"])
+                                                                     (rr/rand-nth ["on" "in" "across"])
                                                                      (name defender-body-part))
                                                                    (format "You %s the %s."
                                                                      (rand-punch-verb)
@@ -63,17 +60,17 @@
       [:human :*       :punch        :tentacle :dead] (format "You %s the %s in the tentacle shredding it and it dies." (rand-punch-verb) defender-name)
       [:human :*       :punch        :*        :dead] (format "You %s the %s causing massive injuries and it dies." (rand-punch-verb) defender-name)
       [:human :*       sharp-weapon? :*        :miss] (format "You swing at the %s but miss." defender-name)
-      [:human :*       sharp-weapon? :*        :hit]  (dg/rand-nth [(format "You %s the %s %s %s the %s."
+      [:human :*       sharp-weapon? :*        :hit]  (rr/rand-nth [(format "You %s the %s %s %s the %s."
                                                               (rand-axe-verb)
                                                               defender-name
-                                                              (dg/rand-nth ["solidly" "swiftly"
+                                                              (rr/rand-nth ["solidly" "swiftly"
                                                                          "perfectly" "competently"])
-                                                              (dg/rand-nth ["on" "in" "across"])
+                                                              (rr/rand-nth ["on" "in" "across"])
                                                               (name defender-body-part))
                                                             (format "You %s the %s %s the %s."
                                                               (rand-axe-verb)
                                                               defender-name
-                                                              (dg/rand-nth ["on" "in" "across"])
+                                                              (rr/rand-nth ["on" "in" "across"])
                                                               (name defender-body-part))
                                                             (format "You %s the %s."
                                                               (rand-axe-verb)
@@ -165,7 +162,7 @@
          attack-type (or (get (first (filter (fn [item] (contains? item :wielded))
                                      (get-in state (conj attacker-path :inventory) [])))
                               :attack)
-                         (dg/rand-nth (vec (get attacker :attacks))))]
+                         (rr/rand-nth (vec (get attacker :attacks))))]
      (attack state attacker-path defender-path attack-type)))
   ([state attacker-path defender-path attack]
   {:pre [(vector? attacker-path)
@@ -193,10 +190,10 @@
                                :else
                                :thrown-item)
         
-        defender-body-part   (dg/rand-nth (vec (get defender :body-parts)))
+        defender-body-part   (rr/rand-nth (vec (get defender :body-parts)))
         {x :x y :y}          (get defender :pos)
         hp                   (get defender :hp)
-        hit-or-miss          (dg/rand-nth (concat (repeat (get attacker :speed) :hit)
+        hit-or-miss          (rr/rand-nth (concat (repeat (get attacker :speed) :hit)
                                                (repeat (get defender :speed) :miss)))
         dmg                  (cond
                                (= hit-or-miss :hit)
@@ -271,7 +268,7 @@
             ;; maybe add corpse
             (update-cell-items x y
               (fn [items]
-                (if (> (dg/float) 0.2)
+                (if (> (next-float! *rnd*) 0.2)
                   (conj items (gen-corpse defender))
                   items)))
             (append-log (gen-attack-message attacker

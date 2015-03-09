@@ -1,10 +1,6 @@
 ;; Functions for making random noise
 (ns robinson.noise
-  (:require [robinson.random :as rr]
-            [taoensso.timbre :as timbre]
-            [clojure.contrib.core :refer :all]))
-
-(timbre/refer-timbre)
+  (:require [robinson.random :as rr]))
 
 (defprotocol Noise
   (snoise [this xin yin])

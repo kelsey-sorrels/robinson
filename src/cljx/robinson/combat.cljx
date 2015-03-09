@@ -1,18 +1,33 @@
 ;; Functions that manipulate state to do what the user commands.
 (ns robinson.combat
-  (:require ;[robinson.common :refer :all]
+  (:require #+clj
+            [robinson.macros :as rm]
             [robinson.random :as rr]
-            ;[robinson.world :refer :all]
-            ;[robinson.player :refer :all]
-            [robinson.itemgen :refer []]
-            [taoensso.timbre :as timbre]
-            [robinson.monstergen :as mg]))
+            [robinson.world :as rw]
+            [robinson.player :as rp]
+            [robinson.itemgen :as ig]
+            [robinson.monstergen :as mg]
+            #+clj
+            [taoensso.timbre :as log]
+            #+cljs
+            [shodan.console :as log :include-macros true]
+            #+cljs
+            [goog.string :as gstring]
+            #+cljs
+            [goog.string.format])
+  #+cljs
+  (:require-macros [robinson.macros :as rm]))
 
-(timbre/refer-timbre)
 
 (defn sharp-weapon?
   [attack]
   (contains? #{:spear :axe :knife} attack))
+
+(defn format [s & args]
+  #+clj
+  (apply clojure.string/format s args)
+  #+cljs
+  (apply gstring/format s args))
 
 (defn- gen-attack-message
   "Logs an attack message to the global state.
@@ -26,7 +41,7 @@
         rand-punch-verb    (fn [] (rr/rand-nth ["wack" "punch" "hit" "pummel" "batter"
                                              "pound" "beat" "strike" "slug"]))
         rand-axe-verb      (fn [] (rr/rand-nth ["hit" "strike" "slash" "tear into" "cleave" "cut"]))]
-    (first-vec-match [attacker-race defender-race attack defender-body-part damage-type]
+    (rm/first-vec-match [attacker-race defender-race attack defender-body-part damage-type]
       [:human :*       :punch        :*        :miss] (format "You punch the %s but miss." defender-name)
       [:human :*       :punch        :*        :hit]  (rr/rand-nth [(format "You %s the %s %s %s the %s."
                                                                      (rand-punch-verb)
@@ -132,7 +147,10 @@
   :obsidian-axe 4
   :obsidian-spear 3
   :sharpened-stick 2
-  (throw (Exception. (format "No value specified for %s" (name attack))))))
+  #+clj
+  (throw (Exception. (format "No value specified for %s" (name attack))))
+  #+cljs
+  (throw (js/Error. (format "No value specified for %s" (name attack))))))
 
 (defn calc-dmg
   [attacker attack defender defender-body-part]
@@ -144,7 +162,7 @@
           defender-size      (get defender :size)
           attack-toughness   (attack-toughness attack)
           defender-toughness (get defender :toughness)]
-      (info "attacker-strength" attacker-strength
+      (log/info "attacker-strength" attacker-strength
             "attacker-dexterity" attacker-dexterity
             "defender-speed" defender-speed
             "attacker-size" attacker-size
@@ -170,18 +188,18 @@
          (every? (set (keys (get-in state defender-path))) [:hp :pos :race :body-parts :inventory])
          (vector? (get-in state [:world :npcs]))]
    :post [(vector? (get-in % [:world :npcs]))]}
-  (info "attacker-path" attacker-path "defender-path" defender-path)
+  (log/info "attacker-path" attacker-path "defender-path" defender-path)
   (let [defender             (get-in state defender-path)
         ;; 
         attacker             (get-in state attacker-path)
-        attack-item          (wielded-item attacker)
+        attack-item          (rp/wielded-item attacker)
         bow-wielded          (= :bow
                                 (let [item-id (get (or attack-item {}) :id)]
                                   (or item-id :non-bow)))
         thrown-item          (when-not (keyword? attack)
                                attack)
         shot-poisoned-arrow  (when thrown-item
-                               (arrow-poison-tipped? thrown-item))
+                               (ig/arrow-poison-tipped? thrown-item))
         attack               (cond
                                (keyword? attack)
                                attack
@@ -200,12 +218,12 @@
                                  (+ (calc-dmg attacker attack defender defender-body-part) (if shot-poisoned-arrow 1 0))
                                :else 0)
         is-wound             (> dmg 1.5)]
-    (debug "attack" attacker-path "is attacking defender" defender-path)
-    (debug "attacker-detail" attacker)
-    (debug "defender-detail" defender)
-    (debug "attack" attack)
-    (debug "hit?" hit-or-miss)
-    (debug "dmg" dmg)
+    (log/debug "attack" attacker-path "is attacking defender" defender-path)
+    (log/debug "attacker-detail" attacker)
+    (log/debug "defender-detail" defender)
+    (log/debug "attack" attack)
+    (log/debug "hit?" hit-or-miss)
+    (log/debug "dmg" dmg)
     (cond
       ;; defender still alive?
       (pos? (- hp dmg))
@@ -229,7 +247,7 @@
             (->
               (update-in (conj defender-path :status)         (fn [state] (conj state :hostile)))
               (assoc-in (conj defender-path :movement-policy) :hide-from-player-in-range-or-random)))
-          (append-log (gen-attack-message attacker
+          (rw/append-log (gen-attack-message attacker
                                           defender
                                           attack
                                           defender-body-part
@@ -254,7 +272,7 @@
                                                     defender)))
           ((fn [state] (if (and is-wound
                                 (contains? (set defender-path) :player))
-                         (append-log state "You have been wounded." :red)
+                         (rw/append-log state "You have been wounded." :red)
                          state))))
       ;; defender dead? (0 or less hp)
       :else
@@ -269,9 +287,9 @@
             (update-cell-items x y
               (fn [items]
                 (if (> (next-float! *rnd*) 0.2)
-                  (conj items (gen-corpse defender))
+                  (conj items (ig/gen-corpse defender))
                   items)))
-            (append-log (gen-attack-message attacker
+            (rw/append-log (gen-attack-message attacker
                                             defender
                                             attack
                                             defender-body-part

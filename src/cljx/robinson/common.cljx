@@ -5,7 +5,12 @@
             #+cljs
             [goog.string :as gstring]
             #+cljs
-            [goog.string.format]))
+            [goog.string.format]
+            #+clj
+            [taoensso.timbre :as log]
+            #+cljs
+            [shodan.console :as log :include-macros true]))
+
 
 (defmacro log-time
   "Log the time it takes to execute body."
@@ -282,12 +287,12 @@
            j 0
            result []]
       #+clj
-      (debug "loop i" i "j" j "count coll" (count coll))
+      (log/debug "loop i" i "j" j "count coll" (count coll))
       (if (>= j (count coll))
         result
         (let [item (nth coll j)]
           #+clj
-          (debug "item" item)
+          (log/debug "item" item)
           (if (p item)
             (recur (inc i) (inc j) (conj result (f i item)))
             (recur i (inc j) (conj result item)))))))))

@@ -19,7 +19,7 @@
                  [org.clojure/clojure-contrib "1.2.0"]
                  [org.clojars.vishk/algotools "0.1.0"]
                  [org.clojure/data.json "0.2.5"]
-                 [org.clojure/clojurescript "0.0-2913"]
+                 [org.clojure/clojurescript "0.0-3030"]
                  [clj-http "1.0.1"]
                  [cljs-webgl "0.1.5-SNAPSHOT"]
                  [com.palletops/thread-expr "1.3.0"]
@@ -35,6 +35,7 @@
   :repl-init robinson.core
   :source-paths
   ["src/clj"
+   "src/clj-macros"
    "target/generated-src/clj"
    "target/generated-src/cljs"]
 
@@ -43,7 +44,8 @@
 
   ;:auto-clean false
 
-  :cljsbuild {:builds [{:source-paths ["src/cljs"
+  :cljsbuild {:builds [{:source-paths ["src/clj-macros"
+                                       "src/cljs"
                                        "target/generated-src/cljs"]
                         :compiler {:output-to "target/main.js"
                                    ;:output-dir "target"
@@ -64,10 +66,10 @@
 
   :profiles {
     :dev {:dependencies
-          [#_[org.clojure/clojurescript "0.0-2657"]]
+          [#_[org.clojure/clojurescript "0.0-3030"]]
 
           :plugins
-          [[com.keminglabs/cljx "0.5.0"]
+          [[com.keminglabs/cljx "0.6.0"]
            [com.cemerick/piggieback "0.1.5-SNAPSHOT"]
            [lein-cljsbuild "1.0.4"]]
           :repl-options {:nrepl-middleware [cljx.repl-middleware/wrap-cljx]}}}

@@ -1,7 +1,7 @@
 ;; Ueility functions and functions for manipulating state
 (ns robinson.math)
 
-(timbre/refer-timbre)
+#+clj
 (set! *warn-on-reflection* true)
 
 #+clj

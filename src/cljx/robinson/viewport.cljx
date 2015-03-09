@@ -1,12 +1,10 @@
 ;; Utility functions and functions for manipulating state
 (ns robinson.viewport
-  (:require [clojure.contrib.core :refer :all]
-            [clojure.data.generators :as dg]
-            [robinson.player :refer :all]
-            [taoensso.timbre :as timbre]
-            [pallet.thread-expr :as tx]))
-
-(timbre/refer-timbre)
+  (:require [robinson.player :as rp]
+            #+clj
+            [taoensso.timbre :as log]
+            #+cljs
+            [shodan.console :as log :include-macros true]))
 
 (defn xy-in-rect?
   [x y rx ry rw rh]
@@ -48,11 +46,11 @@
   (let [{v-width     :width
          v-height    :height}
         (get-in state [:world :viewport])]
-    ;(info "xy->place-id")
-    ;(info x)
-    ;(info v-width)
-    ;(info y)
-    ;(info v-height)
+    ;(log/info "xy->place-id")
+    ;(log/info x)
+    ;(log/info v-width)
+    ;(log/info y)
+    ;(log/info v-height)
     [(if (neg? x)
        (dec (int (/ (inc x) v-width)))
        (int (/ x v-width)))
@@ -111,7 +109,7 @@
          v-height    :height
          {v-x :x v-y :y} :pos}
         (get-in state [:world :viewport])]
-    (info "viewport-xys v-x" v-x "v-y" v-y)
+    (log/info "viewport-xys v-x" v-x "v-y" v-y)
     (for [x (range v-x (+ v-x v-width))
           y (range v-y (+ v-y v-height))]
       [x y])))
@@ -124,7 +122,7 @@
          v-height    :height
          {v-x :x v-y :y} :pos}
         (get-in state [:world :viewport])]
-    (info "viewport-world-xys v-x" v-x "v-y" v-y "v-width" v-width "v-height" v-height)
+    (log/info "viewport-world-xys v-x" v-x "v-y" v-y "v-width" v-width "v-height" v-height)
     (for [x (range v-width)
           y (range v-height)]
       [x y (+ x v-x) (+ y v-y)])))
@@ -143,9 +141,9 @@
         ll-place-id       [px       (inc py)]
         lr-place-id       [(inc px) (inc py)]
         [ax ay] (place-id->anchor-xy state lr-place-id)
-        _ (info "v-x" v-x "v-y" v-y)
-        _ (info "v-width" v-width "v-height" v-height)
-        _ (info "ax" ax "ay" ay)
+        _ (log/info "v-x" v-x "v-y" v-y)
+        _ (log/info "v-width" v-width "v-height" v-height)
+        _ (log/info "ax" ax "ay" ay)
         start-x            (- v-width (- ax v-x))
         start-y            (- v-height (- ay v-y))
         ;start-x           (mod v-x v-width)
@@ -156,7 +154,7 @@
         ;start-y           (if (pos? v-y)
         ;                    start-y
         ;                    (- v-height start-y))
-        _ (info "start-x" start-x "start-y" start-y)
+        _ (log/info "start-x" start-x "start-y" start-y)
         ul-place          (get-in state [:world :places ul-place-id])
         ur-place          (get-in state [:world :places ur-place-id])
         ll-place          (get-in state [:world :places ll-place-id])
@@ -164,10 +162,10 @@
     cells (concat 
       (map (fn [line1 line2]
            (when-not (vector? line1)
-              (info "line1 not vector" line1)
+              (log/info "line1 not vector" line1)
               (throw (Exception. (spit line1))))
            (when-not (vector? line2)
-              (info "line2 not vector" line2)
+              (log/info "line2 not vector" line2)
               (throw (Exception. spit line2)))
 
              (concat (subvec line1 start-x)
@@ -179,18 +177,18 @@
                                      (subvec line4 0 start-x)))
            (subvec ll-place 0 start-y)
            (subvec lr-place 0 start-y)))]
-    (info "ul-place-id" ul-place-id)
-    (info "ur-place-id" ur-place-id)
-    (info "lr-place-id" lr-place-id)
-    (info "ll-place-id" ll-place-id)
-    ;(info "ul-place" ul-place)
-    ;(info "\n\n")
-    ;(info "ur-place" ur-place)
-    ;(info "\n\n")
-    ;(info "ll-place" ll-place)
-    ;(info "\n\n")
-    ;(info "lr-place" lr-place)
-    ;(info "\n\n")
-    ;(info "cells" cells)
+    (log/info "ul-place-id" ul-place-id)
+    (log/info "ur-place-id" ur-place-id)
+    (log/info "lr-place-id" lr-place-id)
+    (log/info "ll-place-id" ll-place-id)
+    ;(log/info "ul-place" ul-place)
+    ;(log/info "\n\n")
+    ;(log/info "ur-place" ur-place)
+    ;(log/info "\n\n")
+    ;(log/info "ll-place" ll-place)
+    ;(log/info "\n\n")
+    ;(log/info "lr-place" lr-place)
+    ;(log/info "\n\n")
+    ;(log/info "cells" cells)
     cells))
 

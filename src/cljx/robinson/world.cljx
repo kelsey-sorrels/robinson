@@ -1,15 +1,18 @@
 ;; Utility functions and functions for manipulating state
 (ns robinson.world
-  (:require [clojure.data.generators :as dg]
+  (:require [robinson.common :as rc]
+            [robinson.player :as rp]
+            [robinson.viewport :as rv]
+            #+clj
             [clojure.core.async :as async]
+            #+cljs
+            [cljs.core.async :as async]
+            #+clj
             [clojure.java.io :as io]
-            [taoensso.timbre :as timbre]
-            [pallet.thread-expr :as tx]
-            [taoensso.nippy :as nippy]
-            [clojure.contrib.core :refer :all]
-            [robinson.common :refer :all]
-            [robinson.player :refer :all]
-            [robinson.viewport :refer :all])
+            #+clj
+            [taoensso.timbre :as log]
+            #+cljs
+            [shodan.console :as log :include-macros true])
   #+clj
   (:import [java.io DataInputStream DataOutputStream]))
 
@@ -133,8 +136,8 @@
      (get-cell state place-id ax ay x y)))
   ([state place-id ax ay x y]
    (let [[px py]    [(- x ax) (- y ay)]]
-     (info "get-cell" place-id ax ay x y px py)
-     (info "matching-keys" (matching-keys state [:world :places place-id py px]))
+     #_(log/info "get-cell" place-id ax ay x y px py)
+     #_(log/info "matching-keys" (matching-keys state [:world :places place-id py px]))
      (get-in state [:world :places place-id py px]))))
 
 (defn update-cell
@@ -154,9 +157,9 @@
   (let [place-id (xy->place-id state x y)
         [ax ay]  (place-id->anchor-xy state place-id)
         [px py]    [(- x ax) (- y ay)]]
-    #_(info "assoc-cell" "place-id" place-id "x" x "y" y "ax" ax "ay" ay "px" px "py" py "kvs" keyvals)
+    #_(log/info "assoc-cell" "place-id" place-id "x" x "y" y "ax" ax "ay" ay "px" px "py" py "kvs" keyvals)
     (reduce (fn [state [k v]]
-              #_(info "matching-keys" (matching-keys state [:world :places place-id py px k]))
+              #_(log/info "matching-keys" (matching-keys state [:world :places place-id py px k]))
               (assoc-cell-fn state [:world :places place-id py px k] v))
             state
             (partition 2 keyvals))))
@@ -179,7 +182,7 @@
 (defn assoc-cell-items
   "Adds an item to [x y] in the current place. Simple, right?"
   [state x y items]
-  (info "Adding" items "to cell @" x y)
+  (log/info "Adding" items "to cell @" x y)
   (assoc-cell state x y :items items))
 
 (defn conj-current-cell-items
@@ -347,7 +350,7 @@
            :or {include-npcs? true
                 collide-water? true}} opts
           cell (get-cell state x y)]
-      ;(debug "collide? " cell x y)
+      ;(log/debug "collide? " cell x y)
       (or
         (nil? cell)
         ;; check the cell to see if it is a wall or closed door
@@ -372,7 +375,7 @@
            :or {include-npcs? true
                 collide-water? true}} opts
           cell (get-cell state x y)]
-      ;(debug "collide? " cell x y)
+      ;(log/debug "collide? " cell x y)
       (or
         (nil? cell)
         ;; check the cell to see if it is a wall or closed door

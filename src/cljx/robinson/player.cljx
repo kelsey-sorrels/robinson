@@ -1,11 +1,21 @@
 ;; Functions for manipulating player state
 (ns robinson.player
-  (:require [clojure.data.generators :as dg]
-            [taoensso.timbre :as timbre]
-            [pallet.thread-expr :as tx]
-            [robinson.common :refer :all]))
+  (:require [robinson.common :as rc :include-macros true]
+            [robinson.random :as rr]
+            clojure.set
+            #+clj
+            [taoensso.timbre :as log]
+            #+cljs
+            [shodan.console :as log :include-macros true]
+            #+cljs
+            [goog.string :as gstring]
+            #+cljs
+            [goog.string.format]))
 
-(timbre/refer-timbre)
+(defn format [s & args]
+  #+clj
+  (apply clojure.string/format s args)
+  #+cljs  (apply gstring/format s args))
 
 (defn neg-hp?
   "Return `true` if the player has negative hp."
@@ -20,7 +30,7 @@
 (defn kill-player
   "Kill the player by setting the status to `:dead`."
   [state]
-  (conj-in state [:world :player :status] :dead))
+  (rc/conj-in state [:world :player :status] :dead))
 
 (defn player-wounded?
   [state]
@@ -47,7 +57,7 @@
 (defn player-xy
   "Return `[x y]` position of player."
   [state]
-  (pos->xy (player-pos state)))
+  (rc/pos->xy (player-pos state)))
 
 (defn player-inventory
   [state]
@@ -84,7 +94,7 @@
 
 (defn- merge-items
   [item1 item2]
-  (info "merging" item1 item2)
+  (log/info "merging" item1 item2)
   (cond 
     (and (not (contains? item1 :count))
          (not (contains? item2 :count)))
@@ -99,11 +109,6 @@
          (contains? item2 :count))
       (update-in item1 [:count] (partial + (get item2 :count)))))
 
-(defn player-inventory
-  "Gets the player's inventory."
-  [state]
-  (get-in state [:world :player :inventory]))
-
 (defn add-to-inventory
   "Adds `item` to player's inventory assigning hotkeys as necessary."
   [state items]
@@ -114,39 +119,39 @@
         inventory-hotkeys       (set (map :hotkey inventory))
         ;; find hotkeys of all items we're adding to inventory
         item-hotkeys            (set (remove nil? (map :hotkey items)))
-        _                       (trace remaining-hotkeys items)
-        _                       (trace "inventory hotkeys" (set (map :hotkey inventory)))
-        _                       (trace "item hotkeys" (set (map :hotkey items)))
+        _                       (log/debug remaining-hotkeys items)
+        _                       (log/debug "inventory hotkeys" (set (map :hotkey inventory)))
+        _                       (log/debug "item hotkeys" (set (map :hotkey items)))
         inventory               (mapv
                                   (fn [items]
                                     (reduce merge-items items))
                                   (vals (group-by :id  (concat inventory items))))
-        _                       (trace "new inventory hotkeys" (set (map :hotkey inventory)))
-        _                       (info "new inventory" inventory)
+        _                       (log/debug "new inventory hotkeys" (set (map :hotkey inventory)))
+        _                       (log/info "new inventory" inventory)
         ;; find the hotkeys that were previously used in inventory that are no longer in use
         freed-inventory-hotkeys (clojure.set/difference inventory-hotkeys (set (map :hotkey inventory)))
         ;; find the hotkeys that were used in the added items that are no longer in use
         freed-item-hotkeys      (clojure.set/difference item-hotkeys (set (map :hotkey inventory)))
-        _                       (trace "freed-hotkeys" (clojure.set/union freed-inventory-hotkeys freed-item-hotkeys))
+        _                       (log/debug "freed-hotkeys" (clojure.set/union freed-inventory-hotkeys freed-item-hotkeys))
         ;; find all the free hotkeys that were the previous free hotkeys plus the newly freed item and inventory hotkeys.
         remaining-hotkeys       (vec (sort (vec (clojure.set/union remaining-hotkeys freed-item-hotkeys freed-inventory-hotkeys))))
-        _                       (trace "remaining-hotkeys" remaining-hotkeys)
-        inventory               (vec (fill-missing #(not (contains? % :hotkey))
-                                                   #(assoc %1 :hotkey %2)
-                                                   remaining-hotkeys
-                                                   inventory))
-        _                       (info "new inventory with hotkeys" inventory)
+        _                       (log/debug "remaining-hotkeys" remaining-hotkeys)
+        inventory               (vec (rc/fill-missing #(not (contains? % :hotkey))
+                                                      #(assoc %1 :hotkey %2)
+                                                      remaining-hotkeys
+                                                      inventory))
+        _                       (log/info "new inventory with hotkeys" inventory)
         ;; find all the free hotkeys after filling in missing hotkeys into the newly added inventory items
         remaining-hotkeys       (vec (sort (vec (clojure.set/difference (set remaining-hotkeys) (set (map :hotkey inventory))))))
         newly-assigned-hotkeys  (vec (sort (vec (clojure.set/difference (set original-remaining-hotkeys) (set remaining-hotkeys)))))
-        _                       (info "newly assigned hotkeys" newly-assigned-hotkeys)]
+        _                       (log/info "newly assigned hotkeys" newly-assigned-hotkeys)]
     (-> state
       ;; TODO: append log with message about new items and their hotkeys
       (assoc-in [:world :player :inventory] inventory)
       (assoc-in [:world :remaining-hotkeys] (vec remaining-hotkeys))
       ((fn [state] (reduce (fn [state item] (let [item (first (filter (fn [i] (= (get i :id) (get item :id)))
                                                                       (get-in state [:world :player :inventory])))]
-                                               (append-log state (format "%s-%c" (get item :name) (get item :hotkey)))))
+                                               (rc/append-log state (format "%s-%c" (get item :name) (get item :hotkey)))))
                            state
                            items))))))
 (defn inventory-hotkey->item
@@ -166,18 +171,18 @@
   [state id]
   (let [item   (first (filter (fn [item] (= (get item :id) id)) (get-in state [:world :player :inventory])))
         hotkey (get item :hotkey)
-        _ (info "removing item" item)
-        _ (info "freeing hotkey" hotkey)]
+        _ (log/info "removing item" item)
+        _ (log/info "freeing hotkey" hotkey)]
     (-> state
-      (update-in [:world :player :inventory] (log-io "inventory io" (fn [inventory]
-                                                                      (vec (remove-first (fn [item] (= (get item :id) id))
-                                                                                         inventory)))))
-      (conj-in [:world :remaining-hotkeys] hotkey))))
+      (update-in [:world :player :inventory] (rc/log-io "inventory io" (fn [inventory]
+                                                                         (vec (rc/remove-first (fn [item] (= (get item :id) id))
+                                                                                            inventory)))))
+      (rc/conj-in [:world :remaining-hotkeys] hotkey))))
 
 (defn update-inventory-item
   "Apply the fn f to inventory item identified by id."
   [state id f]
-  (map-in state [:world :player :inventory]
+  (rc/map-in state [:world :player :inventory]
     (fn [item] (if (= (get item :id) id)
                  (f item)
                  item))))
@@ -193,40 +198,47 @@
       (= 1 item-count)
         (remove-from-inventory state (get item :id))
       :else
-        (map-in state [:world :player :inventory] (fn [item] (if (= id (get item :id))
+        (rc/map-in state [:world :player :inventory] (fn [item] (if (= id (get item :id))
                                                                (update-in item [:count] dec)
                                                                item))))))
 (defn dec-item-utility
  ([state hotkey-or-id]
   (dec-item-utility state hotkey-or-id 1))
  ([state hotkey-or-id amount]
-  (info "decrementing utility for" hotkey-or-id)
+  (log/info "decrementing utility for" hotkey-or-id)
   (let [id (cond
              (keyword? hotkey-or-id)
              hotkey-or-id
+             #+clj
              (char? hotkey-or-id)
+             #+cljs
+             (string? hotkey-or-id)
              (inventory-hotkey->item-id state hotkey-or-id)
              :else
-             (throw (IllegalArgumentException. "hotkey-or-id was neither a keyword nor a character.")))]
-  (info "decrementing utility for item with id" id)
+             #+clj
+             (throw (IllegalArgumentException. "hotkey-or-id was neither a keyword nor a character."))
+             #+cljs
+             (throw (js/Error. "hotkey-or-id was neither a keyword nor a character.")))]
+  (log/info "decrementing utility for item with id" id)
   (as-> state state
     (update-inventory-item
       state
       id
       (fn [item]
-        (info "decrementing utility for" item)
+        (log/info "decrementing utility for" item)
         (update-in item [:utility] (fn [utility] (- utility amount)))))
      ;; remove any broken items
     (reduce
       (fn [state item]
-        (info "Check to see if" item "has broken")
+        (log/info "Check to see if" item "has broken")
         (if (< (get item :utility 2) 1)
-          (-> state
+          (as-> state state
             ;; item breaks
-            (dec-item-count (get item :id))
+            (dec-item-count state (get item :id))
             ;; add parts
-            (arg-when-> [state] (pos? (count (get item :recoverable-items)))
-              (add-to-inventory [(dg/rand-nth (get item :recoverable-items))])))
+            (if (pos? (count (get item :recoverable-items)))
+              (add-to-inventory state [(rr/rand-nth (get item :recoverable-items))])
+              state))
           state))
       state
       (player-inventory state))))))
@@ -240,7 +252,7 @@
       (update-in [:world :player :will-to-live] (fn [will-to-live] (min max-will-to-live (+ will-to-live dwill-to-live))))
       (update-in [:world :player :stats :animals-killed] (fn [animals-killed] (merge-with + animals-killed {(get npc :race) 1})))
       (update-in [:world :player :stats :kills-by-attack-type] (fn [kills-by-attack-type] (merge-with + kills-by-attack-type {attack 1})))
-      (conj-in   [:world :player :stats :timeline] {:time  (get-in state [:world :time])
+      (rc/conj-in   [:world :player :stats :timeline] {:time  (get-in state [:world :time])
                                                     :type  :npc-killed
                                                     :npc    npc
                                                     :attack attack}))))
@@ -253,7 +265,7 @@
     (-> state
       (update-in [:world :player :will-to-live] (fn [will-to-live] (min max-will-to-live (+ will-to-live dwill-to-live))))
       (update-in [:world :player :stats :num-items-harvested] (fn [num-items-harvested] (merge-with + num-items-harvested {(get item :id) 1})))
-      (conj-in   [:world :player :stats :timeline] {:time (get-in state [:world :time])
+      (rc/conj-in   [:world :player :stats :timeline] {:time (get-in state [:world :time])
                                                     :type :item-harvested
                                                     :food item}))))
 
@@ -265,7 +277,7 @@
     (-> state
       (update-in [:world :player :will-to-live] (fn [will-to-live] (min max-will-to-live (+ will-to-live dwill-to-live))))
       (update-in [:world :player :stats :num-items-crafted] (fn [num-items-crafted] (merge-with + num-items-crafted {(get item :id) 1})))
-      (conj-in   [:world :player :stats :timeline] {:time (get-in state [:world :time])
+      (rc/conj-in   [:world :player :stats :timeline] {:time (get-in state [:world :time])
                                                     :type :item-crafted
                                                     :food item}))))
 
@@ -277,17 +289,17 @@
     (-> state
       (update-in [:world :player :will-to-live] (fn [will-to-live] (min max-will-to-live (+ will-to-live dwill-to-live))))
       (update-in [:world :player :stats :num-items-eaten] (fn [num-items-eaten] (merge-with + num-items-eaten {(get item :id) 1})))
-      (conj-in   [:world :player :stats :timeline] {:time (get-in state [:world :time])
+      (rc/conj-in   [:world :player :stats :timeline] {:time (get-in state [:world :time])
                                                     :type :food-eaten
                                                     :food item}))))
 
 (defn update-player-died
   [state reason]
-  (conj-in state [:world :player :stats :timeline] {:time (get-in state [:world :time])
+  (rc/conj-in state [:world :player :stats :timeline] {:time (get-in state [:world :time])
                                                     :type :player-died}))
 
 (defn update-player-won
   [state]
-  (conj-in state [:world :player :stats :timeline] {:time (get-in state [:world :time])
+  (rc/conj-in state [:world :player :stats :timeline] {:time (get-in state [:world :time])
                                                     :type :player-won}))
 

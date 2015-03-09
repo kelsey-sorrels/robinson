@@ -1,6 +1,6 @@
 ;; Functions for generating random items.
 (ns robinson.itemgen
-  (:require [robinson.common :refer []]
+  (:require [robinson.common :refer [make-gen-fns] :include-macros true]
             [robinson.monstergen :as mg]
             #+cljs
             [goog.string :as gstring]

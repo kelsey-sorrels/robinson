@@ -1,10 +1,12 @@
 ;; Functions for drawing dialog trees as finite state machines
 (ns robinson.dialog
-  (:require [taoensso.timbre :as timbre]
-            [robinson.common :refer :all]
-            [dorothy.core :refer :all]))
-
-(timbre/refer-timbre)
+  (:require [robinson.common :as rc]
+            #+clj
+            [dorothy.core :refer :all]
+            #+clj
+            [taoensso.timbre :as log]
+            #+cljs
+            [shodan.console :as log :include-macros true]))
 
 ;; State Machine Functions
 ;; =======================
@@ -18,7 +20,7 @@
             (= (set states) (set dest-states)))
           ;; Make sure that initial-state is a valid state.
           (contains? (set (map first transition-table)) initial-state)]}
-  (with-meta transition-table {:current-state (ref initial-state)}))
+  (with-meta transition-table {:current-state (atom initial-state)}))
 
 (defn fsm-current-state
   "Get the current state of the fsm."
@@ -28,17 +30,17 @@
 (defn step-fsm
   "Updates state using the finite state machine and input."
   [state fsm input]
-  (let [_ (trace "input:" input)
+  (let [_ (log/debug "input:" input)
         fsm-state (fsm-current-state fsm)
-        _ (debug "current-state:" fsm-state)
+        _ (log/debug "current-state:" fsm-state)
         options (get fsm fsm-state)]
     (if (some (partial = input) (map first options))
       (let [
-            _ (debug "options:" options)
+            _ (log/debug "options:" options)
             [_ transition-fn next-state] (first (filter #(= input (first %)) options))
-            _ (debug "trans-fn:" transition-fn)
-            _ (debug "next-state:" next-state)
-            _ (dosync (ref-set (-> fsm meta :current-state) next-state))]
+            _ (log/debug "trans-fn:" transition-fn)
+            _ (log/debug "next-state:" next-state)
+            _ (reset! (-> fsm meta :current-state) next-state)]
         (transition-fn state))
       state)))
 
@@ -61,9 +63,11 @@
                                                                 e))
                                                          (butlast couplet)))))}])
 
+#+clj
 (defn- transform-to-graph
   "Transforms a dialog tree into a dorothy graph."
   [dialog]
+#+clj
   (digraph (concat [(node-attrs {:style :filled})]
                    (mapcat (fn [[start-node couplets]]
                              (map (fn [couplet]
@@ -71,6 +75,7 @@
                                   couplets))
                            (dialog :m)))))
 
+#+clj
 (defn draw-dialog
   "Draw a dialog tree using dorothy."
   [dialog]
@@ -86,7 +91,7 @@
                             [k (map (fn [[q r f t]]
                                       [q (fn [state]
                                            (-> state
-                                               (append-log :dialog-log r)
+                                               (rc/append-log :dialog-log r)
                                                (f)))
                                        t])
                                     v)])

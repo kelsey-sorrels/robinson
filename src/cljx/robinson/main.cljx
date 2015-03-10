@@ -1,32 +1,39 @@
 (ns robinson.main
   (:require 
-            [clojure.data.generators :as dg]
+            [robinson.common :as rc]
+            [robinson.world :as rw]
+            [robinson.worldgen :as rwgen]
+            [robinson.dialog :as rdiag]
+            [robinson.npc :as rnpc]
+            [robinson.update :as ru]
+            [robinson.monstergen :as mg]
+            [robinson.render :as rrender]
+            #+clj
             [clojure.stacktrace :as st]
+            #+clj
             [clojure.core.async :as async :refer [go go-loop]]
+            #+cljs
+            [cljs.core.async :as async :refer [go go-loop]]
             #+clj  [robinson.swingterminal :as swingterminal]
             #+cljs [robinson.webglterminal :as webglterminal]
             [robinson.aterminal :as aterminal]
+            #+clj
             [clojure.java.io :as io]
-            [clojure.pprint :as pp]
             clojure.edn
-            [taoensso.timbre :as timbre]
             [taoensso.nippy :as nippy]
+            #+clj
             [clojure.pprint :refer :all]
-            [robinson.common :refer :all]
-            [robinson.world :refer :all]
-            [robinson.worldgen :refer :all :exclude [-main]]
-            [robinson.dialog :refer :all]
-            [robinson.npc :refer :all]
-            [robinson.update :refer :all]
-            [robinson.monstergen :refer :all :exclude [-main]]
-            [robinson.render :refer :all])
+            #+clj
+            [taoensso.timbre :as log]
+            #+cljs
+            [shodan.console :as log :include-macros true])
+
   #+clj
   (:import [java.io DataInputStream DataOutputStream]))
 
 
-(timbre/refer-timbre)
-
-(timbre/set-config! [] (read-string (slurp "config/timbre.clj")))
+#+clj
+(log/set-config! [] (read-string (slurp "config/timbre.clj")))
 
 (def save-chan (async/chan (async/sliding-buffer 1)))
 
@@ -34,20 +41,21 @@
 
 (async/go-loop []
   (let [state (async/<! save-chan)]
-    (info "World saved at time" (get-in state [:world :time]))
-    #_(as-> state state
-      (get state :world)
-      (pp/write state :stream nil)
-      (spit "save/world.edn.out" state))
+    (log/info "World saved at time" (get-in state [:world :time]))
+    #+clj
     (try
       (with-open [o (io/output-stream "save/world.edn")]
         (nippy/freeze-to-out! (DataOutputStream. o) (get state :world)))
       (catch Throwable e (error e)))
+    #_(as-> state state
+      (get state :world)
+      (pp/write state :stream nil)
+      (spit "save/world.edn.out" state))
     (recur)))
 
 (async/go-loop []
   (let [state (async/<! render-chan)]
-    (info "Rendering world at time" (get-in state [:world :time]))
+    (log/info "Rendering world at time" (get-in state [:world :time]))
     (try
       (log-time "render" (render state))
       (catch Throwable e (error e)))
@@ -120,7 +128,7 @@
                              (clojure.edn/read-string))])
                         (.listFiles (clojure.java.io/file "data"))))
         _     (when (get data :seed)
-                (alter-var-root #'dg/*rnd* (constantly (java.util.Random. (get data :seed)))))
+                (alter-var-root #'rr/*rnd* (constantly (java.util.Random. (get data :seed)))))
         world (if (.exists (clojure.java.io/file "save/world.edn"))
                 #_(clojure.edn/read-string {:readers {'robinson.monstergen.Monster map->Monster}}
                   (slurp "save/world.edn"))

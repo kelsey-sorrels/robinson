@@ -1,27 +1,30 @@
 ;; Functions for rendering state to screen
 (ns robinson.render
   (:require 
-            [clojure.reflect :as r]
-            [clojure.data.generators :as dg]
-            [taoensso.timbre :as timbre]
+            [robinson.random :as rr]
             [robinson.startgame :as sg]
             [robinson.itemgen :as ig]
-            [robinson.swingterminal :as swingterminal]
-            [robinson.common :refer :all]
-            [robinson.world :refer :all]
-            [robinson.viewport :refer :all]
-            [robinson.player :refer :all]
-            [robinson.endgame :refer :all]
-            [robinson.magic :refer :all]
-            [robinson.crafting :refer :all]
+            [robinson.common :as rc]
+            [robinson.world :as rw]
+            [robinson.viewport :as rv]
+            [robinson.player :as rp]
+            [robinson.endgame :as rendgame]
+            [robinson.magic :as rm]
+            [robinson.crafting :as rcrafting]
             [robinson.itemgen :refer [can-be-wielded?
                                       id->name]]
-            [robinson.lineofsight :refer :all :exclude [-main]]
-            [robinson.dialog :refer :all :exclude [-main]]
-            [robinson.npc :refer :all]
-            [tinter.core :refer :all]
-            [clojure.pprint :only [print-table]])
+            [robinson.lineofsight :as rlos]
+            [robinson.dialog :as rdiag]
+            [robinson.npc :as rnpc]
+            [tinter.core :as rcore]
+            #+clj
+            [clojure.pprint :only [print-table]]
+            #+clj
+            [taoensso.timbre :as log]
+            #+cljs
+            [shodan.console :as log :include-macros true])
   (:refer   clojure.set)
+  #+clj
   (:import robinson.aterminal.ATerminal)
   #+clj
   (:import  (java.awt Color Image)
@@ -1045,7 +1048,7 @@
             (-> state :world :player :inventory)))
           (put-string (state :screen) 10 22 "Play again? [yn]"))
       :rescued
-        (let [rescued-mode   (dg/rand-nth ["boat" "helicopter" "hovercraft" "ocean liner"])
+        (let [rescued-mode   (rr/rand-nth ["boat" "helicopter" "hovercraft" "ocean liner"])
               days           (int (/ (get-time state) 346))]
           ;; Title
           (put-string (state :screen) 10 1 (format "%s: %s." player-name madlib))

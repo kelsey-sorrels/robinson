@@ -27,6 +27,14 @@
   (.abs js/Math n))
 
 #+clj
+(defn round [n]
+  (Math/round n))
+
+#+cljs
+(defn round [n]
+  (.round js/math n))
+
+#+clj
 (defn sin [n]
   (Math/sin n))
 

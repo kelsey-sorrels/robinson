@@ -4,21 +4,26 @@
             [robinson.common :as rc]
             [robinson.random :as rr]
             [robinson.noise :as rn]
-            [robinson.prism :as rp]
+            [robinson.prism :as rprism]
             [robinson.itemgen :as ig]
-            [robinson.viewport :refer :all]
-            [robinson.world :refer :all]
-            [robinson.player :refer :all]
-            [robinson.lineofsight :refer :all :exclude [-main]]
-            [robinson.npc :refer :all]
-            [clojure.contrib.core :refer :all]
+            [robinson.viewport :as rv]
+            [robinson.world :as rw]
+            [robinson.player :as rp]
+            [robinson.lineofsight :as rlos]
+            [robinson.npc :as rnpc]
+            [clojure.contrib.core :refer []]
+            [taoensso.nippy :as nippy]
+            #+clj
             [clojure.core.async :as async]
+            #+cljs
+            [cljs.core.async :as async]
+            #+clj
             [clojure.java.io :as io]
-            [clojure.data.generators :as dg]
             [taoensso.timbre :as timbre]
-            [taoensso.timbre :as timbre]
-            [pallet.thread-expr :as tx]
-            [taoensso.nippy :as nippy])
+            #+clj
+            [taoensso.timbre :as log]
+            #+cljs
+            [shodan.console :as log :include-macros true])
   #+clj
   (:import [java.io DataInputStream DataOutputStream]))
 

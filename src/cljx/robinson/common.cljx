@@ -276,6 +276,11 @@
                            e)))
     (update-in-matching m ks (partial = p) f)))
 
+
+(defn dissoc-in
+  [m ks]
+  (update-in m (butlast ks) (fn [v] (dissoc v (last ks)))))
+
 (defn map-indexed-in-p
   "Update in m the collection accessible by (get-in m ks)
    for which (p item) returns true for an item in the collection

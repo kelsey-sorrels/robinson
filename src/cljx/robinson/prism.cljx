@@ -1,9 +1,8 @@
 ;; Utility functions and functions for manipulating vector and scalar fields
 (ns robinson.prism
   (:require 
-            [robinson.common :refer :all]
-            [robinson.noise :as rn]
-            [taoensso.timbre :as timbre]))
+            [robinson.common :as rc]
+            [robinson.noise :as rn]))
 
 (defn invert
   [f]
@@ -63,7 +62,7 @@
 
 (defn center-radius []
   (fn [[x y]]
-    (center (radius (xy->pos x y)))))
+    (center (radius))))
 
 (defn vnoise
   [n]

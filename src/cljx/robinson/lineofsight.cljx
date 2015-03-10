@@ -1,12 +1,13 @@
 (ns robinson.lineofsight
-  (:require [clojure.contrib.math :as math]
-            clojure.pprint
-            [robinson.common :refer :all]
-            [robinson.world  :refer :all]))
+  (:require [robinson.common :as rc :include-macros true]
+            [robinson.world :as rw]
+            [robinson.math :as math]
+            [robinson.world  :as rw]))
 
 ;; The functions here can severely slow down the game if 
 ;; implemented poorly. Reflection can slow down evaluation,
 ;; so warn if it is occurring.
+#+clj
 (set! *warn-on-reflection* true)
 
 ;; Memoized function that returns the points between
@@ -85,19 +86,22 @@
     no visibility calculations will be performed on the cell and it will not be visible.
     Exclude? is useful for shortcutting the normal visibility procedure for known
     non-visible cells and speeding up calculations."
-   (log-time "map-visibility"
+   (rc/log-time "map-visibility"
      (let [[ox oy] origin
          width  (-> grid first count)
          height (count grid)
          get-cell (memoize (fn [x y] (get-in grid [y x])))
          blocking?-memo (memoize blocking?)]
      ;(println (with-xygrid grid))
-     (vec (pmap (fn [line] (vec (map (fn [[cell x y]]
+     (vec (#+clj
+           pmap
+           #+cljs
+           map (fn [line] (vec (map (fn [[cell x y]]
                                        (if (exclude? cell x y)
                                          false
                                          (visible? get-cell blocking?-memo ox oy x y)))
                                      line)))
-                (with-xygrid grid)))))))
+                (rw/with-xygrid grid)))))))
 
 (defn cell-blocking?
   "Walls, closed doors, and `nil` cells block visibility."

@@ -1,13 +1,13 @@
 ;; Functions for querying and manipulating magic
 (ns robinson.magic
-  (:require [taoensso.timbre :as timbre]
-            [robinson.common :refer :all]
-            [robinson.world :refer :all]
-            [robinson.combat :refer :all]
-            [robinson.npc :refer :all]
-            [pallet.thread-expr :refer :all]))
-
-(timbre/refer-timbre)
+  (:require [robinson.common :as rc]
+            [robinson.world :as rw]
+            [robinson.combat :as rcombat]
+            [robinson.npc :as rnpc]
+            #+clj
+            [taoensso.timbre :as log]
+            #+cljs
+            [shodan.console :as log :include-macros true]))
 
 (defn heal [state player-path target-path]
   {:pre [(every? (get-in state target-path) [:hp :max-hp])]}
@@ -15,8 +15,8 @@
         hp          (target :hp)
         max-hp      (target :max-hp)
         amount      1]
-    (debug "heal" player-path "is healing" target-path)
-    (debug "target-detail" target)
+    (log/debug "heal" player-path "is healing" target-path)
+    (log/debug "target-detail" target)
     (update-in state (conj target-path :hp)
       (fn [hp] (min max-hp (+ amount hp))))))
 
@@ -26,25 +26,27 @@
     :hotkey \z
     :state :magic-direction
     :fn (fn [state collided-object]
-          (-> state
-            (when-> (and (not (nil? collided-object))
-                       (contains? collided-object :npc))
+          (as-> state state
+            (if (and (not (nil? collided-object))
+                     (contains? collided-object :npc))
               (do
                 (println "Zapped" collided-object)
-                (attack state [:world :player] (npc->keys state (collided-object :npc)))))
-            (assoc-in [:world :current-state] :normal)))}
+                (rcombat/attack state [:world :player] (rnpc/npc->keys state (collided-object :npc))))
+              state)
+            (assoc-in state [:world :current-state] :normal)))}
    {:id :heal
     :name "heal"
     :hotkey \h
     :state :magic-direction
     :fn (fn [state collided-object]
-          (-> state
-            (when-> (and (not (nil? collided-object))
-                       (contains? collided-object :npc))
+          (as-> state state
+            (if (and (not (nil? collided-object))
+                     (contains? collided-object :npc))
               (do
                 (println "Healed" collided-object)
-                (heal state [:world :player] (npc->keys state (collided-object :npc)))))
-            (assoc-in [:world :current-state] :normal)))}])
+                (heal state [:world :player] (rnpc/npc->keys state (collided-object :npc))))
+              state)
+            (assoc-in state [:world :current-state] :normal)))}])
 
 (defn id->magic
   "Get magical ability by id."
@@ -72,7 +74,7 @@
    the magical ability applied."
   [state direction]
   {:pre [(contains? #{:left :right :up :down} direction)]}
-  (let [obj (first-collidable-object state direction)
+  (let [obj (rw/first-collidable-object state direction 10)
         magic (id->magic (get-in state [:world :magical-ability-id]))]
     ((magic :fn) state obj)))
 

@@ -2,11 +2,14 @@
 (ns robinson.combat
   (:require #+clj
             [robinson.macros :as rm]
+            [robinson.common :as rc]
             [robinson.random :as rr]
             [robinson.world :as rw]
             [robinson.player :as rp]
             [robinson.itemgen :as ig]
             [robinson.monstergen :as mg]
+            #+clj
+            [clojure.pprint :refer [pprint]]
             #+clj
             [taoensso.timbre :as log]
             #+cljs
@@ -199,7 +202,7 @@
         thrown-item          (when-not (keyword? attack)
                                attack)
         shot-poisoned-arrow  (when thrown-item
-                               (ig/arrow-poison-tipped? thrown-item))
+                               (ig/arrow-poison-tipped? state thrown-item))
         attack               (cond
                                (keyword? attack)
                                attack
@@ -227,69 +230,73 @@
     (cond
       ;; defender still alive?
       (pos? (- hp dmg))
-        (-> state
+        (as-> state state
           ;; modify defender hp
-          (update-in (conj defender-path :hp)
+          (update-in state (conj defender-path :hp)
             (fn [hp] (- hp dmg)))
           ;; attacks use wielded weapons
-          (arg-when-> [state] attack-item
-            (dec-item-utility (get attack-item :hotkey)))
+          (if attack-item
+            (rp/dec-item-utility state (get attack-item :hotkey))
+            state)
           ;; awaken player if attacked while sleeping
-          (arg-when-> [state] (and (contains? (set defender-path) :player)
-                                   (= (current-state state) :sleep))
-            (assoc-in [:world :current-state] :normal))
+          (if (and (contains? (set defender-path) :player)
+                   (= (rw/current-state state) :sleep))
+            (assoc-in state [:world :current-state] :normal)
+            state)
           ;; provoke temperamental animal
-          (arg-when-> [state] (= (get-in [state] (conj defender-path :temperament)) :hostile-after-attacked)
-            (->
+          (if (= (get-in [state] (conj defender-path :temperament)) :hostile-after-attacked)
+            (-> state
               (update-in (conj defender-path :status)         (fn [state] (conj state :hostile)))
-              (assoc-in (conj defender-path :movement-policy) :follow-player-in-range-or-random)))
-          (arg-when-> [state] (= (get-in [state] (conj defender-path :temperament)) :retreat-after-attacked)
-            (->
+              (assoc-in (conj defender-path :movement-policy) :follow-player-in-range-or-random))
+            state)
+          (if (= (get-in [state] (conj defender-path :temperament)) :retreat-after-attacked)
+            (-> state
               (update-in (conj defender-path :status)         (fn [state] (conj state :hostile)))
-              (assoc-in (conj defender-path :movement-policy) :hide-from-player-in-range-or-random)))
-          (rw/append-log (gen-attack-message attacker
-                                          defender
-                                          attack
-                                          defender-body-part
-                                          hit-or-miss)
+              (assoc-in (conj defender-path :movement-policy) :hide-from-player-in-range-or-random))
+            state)
+          (rc/append-log state (gen-attack-message attacker
+                                                   defender
+                                                   attack
+                                                   defender-body-part
+                                                   hit-or-miss)
                       (case hit-or-miss
                         :hit :red
                         :miss :white))
           ;; chance of being envenomed by venomous attacks
-          (update-in (conj defender-path :status) (fn [status] (if (and (re-find #"venom" (str attack))
-                                                                        (= (uniform-int 10) 0))
-                                                                 (conj status :poisioned)
-                                                                 status)))
+          (update-in state (conj defender-path :status) (fn [status] (if (and (re-find #"venom" (str attack))
+                                                                              (= (rr/uniform-int 10) 0))
+                                                                       (conj status :poisioned)
+                                                                       status)))
           ;; chance of being wounded
-          (update-in defender-path (fn [defender] (if (and is-wound
-                                                           (contains? defender :wounds))
-                                                    (update-in defender [:wounds]
-                                                      (fn [wounds] (merge-with (fn [w0 w1] {:time (max (get w0 :time) (get w1 :time))
-                                                                                            :dmg  (+   (get w0 :dmg)  (get w1 :dmg))})
-                                                                     wounds
-                                                                     {defender-body-part {:time (get-in state [:world :time])
-                                                                                    :dmg dmg}})))
-                                                    defender)))
-          ((fn [state] (if (and is-wound
-                                (contains? (set defender-path) :player))
-                         (rw/append-log state "You have been wounded." :red)
-                         state))))
+          (update-in state defender-path (fn [defender] (if (and is-wound
+                                                                 (contains? defender :wounds))
+                                                          (update-in defender [:wounds]
+                                                            (fn [wounds] (merge-with (fn [w0 w1] {:time (max (get w0 :time) (get w1 :time))
+                                                                                                  :dmg  (+   (get w0 :dmg)  (get w1 :dmg))})
+                                                                           wounds
+                                                                           {defender-body-part {:time (get-in state [:world :time])
+                                                                                          :dmg dmg}})))
+                                                          defender)))
+          (if (and is-wound
+                   (contains? (set defender-path) :player))
+            (rc/append-log state "You have been wounded." :red)
+            state))
       ;; defender dead? (0 or less hp)
       :else
         (if (contains? (set defender-path) :npcs)
           ;; defender is npc
           (-> state
             ;; update stats and will-to-live
-            (update-npc-killed defender attack)
+            (rp/update-npc-killed defender attack)
             ;; remove defender
-            (remove-in (butlast defender-path) (partial = defender))
+            (rc/remove-in (butlast defender-path) (partial = defender))
             ;; maybe add corpse
-            (update-cell-items x y
+            (rw/update-cell-items x y
               (fn [items]
-                (if (> (next-float! *rnd*) 0.2)
+                (if (> (rr/next-float! rr/*rnd*) 0.2)
                   (conj items (ig/gen-corpse defender))
                   items)))
-            (rw/append-log (gen-attack-message attacker
+            (rc/append-log (gen-attack-message attacker
                                             defender
                                             attack
                                             defender-body-part
@@ -297,11 +304,11 @@
                         :white))
           ;; defender is player
           (-> state
-            (assoc-in [:world :cause-of-death] (format "%s %s %s" (noun->indefinite-article (get attacker :name))
-                                                                 (get attacker :name)
-                                                                 (name attack)))
-            (kill-player)
-            (update-player-died :combat)))))))
+            (assoc-in [:world :cause-of-death] (format "%s %s %s" (rc/noun->indefinite-article (get attacker :name))
+                                                                  (get attacker :name)
+                                                                  (name attack)))
+            (rp/kill-player)
+            (rp/update-player-died :combat)))))))
 
 (defn -main [& more]
   (let [player {:id :player
@@ -379,6 +386,9 @@
                                         :winner winner
                                         :difficulty (format "%.2f" (float (/ hits-to-kill-defender hits-to-kill-attacker)))}))
                                    land-monsters)]
-    (print-table [:attacker :attack :defender :level :attacker-damage :hits-to-kill-defender
-                  :defender-damage :hits-to-kill-attacker :winner :difficulty] land-data)))
+    #+clj
+    (pprint [:attacker :attack :defender :level :attacker-damage :hits-to-kill-defender
+             :defender-damage :hits-to-kill-attacker :winner :difficulty] land-data)
+    #+cljs
+    "pprint not implemented"))
 

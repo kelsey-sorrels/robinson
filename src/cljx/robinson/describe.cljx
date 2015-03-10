@@ -3,13 +3,11 @@
   (:require
     [robinson.itemgen  :as ig]
     [robinson.monstergen :as mg]
-    [taoensso.timbre :as timbre]
     [clojure.string :refer [lower-case]]
-    [clojure.contrib.core :refer :all]
-    [robinson.common :refer :all]
-    [robinson.world :refer :all]
-    [robinson.npc :refer :all]
-    [robinson.player :refer :all]))
+    [robinson.common :as rc]
+    [robinson.world :as rw]
+    [robinson.npc :as rnpc]
+    [robinson.player :as rp]))
 
 (timbre/refer-timbre)
 

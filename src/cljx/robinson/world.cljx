@@ -16,13 +16,10 @@
   #+clj
   (:import [java.io DataInputStream DataOutputStream]))
 
-
-(timbre/refer-timbre)
-
 (defn distance-from-player
   "Calculate the distance between the player and pos."
   [state pos]
-  (distance (-> state :world :player :pos) pos))
+  (rc/distance (-> state :world :player :pos) pos))
 
 (defn adjacent-to-player?
   "Return true is pos is adjacent to the player's pos including diagonals."
@@ -116,7 +113,7 @@
   "Non-lazily call `(f cell x y)` for each cell in the grid."
   [f grid]
   (doall 
-    (pmap (fn [e] (apply f e)) (with-xy grid))))
+    (map (fn [e] (apply f e)) (with-xy grid))))
 
 (defn matching-keys
   [m ks]
@@ -129,10 +126,10 @@
   "Retrieve the cell at the position `[x y]` in absolute world coordinates. If `[x y]` is outside the bounds
    of the in-memory places, return `nil`."
   ([state x y]
-   (let [place-id (xy->place-id state x y)]
+   (let [place-id (rv/xy->place-id state x y)]
      (get-cell state place-id x y)))
   ([state place-id x y]
-   (let [[ax ay]  (place-id->anchor-xy state place-id)]
+   (let [[ax ay]  (rv/place-id->anchor-xy state place-id)]
      (get-cell state place-id ax ay x y)))
   ([state place-id ax ay x y]
    (let [[px py]    [(- x ax) (- y ay)]]
@@ -142,8 +139,8 @@
 
 (defn update-cell
   [state x y f]
-  (let [place-id (xy->place-id state x y)
-        [ax ay]  (place-id->anchor-xy state place-id)
+  (let [place-id (rv/xy->place-id state x y)
+        [ax ay]  (rv/place-id->anchor-xy state place-id)
         [x y]    [(- x ax) (- y ay)]]
     (update-in state [:world :places place-id y x] f)))
 
@@ -154,8 +151,8 @@
 
 (defn assoc-cell
   [state x y & keyvals]
-  (let [place-id (xy->place-id state x y)
-        [ax ay]  (place-id->anchor-xy state place-id)
+  (let [place-id (rv/xy->place-id state x y)
+        [ax ay]  (rv/place-id->anchor-xy state place-id)
         [px py]    [(- x ax) (- y ay)]]
     #_(log/info "assoc-cell" "place-id" place-id "x" x "y" y "ax" ax "ay" ay "px" px "py" py "kvs" keyvals)
     (reduce (fn [state [k v]]
@@ -166,10 +163,10 @@
 
 (defn dissoc-cell
   [state x y k] 
-  (let [place-id (xy->place-id state x y)
-        [ax ay]  (place-id->anchor-xy state place-id)
+  (let [place-id (rv/xy->place-id state x y)
+        [ax ay]  (rv/place-id->anchor-xy state place-id)
         [x y]    [(- x ax) (- y ay)]]
-    (dissoc-in state [:world :places place-id y x k])))
+    (rc/dissoc-in state [:world :places place-id y x k])))
 
 (defn update-cell-items
   [state x y f]
@@ -216,9 +213,9 @@
       (zero? item-count)
         state
       (= 1 item-count)
-        (update-cell state x y (fn [cell] (remove-in cell [:items] #(= id (get % :id)))))
+        (update-cell state x y (fn [cell] (rc/remove-in cell [:items] #(= id (get % :id)))))
       :else
-        (update-cell state x y (fn [cell] (map-in cell [:items] (fn [item]
+        (update-cell state x y (fn [cell] (rc/map-in cell [:items] (fn [item]
 
       (if (= id (get item :id))
                                                                        (update-in item [:count] dec)
@@ -396,18 +393,18 @@
  [state direction max-distance]
  {:pre [(contains? #{:up :down :left :right} direction)]}
   (let [cellsxy (remove (fn [[cell x y]]
-                          (farther-than? (xy->pos x y)
-                                         (get-in state [:world :player :pos])
-                                         max-distance))
+                          (rc/farther-than? (rc/xy->pos x y)
+                                            (get-in state [:world :player :pos])
+                                            max-distance))
                         (direction->cellsxy state direction))]
    (loop [[cell x y] (first cellsxy)
           xs         (rest cellsxy)]
      (let [npc (npc-at-xy state x y)]
        (cond
          (not (nil? npc))
-           {:npc npc :pos (xy->pos x y)}
+           {:npc npc :pos (rc/xy->pos x y)}
          (collide? state x y false)
-           {:cell cell :pos (xy->pos x y)}
+           {:cell cell :pos (rc/xy->pos x y)}
          (empty? xs)
            {}
          :else
@@ -415,7 +412,7 @@
 
 (defn player-adjacent-xys
   [state]
-  (let [[x y] (player-xy state)]
+  (let [[x y] (rp/player-xy state)]
     [[(dec x) y]
      [(inc x) y]
      [x (dec y)]
@@ -423,7 +420,7 @@
 
 (defn player-adjacent-xys-ext
   [state]
-  (let [[x y] (player-xy state)]
+  (let [[x y] (rp/player-xy state)]
     [[(dec x) y]
      [(inc x) y]
      [x (dec y)]
@@ -446,17 +443,17 @@
 (defn cells-in-range-of-player
   "Return a collection of cells with within `distance` from the player."
   [state distance]
-  (let [[x y]      (player-xy state)
-        player-pos (player-pos state)]
+  (let [[x y]      (rp/player-xy state)
+        player-pos (rp/player-pos state)]
     (map (fn [[x y]] (get-cell state x y))
-         (remove (fn [pos] farther-than? player-pos pos distance)
-                 (map (fn [[x y]] (xy->pos x y))
+         (remove (fn [pos] rc/farther-than? rp/player-pos pos distance)
+                 (map (fn [[x y]] (rc/xy->pos x y))
                       (rect->xys [(- x distance) (- y distance)]
                                  [(+ x distance) (+ y distance)]))))))
 
 (defn player-adjacent-pos
   [state direction]
-  (let [{x :x y :y} (player-pos state)
+  (let [{x :x y :y} (rp/player-pos state)
         x           (case direction
                       :left  (dec x)
                       :right (inc x)
@@ -468,7 +465,7 @@
 
 (defn player-adjacent-cell
   [state direction]
-  (apply get-cell state (pos->xy (player-adjacent-pos state direction))))
+  (apply get-cell state (rc/pos->xy (player-adjacent-pos state direction))))
 
 
 (defn player-mounted-on-raft?
@@ -480,10 +477,10 @@
 (defn inventory-and-player-cell-items
   [state]
   (let [[cell _ _]        (player-cellxy state)
-        inventory         (player-inventory state)
+        inventory         (rp/player-inventory state)
         cell-items        (get cell :items [])
         remaining-hotkeys (get-in state [:world :remaining-hotkeys])
-        inventory         (vec (fill-missing #(not (contains? % :hotkey))
+        inventory         (vec (rc/fill-missing #(not (contains? % :hotkey))
                                              #(assoc %1 :hotkey %2)
                                              remaining-hotkeys
                                              (concat inventory cell-items)))]

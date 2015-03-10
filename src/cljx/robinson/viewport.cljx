@@ -1,6 +1,10 @@
 ;; Utility functions and functions for manipulating state
 (ns robinson.viewport
   (:require [robinson.player :as rp]
+            #+cljs
+            [goog.string :as gstring]
+            #+cljs
+            [goog.string.format]
             #+clj
             [taoensso.timbre :as log]
             #+cljs
@@ -64,7 +68,7 @@
 
 (defn player-place
   [state]
-  (apply get-place state (player-xy state)))
+  (apply get-place state (rp/player-xy state)))
 
 (defn place-id->anchor-xy
   "For a given place-id return the world coordinates of the upper-left-hand corner of the place.
@@ -163,13 +167,18 @@
       (map (fn [line1 line2]
            (when-not (vector? line1)
               (log/info "line1 not vector" line1)
-              (throw (Exception. (spit line1))))
+              (throw #+clj
+                    (Exception. (spit line2))
+                     #+cljs
+                    (js/Error. (gstring/spit line1))))
            (when-not (vector? line2)
               (log/info "line2 not vector" line2)
-              (throw (Exception. spit line2)))
-
-             (concat (subvec line1 start-x)
-                     (subvec line2 0 start-x)))
+              (throw #+clj
+                     (Exception. (spit line2))
+                     #+cljs
+                     (js/Error. (gstring/spit line2))))
+           (concat (subvec line1 start-x)
+                   (subvec line2 0 start-x)))
            
            (subvec ul-place start-y)
            (subvec ur-place start-y))

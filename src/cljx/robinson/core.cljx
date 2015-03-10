@@ -2,7 +2,8 @@
 ;;
 ;(set! *warn-on-reflection* true)
 (ns robinson.core
-  (:require [robinson.main :refer :all]
+  (:require [robinson.main :refer [setup tick]]
+            #+clj
             [clojure.stacktrace :refer [print-stack-trace]])
   #+clj
   (:gen-class))

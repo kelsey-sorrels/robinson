@@ -1,13 +1,17 @@
 ;; Functions for helping with start of game
 (ns robinson.startgame
-  (:require [robinson.common :refer :all]
+  (:require [robinson.common :as rc]
+            [robinson.random :as rr]
             [robinson.monstergen :as mg]
             [robinson.itemgen :as ig]
-            [clojure.data.generators :as dg]
-            [taoensso.timbre :as timbre]
-            [pallet.thread-expr :as tx]))
-
-(timbre/refer-timbre)
+            #+clj
+            [taoensso.timbre :as log]
+            #+cljs
+            [shodan.console :as log :include-macros true]
+            #+cljs
+            [goog.string :as gstring]
+            #+cljs
+            [goog.string.format]))
 
 (defn start-inventory []
   (let [inventory              [(ig/gen-rope)
@@ -23,14 +27,14 @@
                                 (ig/gen-saw)]
         hotkeys                (vec (seq "abcdefghijklmnopqrstuvwxyzABCdEFGHIJKLMNOPQRSTUVWQYZ"))
         inventory-with-hotkeys (mapv #(assoc %1 :hotkey %2) inventory hotkeys)]
-    (info "start-inventory" inventory-with-hotkeys)
+    (log/info "start-inventory" inventory-with-hotkeys)
     inventory-with-hotkeys))
 
 (defn start-text []
-  (let [mode-of-transport (dg/rand-nth ["boat" "airplane" "train" "blimp" "jetpack" "hovercraft" "bicycle"
+  (let [mode-of-transport (rr/rand-nth ["boat" "airplane" "train" "blimp" "jetpack" "hovercraft" "bicycle"
                                         "sailboat" "steamboat" "barge" "oceanliner" "ferry" "helicopter"
                                         "biplane"])
-        natural-disaster  (dg/rand-nth ["hurricane" "tornado" "dark storm" "cyclone" "squall"])]
+        natural-disaster  (rr/rand-nth ["hurricane" "tornado" "dark storm" "cyclone" "squall"])]
     (format "While traveling by %s, a %s engulfs you.\n\n             You awake on an island.\n\n     One thing is certain - you'll have to escape."
              mode-of-transport
              natural-disaster)))

@@ -3,6 +3,7 @@
   (:require 
             [robinson.common :as rc]
             [robinson.random :as rr]
+            [robinson.math :as rmath]
             [robinson.noise :as rn]
             [robinson.prism :as rprism]
             [robinson.itemgen :as ig]
@@ -27,13 +28,11 @@
   #+clj
   (:import [java.io DataInputStream DataOutputStream]))
 
-(timbre/refer-timbre)
-
 (defn rand-xy-in-circle
   [x y max-r]
   (let [theta (rand-nth (range (* 2 Math/PI)))
         r     (rand-nth (range max-r))]
-    [(int (+ x (* r (Math/cos theta)))) (int (+ y (* r (Math/sin theta))))]))
+    [(int (+ x (* r (rmath/cos theta)))) (int (+ y (* r (rmath/sin theta))))]))
 
 (defn line-segments [x1 y1 x2 y2]
   #_(println "line-segments" x1 y1 x2 y2)

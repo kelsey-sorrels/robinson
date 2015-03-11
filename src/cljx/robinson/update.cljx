@@ -24,17 +24,20 @@
             ;clojure.core.memoize
             clojure.edn
             clojure.walk
+            #+clj
             [clojure.data.json :as json]
             clj-tiny-astar.path
             [clojure.core.async :as async]
             [clojure.java.io :as io]
             [clojure.data.generators :as dg]
+            #+clj
             [clj-http.client :as http]
-            [pallet.thread-expr :as tx]
+            #+
             [clojure.stacktrace :as st]
-            [taoensso.timbre :as timbre]))
-
-(timbre/refer-timbre)
+            #+clj
+            [taoensso.timbre :as log]
+            #+cljs
+            [shodan.console :as log :include-macros true]))
 
 (defn- pass-state
   [state & more]
@@ -71,7 +74,7 @@
         values (flatten frame)
         item   (inventory-id->item state :flashlight)
         on     (and item (= (get item :state) :on))
-        _      (info "sight-distance. flashlight:" item "state:" on)
+        _      (log/info "sight-distance. flashlight:" item "state:" on)
         values (map (fn [v] (if on (max v 100) v)) values)]
     (+ 1.5 (* 8 (/ (reduce + values) (* 255 (count values)))))))
       
@@ -97,7 +100,7 @@
 (defn toggle-hotkey
   "Toggle mark `keyin` as a selected hotkey, or not if it already is."
   [state keyin]
-  (debug "toggle-hotkey" keyin)
+  (log/debug "toggle-hotkey" keyin)
   (update-in state [:world :selected-hotkeys]
              (fn [hotkeys] (if (contains? hotkeys keyin)
                              (disj (set hotkeys) keyin)
@@ -124,9 +127,9 @@
   [state]
   (let [new-state          (reinit-world state)
         selected-hotkeys   (get-in state [:world :selected-hotkeys])
-        _                  (info "selected-hotkeys" selected-hotkeys)
+        _                  (log/info "selected-hotkeys" selected-hotkeys)
         start-inventory    (filter #(contains? (set selected-hotkeys) (get % :hotkey)) (sg/start-inventory))
-        _                  (info "Adding to starting inventory:" start-inventory)
+        _                  (log/info "Adding to starting inventory:" start-inventory)
         state              (add-to-inventory new-state start-inventory)]
     state))
 
@@ -136,7 +139,7 @@
            (<= (int \a) (int keyin) (int \k)))
     (let [new-state (toggle-hotkey state keyin)
           selected-hotkeys (get-in new-state [:world :selected-hotkeys])]
-      (info "selected-hotkeys" selected-hotkeys)
+      (log/info "selected-hotkeys" selected-hotkeys)
       (if (< (count selected-hotkeys) 4)
         new-state
         state))
@@ -158,7 +161,7 @@
         {cash  true
          non-cash-items false}  (group-by (fn [item] (= (item :type) :$))
                                           items)
-        _ (debug "picking up gold. Divided items" cash non-cash-items)
+        _ (log/debug "picking up gold. Divided items" cash non-cash-items)
         $                  (reduce + (map :amount (or cash [])))]
     (if (> $ 0)
       (-> state
@@ -173,7 +176,7 @@
   "Move the player when they are near the edge of the map.
    If a pre-generated place does not exist, create a new one using the world seed."
   [state direction]
-  (info "move-outside-safe-zone")
+  (log/info "move-outside-safe-zone")
   (let [[player-cell x y] (player-cellxy state)
         on-raft           (player-mounted-on-raft? state)
         ;;[ox oy]           (map read-string (clojure.string/split (name orig-place-id) #"_"))
@@ -195,16 +198,16 @@
                             y)
         target-place      (xy->place-id state target-x target-y)
         visible-place-ids (visible-place-ids state target-x target-y)
-        _ (info "target-x" target-x "target-y" target-y)
-        _ (info "target-place" target-place)
+        _ (log/info "target-x" target-x "target-y" target-y)
+        _ (log/info "target-place" target-place)
        vp-pos             (apply xy->pos
                             (+xy (pos->xy (get-in state [:world :viewport :pos]))
                                  (-xy [target-x target-y] [x y])))
        ;;dest-place        (-> state :world :places dest-place-id)
        {width :width
         height :height}  (get-in state [:world :viewport])]
-      (debug "viewport-pos" vp-pos)
-      #_(debug "npcs" (with-out-str (pprint (-> state :world :npcs))))
+      (log/debug "viewport-pos" vp-pos)
+      #_(log/debug "npcs" (with-out-str (pprint (-> state :world :npcs))))
       (-> state
         (assoc-in [:world :viewport :pos] vp-pos)
         (load-unload-places))))
@@ -248,17 +251,17 @@
                                :down-right 1
                                0))
         target-cell (get-cell state target-x target-y)]
-    (info "moving to" target-x target-y "type:" (get target-cell :type))
-    (info "inside-safe-zone?" (xy-in-safe-zone? state target-x target-y) target-x target-y)
-    (info "not collide?" (not (collide? state target-x target-y {:include-npcs? false})))
-    (info "not mounted-on-raft?" (not (player-mounted-on-raft? state)))
+    (log/info "moving to" target-x target-y "type:" (get target-cell :type))
+    (log/info "inside-safe-zone?" (xy-in-safe-zone? state target-x target-y) target-x target-y)
+    (log/info "not collide?" (not (collide? state target-x target-y {:include-npcs? false})))
+    (log/info "not mounted-on-raft?" (not (player-mounted-on-raft? state)))
     (cond
       (and (not (collide? state target-x target-y {:include-npcs? false}))
            (not (player-mounted-on-raft? state)))
         (-> state
           (arg-when-> [state] (not (xy-in-safe-zone? state target-x target-y))
             (move-outside-safe-zone direction))
-          (arg-if-> [state] (do (info "npc-at-xy?" (npc-at-xy state target-x target-y)) (npc-at-xy state target-x target-y))
+          (arg-if-> [state] (do (log/info "npc-at-xy?" (npc-at-xy state target-x target-y)) (npc-at-xy state target-x target-y))
             ;; collided with npc. Engage in combat.
             (attack [:world :player] (npc->keys state (npc-at-xy state target-x target-y)))
             (as-> state
@@ -360,13 +363,13 @@
                                :up  -1
                                :down 1
                                0))]
-    (debug "open-door")
+    (log/debug "open-door")
     (let [target-cell (get-cell state target-x target-y)]
-      (debug "target-cell" target-cell)
+      (log/debug "target-cell" target-cell)
       (if (and (not (nil? target-cell)) (= (target-cell :type) :close-door))
         (do
-          (debug "opening door")
-          (debug (get-cell state target-y target-x))
+          (log/debug "opening door")
+          (log/debug (get-cell state target-y target-x))
           (-> state
             (append-log "The door creaks open")
             (assoc-cell state target-y target-x :type :open-door)))
@@ -407,9 +410,9 @@
                                :up  -1
                                :down 1
                                0))]
-    (debug "close-door")
+    (log/debug "close-door")
     (let [target-cell (get-cell state target-x target-y)]
-      (debug "target-cell" target-cell)
+      (log/debug "target-cell" target-cell)
       (if (and (not (nil? target-cell)) (= (target-cell :type) :open-door))
         (-> state
           (append-log "The door closes")
@@ -463,9 +466,9 @@
           selected-items     (vec (divided-items :selected))
           not-selected-items (vec (divided-items :not-selected))
           remaining-hotkeys  (vec (remove #(some (partial = %) (map :hotkey selected-items)) remaining-hotkeys))]
-      (debug "divided-items" divided-items)
-      (debug "selected-items" selected-items)
-      (debug "not-selected-items" not-selected-items)
+      (log/debug "divided-items" divided-items)
+      (log/debug "selected-items" selected-items)
+      (log/debug "not-selected-items" not-selected-items)
       (if (seq selected-items)
         (let [new-state (-> state
                           (append-log "You pick up:")
@@ -503,8 +506,8 @@
               ;(assoc-in [:world :remaining-hotkeys]
               ;  (vec (concat (subvec remaining-hotkeys 0 item-index)
               ;               (subvec remaining-hotkeys (inc item-index) (count remaining-hotkeys))))))]
-        (debug "dropping at:" x y "item with index" item-index "item" item)
-        (debug "new-state" new-state)
+        (log/debug "dropping at:" x y "item with index" item-index "item" item)
+        (log/debug "new-state" new-state)
         new-state)
         state)))
 
@@ -727,8 +730,8 @@
                                     :down 1
                                     0))
         target-cell   (get-cell state target-x target-y)]
-    (info "saw dir" direction)
-    (info "sawing at" target-x target-y)
+    (log/info "saw dir" direction)
+    (log/info "sawing at" target-x target-y)
     (if (contains? #{:tree :palm-tree :fruit-tree} (get target-cell :type))
       (-> state
         (append-log "You saw the tree into logs.")
@@ -748,8 +751,8 @@
 (defn apply-plant-guide
   "Apply a plant-guide to the inventory item."
   [state item]
-  (info "applying plant guide to" item)
-  (info "identified"  (get-in state [:world :fruit :identified]))
+  (log/info "applying plant guide to" item)
+  (log/info "identified"  (get-in state [:world :fruit :identified]))
   (if (ig/is-fruit? item)
     (-> state
       (conj-in [:world :fruit :identified] (get item :id))
@@ -760,7 +763,7 @@
 (defn apply-flint
   "Apply flint to the inventory item."
   [state item]
-  (info "applying flint to" item)
+  (log/info "applying flint to" item)
   (if (ig/is-metal? item)
     (-> state
       (assoc-apply-item {:id :flint-and-steel})
@@ -773,7 +776,7 @@
 (defn apply-sharp-item
   "Apply a sharp item to the inventory item."
   [state item]
-  (info "applying sharp item to" item)
+  (log/info "applying sharp item to" item)
   (case (get item :id)
     :unhusked-coconut
     (-> state
@@ -789,7 +792,7 @@
 (defn apply-fruit-to-skin
   "Apply fruit to the skin. If it is poisonous, display a message in the future."
   [state item]
-  (info "skin-identifiable" (get-in state [:world :fruit]))
+  (log/info "skin-identifiable" (get-in state [:world :fruit]))
   (-> state
     (append-log (format "You touch the %s to your skin." (get item :name)))
     (arg-when-> [state] (ig/skin-identifiable? state item)
@@ -801,7 +804,7 @@
 (defn apply-fruit-to-tongue
   "Apply fruit to the tongue If it is poisonous, display a message in the future."
   [state item]
-  (info "skin-identifiable" (get-in state [:world :fruit]))
+  (log/info "skin-identifiable" (get-in state [:world :fruit]))
   (-> state
     (append-log (format "You touch the %s to your tongue." (get item :name)))
     (arg-when-> [state] (ig/tongue-identifiable? state item)
@@ -813,7 +816,7 @@
 (defn apply-frog-corpse
   "Apply the secretions of a frog corpse to an inventory item."
   [state frog-corpse target-item]
-  (info "poisonous frogs" (get-in state [:world :frogs]))
+  (log/info "poisonous frogs" (get-in state [:world :frogs]))
   (-> state
     (append-log (format "You touch the %s to the %s." (get frog-corpse :name) (get target-item :name)))
     (arg-if-> [state] (= :arrow (get target-item :id))
@@ -832,8 +835,8 @@
   [state keyin]
   (let [item (get-apply-item state)
         trans->dir? (comp is-direction? translate-directions)]
-    (info "apply-item" [item keyin])
-    (info "is-direction?" ((comp is-direction? translate-directions) keyin))
+    (log/info "apply-item" [item keyin])
+    (log/info "is-direction?" ((comp is-direction? translate-directions) keyin))
     (first-vec-match [(get item :id) keyin]
       [:fishing-pole    trans->dir?] (apply-fishing-pole state (translate-directions keyin))
       [:match           trans->dir?] (-> state
@@ -900,13 +903,13 @@
   [state]
   (let [[state water] 
         (reduce (fn [[state water] [x y]]
-                  (info "testing cell for water:" (get-cell state x y))
+                  (log/info "testing cell for water:" (get-cell state x y))
                   (if (contains? (get-cell state x y) :water)
                     [(update-cell state x y (fn [cell] (assoc cell :water 0))) (+ water (get (get-cell state x y) :water 0))]
                     [state water]))
                 [state 0]
                 (player-adjacent-xys state))]
-    (info "player-adj-xys" (player-adjacent-xys state))
+    (log/info "player-adj-xys" (player-adjacent-xys state))
     (update-in state [:world :player :thirst] (fn [thirst] (min 0 (- thirst water))))))
 
 (defn quaff-select
@@ -917,7 +920,7 @@
                                                                 (contains? #{:freshwater-hole :saltwater-hole} (get cell :type))
                                                                 (> (get cell :water) 10)))
                                                 (player-adjacent-cells state)))
-        _ (info "player-adj-cells" (player-adjacent-cells state))
+        _ (log/info "player-adj-cells" (player-adjacent-cells state))
         quaffable-inventory-item? (some (fn [item] (contains? item :thirst)) (player-inventory state))]
     (cond
       (and (pos? num-adjacent-quaffable-cells)
@@ -1009,7 +1012,7 @@
   "Remove the item whose `:hotkey` equals `keyin` and subtract from the player's
    hunger the item's `:hunger` value."
   [state keyin]
-  (info "poisoned fruit" (get-in state [:world :fruit :poisonous]))
+  (log/info "poisoned fruit" (get-in state [:world :fruit :poisonous]))
   (if-let [item (inventory-and-player-cell-hotkey->item state keyin)]
     (-> state
       (append-log (format "The %s tastes %s." (lower-case (get item :name))
@@ -1032,7 +1035,7 @@
         (if (and (ig/is-fruit? item)
                  (contains? (set (get-in state [:world :fruit :poisonous])) (get item :id)))
           (do
-            (info "Ate poisoned fruit." item)
+            (log/info "Ate poisoned fruit." item)
             (assoc-in state
                       [:world :player :poisoned-time]
                       (apply min (remove nil?
@@ -1105,7 +1108,7 @@
                                    [])))
                           :else [])
                         [])]
-    (info "harvested" harvest-items)
+    (log/info "harvested" harvest-items)
     (if (empty? harvest-items)
       (append-log state "You don't find anything.")
       (-> state
@@ -1220,7 +1223,7 @@
                                :up  -1
                                :down 1
                                0))]
-    (debug "start-talking")
+    (log/debug "start-talking")
     (if-let [target-npc (npc-at-xy state target-x target-y)]
       ;; store update the npc and world state with talking
       (let [state (-> state
@@ -1254,15 +1257,15 @@
         valid-input (get-valid-input fsm)
         options (zipmap (take (count valid-input) [\a \b \c \d \e \f]) valid-input)
         input (get options keyin)
-        _ (debug "Stepping fsm. valid-input:" valid-input)
-        _ (debug "Stepping fsm. options:" options)
-        _ (debug "Stepping fsm. input:" input)]
+        _ (log/debug "Stepping fsm. valid-input:" valid-input)
+        _ (log/debug "Stepping fsm. options:" options)
+        _ (log/debug "Stepping fsm. input:" input)]
     (step-fsm state fsm input)))
 
 (defn stop-talking
   "Remove :talking key from all npcs."
   [state]
-  (debug "stop-talking")
+  (log/debug "stop-talking")
   (-> state
       (map-in [:world :npcs] (fn [npc] (dissoc npc :talking)))
       (assoc-current-state :normal)))
@@ -1325,12 +1328,12 @@
                                 (get-in state [:world :player :inventory]))
         options   (apply hash-map
                          (mapcat (fn [item] [(item :hotkey) item]) sellable-items))
-        _ (debug "sellable items" sellable-items)
-        _ (debug "Sell options" options)]
+        _ (log/debug "sellable items" sellable-items)
+        _ (log/debug "Sell options" options)]
     (if (contains? options keyin)
       (let [item  (get options keyin)
             price (buy-fn item)
-            _ (debug "current $" (get-in state [:world :player :$]))]
+            _ (log/debug "current $" (get-in state [:world :player :$]))]
         (-> state
             (update-in [:world :player :$] (fn [gold] (+ gold price)))
             (transfer-items-from-player-to-npc (get npc :id) (partial = item))))
@@ -1346,11 +1349,11 @@
                            :craft-transportation :transportation)
         matching-recipes (filter (fn [recipe] (= (get recipe :hotkey) keyin))
                                  (get (get-recipes state) recipe-type))]
-    (info "selecting matching recipe" matching-recipes)
+    (log/info "selecting matching recipe" matching-recipes)
     (if (empty? matching-recipes)
       (ui-hint state "Pick a valid recipe.")
       (let [recipe-path [recipe-type (get (first matching-recipes) :hotkey)]]
-        (info "selecting recipe path" recipe-path)
+        (log/info "selecting recipe path" recipe-path)
         (assoc-in state [:world :craft-recipe-path] recipe-path)))))
 
 (defn assoc-throw-item
@@ -1448,7 +1451,7 @@
         recipes (get (get-recipes state) recipe-type)
         recipe (first (filter #(= hotkey (get % :hotkey))
                               recipes))]
-    (info "recipe-type" recipe-type "hotkey" hotkey "recipes" recipes "recipe" recipe)
+    (log/info "recipe-type" recipe-type "hotkey" hotkey "recipes" recipes "recipe" recipe)
     (if recipe
       (-> state
         (craft-recipe recipe)
@@ -1459,8 +1462,8 @@
 (defn scroll-log
   [state]
   (let [t (get-in state [:world :time])]
-    (info "scroll-log t" t)
-    (info "scroll-log logs-viewed" (get-in state [:world :logs-viewed]))
+    (log/info "scroll-log t" t)
+    (log/info "scroll-log logs-viewed" (get-in state [:world :logs-viewed]))
     (-> state
       (update-in [:world :logs-viewed] inc)
       ((fn [state]
@@ -1475,7 +1478,7 @@
   (-> state
     (update-in [:world :log]
       (fn [logs]
-        (info "updating :world :log. logs" logs)
+        (log/info "updating :world :log. logs" logs)
         (mapcat
           (fn [logs-with-same-time]
             (vec
@@ -1503,12 +1506,13 @@
       (let [t    (get-in state [:world :time])
             logs (filter #(= t (get % :time)) (get-in state [:world :log]))
             logs-viewed (get-in state [:world :logs-viewed] 1)]
-        (info "logs" logs)
-        (-> state
-          (assoc-in [:world :logs-viewed] 1)
-          (tx/when-> (and (> (count logs) 1)
-                          (= logs-viewed 1))
-            (assoc-current-state :more-log))))))))
+        (log/info "logs" logs)
+        (as-> state state
+          (assoc-in state [:world :logs-viewed] 1)
+          (if (and (> (count logs) 1)
+                   (= logs-viewed 1))
+            (assoc-current-state state :more-log)
+            state)))))))
 
 (defn get-hungrier-and-thirstier
   "Increase player's hunger."
@@ -1534,12 +1538,12 @@
           (update-player-died :thirst))
         state)
       (let [new-hunger (get-in state [:world :player :hunger])]
-        (info "hunger" hunger "new-hunger" new-hunger)
+        (log/info "hunger" hunger "new-hunger" new-hunger)
         (if (< hunger 80 new-hunger)
           (append-log state "You need to eat now." :yellow)
           state))
       (let [new-thirst (get-in state [:world :player :thirst])]
-        (info "thirst" thirst "new-thirst" new-thirst)
+        (log/info "thirst" thirst "new-thirst" new-thirst)
         (if (< thirst 80 new-thirst)
           (append-log state "You need to drink something now." :blue)
           state)))))
@@ -1551,7 +1555,7 @@
           distance-from-start (chebyshev-distance {:x 0 :y 0}
                                                   (player-pos state))
           chance-of-rescue (max 0 (+ (/ -300.0 distance-from-start) 1.5))]
-      (info "distance from 0,0" distance-from-start)
+      (log/info "distance from 0,0" distance-from-start)
       (if (< (dg/float) chance-of-rescue)
         (assoc-in state [:world :current-state] :rescued)
         state))
@@ -1579,38 +1583,38 @@
                              dwtl)
                 hp         (get-in state [:world :player :hp])
                 max-hp     (get-in state [:world :player :max-hp])
-                _          (info "hp" hp "max-hp" max-hp)
+                _          (log/info "hp" hp "max-hp" max-hp)
                 dwtl       (+ dwtl (if (> 0.5 (/ hp max-hp))
                                      1
                                      0))
                 hunger     (get-in state [:world :player :hunger])
                 max-hunger (get-in state [:world :player :max-hunger])
-                _          (info "hunger" hunger "max-hunger" max-hunger)
+                _          (log/info "hunger" hunger "max-hunger" max-hunger)
                 dwtl       (+ dwtl (if (> (/ hunger max-hunger) 0.8)
                                      1
                                      0))
                 thirst     (get-in state [:world :player :thirst])
                 max-thirst (get-in state [:world :player :max-thirst])
-                _          (info "thirst" thirst "max-thirst" max-thirst)
+                _          (log/info "thirst" thirst "max-thirst" max-thirst)
                 dwtl       (+ dwtl (if (> (/ thirst max-thirst) 0.5)
                                      1
                                      0))
                 wounded    (player-wounded? state)
-                _          (info "wounded" wounded)
+                _          (log/info "wounded" wounded)
                 dwtl       (+ dwtl (if wounded
                                      1
                                      0))
                 poisoned   (player-poisoned? state)
-                _          (info "poisoned" poisoned)
+                _          (log/info "poisoned" poisoned)
                 dwtl       (+ dwtl (if poisoned
                                      1
                                      0))
                 infected   (player-infected? state)
-                _          (info "infected" infected)
+                _          (log/info "infected" infected)
                 dwtl       (+ dwtl (if infected
                                      1
                                      0))]
-          (info "dwtl" dwtl "will-to-live" will-to-live)
+          (log/info "dwtl" dwtl "will-to-live" will-to-live)
           (- will-to-live dwtl))))
       (update-in [:world :player :status]
                  (fn [status]
@@ -1633,9 +1637,9 @@
 (defn fruit-identify-activate
   "Display a message if the fruit being identified is poisonous."
   [state]
-  (info "time" (get-time state))
-  (info "skin-id-time" (get-in state [:world :player :skin-identify-activate-time]))
-  (info "tongue-id-time" (get-in state [:world :player :tongue-identify-activate-time]))
+  (log/info "time" (get-time state))
+  (log/info "skin-id-time" (get-in state [:world :player :skin-identify-activate-time]))
+  (log/info "tongue-id-time" (get-in state [:world :player :tongue-identify-activate-time]))
   (-> state
     (arg-when-> [state]
       (let [activate-time (get-in state [:world :player :skin-identify-activate-time])]
@@ -1658,7 +1662,7 @@
 (defn if-poisoned-get-hurt
   "Decrease player's hp if they are poisoned."
   [state]
-  (info "player" (get-in state [:world :player]))
+  (log/info "player" (get-in state [:world :player]))
   (-> state
     (arg-when-> [state]
       (let [poisoned-time (get-in state [:world :player :poisoned-time])]
@@ -1711,34 +1715,35 @@
 
 (defn heal
   [state]
-  (-> state
+  (as-> state state
     ;; heal wounds
-    (tx/arg-> [state]
-      (update-in [:world :player :wounds]
-        (fn [wounds]
-          (reduce-kv (fn [wounds body-part wound]
-            (if (< (get wound :dmg) 1)
-              wounds
-              (assoc wounds body-part {:dmg (- (get wound :dmg) 0.1)
-                                       :time (get wound :time)})))
-            {}
-            wounds))))
+    (update-in state [:world :player :wounds]
+      (fn [wounds]
+        (reduce-kv (fn [wounds body-part wound]
+          (if (< (get wound :dmg) 1)
+            wounds
+            (assoc wounds body-part {:dmg (- (get wound :dmg) 0.1)
+                                     :time (get wound :time)})))
+          {}
+          wounds)))
     ;; chance of poison wearing off
-    (arg-when-> [state]
-      (and (contains? (get-in state [:world :player :status]) :poisoned)
-           (< (dg/float) 0.1))
+    (if (and (contains? (get-in state [:world :player :status]) :poisoned)
+            (< (dg/float) 0.1))
+      (-> state
         (update-in [:world :player :status]
           (fn [status]
               (disj status :poisoned)))
         (append-log "The poison wore off." :green))
+      state)
     ;; chance of infection clearing up
-    (arg-when-> [state]
-      (and (contains? (get-in state [:world :player :status]) :infected)
-           (< (dg/float) 0.1))
+    (if (and (contains? (get-in state [:world :player :status]) :infected)
+            (< (dg/float) 0.1))
+      (-> state
         (update-in [:world :player :status]
           (fn [status]
               (disj status :infected)))
-        (append-log "The infection has cleared up." :yellow))))
+        (append-log "The infection has cleared up." :yellow))
+      state)))
 
 (defn decrease-flashlight-charge
   [state]
@@ -1756,7 +1761,7 @@
 (defn repeat-commands
   [state]
   (let [command-seq (get-in state [:world :command-seq] [])]
-    (info "repeating commands" command-seq)
+    (log/info "repeating commands" command-seq)
     (reduce update-state state command-seq)))
 
 ;; update visibility
@@ -1764,9 +1769,9 @@
   [state]
   (let [pos              (-> state :world :player :pos)
         sight-distance   (float (sight-distance state))
-        _ (info "player-pos" pos)
-        _ (info "player place-id" (str (apply xy->place-id state (pos->xy pos))))
-        _ (info "sight-distance" sight-distance)
+        _ (log/info "player-pos" pos)
+        _ (log/info "player place-id" (str (apply xy->place-id state (pos->xy pos))))
+        _ (log/info "sight-distance" sight-distance)
         will-to-live     (get-in state [:world :player :will-to-live])
         max-will-to-live (get-in state [:world :player :max-will-to-live])
         get-cell-m       (memoize (fn [x y] (get-cell state x y)))
@@ -1776,7 +1781,7 @@
                                y (range (- (get pos :y) (int (Math/ceil sight-distance)))
                                         (+ (get pos :y) (int (Math/ceil sight-distance))))]
                             [x y])
-        _ (info "test-cells" test-cells)
+        _ (log/info "test-cells" test-cells)
         visible-cells    (filter (fn [[x y]] (and (not (nil? (get-cell state x y)))
                                                   (not (farther-than? pos
                                                                       {:x x :y y}
@@ -1788,12 +1793,12 @@
                                                     (pos :y)
                                                     x y)))
                                  test-cells)
-        _ (info "visible-cells" visible-cells)
+        _ (log/info "visible-cells" visible-cells)
         dwtl             (/ (reduce (fn [acc [x y]] (+ acc (- (dec new-time)
                                                            (get (get-cell state x y) :discovered (- new-time 10000)))))
                                  0 visible-cells)
                             48000)
-        _                (info "delta will-to-live" (float dwtl))
+        _                (log/info "delta will-to-live" (float dwtl))
         will-to-live     (min (+ will-to-live dwtl)
                               max-will-to-live)]
   (-> state
@@ -1837,7 +1842,7 @@
       (update-in [:world :npcs] vec)
       (conj-in [:world :npcs] (get-in state [:world :player]))
       (assoc-in [:world :player] npc))]
-    (debug "npcs" (with-out-str (pprint (-> state :world :npcs))))
+    (log/debug "npcs" (with-out-str (pprint (-> state :world :npcs))))
     state))
 
 (defn
@@ -1847,8 +1852,8 @@
    `target` is a map with the keys `:x` and `:y`."
   [state npc target]
     (let [npcs                   (npcs-in-viewport state)
-          ;_                      (debug "meta" (-> move-to-target var meta))
-          ;_                      (debug "move-to-target npc" npc "target" target)
+          ;_                      (log/debug "meta" (-> move-to-target var meta))
+          ;_                      (log/debug "move-to-target npc" npc "target" target)
           npc-pos                (get npc :pos)
           npc-pos-vec            [(npc-pos :x) (npc-pos :y)]
           threshold              (get npc :range-threshold)
@@ -1860,7 +1865,7 @@
           width                  (get-in state [:world :width])
           height                 (get-in state [:world :height])
           get-type               (memoize (fn [x y] (do
-                                                      ;(debug "traversable?" x y "type" (get-in place [y x :type]))
+                                                      ;(log/debug "traversable?" x y "type" (get-in place [y x :type]))
                                                       (or (get (get-cell state x y) :type) :unknown))))
           water-traversable?     (fn water-traversable? [[x y]]
                                    (and (< 0 x width)
@@ -1893,13 +1898,13 @@
                                    npc-can-move-on-land
                                      land-traversable?)
           path                   (try
-                                   (debug "a* params" [width height] traversable? npc-pos-vec [(target :x) (target :y)])
+                                   (log/debug "a* params" [width height] traversable? npc-pos-vec [(target :x) (target :y)])
                                    (clj-tiny-astar.path/a* [width height] traversable? npc-pos-vec [(target :x) (target :y)])
                                    (catch Exception e
-                                     (error "Caught exception during a* traversal." npc-pos-vec [(target :x) (target :y)] e)
+                                     (log/error "Caught exception during a* traversal." npc-pos-vec [(target :x) (target :y)] e)
                                      ;(st/print-cause-trace e)
                                      nil))
-          ;_                      (debug "path to target" path)
+          ;_                      (log/debug "path to target" path)
           new-pos                (if (and (not (nil? path))
                                           (> (count path) 1)
                                           ;; don't collide with player
@@ -1908,11 +1913,11 @@
                                                   ((juxt first second) player-pos-vec))))
                                    (second path)
                                    npc-pos-vec)
-          ;_                      (debug "new-pos" new-pos)
+          ;_                      (log/debug "new-pos" new-pos)
           new-npc                (-> npc
                                      (assoc-in [:pos :x] (first new-pos))
                                      (assoc-in [:pos :y] (second new-pos)))
-          ;_                      (debug "new-npc" new-npc)
+          ;_                      (log/debug "new-npc" new-npc)
         ]
       [{:x (first new-pos) :y (second new-pos)} new-npc npc]))
 
@@ -1935,7 +1940,7 @@
           width                  (get-in state [:world :width])
           height                 (get-in state [:world :height])
           get-type               (memoize (fn [x y] (do
-                                                      #_(debug "traversable?" x y "type" (get-in place [y x :type]))
+                                                      #_(log/debug "traversable?" x y "type" (get-in place [y x :type]))
                                                       (or (get (get-cell state x y) :type) :unknown))))
           water-traversable?     (fn water-traversable? [[x y]]
                                    (and (< 0 x width)
@@ -1967,7 +1972,7 @@
                                    npc-can-move-on-land
                                      land-traversable?)
           ;; TODO: calc new-pos based on adj-navigable space (8-dir) that is farthest away from player
-          ;_                      (debug "path to target" path)
+          ;_                      (log/debug "path to target" path)
           new-pos                (first
                                    (sort-by (fn [[x y]] (distance (xy->pos npc-x npc-y) (xy->pos x y)))
                                             (filter traversable?
@@ -1975,11 +1980,11 @@
           new-pos                (or new-pos
                                      [npc-x npc-y])
 
-          ;_                      (debug "new-pos" new-pos)
+          ;_                      (log/debug "new-pos" new-pos)
           new-npc                (-> npc
                                      (assoc-in [:pos :x] (first new-pos))
                                      (assoc-in [:pos :y] (second new-pos)))
-          ;_                      (debug "new-npc" new-npc)
+          ;_                      (log/debug "new-npc" new-npc)
         ]
       [{:x (first new-pos) :y (second new-pos)} new-npc npc]))
 
@@ -2002,7 +2007,7 @@
                      (adjacent-navigable-pos state
                                              npc-pos
                                              navigable-types)))]
-      ;(debug "distance > threshold, move randomly. target" target)
+      ;(log/debug "distance > threshold, move randomly. target" target)
       [target
        (-> npc
          (assoc-in [:pos :x] (get target :x))
@@ -2031,7 +2036,7 @@
                        (adjacent-navigable-pos state
                                                npc-pos
                                                navigable-types)))]
-        ;(debug "distance > threshold, move randomly. target" target)
+        ;(log/debug "distance > threshold, move randomly. target" target)
         [target
          (-> npc
            (assoc-in [:pos :x] (get target :x))
@@ -2062,7 +2067,7 @@
                        (adjacent-navigable-pos state
                                                npc-pos
                                                navigable-types)))]
-        ;(debug "distance > threshold, move randomly. target" target)
+        ;(log/debug "distance > threshold, move randomly. target" target)
         [target
          (-> npc
            (assoc-in [:pos :x] (get target :x))
@@ -2100,7 +2105,7 @@
                             :gravel
                             :tall-grass
                             :short-grass})]
-        ;_ (info "moving npc@" (get npc :pos) "with policy" policy)]
+        ;_ (log/info "moving npc@" (get npc :pos) "with policy" policy)]
     (case policy
       :constant                            [nil nil npc]
       :entourage                           (move-to-target state
@@ -2134,7 +2139,7 @@
                       ;; adjacent hostile npcs attack player.
                       (if (and (contains? (get npc :status) :hostile)
                                (adjacent-to-player? state (get npc :pos)))
-                        (let [_ (info "npc attacker" npc)]
+                        (let [_ (log/info "npc attacker" npc)]
                           (attack state npc-keys [:world :player]))
                         state))
                     state))
@@ -2152,7 +2157,7 @@
                                                           (> (get npc :energy) 1)))
                                      (npcs-in-viewport state)))
            i 5]
-      ;(info "looping over" (count remaining-npcs) "npcs")
+      ;(log/info "looping over" (count remaining-npcs) "npcs")
       (if (or (empty? remaining-npcs)
               (neg? i))
         ;; no more results to process, stop looping and return state
@@ -2167,7 +2172,7 @@
         ;; at each step whether new-pos is occupied and use new-npc or npc depending on the
         ;; outcome.
         ;; Filter out elements where the first value is nil.
-        ;_ (info "map-result" (map (fn [npc]
+        ;_ (log/info "map-result" (map (fn [npc]
         ;                               (log-time "calc-npc-next-step"
         ;                                 (first (calc-npc-next-step state npc))))
         ;                             remaining-npcs))
@@ -2215,7 +2220,7 @@
 (defn update-cells
   "Fill holes with a small amount of water. Drop fruit. Drop harvest items."
   [state]
-  (info "updating cells")
+  (log/info "updating cells")
   (let [;xys      (viewport-xys state)
         ;get-cell-m (memoize (fn [x y] (get-cell state x y)))
         {{v-x :x v-y :y} :pos}
@@ -2235,8 +2240,8 @@
         (let [;cell       (get-cell-m x y)
               cell-type  (get cell :type)
               cell-items (get cell :items)]
-          #_(info "updating cell" cell "@" x y)
-          #_(info "viewport" (get-in state [:world :viewport]))
+          #_(log/info "updating cell" cell "@" x y)
+          #_(log/info "viewport" (get-in state [:world :viewport]))
           (-> 
             (cond
                 ;; update holes
@@ -2264,7 +2269,7 @@
                                                          (type->collide?
                                                            (get (get-cell state x y) :type))))
                                         (adjacent-xys x y))]
-                    (info "dropping fruit" item "at [" x y "]" adj-xys)
+                    (log/info "dropping fruit" item "at [" x y "]" adj-xys)
                     (if (seq adj-xys)
                       ;; drop the fruit into the cell
                       (apply conj-cell-items state (conj (dg/rand-nth adj-xys) item))
@@ -2281,7 +2286,7 @@
                       (let [adj-xys (filter (fn [[x y]] (type->flammable?
                                                           (get (get-cell state x y) :type)))
                                             (adjacent-xys-ext x y))]
-                        (info "spreading fire at [" x y "]" adj-xys)
+                        (log/info "spreading fire at [" x y "]" adj-xys)
                         (if (seq adj-xys)
                           ;; spread fire into the cell
                           (let [[x y] (dg/rand-nth adj-xys)]
@@ -2318,15 +2323,16 @@
                 ;; Skip quest if current stage of quest is nil. Ie: it is completed.
                 state
                 (let [stage    (get-in quest [:stages stage-id])]
-                  ;(debug "exec quest" quest)
-                  ;(debug "quest-id" (quest :id))
-                  ;(debug "stage-id" stage-id)
-                  ;(debug "exec stage" stage)
-                  (-> state
-                    (tx/when-> ((stage :pred) state)
+                  ;(log/debug "exec quest" quest)
+                  ;(log/debug "quest-id" (quest :id))
+                  ;(log/debug "stage-id" stage-id)
+                  ;(log/debug "exec stage" stage)
+                  (if ((stage :pred) state)
+                    (-> state
                       ((stage :update))
                       (assoc-in [:world :quests (quest :id) :stage]
-                                ((stage :nextstagefn) stage))))))))
+                                ((stage :nextstagefn) stage)))
+                    state)))))
             state (-> state :quests vals)))
 
 ;; A finite state machine definition for the game state. 
@@ -2576,28 +2582,28 @@
         keyin         (if (contains? translate-direction-states current-state)
                         (translate-directions keyin)
                         keyin)]
-    ;(debug "current-state" current-state)
+    ;(log/debug "current-state" current-state)
     (if (or (contains? table keyin) (contains? table :else))
       (let [[transition-fn new-state advance-time] (if (contains? table keyin) (get table keyin) (get table :else))
             ;; if the table contains keyin, then pass through transition-fn assuming arity-1 [state]
             ;; else the transition-fn takes [state keyin]. Bind keying so that it becomes arity-1 [state]
-            _ (debug "current-state" (get-in state [:world :current-state]))
-            _ (debug "transition-fn" transition-fn)
+            _ (log/debug "current-state" (get-in state [:world :current-state]))
+            _ (log/debug "transition-fn" transition-fn)
             transition-fn             (if (contains? table keyin)
                                         transition-fn
                                         (fn [state]
                                           (transition-fn state keyin)))
             command-seq (get-in state [:world :command-seq] [])
-            _ (debug "type of npcs" (type (get-in state [:world :npcs])))
+            _ (log/debug "type of npcs" (type (get-in state [:world :npcs])))
             new-time  (inc (get-in state [:world :time]))
             state     (clear-ui-hint state)
             state     (transition-fn
                         (if advance-time
                           (assoc-in state [:world :time] new-time)
                           state))
-            _ (debug "current-state" (get-in state [:world :current-state]))
-            _ (debug "new-state" new-state)
-            _ (debug "type of npcs" (type (get-in state [:world :npcs])))
+            _ (log/debug "current-state" (get-in state [:world :current-state]))
+            _ (log/debug "new-state" new-state)
+            _ (log/debug "type of npcs" (type (get-in state [:world :npcs])))
             new-state (if (keyword? new-state)
                         new-state
                         (new-state (get-in state [:world :current-state])))
@@ -2613,39 +2619,43 @@
                               (conj-in state [:world :command-seq] keyin))
                           (assoc-in state [:world :command-seq] command-seq))
                         state)
-            _ (info "command-seq" (get-in state [:world :command-seq] :none))
+            _ (log/info "command-seq" (get-in state [:world :command-seq] :none))
             _ (trace "player" (get-in state [:world :player]))
-            _ (info "new-state" new-state)
+            _ (log/info "new-state" new-state)
             wtl       (get-in state [:world :player :will-to-live])]
         (some-> state
             (assoc-current-state new-state)
-            (tx/when-> advance-time
-              ;; do updates that don't deal with keyin
-              ;; Get hungrier
-              (get-hungrier-and-thirstier)
-              ;; Chance of rescue
-              (get-rescued)
-              ;; Show fruit identify messages if applicable
-              (fruit-identify-activate)
-              ;; if poisoned, damage player, else heal
-              (if-poisoned-get-hurt)
-              (heal)
-              (decrease-flashlight-charge)
-              (if-wounded-get-infected)
-              (if-infected-get-hurt)
-              (if-near-too-much-fire-get-hurt)
-              (update-npcs)
-              (decrease-will-to-live)
-              (update-cells)
-              ((fn [state] (info "Done updating cells") state))
-              ;; TODO: Add appropriate level
-              (add-npcs-random)
-              ;; update visibility
-              (update-visibility)
-              ;; add will-to-live flavor message
-              (log-will-to-live-flavor wtl))
+            (as-> state
+              (if advance-time
+                (-> state
+                  ;; do updates that don't deal with keyin
+                  ;; Get hungrier
+                  (get-hungrier-and-thirstier)
+                  ;; Chance of rescue
+                  (get-rescued)
+                  ;; Show fruit identify messages if applicable
+                  (fruit-identify-activate)
+                  ;; if poisoned, damage player, else heal
+                  (if-poisoned-get-hurt)
+                  (heal)
+                  (decrease-flashlight-charge)
+                  (if-wounded-get-infected)
+                  (if-infected-get-hurt)
+                  (if-near-too-much-fire-get-hurt)
+                  (update-npcs)
+                  (decrease-will-to-live)
+                  (update-cells)
+                  ((fn [state] (log/info "Done updating cells") state))
+                  ;; TODO: Add appropriate level
+                  (add-npcs-random)
+                  ;; update visibility
+                  (update-visibility)
+                  ;; add will-to-live flavor message
+                  (log-will-to-live-flavor wtl))
+                state))
             (update-quests)
             (arg-when-> [state] (contains? (-> state :world :player :status) :dead)
+              #+clj
               ((fn [state]
                  ;; if UPLOADVERSION file is present, upload save/world.edn as json to aaron-santos.com:8888/upload
                  (when (.exists (io/file "config/.feedbackparticipant"))
@@ -2664,20 +2674,20 @@
                                                                         v))
                                                                world)
                                        (json/write-str world))]
-                     (info "Uploading save file version" version "userid" userid "to" url)
+                     (log/info "Uploading save file version" version "userid" userid "to" url)
                      (async/thread 
                        (try
-                         (info "Starting upload")
+                         (log/info "Starting upload")
                          (System/setProperty "https.protocols" "TLSv1.2")
                          (http/post url
                            {:insecure? true
                             :body body
                             :content-type :json})
-                         (info "Done uploading save file")
+                         (log/info "Done uploading save file")
                          (catch Exception e
-                           (error "Caught exception while uploading save" e))))))
+                           (log/error "Caught exception while uploading save" e))))))
                  (doseq [file (filter (fn [file] (re-matches #".*edn" (.getName file))) (file-seq (io/file "save")))]
-                   (info "Deleting" file)
+                   (log/info "Deleting" file)
                    (.delete file))
                 state))
               (update-in [:world :player :status]
@@ -2686,8 +2696,10 @@
               (assoc-current-state :dead))
               ;; delete the save game on player death
             ;; only try to start log scrolling if the state we were just in was not more-log
-            (tx/when-> (and current-state
-                            (not= current-state :more-log))
-              (init-log-scrolling))))
+            (as-> state
+              (if (and current-state
+                       (not= current-state :more-log))
+                (init-log-scrolling state)
+                state))))
       state)))
 

@@ -28,11 +28,12 @@
             [clojure.data.json :as json]
             clj-tiny-astar.path
             [clojure.core.async :as async]
+            #+clj
             [clojure.java.io :as io]
             [clojure.data.generators :as dg]
             #+clj
             [clj-http.client :as http]
-            #+
+            #+clj
             [clojure.stacktrace :as st]
             #+clj
             [taoensso.timbre :as log]

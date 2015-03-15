@@ -5,7 +5,7 @@
 (set! *warn-on-reflection* true)
 
 #+clj
-(def PI (.PI Math))
+(def PI (Math/PI))
 
 #+cljs
 (def PI (.PI js/Math))

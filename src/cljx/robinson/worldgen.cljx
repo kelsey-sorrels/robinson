@@ -12,7 +12,7 @@
             [robinson.player :as rp]
             [robinson.lineofsight :as rlos]
             [robinson.npc :as rnpc]
-            [clojure.contrib.core :refer []]
+            #+clj
             [taoensso.nippy :as nippy]
             #+clj
             [clojure.core.async :as async]
@@ -20,13 +20,15 @@
             [cljs.core.async :as async]
             #+clj
             [clojure.java.io :as io]
-            [taoensso.timbre :as timbre]
             #+clj
             [taoensso.timbre :as log]
             #+cljs
             [shodan.console :as log :include-macros true])
   #+clj
-  (:import [java.io DataInputStream DataOutputStream]))
+  (:import [java.io DataInputStream DataOutputStream])
+  #+cljs
+  (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
+
 
 (defn rand-xy-in-circle
   [x y max-r]
@@ -75,13 +77,13 @@
       [])))
 
 (defn sample-tree [n x y]
-  ((rp/coerce (rp/offset [-0.5 -0.5] (rp/scale 0.1 (rp/noise n)))) x y))
+  ((rprism/coerce (rprism/offset [-0.5 -0.5] (rprism/scale 0.1 (rprism/noise n)))) x y))
 
 (defn sample-island
   [n x y]
-  (let [c  ((rp/coerce (rp/scale 333.0 (rp/offset (rp/vnoise n) (rp/radius)))) x y)
-        c1 ((rp/coerce (rp/offset [0.5 0.5] (rp/scale 22 (rp/snoise n)))) x y)
-        c2 ((rp/coerce (rp/offset [-110.5 -640.5] (rp/scale 26 (rp/snoise n)))) x y)
+  (let [c  ((rprism/coerce (rprism/scale 333.0 (rprism/offset (rprism/vnoise n) (rprism/radius)))) x y)
+        c1 ((rprism/coerce (rprism/offset [0.5 0.5] (rprism/scale 22 (rprism/snoise n)))) x y)
+        c2 ((rprism/coerce (rprism/offset [-110.5 -640.5] (rprism/scale 26 (rprism/snoise n)))) x y)
         cgt #+clj (> (Math/abs c1) (Math/abs c2))
             #+cljs (> (.abs js/Math c1) (.abs js/Math c2))]
     (cond
@@ -122,11 +124,11 @@
         points  (line-segment [x y] [0 0])
         samples (take-nth 5 points)
         n       (rn/create-noise (rr/create-random seed))
-        _ (info "find-starting-pos samples" samples)
+        _ (log/info "find-starting-pos samples" samples)
         non-water-samples (remove
           (fn [[x y]]
             (let [s (sample-island n x y)]
-              (info "sample" x y s)
+              (log/info "sample" x y s)
               (or (= s :surf)
                   (= s :ocean))))
           samples)
@@ -137,7 +139,7 @@
   {:pre [(rc/has-keys? starting-pos [:x :y])]
    :post [(rc/has-keys? % [:x :y])]}
   (let [{x :x y :y}  starting-pos
-        _ (info "seed" seed "starting-pos" starting-pos "max-x" max-x "max-y" max-y)
+        _ (log/info "seed" seed "starting-pos" starting-pos "max-x" max-x "max-y" max-y)
         player-angle #+clj  (Math/atan2 (- x (/ max-x 2)) (- y (/ max-y 2)))
                      #+cljs (.atan2 js/Math (- x (/ max-x 2)) (- y (/ max-y 2)))
         angle        (- player-angle 0.03)
@@ -161,7 +163,7 @@
 (defn init-island
   "Create an island block. `x` and `y` denote the coordinates of the upper left cell in the block."
   [state x y width height]
-  (info "init-island" x y width height)
+  (log/info "init-island" x y width height)
   (let [seed                  (get-in state [:world :seed])
         n                     (rn/create-noise (rr/create-random seed))
         volcano-pos           (get-in state [:world :volcano-pos])
@@ -172,7 +174,7 @@
          (map (fn [[x y]]
             (let [biome     (sample-island n x y)
                   t         (sample-tree n x y)
-                  ;_         (info biome t)
+                  ;_         (log/info biome t)
                   cell-type (case biome
                               :ocean         {:type :water}
                               :surf          {:type :surf}
@@ -317,13 +319,13 @@
         ;; calculate place-id and viewport position using minimal state information
         
         starting-pos           (find-starting-pos seed max-x max-y)
-        _                      (info "starting-pos" starting-pos)
+        _                      (log/info "starting-pos" starting-pos)
         volcano-xy             [x y]
         lava-terminal-pos      (find-lava-terminal-pos seed starting-pos max-x max-y)
-        _                      (info "volcano-xy" volcano-xy "lava-terminal-pos" lava-terminal-pos)
+        _                      (log/info "volcano-xy" volcano-xy "lava-terminal-pos" lava-terminal-pos)
         lava-segments          (partition 2 (apply line-segments [(first volcano-xy) (second volcano-xy) (get lava-terminal-pos :x) (get lava-terminal-pos :y)]))
         lava-points            (map first lava-segments)
-        _                      (info "lava-points" lava-points)
+        _                      (log/info "lava-points" lava-points)
         min-state              {:world {:viewport {:width width :height height}
                                         :seed seed
                                         :volcano-pos (apply rc/xy->pos volcano-xy)
@@ -334,11 +336,11 @@
         _ (debug "starting-pos" starting-pos)
         place-0                (init-island min-state vx vy width height)
         fruit-ids              [:red-fruit :orange-fruit :yellow-fruit :green-fruit :blue-fruit :purple-fruit :white-fruit :black-fruit]
-        poisoned-fruit         (set (take (/ (count fruit-ids) 2) (dg/shuffle fruit-ids)))
-        skin-identifiable      (set (take (/ (count poisoned-fruit) 2) (dg/shuffle poisoned-fruit)))
-        tongue-identifiable    (set (take (/ (count poisoned-fruit) 2) (dg/shuffle poisoned-fruit)))
+        poisoned-fruit         (set (take (/ (count fruit-ids) 2) (rr/shuffle fruit-ids)))
+        skin-identifiable      (set (take (/ (count poisoned-fruit) 2) (rr/shuffle poisoned-fruit)))
+        tongue-identifiable    (set (take (/ (count poisoned-fruit) 2) (rr/shuffle poisoned-fruit)))
         frog-colors            [:reg :orange :yellow :green :blue :purple]
-        poisonous-frog-colors  (set (take (/ (count frog-colors) 2) (dg/shuffle frog-colors)))
+        poisonous-frog-colors  (set (take (/ (count frog-colors) 2) (rr/shuffle frog-colors)))
         world
           {:seed seed
            :block-size {:width width :height height}
@@ -414,10 +416,11 @@
 
 
 
+#+clj
 (defn load-place
   "Returns a place, not state."
   [state id]
-  (info "loading" id)
+  (log/info "loading" id)
   ;; load the place into state. From file if exists or gen a new random place.
   (let [place
     (if (.exists (io/as-file (format "save/%s.place.edn" (str id))))
@@ -431,21 +434,30 @@
         (rc/log-time "init-island time" (init-island state
                                                   ax ay
                                                   v-width v-height))))]
-      (info "loaded place. width:" (count (first place)) "height:" (count place))
+      (log/info "loaded place. width:" (count (first place)) "height:" (count place))
       place))
+
+;TODO: fix in clojurescript
+#+cljs
+(defn load-place
+  "Returns a place, not state."
+  [state id]
+  (log/info "loading" id))
 
 (def save-place-chan (async/chan))
 
-(async/go-loop []
+(go-loop []
   (let [[id place] (async/<! save-place-chan)]
-    (info "Saving" id)
+    (log/info "Saving" id)
+    ;TODO: fix in clojurescript
+    #+clj
     (with-open [o (io/output-stream (format "save/%s.place.edn" (str id)))]
-      (nippy/freeze-to-out! (DataOutputStream. o) place)))
-    (recur))
+      (nippy/freeze-to-out! (DataOutputStream. o) place))
+    (recur)))
 
 (defn unload-place
   [state id]
-  (info "unloading" id)
+  (log/info "unloading" id)
   (rc/log-time "unloading"
   (async/>!! save-place-chan [id (get-in state [:world :places id])])
   ;; Remove all npcs in place being unloaded
@@ -464,10 +476,10 @@
         visible-place-ids (visible-place-ids state x y)
         places-to-load    (clojure.set/difference (set visible-place-ids) (set loaded-place-ids))
         places-to-unload  (clojure.set/difference (set loaded-place-ids) (set visible-place-ids))]
-    (info "currently loaded places:" loaded-place-ids)
-    (info "visible places:" visible-place-ids)
-    (info "unloading places:" places-to-unload)
-    (info "loading places:" places-to-load)
+    (log/info "currently loaded places:" loaded-place-ids)
+    (log/info "visible places:" visible-place-ids)
+    (log/info "unloading places:" places-to-unload)
+    (log/info "loading places:" places-to-load)
     (-> state
       (as-> state
         (reduce unload-place state places-to-unload))

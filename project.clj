@@ -24,9 +24,9 @@
                  [cljs-webgl "0.1.5-SNAPSHOT"]
                  [com.palletops/thread-expr "1.3.0"]
                  [ns-tracker "0.2.2"]
-                 [tinter "0.1.1-SNAPSHOT"]
+                 [aaron-santos/tinter "0.1.1-SNAPSHOT"]
                  ;; TODO: point to fork
-                 [clj-tiny-astar "0.1.1-SNAPSHOT"]
+                 [aaron-santos/clj-tiny-astar "0.1.1-SNAPSHOT"]
                  [dorothy "0.0.6"]
                  [shodan "0.4.1"]
                  [com.taoensso/timbre "3.4.0"]

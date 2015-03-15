@@ -1,6 +1,7 @@
 (ns robinson.main
   (:require 
             [robinson.common :as rc]
+            [robinson.random :as rr]
             [robinson.world :as rw]
             [robinson.worldgen :as rwgen]
             [robinson.dialog :as rdiag]
@@ -11,15 +12,17 @@
             #+clj
             [clojure.stacktrace :as st]
             #+clj
-            [clojure.core.async :as async :refer [go go-loop]]
+            [clojure.core.async :as async]
             #+cljs
-            [cljs.core.async :as async :refer [go go-loop]]
+            [cljs.core.async :as async]
             #+clj  [robinson.swingterminal :as swingterminal]
             #+cljs [robinson.webglterminal :as webglterminal]
             [robinson.aterminal :as aterminal]
             #+clj
             [clojure.java.io :as io]
+            #+clj
             clojure.edn
+            #+clj
             [taoensso.nippy :as nippy]
             #+clj
             [clojure.pprint :refer :all]
@@ -29,7 +32,9 @@
             [shodan.console :as log :include-macros true])
 
   #+clj
-  (:import [java.io DataInputStream DataOutputStream]))
+  (:import [java.io DataInputStream DataOutputStream])
+  #+cljs
+  (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
 
 
 #+clj
@@ -39,7 +44,7 @@
 
 (def render-chan (async/chan (async/sliding-buffer 1)))
 
-(async/go-loop []
+(go-loop []
   (let [state (async/<! save-chan)]
     (log/info "World saved at time" (get-in state [:world :time]))
     #+clj
@@ -47,13 +52,13 @@
       (with-open [o (io/output-stream "save/world.edn")]
         (nippy/freeze-to-out! (DataOutputStream. o) (get state :world)))
       (catch Throwable e (error e)))
-    #_(as-> state state
-      (get state :world)
-      (pp/write state :stream nil)
-      (spit "save/world.edn.out" state))
+    ;(as-> state state
+    ;  (get state :world)
+    ;  (pp/write state :stream nil)
+    ;  (spit "save/world.edn.out" state))
     (recur)))
 
-(async/go-loop []
+(go-loop []
   (let [state (async/<! render-chan)]
     (log/info "Rendering world at time" (get-in state [:world :time]))
     (try
@@ -78,14 +83,14 @@
     (let [keyin (or (when (= (current-state state) :sleep)
                       \.)
                     (let [key-chan (aterminal/get-key-chan (state :screen))]
-                      (info  "waiting for key-chan")
+                      (log/info  "waiting for key-chan")
                       (async/<!! key-chan)))]
       (if keyin
         (tick state keyin)
         state)))
   ([state keyin]
     (try
-      (info "got " (str keyin) " type " (type keyin))
+      (log/info "got " (str keyin) " type " (type keyin))
       (log-time "tick"
         (let [new-state (log-time "update-state" (update-state state keyin))]
           (when new-state
@@ -148,8 +153,8 @@
                                                              "robinson.quests")
                                                   (all-ns)))))
         quest-map (apply hash-map (mapcat (fn [i] [(i :id) i]) quests))
-        _ (doall (map #(info "Loaded quest" (% :name)) quests))
-        _ (info "dialogs" (apply merge (map :dialog quests)))
+        _ (doall (map #(log/info "Loaded quest" (% :name)) quests))
+        _ (log/info "dialogs" (apply merge (map :dialog quests)))
         dialog (apply merge (map (fn [[k v]]
                                    {k (dialog->fsm v)})
                                  (apply merge (map :dialog quests))))

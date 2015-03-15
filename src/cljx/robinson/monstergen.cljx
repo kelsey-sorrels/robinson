@@ -1,6 +1,6 @@
 ;; Functions for generating random monsters
 (ns robinson.monstergen
-  (:require [robinson.common :refer []]
+  (:require [robinson.common :as rc]
             [robinson.random :as rr]
             #+clj
             [taoensso.timbre :as log]
@@ -82,7 +82,7 @@
                           (group-by :race monsters))))
 
 #+clj
-(make-gen-fns *ns* race->monster-map)
+(rc/make-gen-fns *ns* race->monster-map)
 
 (defn id->monster [id]
   #_(log/info "id->monster" id)

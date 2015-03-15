@@ -35,20 +35,28 @@
   (.round js/math n))
 
 #+clj
+(defn ceil [n]
+  (Math/ceil n))
+
+#+cljs
+(defn ceil [n]
+  (.ceil js/math n))
+
+#+clj
 (defn sin [n]
   (Math/sin n))
 
 #+cljs
-(defn sin [x y]
-  (.sin js/Math x y))
+(defn sin [n]
+  (.sin js/Math n))
 
 #+clj
 (defn cos [n]
-  (Math/sin n))
+  (Math/cos n))
 
 #+cljs
-(defn cos [x y]
-  (.abs Math/sin x y))
+(defn cos [n]
+  (.cos js/Math n))
 
 #+clj
 (defn atan2 [x y]

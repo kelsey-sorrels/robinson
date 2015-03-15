@@ -5,7 +5,6 @@
             [robinson.monstergen :as mg]
             [robinson.startgame :as sg]
             [clojure.string :refer [lower-case]]
-            ;[clojure.contrib.core :refer :all]
             [robinson.common :refer []]
             [robinson.random :refer []]
             [robinson.world :refer []]
@@ -20,17 +19,23 @@
                                     magic-up magic-right magic-inventory]]
             [robinson.worldgen :refer []]
             [robinson.lineofsight :refer []]
+            #+clj
             clojure.pprint
             ;clojure.core.memoize
+            #+clj
             clojure.edn
+            #+cljs
+            cljs.reader
             clojure.walk
             #+clj
             [clojure.data.json :as json]
             clj-tiny-astar.path
+            #+clj
             [clojure.core.async :as async]
+            #+cljs
+            [cljs.core.async :as async]
             #+clj
             [clojure.java.io :as io]
-            [clojure.data.generators :as dg]
             #+clj
             [clj-http.client :as http]
             #+clj
@@ -208,6 +213,7 @@
        {width :width
         height :height}  (get-in state [:world :viewport])]
       (log/debug "viewport-pos" vp-pos)
+      #+clj
       #_(log/debug "npcs" (with-out-str (pprint (-> state :world :npcs))))
       (-> state
         (assoc-in [:world :viewport :pos] vp-pos)
@@ -259,13 +265,14 @@
     (cond
       (and (not (collide? state target-x target-y {:include-npcs? false}))
            (not (player-mounted-on-raft? state)))
-        (-> state
-          (arg-when-> [state] (not (xy-in-safe-zone? state target-x target-y))
-            (move-outside-safe-zone direction))
-          (arg-if-> [state] (do (log/info "npc-at-xy?" (npc-at-xy state target-x target-y)) (npc-at-xy state target-x target-y))
+        (as-> state state
+          (if (not (xy-in-safe-zone? state target-x target-y))
+            (move-outside-safe-zone state direction)
+            state)
+          (if (npc-at-xy state target-x target-y)
             ;; collided with npc. Engage in combat.
-            (attack [:world :player] (npc->keys state (npc-at-xy state target-x target-y)))
-            (as-> state
+            (attack state [:world :player] (npc->keys state (npc-at-xy state target-x target-y)))
+            (as-> state state
               (assoc-in state [:world :player :pos :x] target-x)
               (assoc-in state [:world :player :pos :y] target-y)
               (let [cell  (get-cell state target-x target-y)
@@ -621,7 +628,7 @@
   [state]
   (let [[x y] (player-xy state)]
     (assoc-cell state x y :type 
-      (dg/rand-nth [:freshwater-hole :saltwater-hole :dry-hole]))))
+      (rr/rand-nth [:freshwater-hole :saltwater-hole :dry-hole]))))
 
 (defn apply-fishing-pole
   "Start fishing for something."
@@ -744,7 +751,7 @@
                      target-y
                      (fn [cell] (-> cell
                                   (dissoc :harvestable)
-                                  (assoc :type (dg/rand-nth [:dirt :gravel :tall-grass :short-grass]))
+                                  (assoc :type (rr/rand-nth [:dirt :gravel :tall-grass :short-grass]))
                                   (assoc :items (concat (get cell :items) 
                                                       (repeat (uniform-int 1 2) (ig/gen-log))))))))
       state)))
@@ -968,7 +975,7 @@
   (if-let [item (inventory-hotkey->item state keyin)]
     (-> state
       (append-log (format "The %s tastes %s." (lower-case (get item :name))
-                                              (dg/rand-nth ["great" "foul" "greasy" "delicious" "burnt" "sweet" "salty"])))
+                                              (rr/rand-nth ["great" "foul" "greasy" "delicious" "burnt" "sweet" "salty"])))
       (update-eaten item)
       ;; reduce thirst
       (update-in [:world :player :thirst]
@@ -1017,7 +1024,7 @@
   (if-let [item (inventory-and-player-cell-hotkey->item state keyin)]
     (-> state
       (append-log (format "The %s tastes %s." (lower-case (get item :name))
-                                              (dg/rand-nth ["great" "foul" "greasy" "delicious" "burnt" "sweet" "salty"])))
+                                              (rr/rand-nth ["great" "foul" "greasy" "delicious" "burnt" "sweet" "salty"])))
       (update-eaten item)
       ;; reduce hunger
       (update-in [:world :player :hunger]
@@ -1074,7 +1081,7 @@
                           (= (get target-cell :type) :tree)
                             (if (or harvestable
                                     (= 0 (uniform-int 1000)))
-                              [(dg/rand-nth [(ig/gen-stick) (ig/gen-plant-fiber)])]
+                              [(rr/rand-nth [(ig/gen-stick) (ig/gen-plant-fiber)])]
                               [])
                           (= (get target-cell :type) :bamboo)
                               (if (or harvestable
@@ -1085,14 +1092,14 @@
                             (concat
                               (if (or harvestable
                                       (= 0 (uniform-int 1000)))
-                                [(dg/rand-nth [(ig/gen-unhusked-coconut) (ig/gen-plant-fiber)])]
+                                [(rr/rand-nth [(ig/gen-unhusked-coconut) (ig/gen-plant-fiber)])]
                                 []))
                           (and (= (get target-cell :type) :tall-grass)
                                (= direction :center))
                             (concat
                               (if (or harvestable
                                       (= 0 (uniform-int 1000)))
-                                [(dg/rand-nth [(ig/gen-grass) (ig/gen-plant-fiber)])]
+                                [(rr/rand-nth [(ig/gen-grass) (ig/gen-plant-fiber)])]
                                 []))
                           (and (= (get target-cell :type) :gravel)
                                (= direction :center))
@@ -1100,12 +1107,12 @@
                                (concat
                                  (if (or harvestable
                                          (= 0 (uniform-int 1000)))
-                                   [(dg/rand-nth [(ig/gen-rock) (ig/gen-obsidian)])]
+                                   [(rr/rand-nth [(ig/gen-rock) (ig/gen-obsidian)])]
                                    []))
                                (concat
                                  (if (or harvestable
                                          (= 0 (uniform-int 1000)))
-                                   [(dg/rand-nth [(ig/gen-rock) (ig/gen-flint)])]
+                                   [(rr/rand-nth [(ig/gen-rock) (ig/gen-flint)])]
                                    [])))
                           :else [])
                         [])]
@@ -1162,7 +1169,7 @@
 (defn free-cursor
   "Dissassociate the cursor from the world."
   [state]
-  (clojure.contrib.core/dissoc-in state [:world :cursor]))
+  (rc/dissoc-in state [:world :cursor]))
 
 (defn move-cursor-left
   "Move the cursor pos one space to the left keeping in mind the bounds of the current place."
@@ -1557,7 +1564,7 @@
                                                   (player-pos state))
           chance-of-rescue (max 0 (+ (/ -300.0 distance-from-start) 1.5))]
       (log/info "distance from 0,0" distance-from-start)
-      (if (< (dg/float) chance-of-rescue)
+      (if (< (rr/uniform-double 1) chance-of-rescue)
         (assoc-in state [:world :current-state] :rescued)
         state))
     state))
@@ -1631,8 +1638,8 @@
   (let [dwtl (- prev-will-to-live (get-in state [:world :player :will-to-live]))]
     (if (> (Math/abs dwtl) 1.5)
       (if (neg? dwtl)
-        (append-log state (format "You feel %s." (dg/rand-nth ["happy" "happier" "glad" "elated" "great" "good"])))
-        (append-log state (format "You feel %s." (dg/rand-nth ["sad" "sadder" "down" "unhappy" "bummed" "bad"]))))
+        (append-log state (format "You feel %s." (rr/rand-nth ["happy" "happier" "glad" "elated" "great" "good"])))
+        (append-log state (format "You feel %s." (rr/rand-nth ["sad" "sadder" "down" "unhappy" "bummed" "bad"]))))
       state)))
 
 (defn fruit-identify-activate
@@ -1646,7 +1653,7 @@
       (let [activate-time (get-in state [:world :player :skin-identify-activate-time])]
         (and activate-time
              (< activate-time (get-time state))))
-      (append-log (dg/rand-nth ["Your skin feels burning."
+      (append-log (rr/rand-nth ["Your skin feels burning."
                                 "Your skin is numb."
                                 "Your skin is has a rash."
                                 "Your skin hurts."]))
@@ -1655,7 +1662,7 @@
       (let [activate-time (get-in state [:world :player :tongue-identify-activate-time])]
         (and activate-time
              (< activate-time (get-time state))))
-      (append-log (dg/rand-nth ["Your tongue feels burning."
+      (append-log (rr/rand-nth ["Your tongue feels burning."
                                 "Your tongue is numb."
                                 "Your tongue hurts."]))
       (dissoc-in [:world :player :tongue-identify-activate-time]))))
@@ -1688,7 +1695,7 @@
         max-hp              (get-in state [:world :player :max-hp])
         chance-of-infection (inc (/ -1 (inc (/ hp (* max-hp 20)))))] 
     (if (and (not-empty (get-in state [:world :player :wounds]))
-             (< (dg/float) chance-of-infection))
+             (< (rr/uniform-double 1) chance-of-infection))
       (-> state
         (update-in [:world :player :status]
           (fn [status]
@@ -1729,7 +1736,7 @@
           wounds)))
     ;; chance of poison wearing off
     (if (and (contains? (get-in state [:world :player :status]) :poisoned)
-            (< (dg/float) 0.1))
+            (< (rr/uniform-double 1) 0.1))
       (-> state
         (update-in [:world :player :status]
           (fn [status]
@@ -1738,7 +1745,7 @@
       state)
     ;; chance of infection clearing up
     (if (and (contains? (get-in state [:world :player :status]) :infected)
-            (< (dg/float) 0.1))
+            (< (rr/uniform-double 1) 0.1))
       (-> state
         (update-in [:world :player :status]
           (fn [status]
@@ -1843,6 +1850,7 @@
       (update-in [:world :npcs] vec)
       (conj-in [:world :npcs] (get-in state [:world :player]))
       (assoc-in [:world :player] npc))]
+    #+clj
     (log/debug "npcs" (with-out-str (pprint (-> state :world :npcs))))
     state))
 
@@ -2003,11 +2011,10 @@
                             :tall-grass
                             :short-grass})]
     ;; move randomly into an adjacent cell
-    (let [target (first
-                   (dg/shuffle
-                     (adjacent-navigable-pos state
-                                             npc-pos
-                                             navigable-types)))]
+    (let [target (rr/rand-nth
+                   (adjacent-navigable-pos state
+                                           npc-pos
+                                           navigable-types))]
       ;(log/debug "distance > threshold, move randomly. target" target)
       [target
        (-> npc
@@ -2032,11 +2039,10 @@
                             :short-grass})]
     (if (> distance threshold)
       ;; outside of range, move randomly into an adjacent cell
-      (let [target (first
-                     (dg/shuffle
-                       (adjacent-navigable-pos state
-                                               npc-pos
-                                               navigable-types)))]
+      (let [target (rr/rand-nth
+                     (adjacent-navigable-pos state
+                                             npc-pos
+                                             navigable-types))]
         ;(log/debug "distance > threshold, move randomly. target" target)
         [target
          (-> npc
@@ -2063,11 +2069,10 @@
                             :short-grass})]
     (if (> distance threshold)
       ;; outside of range, move randomly into an adjacent cell
-      (let [target (first
-                     (dg/shuffle
-                       (adjacent-navigable-pos state
-                                               npc-pos
-                                               navigable-types)))]
+      (let [target (rr/rand-nth
+                     (adjacent-navigable-pos state
+                                             npc-pos
+                                             navigable-types))]
         ;(log/debug "distance > threshold, move randomly. target" target)
         [target
          (-> npc
@@ -2111,11 +2116,10 @@
       :constant                            [nil nil npc]
       :entourage                           (move-to-target state
                                                            npc
-                                                           (first
-                                                             (dg/shuffle
-                                                               (adjacent-navigable-pos state
-                                                                                       pos
-                                                                                       navigable-types))))
+                                                           (rr/rand-nth
+                                                             (adjacent-navigable-pos state
+                                                                                     pos
+                                                                                     navigable-types)))
       :follow-player                       (move-to-target state npc pos)
       :random                              (move-random state npc)
       :follow-player-in-range-or-random    (move-to-target-in-range-or-random state npc pos)
@@ -2248,11 +2252,11 @@
                 ;; update holes
                 (contains? #{:freshwater-hole :saltwater-hole} cell-type)
                 (update-cell state x y
-                  (fn increase-hole-water [cell] (assoc cell :water (min 20 (+ 0.1 (* (dg/float) 0.1) (get cell :water 0.0))))))
+                  (fn increase-hole-water [cell] (assoc cell :water (min 20 (+ 0.1 (* (rr/uniform-double 1) 0.1) (get cell :water 0.0))))))
                 ;; update solar stills
                 (contains? #{:solar-still} (get cell :type))
                 (update-cell state x y
-                  (fn increase-still-water [cell] (assoc cell :water (min 20 (+ 0.2 (* (dg/float) 0.1) (get cell :water 0.0))))))
+                  (fn increase-still-water [cell] (assoc cell :water (min 20 (+ 0.2 (* (rr/uniform-double 1) 0.1) (get cell :water 0.0))))))
                 ;; drop harvest items
                 (contains? #{:gravel :tree :palm-tree :tall-grass} cell-type)
                 (if (= (uniform-int 0 100000) 0)
@@ -2273,31 +2277,34 @@
                     (log/info "dropping fruit" item "at [" x y "]" adj-xys)
                     (if (seq adj-xys)
                       ;; drop the fruit into the cell
-                      (apply conj-cell-items state (conj (dg/rand-nth adj-xys) item))
+                      (apply conj-cell-items state (conj (rr/rand-nth adj-xys) item))
                       state))
                   state)
                 ;; update fire
                 (contains? fire-xys [x y])
-                (-> state
+                (as-> state state
                   (update-cell x y (fn [cell] (update-in cell [:fuel] dec)))
                   ;; chance of fire spreading
-                  (arg-when-> [state] (= 0 (uniform-int 0 10))
+                  (if (= 0 (uniform-int 0 10))
                     ;; make the fire spread and find an adjacent free cell to spread it into
-                    (as-> state
-                      (let [adj-xys (filter (fn [[x y]] (type->flammable?
-                                                          (get (get-cell state x y) :type)))
-                                            (adjacent-xys-ext x y))]
-                        (log/info "spreading fire at [" x y "]" adj-xys)
-                        (if (seq adj-xys)
-                          ;; spread fire into the cell
-                          (let [[x y] (dg/rand-nth adj-xys)]
-                            (assoc-cell state x y :type :fire :fuel (uniform-int 10 50)))
-                          state))))
-                  (arg-when-> [state] (neg? (get cell :fuel 0))
+                    (let [cell-at-xy-flammable? (fn [[x y]]
+                                                  (type->flammable?
+                                                    (get (get-cell state x y) :type)))
+                          adj-xys (filter cell-at-xy-flammable?
+                                         (adjacent-xys-ext x y))]
+                      (log/info "spreading fire at [" x y "]" adj-xys)
+                      (if (seq adj-xys)
+                        ;; spread fire into the cell
+                        (let [[x y] (rr/rand-nth adj-xys)]
+                          (assoc-cell state x y :type :fire :fuel (uniform-int 10 50)))
+                        state))
+                     state)
+                  (if (neg? (get cell :fuel 0))
                     ;; extinguish the fire
-                    (->
+                    (-> state
                       (assoc-cell x y :type :dirt)
-                      (dissoc-cell x y :fuel))))
+                      (dissoc-cell x y :fuel))
+                    state))
                  :else
                  state)
             ;; rot fruit

@@ -7,6 +7,8 @@
             [taoensso.timbre :as log]
             #+cljs
             [shodan.console :as log :include-macros true]
+            #+clj
+            clojure.string
             #+cljs
             [goog.string :as gstring]
             #+cljs
@@ -14,8 +16,9 @@
 
 (defn format [s & args]
   #+clj
-  (apply clojure.string/format s args)
-  #+cljs  (apply gstring/format s args))
+  (format s args)
+  #+cljs
+  (apply gstring/format s args))
 
 (defn neg-hp?
   "Return `true` if the player has negative hp."

@@ -2,9 +2,11 @@
 ;;
 ;(set! *warn-on-reflection* true)
 (ns robinson.core
-  (:require [robinson.main :refer [setup tick]]
+  (:require [robinson.main :as main]
             #+clj
-            [clojure.stacktrace :refer [print-stack-trace]])
+            [clojure.stacktrace :refer [print-stack-trace]]
+            #+cljs
+            [shodan.console :as log :include-macros true])
   #+clj
   (:gen-class))
 
@@ -26,7 +28,7 @@
    the next state after one iteration."
   []
   ; start with initial state from setup-fn
-  (loop [state (setup)]
+  (loop [state (main/setup)]
     (reset! state-ref state)
     (if (nil? state)
       #+clj
@@ -34,10 +36,18 @@
       #+cljs
       nil)
     ; tick the old state through the tick-fn to get the new state
-    (recur (try (tick state)
-      (catch Exception ex
-        (do (print-stack-trace ex)
-            (throw ex)))))))
+    (recur
+      (try (main/tick state)
+        #+clj
+        (catch Exception ex
+          (do 
+              (print-stack-trace ex)
+              (throw ex)))
+        #+cljs
+        (catch js/Error ex
+              (log/error (str ex))
+              (throw ex))))))
+          
 
 #+cljs
 (-main)

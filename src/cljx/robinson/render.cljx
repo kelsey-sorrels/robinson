@@ -17,13 +17,15 @@
             [robinson.dialog :as rdiag]
             [robinson.npc :as rnpc]
             [tinter.core :as rcore]
+            clojure.set
             #+clj
-            [clojure.pprint :only [print-table]]
+            [clojure.pprint :as pprint]
+            #+cljs
+            [cljs.pprint :as pprint]
             #+clj
             [taoensso.timbre :as log]
             #+cljs
             [shodan.console :as log :include-macros true])
-  (:refer   clojure.set)
   #+clj
   (:import robinson.aterminal.ATerminal)
   #+clj
@@ -32,7 +34,7 @@
             (javax.swing ImageIcon)))
 
 
-(timbre/refer-timbre)
+#+clj
 (set! *warn-on-reflection* true)
 
 ;; RBG color definitions. 
@@ -155,9 +157,9 @@
         ;; pad to width
         s        (if center
                    ;; center justify
-                   (clojure.pprint/cl-format nil (format "~%d<~;~A~;~>" width) line)
+                   (pprint/cl-format nil (format "~%d<~;~A~;~>" width) line)
                    ;; left justify
-                   (clojure.pprint/cl-format nil (format "~%d<~A~;~>" width) line))
+                   (pprint/cl-format nil (format "~%d<~A~;~>" width) line))
         [fg bg]  (if invert
                    [bg fg]
                    [fg bg])
@@ -255,7 +257,7 @@
                     (count items)
                     height)
          title    (if (and title center-title)
-                    (clojure.pprint/cl-format nil (format "~%d<~;~A~;~>" width) title)
+                    (pprint/cl-format nil (format "~%d<~;~A~;~>" width) title)
                     (when title
                       (format "  %s" title)))
          items    (if title
@@ -950,7 +952,7 @@
             (info "message" message)
             (when (and message
                        (< (- current-time (message :time)) 5))
-              (let [darken-factor (inc  (* -1/5 (- current-time (message :time))))
+              (let [darken-factor (inc  (* (/ -1 5) (- current-time (message :time))))
                     log-color (darken-rgb (color->rgb (get message :color)) darken-factor)]
                 (info "darken-factor" darken-factor)
                 (info "log color" log-color)

@@ -1,19 +1,20 @@
 ;; Functions that manipulate state to do what the user commands.
 (ns robinson.update
   (:require 
+            [robinson.common :as rc]
+            [robinson.random :as rr]
+            [robinson.world :as rw]
+            [robinson.viewport :as rv]
+            [robinson.describe :as rdesc]
+            [robinson.player :as rp]
+            [robinson.math :as rmath]
             [robinson.itemgen  :as ig]
             [robinson.monstergen :as mg]
             [robinson.startgame :as sg]
             [clojure.string :refer [lower-case]]
-            [robinson.common :refer []]
-            [robinson.random :refer []]
-            [robinson.world :refer []]
-            [robinson.viewport :refer []]
-            [robinson.describe :refer []]
-            [robinson.player :refer []]
             ;[robinson.dialog :refer []]
-            [robinson.npc :refer []]
-            [robinson.combat :refer []]
+            [robinson.npc :as rnpc]
+            [robinson.combat :as rcombat]
             [robinson.crafting :refer []]
             [robinson.magic :refer [do-magic magic-left magic-down
                                     magic-up magic-right magic-inventory]]
@@ -78,7 +79,7 @@
         t      (mod (get-in state [:world :time]) frames)
         frame  (nth atmo t)
         values (flatten frame)
-        item   (inventory-id->item state :flashlight)
+        item   (rp/inventory-id->item state :flashlight)
         on     (and item (= (get item :state) :on))
         _      (log/info "sight-distance. flashlight:" item "state:" on)
         values (map (fn [v] (if on (max v 100) v)) values)]
@@ -125,7 +126,7 @@
                       (recur))))
     (load-unload-places)
     (as-> state
-      (reduce (fn [state _] (add-npcs state))
+      (reduce (fn [state _] (rnpc/add-npcs state))
               state
               (range 5)))))
 
@@ -136,7 +137,7 @@
         _                  (log/info "selected-hotkeys" selected-hotkeys)
         start-inventory    (filter #(contains? (set selected-hotkeys) (get % :hotkey)) (sg/start-inventory))
         _                  (log/info "Adding to starting inventory:" start-inventory)
-        state              (add-to-inventory new-state start-inventory)]
+        state              (rp/add-to-inventory new-state start-inventory)]
     state))
 
 (defn select-starting-inventory
@@ -154,7 +155,7 @@
 (defn destroy-cell
   "Destroy the cell at xy, changing its type. This is when the player bumps into things like palisades."
   [state x y]
-  (assoc-cell state x y :type :dirt))
+  (rw/assoc-cell state x y :type :dirt))
 
 (defn pick-up-gold
   "Vacuums up gold from the floor into player's inventory."
@@ -162,7 +163,7 @@
   (let [;;place-id (current-place-id state)
         ;player-x (-> state :world :player :pos :x)
         ;player-y (-> state :world :player :pos :y)
-        [{items :items} x y]  (player-cellxy state)
+        [{items :items} x y]  (rw/player-cellxy state)
         ;items              (player-cell :items)
         {cash  true
          non-cash-items false}  (group-by (fn [item] (= (item :type) :$))
@@ -171,8 +172,8 @@
         $                  (reduce + (map :amount (or cash [])))]
     (if (> $ 0)
       (-> state
-        (append-log (format "You pick up %d cash." $))
-        (assoc-cell-items state x y
+        (rc/append-log (format "You pick up %d cash." $))
+        (rw/assoc-cell-items state x y
           (or non-cash-items []))
         (update-in [:world :player :$]
           (fn [player-$] (+ $ player-$))))
@@ -183,8 +184,8 @@
    If a pre-generated place does not exist, create a new one using the world seed."
   [state direction]
   (log/info "move-outside-safe-zone")
-  (let [[player-cell x y] (player-cellxy state)
-        on-raft           (player-mounted-on-raft? state)
+  (let [[player-cell x y] (rw/player-cellxy state)
+        on-raft           (rw/player-mounted-on-raft? state)
         ;;[ox oy]           (map read-string (clojure.string/split (name orig-place-id) #"_"))
         target-x          (case direction
                             :left (dec x)
@@ -202,13 +203,13 @@
                             :up-right (dec y)
                             :down-right (inc y)
                             y)
-        target-place      (xy->place-id state target-x target-y)
-        visible-place-ids (visible-place-ids state target-x target-y)
+        target-place      (rv/xy->place-id state target-x target-y)
+        rv/visible-place-ids (rv/visible-place-ids state target-x target-y)
         _ (log/info "target-x" target-x "target-y" target-y)
         _ (log/info "target-place" target-place)
-       vp-pos             (apply xy->pos
-                            (+xy (pos->xy (get-in state [:world :viewport :pos]))
-                                 (-xy [target-x target-y] [x y])))
+       vp-pos             (apply rc/xy->pos
+                            (rv/+xy (rc/pos->xy (get-in state [:world :viewport :pos]))
+                                 (rcv/-xy [target-x target-y] [x y])))
        ;;dest-place        (-> state :world :places dest-place-id)
        {width :width
         height :height}  (get-in state [:world :viewport])]
@@ -257,59 +258,59 @@
                                :down-left 1
                                :down-right 1
                                0))
-        target-cell (get-cell state target-x target-y)]
+        target-cell (rw/get-cell state target-x target-y)]
     (log/info "moving to" target-x target-y "type:" (get target-cell :type))
-    (log/info "inside-safe-zone?" (xy-in-safe-zone? state target-x target-y) target-x target-y)
-    (log/info "not collide?" (not (collide? state target-x target-y {:include-npcs? false})))
-    (log/info "not mounted-on-raft?" (not (player-mounted-on-raft? state)))
+    (log/info "inside-safe-zone?" (rv/xy-in-safe-zone? state target-x target-y) target-x target-y)
+    (log/info "not collide?" (not (rw/collide? state target-x target-y {:include-npcs? false})))
+    (log/info "not mounted-on-raft?" (not (rw/player-mounted-on-raft? state)))
     (cond
-      (and (not (collide? state target-x target-y {:include-npcs? false}))
-           (not (player-mounted-on-raft? state)))
+      (and (not (rw/collide? state target-x target-y {:include-npcs? false}))
+           (not (rw/player-mounted-on-raft? state)))
         (as-> state state
-          (if (not (xy-in-safe-zone? state target-x target-y))
+          (if (not (rv/xy-in-safe-zone? state target-x target-y))
             (move-outside-safe-zone state direction)
             state)
-          (if (npc-at-xy state target-x target-y)
+          (if (rnpc/npc-at-xy state target-x target-y)
             ;; collided with npc. Engage in combat.
-            (attack state [:world :player] (npc->keys state (npc-at-xy state target-x target-y)))
+            (attack state [:world :player] (rnpc/npc->keys state (rnpc/npc-at-xy state target-x target-y)))
             (as-> state state
               (assoc-in state [:world :player :pos :x] target-x)
               (assoc-in state [:world :player :pos :y] target-y)
-              (let [cell  (get-cell state target-x target-y)
+              (let [cell  (rw/get-cell state target-x target-y)
                     items (get cell :items)]
                 (if (seq items)
-                  (search state)
+                  (rdesc/search state)
                   state))
               (pick-up-gold state))))
-      (= (get (npc-at-xy state target-x target-y) :in-party?) true)
+      (= (get (rnpc/npc-at-xy state target-x target-y) :in-party?) true)
         (-> state
           (assoc-in [:world :player :pos :x] target-x)
           (assoc-in [:world :player :pos :y] target-y)
           (pick-up-gold)
-          (map-in [:world :npcs]
-                  (fn [npc] (if (and (= (-> npc :pos :x) target-x)
-                                     (= (-> npc :pos :y) target-y))
-                              (-> npc
-                                  (assoc-in [:pos :x] player-x)
-                                  (assoc-in [:pos :y] player-y))
-                              npc))))
-      (and (not (collide-in-water? state target-x target-y))
-           (player-mounted-on-raft? state))
+          (rc/map-in [:world :npcs]
+                     (fn [npc] (if (and (= (-> npc :pos :x) target-x)
+                                        (= (-> npc :pos :y) target-y))
+                                 (-> npc
+                                     (assoc-in [:pos :x] player-x)
+                                     (assoc-in [:pos :y] player-y))
+                                 npc))))
+      (and (not (rw/collide-in-water? state target-x target-y))
+           (rw/player-mounted-on-raft? state))
         (-> state
-          (dec-cell-item-count :raft)
-          (conj-cell-items target-x target-y (ig/id->item :raft))
+          (rw/dec-cell-item-count :raft)
+          (rw/conj-cell-items target-x target-y (ig/id->item :raft))
           (assoc-in [:world :player :pos :x] target-x)
           (assoc-in [:world :player :pos :y] target-y)
           ;; rafting = more hunger
           (update-in [:world :player :hunger] (partial + 0.05 ))
           ((fn [state]
-             (let [cell  (get-cell state target-x target-y)
+             (let [cell  (rw/get-cell state target-x target-y)
                    items (get cell :items)]
                (if (seq items)
-                 (search state)
+                 (rdesc/search state)
                  state)))))
       ;; Hack down destroyable cells.
-      (type->destroyable? (get target-cell :type))
+      (rw/type->destroyable? (get target-cell :type))
         (destroy-cell state target-x target-y)
       ;; collided with a wall or door, nothing to be done.
       :else
@@ -372,15 +373,15 @@
                                :down 1
                                0))]
     (log/debug "open-door")
-    (let [target-cell (get-cell state target-x target-y)]
+    (let [target-cell (rw/get-cell state target-x target-y)]
       (log/debug "target-cell" target-cell)
       (if (and (not (nil? target-cell)) (= (target-cell :type) :close-door))
         (do
           (log/debug "opening door")
-          (log/debug (get-cell state target-y target-x))
+          (log/debug (rw/get-cell state target-y target-x))
           (-> state
-            (append-log "The door creaks open")
-            (assoc-cell state target-y target-x :type :open-door)))
+            (rc/append-log "The door creaks open")
+            (rw/assoc-cell state target-y target-x :type :open-door)))
         state))))
 
 (defn open-left
@@ -419,12 +420,12 @@
                                :down 1
                                0))]
     (log/debug "close-door")
-    (let [target-cell (get-cell state target-x target-y)]
+    (let [target-cell (rw/get-cell state target-x target-y)]
       (log/debug "target-cell" target-cell)
       (if (and (not (nil? target-cell)) (= (target-cell :type) :open-door))
         (-> state
-          (append-log "The door closes")
-          (assoc-cell state target-y target-x :type :close-door))
+          (rc/append-log "The door closes")
+          (rw/assoc-cell state target-y target-x :type :close-door))
         state))))
 
 (defn close-left
@@ -459,7 +460,7 @@
     ;; return the non-selcted pile to the cell
     ;; remove selected-hotkeys from remaining-hotkeys
     ;; clear selected-hotkeys
-    (let [[player-cell x y]  (player-cellxy state)
+    (let [[player-cell x y]  (rw/player-cellxy state)
           items              (vec (player-cell :items))
           remaining-hotkeys  (-> state :world :remaining-hotkeys)
           divided-items      (group-by (fn [item] (if (contains? (-> state :world :selected-hotkeys) (item :hotkey))
@@ -467,10 +468,10 @@
                                                       :not-selected))
                                        (map #(assoc %1 :hotkey %2)
                                             items
-                                            (fill-missing not
-                                                     (fn [_ hotkey] hotkey)
-                                                     remaining-hotkeys
-                                                     (map :hotkey items))))
+                                            (rc/fill-missing not
+                                                            (fn [_ hotkey] hotkey)
+                                                            remaining-hotkeys
+                                                            (map :hotkey items))))
           selected-items     (vec (divided-items :selected))
           not-selected-items (vec (divided-items :not-selected))
           remaining-hotkeys  (vec (remove #(some (partial = %) (map :hotkey selected-items)) remaining-hotkeys))]
@@ -479,11 +480,11 @@
       (log/debug "not-selected-items" not-selected-items)
       (if (seq selected-items)
         (let [new-state (-> state
-                          (append-log "You pick up:")
+                          (rc/append-log "You pick up:")
                           ;; dup the item into inventory with hotkey
-                          (add-to-inventory selected-items)
+                          (rp/add-to-inventory selected-items)
                           ;; remove the item from cell
-                          (assoc-current-cell-items not-selected-items)
+                          (rw/assoc-current-cell-items not-selected-items)
                           ;;;; hotkey is no longer available
                           (assoc-in [:world :remaining-hotkeys]
                               remaining-hotkeys)
@@ -496,16 +497,16 @@
   "Drop the item from the player's inventory whose hotkey matches `keyin`.
    Put the item in the player's current cell."
   [state keyin]
-  (let [[player-cell x y] (player-cellxy state)
+  (let [[player-cell x y] (rw/player-cellxy state)
         items (-> state :world :player :inventory)
         inventory-hotkeys (map #(% :hotkey) items)
         item-index (.indexOf inventory-hotkeys keyin)]
     (if (and (>= item-index 0) (< item-index (count items)))
       (let [item (nth items item-index)
             new-state (-> state
-              (append-log (format "You let the %s fall to the ground" (lower-case (get item :name))))
+              (rc/append-log (format "You let the %s fall to the ground" (lower-case (get item :name))))
               ;; dup the item into cell
-              (conj-cell-items x y (dissoc item :wielded))
+              (rw/conj-cell-items x y (dissoc item :wielded))
               ;; remove the item from inventory
               (assoc-in [:world :player :inventory]
                (vec (concat (subvec items 0 item-index)
@@ -522,28 +523,28 @@
 (defn apply-bandage
   [state]
   (-> state
-    (dec-item-count :bandage)
+    (rp/dec-item-count :bandage)
     (assoc-in [:world :player :hp] (get-in state [:world :player :max-hp]))
     (assoc-in [:world :current-state] :normal)
-    (append-log "You apply the bandage.")))
+    (rc/append-log "You apply the bandage.")))
 
 (defn apply-flashlight
   [state]
-  (let [item         (inventory-id->item state :flashlight)
+  (let [item         (rp/inventory-id->item state :flashlight)
         item-state   (get item :state :off)]
     (case item-state
       :on
       (-> state
-        (update-inventory-item :flashlight (fn [item] (assoc item :state :off)))
-        (append-log "You turn the flashlight off.")
+        (rp/update-inventory-item :flashlight (fn [item] (assoc item :state :off)))
+        (rc/append-log "You turn the flashlight off.")
         (assoc-in [:world :current-state] :normal))
       :off
       (if (pos? (get item :charge))
         (-> state
-          (update-inventory-item :flashlight (fn [item] (assoc item :state :on)))
-          (append-log "You turn the flashlight on.")
+          (rp/update-inventory-item :flashlight (fn [item] (assoc item :state :on)))
+          (rc/append-log "You turn the flashlight on.")
           (assoc-in [:world :current-state] :normal))
-        (append-log state "You try turning the flashlight on, but nothing happens.")))))
+        (rc/append-log state "You try turning the flashlight on, but nothing happens.")))))
 
 (defn assoc-apply-item
   [state item]
@@ -569,57 +570,57 @@
                 (apply-flashlight state)
               (= id :fishing-pole)
                 (-> state
-                  (assoc-current-state :apply-item-normal)
-                  (ui-hint "Pick a direction to use the fishing pole."))
+                  (rw/assoc-current-state :apply-item-normal)
+                  (rc/ui-hint "Pick a direction to use the fishing pole."))
               (contains? #{:red-frog-corpse :orange-frog-corpse :yellow-frog-corpse
                            :green-frog-corpse :blue-frog-corpse :purple-frog-corpse} id)
                 (-> state
-                  (assoc-current-state :apply-item-inventory)
-                  (ui-hint "Pick an item to apply the frog secretion to."))
+                  (rw/assoc-current-state :apply-item-inventory)
+                  (rc/ui-hint "Pick an item to apply the frog secretion to."))
               (= id :match)
                 (-> state
-                  (assoc-current-state :apply-item-normal)
-                  (ui-hint "Pick a direction to use the match."))
+                  (rw/assoc-current-state :apply-item-normal)
+                  (rc/ui-hint "Pick a direction to use the match."))
               (= id :fire-plough)
                 (-> state
-                  (assoc-current-state :apply-item-normal)
-                  (ui-hint "Pick a direction to use the fire plough"))
+                  (rw/assoc-current-state :apply-item-normal)
+                  (rc/ui-hint "Pick a direction to use the fire plough"))
               (= id :hand-drill)
                 (-> state
-                  (assoc-current-state :apply-item-normal)
-                  (ui-hint "Pick a direction to use the fire plough"))
+                  (rw/assoc-current-state :apply-item-normal)
+                  (rc/ui-hint "Pick a direction to use the fire plough"))
               (= id :bow-drill)
                 (-> state
-                  (assoc-current-state :apply-item-normal)
-                  (ui-hint "Pick a direction to use the fire plough"))
+                  (rw/assoc-current-state :apply-item-normal)
+                  (rc/ui-hint "Pick a direction to use the fire plough"))
               (= id :plant-guide)
                 (-> state
-                  (assoc-current-state :apply-item-inventory)
-                  (ui-hint "Pick an item to identify."))
+                  (rw/assoc-current-state :apply-item-inventory)
+                  (rc/ui-hint "Pick an item to identify."))
               (= id :stick)
                 (-> state
-                  (assoc-current-state :apply-item-normal)
-                  (ui-hint "Pick a direction to use the stick."))
+                  (rw/assoc-current-state :apply-item-normal)
+                  (rc/ui-hint "Pick a direction to use the stick."))
               (= id :saw)
                 (-> state
-                  (assoc-current-state :apply-item-normal)
-                  (ui-hint "Pick a direction to use the saw."))
+                  (rw/assoc-current-state :apply-item-normal)
+                  (rc/ui-hint "Pick a direction to use the saw."))
               (= id :obsidian-axe)
                 (-> state
-                  (assoc-current-state :apply-item-normal)
-                  (ui-hint "Pick a direction to use the axe."))
+                  (rw/assoc-current-state :apply-item-normal)
+                  (rc/ui-hint "Pick a direction to use the axe."))
               (= id :flint)
                 (-> state
-                  (assoc-current-state :apply-item-inventory)
-                  (ui-hint "Pick an item on which to apply the flint."))
+                  (rw/assoc-current-state :apply-item-inventory)
+                  (rc/ui-hint "Pick an item on which to apply the flint."))
               (ig/is-sharp? item)
                 (-> state
-                  (assoc-current-state :apply-item-inventory)
-                  (ui-hint "Pick an item to use the sharp item on."))
+                  (rw/assoc-current-state :apply-item-inventory)
+                  (rc/ui-hint "Pick an item to use the sharp item on."))
               (ig/is-fruit? item)
                 (-> state
-                  (assoc-current-state :apply-item-body)
-                  (ui-hint "a-apply to skin, b-apply to tongue"))
+                  (rw/assoc-current-state :apply-item-body)
+                  (rc/ui-hint "a-apply to skin, b-apply to tongue"))
               :else state)))))
         state)))
 
@@ -627,7 +628,7 @@
   "Dig in the ground, creating a hole."
   [state]
   (let [[x y] (player-xy state)]
-    (assoc-cell state x y :type 
+    (rw/assoc-cell state x y :type 
       (rr/rand-nth [:freshwater-hole :saltwater-hole :dry-hole]))))
 
 (defn apply-fishing-pole
@@ -643,7 +644,7 @@
                                     :up  -1
                                     :down 1
                                     0))
-        target-cell   (get-cell state target-x target-y)
+        target-cell   (rw/get-cell state target-x target-y)
         new-state     (case direction
                         :left  :fishing-left
                         :right :fishing-right
@@ -651,19 +652,19 @@
                         :down  :fishing-down)]
     (if (type->water? (get target-cell :type))
       (-> state
-        (append-log "You start fishing.")
-        (assoc-current-state new-state))
-      (append-log state "You can't fish here."))))
+        (rc/append-log "You start fishing.")
+        (rw/assoc-current-state new-state))
+      (rc/append-log state "You can't fish here."))))
 
 (defn do-fishing
   "Fish somewhere."
   [state]
-  (let [p (uniform-int 0 50)]
+  (let [p (rr/uniform-int 0 50)]
     ;; chance of catching a fish
     (cond
       (= p 0)
       ;; catch a fish
-      (add-to-inventory state [(ig/gen-corpse (mg/gen-monster 1 :water))])
+      (rp/add-to-inventory state [(ig/gen-corpse (mg/gen-monster 1 :water))])
       :else
       state)))
 
@@ -680,25 +681,25 @@
                                     :up  -1
                                     :down 1
                                     0))
-        target-cell   (get-cell state target-x target-y)]
+        target-cell   (rw/get-cell state target-x target-y)]
     (cond
       (type->flammable? (get target-cell :type))
       (-> state
-        (append-log (format "You light the %s." (clojure.string/replace (name (get target-cell :type))
+        (rc/append-log (format "You light the %s." (clojure.string/replace (name (get target-cell :type))
                                                                                             #"-"
                                                                                             " ")))
-        (assoc-cell target-x target-y :type :fire :fuel (if (= (get target-cell :type)
+        (rw/assoc-cell target-x target-y :type :fire :fuel (if (= (get target-cell :type)
                                                                :campfire)
-                                                          (uniform-int 500 600)
-                                                          (uniform-int 100 300))))
+                                                          (rr/uniform-int 500 600)
+                                                          (rr/uniform-int 100 300))))
       :else
-      (append-log state "You don't think that is flammable."))))
+      (rc/append-log state "You don't think that is flammable."))))
 
 (defn apply-match
   "Light something on fire, creating chaos."
   [state direction]
   (-> state
-    (dec-item-count :match)
+    (rp/dec-item-count :match)
     (start-fire direction)))
     
 (defn apply-fire-plough
@@ -706,7 +707,7 @@
   [state direction]
   (-> state
     (player-update-thirst inc)
-    (dec-item-utility :fire-plough)
+    (rp/dec-item-utility :fire-plough)
     (start-fire direction)))
     
 (defn apply-hand-drill
@@ -714,14 +715,14 @@
   [state direction]
   (-> state
     (player-update-hunger inc)
-    (dec-item-utility :hand-drill)
+    (rp/dec-item-utility :hand-drill)
     (start-fire direction)))
     
 (defn apply-bow-drill
   "Light something on fire, creating chaos."
   [state direction]
   (-> state
-    (dec-item-utility :bow-drill)
+    (rp/dec-item-utility :bow-drill)
     (start-fire direction)))
     
 (defn saw
@@ -737,23 +738,23 @@
                                     :up  -1
                                     :down 1
                                     0))
-        target-cell   (get-cell state target-x target-y)]
+        target-cell   (rw/get-cell state target-x target-y)]
     (log/info "saw dir" direction)
     (log/info "sawing at" target-x target-y)
     (if (contains? #{:tree :palm-tree :fruit-tree} (get target-cell :type))
       (-> state
-        (append-log "You saw the tree into logs.")
+        (rc/append-log "You saw the tree into logs.")
         ;; sawing = more hunger
         (update-in [:world :player :hunger] (partial + 10))
         ;; decrease item utility
-        (dec-item-utility :saw)
-        (update-cell target-x
-                     target-y
-                     (fn [cell] (-> cell
-                                  (dissoc :harvestable)
-                                  (assoc :type (rr/rand-nth [:dirt :gravel :tall-grass :short-grass]))
-                                  (assoc :items (concat (get cell :items) 
-                                                      (repeat (uniform-int 1 2) (ig/gen-log))))))))
+        (rp/dec-item-utility :saw)
+        (rw/update-cell target-x
+                        target-y
+                        (fn [cell] (-> cell
+                                     (dissoc :harvestable)
+                                     (assoc :type (rr/rand-nth [:dirt :gravel :tall-grass :short-grass]))
+                                     (assoc :items (concat (get cell :items) 
+                                                         (repeat (rr/uniform-int 1 2) (ig/gen-log))))))))
       state)))
 
 (defn apply-plant-guide
@@ -763,9 +764,9 @@
   (log/info "identified"  (get-in state [:world :fruit :identified]))
   (if (ig/is-fruit? item)
     (-> state
-      (conj-in [:world :fruit :identified] (get item :id))
-      (append-log (format "Identified %s." (name (get item :id)))))
-    (append-log state (format "You're not able to identify the %s." (name (get item :id))))))
+      (rc/conj-in [:world :fruit :identified] (get item :id))
+      (rc/append-log (format "Identified %s." (name (get item :id)))))
+    (rc/append-log state (format "You're not able to identify the %s." (name (get item :id))))))
 
 
 (defn apply-flint
@@ -775,11 +776,11 @@
   (if (ig/is-metal? item)
     (-> state
       (assoc-apply-item {:id :flint-and-steel})
-      (assoc-current-state :apply-item-normal)
-      (ui-hint "Pick a direction to start a fire."))
+      (rw/assoc-current-state :apply-item-normal)
+      (rc/ui-hint "Pick a direction to start a fire."))
     (-> state
-      (append-log "You're not sure how to apply that")
-      (assoc-current-state :normal))))
+      (rc/append-log "You're not sure how to apply that")
+      (rw/assoc-current-state :normal))))
 
 (defn apply-sharp-item
   "Apply a sharp item to the inventory item."
@@ -788,12 +789,12 @@
   (case (get item :id)
     :unhusked-coconut
     (-> state
-      (dec-item-count (get item :id))
-      (add-to-inventory [(ig/gen-coconut)]))
+      (rp/dec-item-count (get item :id))
+      (rp/add-to-inventory [(ig/gen-coconut)]))
     :stick
     (-> state
-      (dec-item-count (get item :id))
-      (add-to-inventory [(ig/gen-sharpened-stick)]))
+      (rp/dec-item-count (get item :id))
+      (rp/add-to-inventory [(ig/gen-sharpened-stick)]))
     state))
 
 
@@ -802,41 +803,41 @@
   [state item]
   (log/info "skin-identifiable" (get-in state [:world :fruit]))
   (-> state
-    (append-log (format "You touch the %s to your skin." (get item :name)))
+    (rc/append-log (format "You touch the %s to your skin." (get item :name)))
     (arg-when-> [state] (ig/skin-identifiable? state item)
       (assoc-in [:world :player :skin-identify-activate-time]
                 (apply min (remove nil?
                                    [(get-in state [:world :player :skin-identify-activate-time])
-                                    (+ (get-time state) (uniform-int 5 10))]))))))
+                                    (+ (rw/get-time state) (rr/uniform-int 5 10))]))))))
 
 (defn apply-fruit-to-tongue
   "Apply fruit to the tongue If it is poisonous, display a message in the future."
   [state item]
   (log/info "skin-identifiable" (get-in state [:world :fruit]))
   (-> state
-    (append-log (format "You touch the %s to your tongue." (get item :name)))
+    (rc/append-log (format "You touch the %s to your tongue." (get item :name)))
     (arg-when-> [state] (ig/tongue-identifiable? state item)
       (assoc-in [:world :player :tongue-identify-activate-time]
                 (apply min (remove nil?
                                    [(get-in state [:world :player :tongue-identify-activate-time])
-                                    (+ (get-time state) (uniform-int 5 10))]))))))
+                                    (+ (rw/get-time state) (rr/uniform-int 5 10))]))))))
 
 (defn apply-frog-corpse
   "Apply the secretions of a frog corpse to an inventory item."
   [state frog-corpse target-item]
   (log/info "poisonous frogs" (get-in state [:world :frogs]))
   (-> state
-    (append-log (format "You touch the %s to the %s." (get frog-corpse :name) (get target-item :name)))
+    (rc/append-log (format "You touch the %s to the %s." (get frog-corpse :name) (get target-item :name)))
     (arg-if-> [state] (= :arrow (get target-item :id))
       (->
-        (dec-item-count :arrow)
-        (dec-item-count (get frog-corpse :id))
-        (add-to-inventory (ig/id->item (-> (get target-item :name)
+        (rp/dec-item-count :arrow)
+        (rp/dec-item-count (get frog-corpse :id))
+        (rp/add-to-inventory (ig/id->item (-> (get target-item :name)
                                            (clojure.string/split #"-")
                                            first
                                            (str "-tipped-arrow")
                                            keyword))))
-      (append-log "You rub it all over but nothing happens."))))
+      (rc/append-log "You rub it all over but nothing happens."))))
 
 (defn apply-item
   "Applies the selected item."
@@ -849,48 +850,48 @@
       [:fishing-pole    trans->dir?] (apply-fishing-pole state (translate-directions keyin))
       [:match           trans->dir?] (-> state
                                        (apply-match (translate-directions keyin))
-                                       (assoc-current-state :normal))
+                                       (rw/assoc-current-state :normal))
       [:fire-plough     trans->dir?] (-> state
                                        (apply-fire-plough (translate-directions keyin))
-                                       (assoc-current-state :normal))
+                                       (rw/assoc-current-state :normal))
       [:hand-drill      trans->dir?] (-> state
                                        (apply-hand-drill (translate-directions keyin))
-                                       (assoc-current-state :normal))
+                                       (rw/assoc-current-state :normal))
       [:bow-drill       trans->dir?] (-> state
                                        (apply-bow-drill (translate-directions keyin))
-                                       (assoc-current-state :normal))
+                                       (rw/assoc-current-state :normal))
       [:plant-guide     :*         ] (if-let [item (inventory-hotkey->item state keyin)]
                                        (-> state
                                          (apply-plant-guide item)
-                                         (assoc-current-state  :normal))
+                                         (rw/assoc-current-state  :normal))
                                        state)
       [:stick           \>         ] (-> state
                                        (dig-hole)
-                                       (assoc-current-state :normal))
+                                       (rw/assoc-current-state :normal))
       [:obsidian-axe    trans->dir?] (-> state
                                        (saw (translate-directions keyin) keyin)
-                                       (assoc-current-state :normal))
+                                       (rw/assoc-current-state :normal))
       [:saw             trans->dir?] (-> state
                                        (saw (translate-directions keyin) keyin)
-                                       (assoc-current-state :normal))
+                                       (rw/assoc-current-state :normal))
       [:flint           :*         ] (if-let [item (inventory-hotkey->item state keyin)]
                                        (apply-flint state item)
                                        state)
       [:flint-and-steel trans->dir?] (-> state
                                        (start-fire (translate-directions keyin))
-                                       (assoc-current-state :normal))
+                                       (rw/assoc-current-state :normal))
       [ig/id-is-sharp?  :*         ] (if-let [item (inventory-hotkey->item state keyin)]
                                        (-> state
                                          (apply-sharp-item item)
-                                         (assoc-current-state :normal))
+                                         (rw/assoc-current-state :normal))
                                        state)
       ;; apply fruit to body
       [ig/id-is-fruit?  \a         ] (-> state
                                        (apply-fruit-to-skin item)
-                                       (assoc-current-state :normal))
+                                       (rw/assoc-current-state :normal))
       [ig/id-is-fruit?  \b         ] (-> state
                                        (apply-fruit-to-tongue item)
-                                       (assoc-current-state :normal))
+                                       (rw/assoc-current-state :normal))
       [#{:red-frog-corpse
          :orange-frog-corpse
          :yellow-frog-corpse
@@ -900,24 +901,24 @@
                       :*          ] (if-let [target-item (inventory-hotkey->item state keyin)]
                                       (-> state
                                         (apply-frog-corpse (get item :id) target-item)
-                                        (assoc-current-state  :normal))
+                                        (rw/assoc-current-state  :normal))
                                       state)
       [:*              :*         ] (-> state
-                                      (ui-hint "You're not sure how to apply it to that.")
-                                      (assoc-current-state :normal)))))
+                                      (rc/ui-hint "You're not sure how to apply it to that.")
+                                      (rw/assoc-current-state :normal)))))
 
 (defn quaff-only-adjacent-cell
   "Drink all adjacent cells."
   [state]
   (let [[state water] 
         (reduce (fn [[state water] [x y]]
-                  (log/info "testing cell for water:" (get-cell state x y))
-                  (if (contains? (get-cell state x y) :water)
-                    [(update-cell state x y (fn [cell] (assoc cell :water 0))) (+ water (get (get-cell state x y) :water 0))]
+                  (log/info "testing cell for water:" (rw/get-cell state x y))
+                  (if (contains? (rw/get-cell state x y) :water)
+                    [(rw/update-cell state x y (fn [cell] (assoc cell :water 0))) (+ water (get (rw/get-cell state x y) :water 0))]
                     [state water]))
                 [state 0]
-                (player-adjacent-xys state))]
-    (log/info "player-adj-xys" (player-adjacent-xys state))
+                (rw/player-adjacent-xys state))]
+    (log/info "player-adj-xys" (rw/player-adjacent-xys state))
     (update-in state [:world :player :thirst] (fn [thirst] (min 0 (- thirst water))))))
 
 (defn quaff-select
@@ -927,54 +928,54 @@
                                         (filter (fn [cell] (and (not (nil? cell))
                                                                 (contains? #{:freshwater-hole :saltwater-hole} (get cell :type))
                                                                 (> (get cell :water) 10)))
-                                                (player-adjacent-cells state)))
-        _ (log/info "player-adj-cells" (player-adjacent-cells state))
+                                                (rw/player-adjacent-cells state)))
+        _ (log/info "player-adj-cells" (rw/player-adjacent-cells state))
         quaffable-inventory-item? (some (fn [item] (contains? item :thirst)) (player-inventory state))]
     (cond
       (and (pos? num-adjacent-quaffable-cells)
            quaffable-inventory-item?)
-        (assoc-current-state state :quaff-adj-or-inv)
+        (rw/assoc-current-state state :quaff-adj-or-inv)
       (= num-adjacent-quaffable-cells 1)
         (quaff-only-adjacent-cell state)
       (> num-adjacent-quaffable-cells 1)
         (-> state
-          (assoc-current-state :quaff-adj)
-          (ui-hint "Pick a direction to drink."))
+          (rw/assoc-current-state :quaff-adj)
+          (rc/ui-hint "Pick a direction to drink."))
       quaffable-inventory-item?
-        (assoc-current-state state :quaff-inventory)
+        (rw/assoc-current-state state :quaff-inventory)
       :else
         (-> state
-          (ui-hint "There is nothing to drink.")
-          (assoc-current-state :normal)))))
+          (rc/ui-hint "There is nothing to drink.")
+          (rw/assoc-current-state :normal)))))
 
 (defn quaff-cell-at-pos
   [state {x :x y :y}]
-  (let [water (get (get-cell state x y) :water)]
+  (let [water (get (rw/get-cell state x y) :water)]
     (-> state
-      (assoc-cell state x y :water 0)
+      (rw/assoc-cell state x y :water 0)
       (update-in [:world :player :thirst] (fn [thirst] (min 0 (- thirst water)))))))
 
 (defn quaff-up
   [state]
-  (quaff-cell-at-pos state (player-adjacent-pos state :up)))
+  (quaff-cell-at-pos state (rw/player-adjacent-pos state :up)))
 
 (defn quaff-down
   [state]
-  (quaff-cell-at-pos state (player-adjacent-pos state :down)))
+  (quaff-cell-at-pos state (rw/player-adjacent-pos state :down)))
 
 (defn quaff-left
   [state]
-  (quaff-cell-at-pos state (player-adjacent-pos state :left)))
+  (quaff-cell-at-pos state (rw/player-adjacent-pos state :left)))
 
 (defn quaff-right
   [state]
-  (quaff-cell-at-pos state (player-adjacent-pos state :right)))
+  (quaff-cell-at-pos state (rw/player-adjacent-pos state :right)))
 
 (defn quaff-inventory
   [state keyin]
   (if-let [item (inventory-hotkey->item state keyin)]
     (-> state
-      (append-log (format "The %s tastes %s." (lower-case (get item :name))
+      (rc/append-log (format "The %s tastes %s." (lower-case (get item :name))
                                               (rr/rand-nth ["great" "foul" "greasy" "delicious" "burnt" "sweet" "salty"])))
       (update-eaten item)
       ;; reduce thirst
@@ -986,7 +987,7 @@
       (remove-from-inventory (get item :id))
       ((fn [state]
         (case (get item :id)
-          :coconut (add-to-inventory state [(ig/gen-coconut-empty)])
+          :coconut (rp/add-to-inventory state [(ig/gen-coconut-empty)])
           state))))
      state))
      
@@ -995,12 +996,12 @@
   [state]
   (-> state
     ;; rest better then in shelter
-    (arg-when-> [state] (let [[cell _ _] (player-cellxy state)]
+    (arg-when-> [state] (let [[cell _ _] (rw/player-cellxy state)]
                           (type->shelter? (get cell :type)))
       (update-in [:world :player :will-to-live]
         (fn [will-to-live] (+ 0.05 will-to-live))))
     ;; rest better when near a fire
-    (arg-when-> [state] (some #{:fire :campfire} (map :type (player-adjacent-cells state)))
+    (arg-when-> [state] (some #{:fire :campfire} (map :type (rw/player-adjacent-cells state)))
       (update-in state [:world :player :will-to-live]
         (fn [will-to-live] (+ 0.05 will-to-live))))
     (update-in [:world :player]
@@ -1013,7 +1014,7 @@
   [state keyin]
   (let [d (sight-distance state)]
     (if (> d 2)
-      (assoc-current-state state :normal)
+      (rw/assoc-current-state state :normal)
       (do-rest state))))
 
 (defn eat
@@ -1023,7 +1024,7 @@
   (log/info "poisoned fruit" (get-in state [:world :fruit :poisonous]))
   (if-let [item (inventory-and-player-cell-hotkey->item state keyin)]
     (-> state
-      (append-log (format "The %s tastes %s." (lower-case (get item :name))
+      (rc/append-log (format "The %s tastes %s." (lower-case (get item :name))
                                               (rr/rand-nth ["great" "foul" "greasy" "delicious" "burnt" "sweet" "salty"])))
       (update-eaten item)
       ;; reduce hunger
@@ -1033,11 +1034,11 @@
             (max 0 new-hunger))))
       (arg-if-> [state] (contains? (set (map :hotkey (player-inventory state))) keyin)
         ;; remove the item from inventory
-        (dec-item-count (get item :id))
+        (rp/dec-item-count (get item :id))
         ;; remove the item from the current-cell
-        (dec-cell-item-count (get item :id)))
+        (rw/dec-cell-item-count (get item :id)))
       (arg-when-> [state] (= (get item :id) :coconut-empty)
-        (add-to-inventory [(ig/gen-coconut-shell)]))
+        (rp/add-to-inventory [(ig/gen-coconut-shell)]))
       ;; if the item was a poisonous fruit, set a poisoned timebomb
       ((fn [state]
         (if (and (ig/is-fruit? item)
@@ -1048,7 +1049,7 @@
                       [:world :player :poisoned-time]
                       (apply min (remove nil?
                                          [(get-in state [:world :player :poisoned-time])
-                                          (+ (get-time state) (uniform-int 100 200))]))))
+                                          (+ (rw/get-time state) (rr/uniform-int 100 200))]))))
           state))))
     state))
 
@@ -1058,7 +1059,7 @@
   (let [player-pos (get-in state [:world :player :pos])]
     (-> state
       (assoc-in [:world :cursor] player-pos)
-      (ui-hint "ijkl to move cursor, enter to select."))))
+      (rc/ui-hint "ijkl to move cursor, enter to select."))))
 
 (defn harvest
   "Collect non-item resources from adjacent or current cell"
@@ -1074,31 +1075,31 @@
                                     :up  -1
                                     :down 1
                                     0))
-        target-cell   (get-cell state target-x target-y)
+        target-cell   (rw/get-cell state target-x target-y)
         harvestable   (get target-cell :harvestable false)
         harvest-items (if (not= target-cell nil)
                         (cond
                           (= (get target-cell :type) :tree)
                             (if (or harvestable
-                                    (= 0 (uniform-int 1000)))
+                                    (= 0 (rr/uniform-int 1000)))
                               [(rr/rand-nth [(ig/gen-stick) (ig/gen-plant-fiber)])]
                               [])
                           (= (get target-cell :type) :bamboo)
                               (if (or harvestable
-                                      (= 0 (uniform-int 1000)))
+                                      (= 0 (rr/uniform-int 1000)))
                                 [(ig/gen-bamboo)]
                                 [])
                           (= (get target-cell :type) :palm-tree)
                             (concat
                               (if (or harvestable
-                                      (= 0 (uniform-int 1000)))
+                                      (= 0 (rr/uniform-int 1000)))
                                 [(rr/rand-nth [(ig/gen-unhusked-coconut) (ig/gen-plant-fiber)])]
                                 []))
                           (and (= (get target-cell :type) :tall-grass)
                                (= direction :center))
                             (concat
                               (if (or harvestable
-                                      (= 0 (uniform-int 1000)))
+                                      (= 0 (rr/uniform-int 1000)))
                                 [(rr/rand-nth [(ig/gen-grass) (ig/gen-plant-fiber)])]
                                 []))
                           (and (= (get target-cell :type) :gravel)
@@ -1106,24 +1107,24 @@
                              (if (get target-cell :near-lava)
                                (concat
                                  (if (or harvestable
-                                         (= 0 (uniform-int 1000)))
+                                         (= 0 (rr/uniform-int 1000)))
                                    [(rr/rand-nth [(ig/gen-rock) (ig/gen-obsidian)])]
                                    []))
                                (concat
                                  (if (or harvestable
-                                         (= 0 (uniform-int 1000)))
+                                         (= 0 (rr/uniform-int 1000)))
                                    [(rr/rand-nth [(ig/gen-rock) (ig/gen-flint)])]
                                    [])))
                           :else [])
                         [])]
     (log/info "harvested" harvest-items)
     (if (empty? harvest-items)
-      (append-log state "You don't find anything.")
+      (rc/append-log state "You don't find anything.")
       (-> state
-        (add-to-inventory harvest-items)
-        (update-cell target-x target-y (fn [cell] (dissoc cell :harvestable)))
+        (rp/add-to-inventory harvest-items)
+        (rw/update-cell target-x target-y (fn [cell] (dissoc cell :harvestable)))
         ((fn [state] (reduce update-harvested state harvest-items)))
-        (append-log (format "You gather %s." (clojure.string/join ", " (map #(if (> (get % :count 1) 1)
+        (rc/append-log (format "You gather %s." (clojure.string/join ", " (map #(if (> (get % :count 1) 1)
                                                                                   (format "%d %s" (get % :count) (get % :name-plural))
                                                                                   (format "%s %s" (if (contains? #{\a \e \i \o} (first (get % :name)))
                                                                                                      "an"
@@ -1155,7 +1156,7 @@
     (if (and (>= item-index 0) (< item-index (count items)))
       (let [selected-item (nth items item-index)
             new-state (-> state
-              (append-log (format "You wield the %s." (lower-case (get selected-item :name))))
+              (rc/append-log (format "You wield the %s." (lower-case (get selected-item :name))))
               ;; remove :wielded from all items
               (update-in [:world :player :inventory]
                 (fn [items] (mapv (fn [item] (dissoc item :wielded)) items)))
@@ -1178,7 +1179,7 @@
         cursor-pos (assoc cursor-pos :x (max 0 (dec (cursor-pos :x))))]
     (-> state
       (assoc-in [:world :cursor] cursor-pos)
-      (ui-hint "ijkl to move cursor, enter to select."))))
+      (rc/ui-hint "ijkl to move cursor, enter to select."))))
 
 (defn move-cursor-right
   "Move the cursor pos one space to the right keeping in mind the bounds of the current place."
@@ -1187,7 +1188,7 @@
         cursor-pos (assoc cursor-pos :x (min (get-in state [:world :viewport :width]) (inc (cursor-pos :x))))]
     (-> state
       (assoc-in [:world :cursor] cursor-pos)
-      (ui-hint "ijkl to move cursor, enter to select."))))
+      (rc/ui-hint "ijkl to move cursor, enter to select."))))
 
 (defn move-cursor-up
   "Move the cursor pos one space up keeping in mind the bounds of the current place."
@@ -1196,7 +1197,7 @@
         cursor-pos (assoc cursor-pos :y (max 0 (dec (cursor-pos :y))))]
     (-> state
       (assoc-in [:world :cursor] cursor-pos)
-      (ui-hint "ijkl to move cursor, enter to select."))))
+      (rc/ui-hint "ijkl to move cursor, enter to select."))))
 
 (defn move-cursor-down
   "Move the cursor pos one space down keeping in mind the bounds of the current place."
@@ -1205,7 +1206,7 @@
         cursor-pos (assoc cursor-pos :y (min (get-in state [:world :viewport :height]) (inc (cursor-pos :y))))]
     (-> state
       (assoc-in [:world :cursor] cursor-pos)
-      (ui-hint "ijkl to move cursor, enter to select."))))
+      (rc/ui-hint "ijkl to move cursor, enter to select."))))
 
 (defn describe-at-cursor
   "Add to the log, a message describing the scene at the cell indicated by the
@@ -1213,7 +1214,7 @@
   [state]
   (let [cursor-pos (get-in state [:world :cursor])]
     (-> state
-      (append-log (describe-cell-at-xy state (cursor-pos :x) (cursor-pos :y)))
+      (rc/append-log (describe-cell-at-xy state (cursor-pos :x) (cursor-pos :y)))
       (free-cursor))))
 
 (defn start-talking
@@ -1232,11 +1233,11 @@
                                :down 1
                                0))]
     (log/debug "start-talking")
-    (if-let [target-npc (npc-at-xy state target-x target-y)]
+    (if-let [target-npc (rnpc/npc-at-xy state target-x target-y)]
       ;; store update the npc and world state with talking
       (let [state (-> state
-                      (update-npc-at-xy target-x target-y #(assoc % :talking true))
-                      (assoc-current-state :talking))
+                      (rnpc/update-npc-at-xy target-x target-y #(assoc % :talking true))
+                      (rw/assoc-current-state :talking))
             fsm (get-in state [:dialog (target-npc :id)])
             ;; get the dialog input options for the npc
             valid-input (get-valid-input fsm)]
@@ -1245,7 +1246,7 @@
         (if (nil? (first valid-input))
           (step-fsm state fsm nil)
           state))
-      (assoc-current-state state :normal))))
+      (rw/assoc-current-state state :normal))))
 
 (defn talk-left [state]
   (start-talking state :left))
@@ -1275,8 +1276,8 @@
   [state]
   (log/debug "stop-talking")
   (-> state
-      (map-in [:world :npcs] (fn [npc] (dissoc npc :talking)))
-      (assoc-current-state :normal)))
+      (rc/map-in [:world :npcs] (fn [npc] (dissoc npc :talking)))
+      (rw/assoc-current-state :normal)))
 
 (defn describe-inventory
   "Add to the log, a message describing the item with the `:hotkey` value
@@ -1287,7 +1288,7 @@
         item-index (.indexOf inventory-hotkeys keyin)]
     (if (and (>= item-index 0) (< item-index (count items)))
       (let [item (nth items item-index)
-            new-state (append-log state
+            new-state (rc/append-log state
                                   (case (item :type)
                                     :ring "It's round. A ring."
                                     :scroll "A scroll with some writing."
@@ -1302,14 +1303,14 @@
     ;; store update the npc and world state with talking
     (-> state
         (update-npc npc #(assoc % :shopping true))
-        (assoc-current-state :shopping)))
+        (rw/assoc-current-state :shopping)))
     
 (defn shop
   "Start shopping. Allows the player to select \\a -buy or \\b - sell."
   [state keyin]
   (case keyin
-    \a (assoc-current-state state :buy)
-    \b (assoc-current-state state :sell)
+    \a (rw/assoc-current-state state :buy)
+    \b (rw/assoc-current-state state :sell)
     :else state))
 
 (defn buy
@@ -1350,7 +1351,7 @@
 (defn craft-select-recipe
   "Selects a craft recipe."
   [state keyin]
-  (let [recipe-type      (case (current-state state)
+  (let [recipe-type      (case (rw/current-state state)
                            :craft-weapon   :weapons
                            :craft-survival :survival
                            :craft-shelter :shelter
@@ -1359,7 +1360,7 @@
                                  (get (get-recipes state) recipe-type))]
     (log/info "selecting matching recipe" matching-recipes)
     (if (empty? matching-recipes)
-      (ui-hint state "Pick a valid recipe.")
+      (rc/ui-hint state "Pick a valid recipe.")
       (let [recipe-path [recipe-type (get (first matching-recipes) :hotkey)]]
         (log/info "selecting recipe path" recipe-path)
         (assoc-in state [:world :craft-recipe-path] recipe-path)))))
@@ -1376,7 +1377,7 @@
   [state keyin]
   (if-let [item (inventory-and-player-cell-hotkey->item state keyin)]
     (-> state
-      (ui-hint "Select direction.")
+      (rc/ui-hint "Select direction.")
       (assoc-throw-item item))
     state))
 
@@ -1391,33 +1392,33 @@
         ;; do attack
         (-> state
           (attack [:world :player] (npc->keys state (get obj :npc)) item)
-          (conj-cell-items (get-in obj [:pos :x]) (get-in obj [:pos :y]) item)
-          (dec-item-count (get item :id)))
+          (rw/conj-cell-items (get-in obj [:pos :x]) (get-in obj [:pos :y]) item)
+          (rp/dec-item-count (get item :id)))
       (contains? obj :cell)
         ;; drop item into cell before hitting colliding cell
         (-> state
           (arg-if-> [state] (= (get-in obj [:cell :type]) :fire)
-            (update-cell (get-in obj [:pos :x]) (get-in obj [:pos :y]) (fn [cell] (update-in cell [:fuel] (partial + (ig/id->fuel (get item :id))))))
-            (conj-cell-items (+ (get-in obj [:pos :x])
-                                (case direction
-                                  :left 1
-                                  :right -1
-                                  0))
-                             (+ (get-in obj [:pos :y])
-                                (case direction
-                                  :up 1
-                                  :down -1
-                                  0))
-                             (if (get item :rot-time)
-                               (assoc item :rot-time (inc (get-time state)))
-                               item)))
-          (dec-item-count (get item :id)))
+            (rw/update-cell (get-in obj [:pos :x]) (get-in obj [:pos :y]) (fn [cell] (update-in cell [:fuel] (partial + (ig/id->fuel (get item :id))))))
+            (rw/conj-cell-items (+ (get-in obj [:pos :x])
+                                   (case direction
+                                     :left 1
+                                     :right -1
+                                     0))
+                                (+ (get-in obj [:pos :y])
+                                   (case direction
+                                     :up 1
+                                     :down -1
+                                     0))
+                                (if (get item :rot-time)
+                                  (assoc item :rot-time (inc (rw/get-time state)))
+                                  item)))
+          (rp/dec-item-count (get item :id)))
       :else
         ;; didn't hit anything, drop into cell at max-distance
         (let [[x y] (nth (direction->xys state direction) throw-distance)]
           (-> state
-            (conj-cell-items x y item)
-            (dec-item-count (get item :id)))))))
+            (rw/conj-cell-items x y item)
+            (rp/dec-item-count (get item :id)))))))
 
 (defn throw-left
   [state]
@@ -1437,19 +1438,19 @@
 
 (defn craft-weapon
   [state]
-  (craft-select-recipe (assoc-current-state state :craft-weapon) \a))
+  (craft-select-recipe (rw/assoc-current-state state :craft-weapon) \a))
 
 (defn craft-survival
   [state]
-  (craft-select-recipe (assoc-current-state state :craft-survival) \a))
+  (craft-select-recipe (rw/assoc-current-state state :craft-survival) \a))
 
 (defn craft-shelter
   [state]
-  (craft-select-recipe (assoc-current-state state :craft-shelter) \a))
+  (craft-select-recipe (rw/assoc-current-state state :craft-shelter) \a))
 
 (defn craft-transportation
   [state]
-  (craft-select-recipe (assoc-current-state state :craft-transportation) \a))
+  (craft-select-recipe (rw/assoc-current-state state :craft-transportation) \a))
 
 
 (defn craft
@@ -1463,8 +1464,8 @@
     (if recipe
       (-> state
         (craft-recipe recipe)
-        (assoc-current-state :normal))
-      (append-log state "Pick a valid recipe." :white))))
+        (rw/assoc-current-state :normal))
+      (rc/append-log state "Pick a valid recipe." :white))))
 
 
 (defn scroll-log
@@ -1478,7 +1479,7 @@
         (let [c (count (filter #(= t (get % :time)) (get-in state [:world :log])))
               logs-viewed (get-in state [:world :logs-viewed])]
           (if (>= logs-viewed c)
-            (assoc-current-state state :normal)
+            (rw/assoc-current-state state :normal)
             state)))))))
 
 (defn init-log-scrolling
@@ -1491,8 +1492,8 @@
           (fn [logs-with-same-time]
             (vec
               (reduce (fn [logs-with-same-time log]
-                        (trace "updating logs-with-same-time" logs-with-same-time)
-                        (trace "log" log)
+                        (log/debug "updating logs-with-same-time" logs-with-same-time)
+                        (log/debug "log" log)
                         (let [last-log (last logs-with-same-time)]
                           (if (and (< (+ (count (get last-log :text))
                                       (count (get log :text)))
@@ -1519,7 +1520,7 @@
           (assoc-in state [:world :logs-viewed] 1)
           (if (and (> (count logs) 1)
                    (= logs-viewed 1))
-            (assoc-current-state state :more-log)
+            (rw/assoc-current-state state :more-log)
             state)))))))
 
 (defn get-hungrier-and-thirstier
@@ -1528,7 +1529,7 @@
   (let [hunger (get-in state [:world :player :hunger])
         thirst (get-in state [:world :player :thirst])]
     (as-> state state
-      (if (= (current-state state) :sleep)
+      (if (= (rw/current-state state) :sleep)
         (-> state
           (update-in [:world :player :hunger] (partial + 0.01))
           (update-in [:world :player :thirst] (partial + 0.05)))
@@ -1537,31 +1538,31 @@
           (update-in [:world :player :thirst] (partial + 0.1))))
       (if (> (player-hunger state) (player-max-hunger state))
         (-> state
-          (conj-in [:world :player :status] :dead)
+          (rc/conj-in [:world :player :status] :dead)
           (update-player-died :hunger))
         state)
       (if (> (player-thirst state) (player-max-thirst state))
         (-> state
-          (conj-in [:world :player :status] :dead)
+          (rc/conj-in [:world :player :status] :dead)
           (update-player-died :thirst))
         state)
       (let [new-hunger (get-in state [:world :player :hunger])]
         (log/info "hunger" hunger "new-hunger" new-hunger)
         (if (< hunger 80 new-hunger)
-          (append-log state "You need to eat now." :yellow)
+          (rc/append-log state "You need to eat now." :yellow)
           state))
       (let [new-thirst (get-in state [:world :player :thirst])]
         (log/info "thirst" thirst "new-thirst" new-thirst)
         (if (< thirst 80 new-thirst)
-          (append-log state "You need to drink something now." :blue)
+          (rc/append-log state "You need to drink something now." :blue)
           state)))))
 
 (defn get-rescued
   [state]
-  (if (player-mounted-on-raft? state)
-    (let [{x :x y :y}         (player-pos state)
-          distance-from-start (chebyshev-distance {:x 0 :y 0}
-                                                  (player-pos state))
+  (if (rw/player-mounted-on-raft? state)
+    (let [{x :x y :y}         (rp/player-pos state)
+          distance-from-start (rc/chebyshev-distance {:x 0 :y 0}
+                                                     (rp/player-pos state))
           chance-of-rescue (max 0 (+ (/ -300.0 distance-from-start) 1.5))]
       (log/info "distance from 0,0" distance-from-start)
       (if (< (rr/uniform-double 1) chance-of-rescue)
@@ -1572,8 +1573,8 @@
 (defn decrease-will-to-live
   "Decrease the player's will-to-live depending on circumstances."
   [state]
-  (if (= (current-state state) :sleep)
-    (let [[cell _ _] (player-cellxy state)
+  (if (= (rw/current-state state) :sleep)
+    (let [[cell _ _] (rw/player-cellxy state)
           bedroll?   (contains? (set (map :id (get cell :items []))) :bedroll)]
       (if bedroll?
         (update-in [:world :player :will-to-live]
@@ -1584,7 +1585,7 @@
         (fn [will-to-live]
           (let [dwtl       0.02 ;; you've been on the island. It sucks and you want to get off.
                 ;; if it is night and the player is not within range of a fire, things are extra tough.
-                dwtl       (if (and (is-night? state)
+                dwtl       (if (and (rw/is-night? state)
                                     (not-any? #(= (get % :type) :fire)
                                               (cells-in-range-of-player state 3)))
                              (+ dwtl 0.02)
@@ -1638,22 +1639,22 @@
   (let [dwtl (- prev-will-to-live (get-in state [:world :player :will-to-live]))]
     (if (> (Math/abs dwtl) 1.5)
       (if (neg? dwtl)
-        (append-log state (format "You feel %s." (rr/rand-nth ["happy" "happier" "glad" "elated" "great" "good"])))
-        (append-log state (format "You feel %s." (rr/rand-nth ["sad" "sadder" "down" "unhappy" "bummed" "bad"]))))
+        (rc/append-log state (format "You feel %s." (rr/rand-nth ["happy" "happier" "glad" "elated" "great" "good"])))
+        (rc/append-log state (format "You feel %s." (rr/rand-nth ["sad" "sadder" "down" "unhappy" "bummed" "bad"]))))
       state)))
 
 (defn fruit-identify-activate
   "Display a message if the fruit being identified is poisonous."
   [state]
-  (log/info "time" (get-time state))
+  (log/info "time" (rw/get-time state))
   (log/info "skin-id-time" (get-in state [:world :player :skin-identify-activate-time]))
   (log/info "tongue-id-time" (get-in state [:world :player :tongue-identify-activate-time]))
   (-> state
     (arg-when-> [state]
       (let [activate-time (get-in state [:world :player :skin-identify-activate-time])]
         (and activate-time
-             (< activate-time (get-time state))))
-      (append-log (rr/rand-nth ["Your skin feels burning."
+             (< activate-time (rw/get-time state))))
+      (rc/append-log (rr/rand-nth ["Your skin feels burning."
                                 "Your skin is numb."
                                 "Your skin is has a rash."
                                 "Your skin hurts."]))
@@ -1661,8 +1662,8 @@
     (arg-when-> [state]
       (let [activate-time (get-in state [:world :player :tongue-identify-activate-time])]
         (and activate-time
-             (< activate-time (get-time state))))
-      (append-log (rr/rand-nth ["Your tongue feels burning."
+             (< activate-time (rw/get-time state))))
+      (rc/append-log (rr/rand-nth ["Your tongue feels burning."
                                 "Your tongue is numb."
                                 "Your tongue hurts."]))
       (dissoc-in [:world :player :tongue-identify-activate-time]))))
@@ -1675,10 +1676,10 @@
     (arg-when-> [state]
       (let [poisoned-time (get-in state [:world :player :poisoned-time])]
         (and poisoned-time
-             (< poisoned-time (get-time state))))
+             (< poisoned-time (rw/get-time state))))
       (->
-        (conj-in [:world :player :status] :poisoned)
-        (append-log "You vomit.")
+        (rc/conj-in [:world :player :status] :poisoned)
+        (rc/append-log "You vomit.")
         (update-in [:world :player :hunger] (fn [hunger] (min (+ hunger 30)
                                                               (get-in state [:world :player :max-hunger]))))
         (update-in [:world :player :thirst] (fn [thirst] (min (+ thirst 30)
@@ -1700,7 +1701,7 @@
         (update-in [:world :player :status]
           (fn [status]
               (conj status :infected)))
-        (append-log "Your wounds have become infected." :green))
+        (rc/append-log "Your wounds have become infected." :green))
       state)))
 
 (defn if-infected-get-hurt
@@ -1716,7 +1717,7 @@
   (update-in state [:world :player :hp]
     (fn [hp]
       (if (>= (count (filter #(= (get % :type) :fire)
-                             (player-adjacent-cells-ext state)))
+                             (rw/player-adjacent-cells-ext state)))
               3)
         (dec hp)
         hp))))
@@ -1741,7 +1742,7 @@
         (update-in [:world :player :status]
           (fn [status]
               (disj status :poisoned)))
-        (append-log "The poison wore off." :green))
+        (rc/append-log "The poison wore off." :green))
       state)
     ;; chance of infection clearing up
     (if (and (contains? (get-in state [:world :player :status]) :infected)
@@ -1750,17 +1751,17 @@
         (update-in [:world :player :status]
           (fn [status]
               (disj status :infected)))
-        (append-log "The infection has cleared up." :yellow))
+        (rc/append-log "The infection has cleared up." :yellow))
       state)))
 
 (defn decrease-flashlight-charge
   [state]
-  (if-let [flashlight (inventory-id->item state :flashlight)]
-    (update-inventory-item state :flashlight (fn [flashlight] (-> flashlight
-                                                                (arg-when-> [flashlight] (= (get flashlight :state :off) :on)
-                                                                    (update-in [:charge] dec))
-                                                                (arg-when-> [flashlight] (neg? (get flashlight :charge))
-                                                                    (assoc :state :off)))))
+  (if-let [flashlight (rp/inventory-id->item state :flashlight)]
+    (rp/update-inventory-item state :flashlight (fn [flashlight] (-> flashlight
+                                                                   (arg-when-> [flashlight] (= (get flashlight :state :off) :on)
+                                                                       (update-in [:charge] dec))
+                                                                   (arg-when-> [flashlight] (neg? (get flashlight :charge))
+                                                                       (assoc :state :off)))))
     state))
 
 ;; forward declaration because update-state and repeat-cmmands are mutually recursive.
@@ -1778,32 +1779,32 @@
   (let [pos              (-> state :world :player :pos)
         sight-distance   (float (sight-distance state))
         _ (log/info "player-pos" pos)
-        _ (log/info "player place-id" (str (apply xy->place-id state (pos->xy pos))))
+        _ (log/info "player place-id" (str (apply rv/xy->place-id state (rc/pos->xy pos))))
         _ (log/info "sight-distance" sight-distance)
         will-to-live     (get-in state [:world :player :will-to-live])
         max-will-to-live (get-in state [:world :player :max-will-to-live])
-        get-cell-m       (memoize (fn [x y] (get-cell state x y)))
+        get-cell-m       (memoize (fn [x y] (rw/get-cell state x y)))
         new-time         (get-in state [:world :time])
-        test-cells       (for [x (range (- (get pos :x) (int (Math/ceil sight-distance)))
-                                        (+ (get pos :x) (int (Math/ceil sight-distance))))
-                               y (range (- (get pos :y) (int (Math/ceil sight-distance)))
-                                        (+ (get pos :y) (int (Math/ceil sight-distance))))]
+        test-cells       (for [x (range (- (get pos :x) (int (rmath/ceil sight-distance)))
+                                        (+ (get pos :x) (int (rmath/ceil sight-distance))))
+                               y (range (- (get pos :y) (int (rmath/ceil sight-distance)))
+                                        (+ (get pos :y) (int (rmath/ceil sight-distance))))]
                             [x y])
         _ (log/info "test-cells" test-cells)
-        visible-cells    (filter (fn [[x y]] (and (not (nil? (get-cell state x y)))
-                                                  (not (farther-than? pos
+        visible-cells    (filter (fn [[x y]] (and (not (nil? (rw/get-cell state x y)))
+                                                  (not (rc/farther-than? pos
                                                                       {:x x :y y}
                                                                       sight-distance))
-                                                  (visible?
+                                                  (rlos/visible?
                                                     get-cell-m
-                                                    cell-blocking?
+                                                    rlos/cell-blocking?
                                                     (pos :x)
                                                     (pos :y)
                                                     x y)))
                                  test-cells)
         _ (log/info "visible-cells" visible-cells)
         dwtl             (/ (reduce (fn [acc [x y]] (+ acc (- (dec new-time)
-                                                           (get (get-cell state x y) :discovered (- new-time 10000)))))
+                                                           (get (rw/get-cell state x y) :discovered (- new-time 10000)))))
                                  0 visible-cells)
                             48000)
         _                (log/info "delta will-to-live" (float dwtl))
@@ -1812,7 +1813,7 @@
   (-> state
     ((fn [place]
             (reduce (fn [state [x y]]
-                      (assoc-cell state x y :discovered new-time))
+                      (rw/assoc-cell state x y :discovered new-time))
                     state
                     visible-cells)))
     (assoc-in [:world :player :will-to-live] will-to-live))))
@@ -1820,20 +1821,20 @@
 (defn toggle-mount
   "Mount or unmount at the current cell."
   [state]
-  (let [[{items :items} x y]  (player-cellxy state)
+  (let [[{items :items} x y]  (rw/player-cellxy state)
         mounted (get-in state [:world :player :mounted] false)]
     (cond
       (and mounted
            (contains? (set (map :id items)) :raft))
         (-> state
-          (append-log "You dismount the raft.")
+          (rc/append-log "You dismount the raft.")
           (assoc-in [:world :player :mounted] false))
       (and (not mounted) (contains? (set (map :id items)) :raft))
         (-> state
-          (append-log "You mount the raft.")
+          (rc/append-log "You mount the raft.")
           (assoc-in [:world :player :mounted] true))
       (not (contains? (set (map :id items)) :raft))
-        (append-log state "There is nothing to mount here."))))
+        (rc/append-log state "There is nothing to mount here."))))
 
       
 
@@ -1844,11 +1845,11 @@
   (let [npc (first (filter #(contains? % :in-party?)
                             (get-in state [:world :npcs])))
     state (-> state
-      (remove-in [:world :npcs] (partial = npc))
+      (rc/remove-in [:world :npcs] (partial = npc))
       ;; make world npcs a vector so that conj adds the player to the end of the collection
       ;; rather than the beginning.
       (update-in [:world :npcs] vec)
-      (conj-in [:world :npcs] (get-in state [:world :player]))
+      (rc/conj-in [:world :npcs] (get-in state [:world :player]))
       (assoc-in [:world :player] npc))]
     #+clj
     (log/debug "npcs" (with-out-str (pprint (-> state :world :npcs))))
@@ -1875,17 +1876,17 @@
           height                 (get-in state [:world :height])
           get-type               (memoize (fn [x y] (do
                                                       ;(log/debug "traversable?" x y "type" (get-in place [y x :type]))
-                                                      (or (get (get-cell state x y) :type) :unknown))))
+                                                      (or (get (rw/get-cell state x y) :type) :unknown))))
           water-traversable?     (fn water-traversable? [[x y]]
                                    (and (< 0 x width)
                                         (< 0 y height)
-                                        (not (farther-than? npc-pos {:x x :y y} threshold))
+                                        (not (rc/farther-than? npc-pos {:x x :y y} threshold))
                                         (contains? #{:water :surf} (get-type x y))
-                                        #_(every? water-traversable? (adjacent-xys-ext x y))))
+                                        #_(every? water-traversable? (rw/adjacent-xys-ext x y))))
           land-traversable?      (fn [[x y]]
                                    (and (< 0 x width)
                                         (< 0 y height)
-                                        (not (farther-than? npc-pos {:x x :y y} threshold))
+                                        (not (rc/farther-than? npc-pos {:x x :y y} threshold))
                                         (contains? #{:floor
                                                      :open-door
                                                      :corridor
@@ -1950,16 +1951,16 @@
           height                 (get-in state [:world :height])
           get-type               (memoize (fn [x y] (do
                                                       #_(log/debug "traversable?" x y "type" (get-in place [y x :type]))
-                                                      (or (get (get-cell state x y) :type) :unknown))))
+                                                      (or (get (rw/get-cell state x y) :type) :unknown))))
           water-traversable?     (fn water-traversable? [[x y]]
                                    (and (< 0 x width)
                                         (< 0 y height)
-                                        (not (farther-than? npc-pos {:x x :y y} threshold))
+                                        (not (rc/farther-than? npc-pos {:x x :y y} threshold))
                                         (contains? #{:water :surf} (get-type x y))
-                                        #_(every? water-traversable? (adjacent-xys-ext x y))))
+                                        #_(every? water-traversable? (rw/adjacent-xys-ext x y))))
           land-traversable?      (fn [[x y]]
 
-                                        (not (farther-than? npc-pos {:x x :y y} threshold))
+                                        (not (rc/farther-than? npc-pos {:x x :y y} threshold))
                                         (contains? #{:floor
                                                      :open-door
                                                      :corridor
@@ -1983,9 +1984,9 @@
           ;; TODO: calc new-pos based on adj-navigable space (8-dir) that is farthest away from player
           ;_                      (log/debug "path to target" path)
           new-pos                (first
-                                   (sort-by (fn [[x y]] (distance (xy->pos npc-x npc-y) (xy->pos x y)))
+                                   (sort-by (fn [[x y]] (rc/distance (rc/xy->pos npc-x npc-y) (rc/xy->pos x y)))
                                             (filter traversable?
-                                                    (adjacent-xys-ext npc-x npc-y))))
+                                                    (rw/adjacent-xys-ext npc-x npc-y))))
           new-pos                (or new-pos
                                      [npc-x npc-y])
 
@@ -2012,9 +2013,9 @@
                             :short-grass})]
     ;; move randomly into an adjacent cell
     (let [target (rr/rand-nth
-                   (adjacent-navigable-pos state
-                                           npc-pos
-                                           navigable-types))]
+                   (rnpc/adjacent-navigable-pos state
+                                                npc-pos
+                                                navigable-types))]
       ;(log/debug "distance > threshold, move randomly. target" target)
       [target
        (-> npc
@@ -2026,7 +2027,7 @@
   [state npc target]
   (let [threshold (get npc :range-threshold)
         npc-pos  (get npc :pos)
-        distance (distance npc-pos target)
+        distance (rc/distance npc-pos target)
         navigable-types (if (mg/can-move-in-water? (get npc :race))
                           #{:water :surf}
                           #{:floor
@@ -2040,9 +2041,9 @@
     (if (> distance threshold)
       ;; outside of range, move randomly into an adjacent cell
       (let [target (rr/rand-nth
-                     (adjacent-navigable-pos state
-                                             npc-pos
-                                             navigable-types))]
+                     (rnpc/adjacent-navigable-pos state
+                                                  npc-pos
+                                                  navigable-types))]
         ;(log/debug "distance > threshold, move randomly. target" target)
         [target
          (-> npc
@@ -2056,7 +2057,7 @@
   [state npc target]
   (let [threshold (get npc :range-threshold)
         npc-pos  (get npc :pos)
-        distance (distance npc-pos target)
+        distance (rc/distance npc-pos target)
         navigable-types (if (mg/can-move-in-water? (get npc :race))
                           #{:water :surf}
                           #{:floor
@@ -2070,9 +2071,9 @@
     (if (> distance threshold)
       ;; outside of range, move randomly into an adjacent cell
       (let [target (rr/rand-nth
-                     (adjacent-navigable-pos state
-                                             npc-pos
-                                             navigable-types))]
+                     (rnpc/adjacent-navigable-pos state
+                                                  npc-pos
+                                                  navigable-types))]
         ;(log/debug "distance > threshold, move randomly. target" target)
         [target
          (-> npc
@@ -2095,9 +2096,9 @@
         policy      (cond
                       (or
                         (and (= temperament :hostile-during-day)
-                             (is-day? state))
+                             (rw/is-day? state))
                         (and (= temperament :hostile-at-day)
-                             (is-night? state)))
+                             (rw/is-night? state)))
                       :follow-player-in-range-or-random
                       :else
                       policy)
@@ -2117,9 +2118,9 @@
       :entourage                           (move-to-target state
                                                            npc
                                                            (rr/rand-nth
-                                                             (adjacent-navigable-pos state
-                                                                                     pos
-                                                                                     navigable-types)))
+                                                             (rnpc/adjacent-navigable-pos state
+                                                                                          pos
+                                                                                          navigable-types)))
       :follow-player                       (move-to-target state npc pos)
       :random                              (move-random state npc)
       :follow-player-in-range-or-random    (move-to-target-in-range-or-random state npc pos)
@@ -2143,7 +2144,7 @@
                           state (update-in state (conj npc-keys :energy) (partial + (get npc :speed)))]
                       ;; adjacent hostile npcs attack player.
                       (if (and (contains? (get npc :status) :hostile)
-                               (adjacent-to-player? state (get npc :pos)))
+                               (rp/adjacent-to-player? state (get npc :pos)))
                         (let [_ (log/info "npc attacker" npc)]
                           (attack state npc-keys [:world :player]))
                         state))
@@ -2157,7 +2158,7 @@
            ;;; to player. The npcs closest will be moved first, leaving a gap
            ;;; behind them allowing the next most distant npc to move forward
            ;;; to fill the gap.
-           remaining-npcs (sort-by (fn [npc] (distance-from-player state (get npc :pos)))
+           remaining-npcs (sort-by (fn [npc] (rp/distance-from-player state (get npc :pos)))
                                    (filter (fn [npc] (and (contains? npc :energy)
                                                           (> (get npc :energy) 1)))
                                      (npcs-in-viewport state)))
@@ -2206,7 +2207,7 @@
                                                                    (= (get npc :place)
                                                                       (get new-npc :place))))
                                                     (get-in state [:world :npcs]))
-                                         (not= new-pos (player-pos state)))
+                                         (not= new-pos (rp/player-pos state)))
                                      ;; use the new npc value
                                      new-npc
                                      ;; otherwise there is an npc at the destination, use the old npc
@@ -2215,7 +2216,7 @@
                                    (fn [energy] (max (dec energy) 0))))))
                            state
                            map-result)
-              remaining-npcs (sort-by (fn [npc] (distance-from-player state (get npc :pos)))
+              remaining-npcs (sort-by (fn [npc] (rp/distance-from-player state (get npc :pos)))
                                (filter (fn [npc] (and (contains? npc :energy)
                                                       (> (get npc :energy) 1)))
                                  (npcs-in-viewport state)))]
@@ -2251,70 +2252,70 @@
             (cond
                 ;; update holes
                 (contains? #{:freshwater-hole :saltwater-hole} cell-type)
-                (update-cell state x y
+                (rw/update-cell state x y
                   (fn increase-hole-water [cell] (assoc cell :water (min 20 (+ 0.1 (* (rr/uniform-double 1) 0.1) (get cell :water 0.0))))))
                 ;; update solar stills
                 (contains? #{:solar-still} (get cell :type))
-                (update-cell state x y
+                (rw/update-cell state x y
                   (fn increase-still-water [cell] (assoc cell :water (min 20 (+ 0.2 (* (rr/uniform-double 1) 0.1) (get cell :water 0.0))))))
                 ;; drop harvest items
                 (contains? #{:gravel :tree :palm-tree :tall-grass} cell-type)
-                (if (= (uniform-int 0 100000) 0)
-                  (update-cell state x y
+                (if (= (rr/uniform-int 0 100000) 0)
+                  (rw/update-cell state x y
                     (fn drop-harvest-items [cell]
                       (assoc cell :harvestable true)))
                   state)
                 ;; drop fruit
                 (contains? #{:fruit-tree} cell-type)
                 ;; chance of dropped a fruit
-                (if (= (uniform-int 0 1000) 0)
+                (if (= (rr/uniform-int 0 1000) 0)
                   ;; make the fruit item and find an adjacent free cell to drop it into
-                  (let [item    (assoc (ig/id->item (get cell :fruit-type)) :rot-time (+ (get-time state) (uniform-int 10 30)))
-                        adj-xys (remove (fn [[x y]] (or (not (xy-in-viewport? state x y))
-                                                         (type->collide?
-                                                           (get (get-cell state x y) :type))))
-                                        (adjacent-xys x y))]
+                  (let [item    (assoc (ig/id->item (get cell :fruit-type)) :rot-time (+ (rw/get-time state) (rr/uniform-int 10 30)))
+                        adj-xys (remove (fn [[x y]] (or (not (rv/xy-in-viewport? state x y))
+                                                         (rw/type->collide?
+                                                           (get (rw/get-cell state x y) :type))))
+                                        (rw/adjacent-xys x y))]
                     (log/info "dropping fruit" item "at [" x y "]" adj-xys)
                     (if (seq adj-xys)
                       ;; drop the fruit into the cell
-                      (apply conj-cell-items state (conj (rr/rand-nth adj-xys) item))
+                      (apply rw/conj-cell-items state (conj (rr/rand-nth adj-xys) item))
                       state))
                   state)
                 ;; update fire
                 (contains? fire-xys [x y])
                 (as-> state state
-                  (update-cell x y (fn [cell] (update-in cell [:fuel] dec)))
+                  (rw/update-cell x y (fn [cell] (update-in cell [:fuel] dec)))
                   ;; chance of fire spreading
-                  (if (= 0 (uniform-int 0 10))
+                  (if (= 0 (rr/uniform-int 0 10))
                     ;; make the fire spread and find an adjacent free cell to spread it into
                     (let [cell-at-xy-flammable? (fn [[x y]]
                                                   (type->flammable?
-                                                    (get (get-cell state x y) :type)))
+                                                    (get (rw/get-cell state x y) :type)))
                           adj-xys (filter cell-at-xy-flammable?
-                                         (adjacent-xys-ext x y))]
+                                         (rw/adjacent-xys-ext x y))]
                       (log/info "spreading fire at [" x y "]" adj-xys)
                       (if (seq adj-xys)
                         ;; spread fire into the cell
                         (let [[x y] (rr/rand-nth adj-xys)]
-                          (assoc-cell state x y :type :fire :fuel (uniform-int 10 50)))
+                          (rw/assoc-cell state x y :type :fire :fuel (rr/uniform-int 10 50)))
                         state))
                      state)
                   (if (neg? (get cell :fuel 0))
                     ;; extinguish the fire
                     (-> state
-                      (assoc-cell x y :type :dirt)
-                      (dissoc-cell x y :fuel))
+                      (rw/assoc-cell x y :type :dirt)
+                      (rw/dissoc-cell x y :fuel))
                     state))
                  :else
                  state)
             ;; rot fruit
             ;; TODO: only rot fruit if it is in the set of visible cells.
-            (arg-when-> [state] (some (fn [item] (< (get item :rot-time (get-time state)) (get-time state)))
+            (arg-when-> [state] (some (fn [item] (< (get item :rot-time (rw/get-time state)) (rw/get-time state)))
                                       cell-items)
-              (update-cell x y (fn rot-cell-fruit [cell]
+              (rw/update-cell x y (fn rot-cell-fruit [cell]
                                  (update-in cell [:items] (fn [items]
-                                   (remove (fn [item] (< (get item :rot-time (get-time state))
-                                                         (get-time state)))
+                                   (remove (fn [item] (< (get item :rot-time (rw/get-time state))
+                                                         (rw/get-time state)))
                                             items)))))))))
       state
       viewport-cells)))
@@ -2383,8 +2384,8 @@
                            \a          [identity               :apply           false]
                            \;          [init-cursor            :describe        false]
                            \R          [identity               :sleep           false]
-                           \s          [search                 :normal          true]
-                           \S          [extended-search        :normal          true]
+                           \s          [rdesc/search           :normal          true]
+                           \S          [rdesc/extended-search  :normal          true]
                            \Q          [identity               :quests          false]
                            \M          [toggle-mount           :normal          false]
                            \P          [next-party-member      :normal          false]
@@ -2397,11 +2398,11 @@
                            \r          [repeat-commands        identity         false]
                            \0          [(fn [state]
                                           (-> state
-                                          (append-log "log1...........................")
-                                          (append-log "log2...........................")
-                                          (append-log "log3...........................")
-                                          (append-log "log4...........................")
-                                          (append-log "log5...........................")))
+                                          (rc/append-log "log1...........................")
+                                          (rc/append-log "log2...........................")
+                                          (rc/append-log "log3...........................")
+                                          (rc/append-log "log4...........................")
+                                          (rc/append-log "log5...........................")))
                                           :normal true]
                           \1           [(fn [state]
                                           (assoc-in state [:world :log] [])) :normal true]
@@ -2409,7 +2410,7 @@
                                           (assoc-in state [:world :player :hunger] 100))
                                           :normal true]
                           \3           [(fn [state]
-                                          (add-to-inventory state [(ig/gen-flint)])) :normal true]
+                                          (rp/add-to-inventory state [(ig/gen-flint)])) :normal true]
                            :escape     [identity               :quit?           false]}
                :inventory {:escape     [identity               :normal          false]}
                :describe  {:escape     [free-cursor            :normal          false]
@@ -2604,7 +2605,7 @@
             command-seq (get-in state [:world :command-seq] [])
             _ (log/debug "type of npcs" (type (get-in state [:world :npcs])))
             new-time  (inc (get-in state [:world :time]))
-            state     (clear-ui-hint state)
+            state     (clear-rc/ui-hint state)
             state     (transition-fn
                         (if advance-time
                           (assoc-in state [:world :time] new-time)
@@ -2624,15 +2625,15 @@
                             (contains? (hash-set current-state new-state) :more-log)
                               state
                             :else
-                              (conj-in state [:world :command-seq] keyin))
+                              (rc/conj-in state [:world :command-seq] keyin))
                           (assoc-in state [:world :command-seq] command-seq))
                         state)
             _ (log/info "command-seq" (get-in state [:world :command-seq] :none))
-            _ (trace "player" (get-in state [:world :player]))
+            _ (log/debug "player" (get-in state [:world :player]))
             _ (log/info "new-state" new-state)
             wtl       (get-in state [:world :player :will-to-live])]
         (some-> state
-            (assoc-current-state new-state)
+            (rw/assoc-current-state new-state)
             (as-> state
               (if advance-time
                 (-> state
@@ -2655,7 +2656,7 @@
                   (update-cells)
                   ((fn [state] (log/info "Done updating cells") state))
                   ;; TODO: Add appropriate level
-                  (add-npcs-random)
+                  (rnpc/add-npcs-random)
                   ;; update visibility
                   (update-visibility)
                   ;; add will-to-live flavor message
@@ -2698,10 +2699,10 @@
                    (log/info "Deleting" file)
                    (.delete file))
                 state))
-              (update-in [:world :player :status]
+              (update-in state [:world :player :status]
                (fn [status]
                  (disj status :dead)))
-              (assoc-current-state :dead))
+              (rw/assoc-current-state :dead))
               ;; delete the save game on player death
             ;; only try to start log scrolling if the state we were just in was not more-log
             (as-> state

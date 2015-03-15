@@ -56,10 +56,10 @@
   [place extras]
   ;; create a list of functions that can be applied to assoc extras, then create a composition of
   ;; so that setting can pass through each fn in turn.
-  #_(debug "add-extras" place extras)
+  #_(log/debug "add-extras" place extras)
   (reduce (fn [place [[x y] & r]]
            (let [args (concat [[y x]] r)]
-             #_(debug "assoc-in place" args)
+             #_(log/debug "assoc-in place" args)
              (apply assoc-in place args))) place extras))
 
 
@@ -121,7 +121,7 @@
         radius (min max-x max-y)
         [x y]   [(* radius (Math/cos angle))
                  (* radius (Math/sin angle))]
-        points  (line-segment [x y] [0 0])
+        points  (rlos/line-segment [x y] [0 0])
         samples (take-nth 5 points)
         n       (rn/create-noise (rr/create-random seed))
         _ (log/info "find-starting-pos samples" samples)
@@ -148,7 +148,7 @@
                                 #+cljs (.cos js/Math angle))
                       (* radius #+clj  (Math/sin angle)
                                 #+cljs (.sin js/Math angle))]
-        points       (line-segment [x y] [0 0])
+        points       (rlos/line-segment [x y] [0 0])
         samples       points
         n            (rn/create-noise (rr/create-random seed))
         non-water-samples (remove
@@ -169,7 +169,7 @@
         volcano-pos           (get-in state [:world :volcano-pos])
         lava-xys              (get-in state [:world :lava-points])]
     (vec
-     (pmap vec
+     (map vec
        (partition width
          (map (fn [[x y]]
             (let [biome     (sample-island n x y)
@@ -184,7 +184,7 @@
                                                1 {:type :gravel}
                                                2 {:type :short-grass})
                               :bamboo-grove  (if (< t 0.1)
-                                               (dg/rand-nth [
+                                               (rr/rand-nth [
                                                  {:type :dirt}
                                                  {:type :tall-grass}
                                                  {:type :tall-grass}
@@ -192,54 +192,54 @@
                                                  {:type :short-grass}])
                                                {:type :bamboo})
                               :rocky         (if (< t 0.1)
-                                               (dg/rand-nth [
+                                               (rr/rand-nth [
                                                  {:type :dirt}
                                                  {:type :tall-grass}
                                                  {:type :short-grass}
                                                  {:type :short-grass}])
                                                 {:type :mountain})
-                              :swamp         (dg/rand-nth [
+                              :swamp         (rr/rand-nth [
                                                {:type :dirt}
                                                {:type :surf}
                                                {:type :tree}
                                                {:type :tall-grass}
                                                {:type :short-grass}])
-                              :meadow        (dg/rand-nth [
+                              :meadow        (rr/rand-nth [
                                                {:type :dirt}
                                                {:type :tall-grass}
                                                {:type :tall-grass}
                                                {:type :short-grass}
                                                {:type :short-grass}])
                               :jungle        (if (< t 0.1)
-                                               (dg/rand-nth [
+                                               (rr/rand-nth [
                                                  {:type :tall-grass}
                                                  {:type :short-grass}
                                                  {:type :gravel}])
-                                               (dg/rand-nth [
+                                               (rr/rand-nth [
                                                  {:type :tall-grass}
                                                  {:type :palm-tree}
-                                                 {:type :fruit-tree :fruit-type (dg/rand-nth [:red-fruit :orange-fruit :yellow-fruit
+                                                 {:type :fruit-tree :fruit-type (rr/rand-nth [:red-fruit :orange-fruit :yellow-fruit
                                                                                               :green-fruit :blue-fruit :purple-fruit
                                                                                               :white-fruit :black-fruit])}]))
                               :heavy-forest  (if (< t 0.1)
-                                               (dg/rand-nth [
+                                               (rr/rand-nth [
                                                  {:type :tall-grass}
                                                  {:type :tree}
-                                                 {:type :fruit-tree :fruit-type (dg/rand-nth [:red-fruit :orange-fruit :yellow-fruit
+                                                 {:type :fruit-tree :fruit-type (rr/rand-nth [:red-fruit :orange-fruit :yellow-fruit
                                                                                               :green-fruit :blue-fruit :purple-fruit
                                                                                               :white-fruit :black-fruit])}])
-                                               (dg/rand-nth [
+                                               (rr/rand-nth [
                                                  {:type :tall-grass}
                                                  {:type :short-grass}
                                                  {:type :gravel}]))
                               :light-forest  (if (< t 0.1)
-                                               (dg/rand-nth [
+                                               (rr/rand-nth [
                                                  {:type :tall-grass}
                                                  {:type :tree}
-                                                 {:type :fruit-tree :fruit-type (dg/rand-nth [:red-fruit :orange-fruit :yellow-fruit
+                                                 {:type :fruit-tree :fruit-type (rr/rand-nth [:red-fruit :orange-fruit :yellow-fruit
                                                                                               :green-fruit :blue-fruit :purple-fruit
                                                                                               :white-fruit :black-fruit])}])
-                                               (dg/rand-nth [
+                                               (rr/rand-nth [
                                                  {:type :tall-grass}
                                                  {:type :tall-grass}
                                                  {:type :short-grass}
@@ -330,17 +330,17 @@
                                         :seed seed
                                         :volcano-pos (apply rc/xy->pos volcano-xy)
                                         :lava-points lava-points}}
-        place-id               (apply xy->place-id min-state (rc/pos->xy starting-pos))
+        place-id               (apply rv/xy->place-id min-state (rc/pos->xy starting-pos))
         [sx sy]                (rc/pos->xy starting-pos)
         [vx vy]                [(int (- sx (/ width 2))) (int (- sy (/ height 2)))]
-        _ (debug "starting-pos" starting-pos)
+        _ (log/debug "starting-pos" starting-pos)
         place-0                (init-island min-state vx vy width height)
         fruit-ids              [:red-fruit :orange-fruit :yellow-fruit :green-fruit :blue-fruit :purple-fruit :white-fruit :black-fruit]
-        poisoned-fruit         (set (take (/ (count fruit-ids) 2) (rr/shuffle fruit-ids)))
-        skin-identifiable      (set (take (/ (count poisoned-fruit) 2) (rr/shuffle poisoned-fruit)))
-        tongue-identifiable    (set (take (/ (count poisoned-fruit) 2) (rr/shuffle poisoned-fruit)))
+        poisoned-fruit         (set (take (/ (count fruit-ids) 2) (rr/rnd-shuffle fruit-ids)))
+        skin-identifiable      (set (take (/ (count poisoned-fruit) 2) (rr/rnd-shuffle poisoned-fruit)))
+        tongue-identifiable    (set (take (/ (count poisoned-fruit) 2) (rr/rnd-shuffle poisoned-fruit)))
         frog-colors            [:reg :orange :yellow :green :blue :purple]
-        poisonous-frog-colors  (set (take (/ (count frog-colors) 2) (rr/shuffle frog-colors)))
+        poisonous-frog-colors  (set (take (/ (count frog-colors) 2) (rr/rnd-shuffle frog-colors)))
         world
           {:seed seed
            :block-size {:width width :height height}
@@ -424,7 +424,7 @@
   ;; load the place into state. From file if exists or gen a new random place.
   (let [place
     (if (.exists (io/as-file (format "save/%s.place.edn" (str id))))
-      (rc/log-time "read-string time" ;;(clojure.edn/read-string {:readers {'Monster mg/map->Monster}} s)))
+      ;(rc/log-time "read-string time" ;;(clojure.edn/read-string {:readers {'Monster mg/map->Monster}} s)))
         (with-open [o (io/input-stream (format "save/%s.place.edn" (str id)))]
           (nippy/thaw-from-in! (DataInputStream. o))))
       (let [[ax ay]            (place-id->anchor-xy state id)
@@ -433,7 +433,7 @@
             w-height           (get-in state [:world :height])]
         (rc/log-time "init-island time" (init-island state
                                                   ax ay
-                                                  v-width v-height))))]
+                                                  v-width v-height)))]
       (log/info "loaded place. width:" (count (first place)) "height:" (count place))
       place))
 
@@ -458,22 +458,22 @@
 (defn unload-place
   [state id]
   (log/info "unloading" id)
-  (rc/log-time "unloading"
+  ;(rc/log-time "unloading"
   (async/>!! save-place-chan [id (get-in state [:world :places id])])
   ;; Remove all npcs in place being unloaded
   (->
-    (reduce (fn [state npc] (if (= (apply xy->place-id state (rc/pos->xy (get npc :pos)))
+    (reduce (fn [state npc] (if (= (apply rv/xy->place-id state (rc/pos->xy (get npc :pos)))
                                    id)
-                                (remove-npc state npc)
+                                (rnpc/remove-npc state npc)
                                 state))
             state (get-in state [:world :npcs]))
-    (dissoc-in [:world :places id]))))
+    (rc/dissoc-in [:world :places id])))
 
 (defn load-unload-places
   [state]
-  (let [[x y]             (player-xy state)
+  (let [[x y]             (rp/player-xy state)
         loaded-place-ids  (keys (get-in state [:world :places]))
-        visible-place-ids (visible-place-ids state x y)
+        visible-place-ids (rv/visible-place-ids state x y)
         places-to-load    (clojure.set/difference (set visible-place-ids) (set loaded-place-ids))
         places-to-unload  (clojure.set/difference (set loaded-place-ids) (set visible-place-ids))]
     (log/info "currently loaded places:" loaded-place-ids)

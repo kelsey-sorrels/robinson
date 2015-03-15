@@ -10,6 +10,10 @@
             [robinson.monstergen :as mg]
             [robinson.render :as rrender]
             #+clj
+            [robinson.macros :as rm]
+            #+cljs
+            [robinson.macros :as rm :include-macros true]
+            #+clj
             [clojure.stacktrace :as st]
             #+clj
             [clojure.core.async :as async]
@@ -34,7 +38,8 @@
   #+clj
   (:import [java.io DataInputStream DataOutputStream])
   #+cljs
-  (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
+  (:require-macros [cljs.core.async.macros :refer [go go-loop]]
+                   [robinson.macros :as rm]))
 
 
 #+clj
@@ -62,15 +67,30 @@
   (let [state (async/<! render-chan)]
     (log/info "Rendering world at time" (get-in state [:world :time]))
     (try
-      (log-time "render" (render state))
-      (catch Throwable e (error e)))
+      (rm/log-time "render" (rrender/render state))
+      #+clj
+      (catch Throwable e (log/error e))
+      #+cljs
+      (catch js/Error e (log/error e)))
     (recur)))
 
+#+clj
 (defn save-state [state]
   (async/>!! save-chan state))
-  
+
+#+cljs
+(defn save-state [state]
+  (go
+    (async/>! save-chan state)))
+
+#+clj
 (defn render-state [state]
   (async/>!! render-chan state))
+  
+#+cljs
+(defn render-state [state]
+  (go
+    (async/>! render-chan state)))
   
 (defn tick
   "The game loop.
@@ -79,33 +99,29 @@
    the state using the player's input and return the new state. Save the
    world too, in case the  game is interrupted. Then we can load it next
    time we start up."
-  ([state]
-    (let [keyin (or (when (= (current-state state) :sleep)
-                      \.)
-                    (let [key-chan (aterminal/get-key-chan (state :screen))]
-                      (log/info  "waiting for key-chan")
-                      (async/<!! key-chan)))]
-      (if keyin
-        (tick state keyin)
-        state)))
-  ([state keyin]
+  [state keyin]
     (try
       (log/info "got " (str keyin) " type " (type keyin))
-      (log-time "tick"
-        (let [new-state (log-time "update-state" (update-state state keyin))]
+      (rm/log-time "tick"
+        (let [new-state (rm/log-time "update-state" (ru/update-state state keyin))]
           (when new-state
             (do
             (render-state new-state)
             (save-state new-state)))
           ;(async/thread (spit "save/world.edn" (with-out-str (pprint (new-state :world)))))
           new-state))
+      #+clj
       (catch Exception e
         (do
           (error "Caught exception" e)
           (.printStackTrace e)
           (st/print-stack-trace e)
           (st/print-cause-trace e)
-          state)))))
+          state))
+      #+cljs
+      (catch js/Error e
+        (log/error e)
+        state)))
 
 ;; Example setup and tick fns
 (defn setup
@@ -125,42 +141,56 @@
    * `quests` that are loaded dynamically on startup."
   ([] (setup nil))
   ([screen]
-  (let [data  (apply hash-map
+  (let [data  #+clj
+              (apply hash-map
                 (mapcat (fn [file]
                           [(keyword (.getName file))
                            (->> (.getPath file)
                              (slurp)
                              (clojure.edn/read-string))])
                         (.listFiles (clojure.java.io/file "data"))))
+              ;TODO: read from js var
+              #+cljs
+              {}
         _     (when (get data :seed)
-                (alter-var-root #'rr/*rnd* (constantly (java.util.Random. (get data :seed)))))
-        world (if (.exists (clojure.java.io/file "save/world.edn"))
-                #_(clojure.edn/read-string {:readers {'robinson.monstergen.Monster map->Monster}}
-                  (slurp "save/world.edn"))
+                (rr/set-rnd! (rr/create-random (get data :seed))))
+        world #+clj
+              (if (.exists (clojure.java.io/file "save/world.edn"))
                 (with-open [o (io/input-stream "save/world.edn")]
                   (nippy/thaw-from-in! (DataInputStream. o)))
       
                 {:current-state :start
                  :time 0})
+              ;TODO: read from local storage
+              #+cljs
+              {:current-state :start
+               :time 0}
         ;; load quests
-        _ (doall (map #(load-file (.getPath %))
-                       (filter (fn [file] (.endsWith (.getPath file) ".clj"))
-                               (.listFiles (clojure.java.io/file "quests")))))
+        ;_ (doall (map #(load-file (.getPath %))
+        ;               (filter (fn [file] (.endsWith (.getPath file) ".clj"))
+        ;                       (.listFiles (clojure.java.io/file "quests")))))
 
         ;; get a list of all the quests that have been loaded
-        quests (map deref (flatten (map #(-> % ns-publics vals)
-                                         (filter #(.contains (-> % ns-name str)
-                                                             "robinson.quests")
-                                                  (all-ns)))))
-        quest-map (apply hash-map (mapcat (fn [i] [(i :id) i]) quests))
-        _ (doall (map #(log/info "Loaded quest" (% :name)) quests))
-        _ (log/info "dialogs" (apply merge (map :dialog quests)))
-        dialog (apply merge (map (fn [[k v]]
-                                   {k (dialog->fsm v)})
-                                 (apply merge (map :dialog quests))))
+        ;quests (map deref (flatten (map #(-> % ns-publics vals)
+        ;                                 (filter #(.contains (-> % ns-name str)
+        ;                                                     "robinson.quests")
+        ;                                          (all-ns)))))
+        ;quest-map (apply hash-map (mapcat (fn [i] [(i :id) i]) quests))
+        ;_ (doall (map #(log/info "Loaded quest" (% :name)) quests))
+        ;_ (log/info "dialogs" (apply merge (map :dialog quests)))
+        ;dialog (apply merge (map (fn [[k v]]
+        ;                           {k (dialog->fsm v)})
+        ;                         (apply merge (map :dialog quests))))
         ;;_ (debug "loaded data" data)
-        settings (clojure.edn/read-string
+        settings #+clj
+                 (clojure.edn/read-string
                    (slurp "config/settings.edn"))
+                 ;TODO: read from config page in cljs
+                 #+cljs
+                 {:windows-font "Courier New"
+                  :else-font    "Monospaced"
+                  :font-size 18}
+
         terminal  (or screen
                       #+clj
                       (swingterminal/make-terminal 80 24 [255 255 255] [0 0 0] nil
@@ -172,7 +202,7 @@
                                                (get settings :windows-font)
                                                (get settings :else-font)
                                                (get settings :font-size)))
-        state {:world world :screen terminal :quests quest-map :dialog dialog :data data :settings settings}]
+        state {:world world :screen terminal :quests {} #_quest-map :dialog {} #_dialog :data data :settings settings}]
     ;; tick once to render frame
     (tick state \.))))
 

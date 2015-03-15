@@ -100,6 +100,12 @@
   *rnd*
   (create-random 42))
 
+(defn set-rnd! [rnd]
+  #+clj
+  (alter-var-root *rnd* (constantly rnd))
+  #+cljs
+  (def *rnd* rnd))
+
 (defn uniform-int
  ([hi] {:pre [(pos? hi)]} (next-int! *rnd* hi))
  ([lo hi] {:pre [(< lo hi)]} (+ lo (next-int! *rnd* (- hi lo)))))

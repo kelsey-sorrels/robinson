@@ -3,12 +3,20 @@
 ;(set! *warn-on-reflection* true)
 (ns robinson.core
   (:require [robinson.main :as main]
+            [robinson.aterminal :as aterminal]
+            [robinson.world :as rw]
+            #+clj
+            [clojure.core.async :as async]
+            #+cljs
+            [cljs.core.async :as async]
             #+clj
             [clojure.stacktrace :refer [print-stack-trace]]
             #+cljs
             [shodan.console :as log :include-macros true])
   #+clj
-  (:gen-class))
+  (:gen-class)
+  #+cljs
+  (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
 
 ;; Conveinience ref for accessing the last state when in repl.
 (defonce state-ref (atom nil))
@@ -28,7 +36,7 @@
    the next state after one iteration."
   []
   ; start with initial state from setup-fn
-  (loop [state (main/setup)]
+  (go-loop [state (main/setup)]
     (reset! state-ref state)
     (if (nil? state)
       #+clj
@@ -37,7 +45,15 @@
       nil)
     ; tick the old state through the tick-fn to get the new state
     (recur
-      (try (main/tick state)
+      (try
+        (let [keyin (or (when (= (rw/current-state state) :sleep)
+                          \.)
+                        (let [key-chan (aterminal/get-key-chan (state :screen))]
+                          (log/info  "waiting for key-chan")
+                          (async/<! key-chan)))]
+             (if keyin
+               (main/tick state keyin)
+               state))
         #+clj
         (catch Exception ex
           (do 
@@ -48,7 +64,6 @@
               (log/error (str ex))
               (throw ex))))))
           
-
 #+cljs
 (-main)
 

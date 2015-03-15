@@ -6,6 +6,7 @@
             [robinson.world :as rw]
             [robinson.viewport :as rv]
             [robinson.describe :as rdesc]
+            [robinson.dialog :as rdiag]
             [robinson.player :as rp]
             [robinson.math :as rmath]
             [robinson.itemgen  :as ig]
@@ -15,11 +16,11 @@
             ;[robinson.dialog :refer []]
             [robinson.npc :as rnpc]
             [robinson.combat :as rcombat]
-            [robinson.crafting :refer []]
+            [robinson.crafting :as rcraft]
             [robinson.magic :refer [do-magic magic-left magic-down
                                     magic-up magic-right magic-inventory]]
-            [robinson.worldgen :refer []]
-            [robinson.lineofsight :refer []]
+            [robinson.worldgen :as rworldgen]
+            [robinson.lineofsight :as rlos]
             #+clj
             clojure.pprint
             ;clojure.core.memoize
@@ -44,7 +45,22 @@
             #+clj
             [taoensso.timbre :as log]
             #+cljs
-            [shodan.console :as log :include-macros true]))
+            [shodan.console :as log :include-macros true]
+            #+clj
+            clojure.string
+            #+cljs
+            [goog.string :as gstring]
+            #+cljs
+            [goog.string.format])
+  #+cljs
+  (:require-macros [robinson.macros :as rm]))
+
+
+(defn format [s & args]
+  #+clj
+  (format s args)
+  #+cljs
+  (apply gstring/format s args))
 
 (defn- pass-state
   [state & more]
@@ -113,6 +129,14 @@
                              (disj (set hotkeys) keyin)
                              (conj (set hotkeys) keyin)))))
 
+#+clj
+(defn system-time-millis []
+  (System/currentTimeMillis))
+
+#+cljs
+(defn system-time-millis []
+  (.getMilliseconds (js/Date.)))
+
 (defn reinit-world
   "Re-initialize the value of `:world` within `state`. Used when the player
    dies and a new game is started."
@@ -120,11 +144,14 @@
   (-> state
     (assoc :world (loop []
                     (if-let [w (try
-                                 (init-world (System/currentTimeMillis))
-                                 (catch Throwable t nil))]
+                                 (rworldgen/init-world (system-time-millis))
+                                 #+clj
+                                 (catch Throwable t nil)
+                                 #+cljs
+                                 (catch js/Error e nil))]
                       w
                       (recur))))
-    (load-unload-places)
+    (rworldgen/load-unload-places)
     (as-> state
       (reduce (fn [state _] (rnpc/add-npcs state))
               state
@@ -142,7 +169,10 @@
 
 (defn select-starting-inventory
   [state keyin]
-  (if (and (char? keyin)
+  (if (and #+clj
+           (char? keyin)
+           #+cljs
+           (string? keyin)
            (<= (int \a) (int keyin) (int \k)))
     (let [new-state (toggle-hotkey state keyin)
           selected-hotkeys (get-in new-state [:world :selected-hotkeys])]
@@ -173,7 +203,7 @@
     (if (> $ 0)
       (-> state
         (rc/append-log (format "You pick up %d cash." $))
-        (rw/assoc-cell-items state x y
+        (rw/assoc-cell-items x y
           (or non-cash-items []))
         (update-in [:world :player :$]
           (fn [player-$] (+ $ player-$))))
@@ -209,7 +239,7 @@
         _ (log/info "target-place" target-place)
        vp-pos             (apply rc/xy->pos
                             (rv/+xy (rc/pos->xy (get-in state [:world :viewport :pos]))
-                                 (rcv/-xy [target-x target-y] [x y])))
+                                 (rv/-xy [target-x target-y] [x y])))
        ;;dest-place        (-> state :world :places dest-place-id)
        {width :width
         height :height}  (get-in state [:world :viewport])]
@@ -270,9 +300,9 @@
           (if (not (rv/xy-in-safe-zone? state target-x target-y))
             (move-outside-safe-zone state direction)
             state)
-          (if (rnpc/npc-at-xy state target-x target-y)
+          (if (rw/npc-at-xy state target-x target-y)
             ;; collided with npc. Engage in combat.
-            (attack state [:world :player] (rnpc/npc->keys state (rnpc/npc-at-xy state target-x target-y)))
+            (rcombat/attack state [:world :player] (rnpc/npc->keys state (rw/npc-at-xy state target-x target-y)))
             (as-> state state
               (assoc-in state [:world :player :pos :x] target-x)
               (assoc-in state [:world :player :pos :y] target-y)
@@ -282,7 +312,7 @@
                   (rdesc/search state)
                   state))
               (pick-up-gold state))))
-      (= (get (rnpc/npc-at-xy state target-x target-y) :in-party?) true)
+      (= (get (rw/npc-at-xy state target-x target-y) :in-party?) true)
         (-> state
           (assoc-in [:world :player :pos :x] target-x)
           (assoc-in [:world :player :pos :y] target-y)
@@ -303,12 +333,12 @@
           (assoc-in [:world :player :pos :y] target-y)
           ;; rafting = more hunger
           (update-in [:world :player :hunger] (partial + 0.05 ))
-          ((fn [state]
+          (as-> state
              (let [cell  (rw/get-cell state target-x target-y)
                    items (get cell :items)]
                (if (seq items)
                  (rdesc/search state)
-                 state)))))
+                 state))))
       ;; Hack down destroyable cells.
       (rw/type->destroyable? (get target-cell :type))
         (destroy-cell state target-x target-y)
@@ -557,12 +587,12 @@
 (defn select-apply-item
   "Apply the item from the player's inventory whose hotkey matches `keyin`."
   [state keyin]
-  (let [item (inventory-hotkey->item state keyin)]
+  (let [item (rp/inventory-hotkey->item state keyin)]
     (if item
       (let [id (get item :id)]
         (-> state
           (assoc-apply-item item)
-          ((fn [state]
+          (as-> state
             (cond
               (= id :bandage)
                 (apply-bandage state)
@@ -621,13 +651,13 @@
                 (-> state
                   (rw/assoc-current-state :apply-item-body)
                   (rc/ui-hint "a-apply to skin, b-apply to tongue"))
-              :else state)))))
+              :else state))))
         state)))
 
 (defn dig-hole
   "Dig in the ground, creating a hole."
   [state]
-  (let [[x y] (player-xy state)]
+  (let [[x y] (rp/player-xy state)]
     (rw/assoc-cell state x y :type 
       (rr/rand-nth [:freshwater-hole :saltwater-hole :dry-hole]))))
 
@@ -650,7 +680,7 @@
                         :right :fishing-right
                         :up    :fishing-up
                         :down  :fishing-down)]
-    (if (type->water? (get target-cell :type))
+    (if (rw/type->water? (get target-cell :type))
       (-> state
         (rc/append-log "You start fishing.")
         (rw/assoc-current-state new-state))
@@ -683,7 +713,7 @@
                                     0))
         target-cell   (rw/get-cell state target-x target-y)]
     (cond
-      (type->flammable? (get target-cell :type))
+      (rw/type->flammable? (get target-cell :type))
       (-> state
         (rc/append-log (format "You light the %s." (clojure.string/replace (name (get target-cell :type))
                                                                                             #"-"
@@ -706,7 +736,7 @@
   "Light something on fire, creating chaos."
   [state direction]
   (-> state
-    (player-update-thirst inc)
+    (rp/player-update-thirst inc)
     (rp/dec-item-utility :fire-plough)
     (start-fire direction)))
     
@@ -714,7 +744,7 @@
   "Light something on fire, creating chaos."
   [state direction]
   (-> state
-    (player-update-hunger inc)
+    (rp/player-update-hunger inc)
     (rp/dec-item-utility :hand-drill)
     (start-fire direction)))
     
@@ -802,34 +832,36 @@
   "Apply fruit to the skin. If it is poisonous, display a message in the future."
   [state item]
   (log/info "skin-identifiable" (get-in state [:world :fruit]))
-  (-> state
-    (rc/append-log (format "You touch the %s to your skin." (get item :name)))
-    (arg-when-> [state] (ig/skin-identifiable? state item)
-      (assoc-in [:world :player :skin-identify-activate-time]
+  (as-> state state
+    (rc/append-log state (format "You touch the %s to your skin." (get item :name)))
+    (if (ig/skin-identifiable? state item)
+      (assoc-in state [:world :player :skin-identify-activate-time]
                 (apply min (remove nil?
                                    [(get-in state [:world :player :skin-identify-activate-time])
-                                    (+ (rw/get-time state) (rr/uniform-int 5 10))]))))))
+                                    (+ (rw/get-time state) (rr/uniform-int 5 10))])))
+      state)))
 
 (defn apply-fruit-to-tongue
   "Apply fruit to the tongue If it is poisonous, display a message in the future."
   [state item]
   (log/info "skin-identifiable" (get-in state [:world :fruit]))
-  (-> state
-    (rc/append-log (format "You touch the %s to your tongue." (get item :name)))
-    (arg-when-> [state] (ig/tongue-identifiable? state item)
-      (assoc-in [:world :player :tongue-identify-activate-time]
+  (as-> state state
+    (rc/append-log state (format "You touch the %s to your tongue." (get item :name)))
+    (if (ig/tongue-identifiable? state item)
+      (assoc-in state [:world :player :tongue-identify-activate-time]
                 (apply min (remove nil?
                                    [(get-in state [:world :player :tongue-identify-activate-time])
-                                    (+ (rw/get-time state) (rr/uniform-int 5 10))]))))))
+                                    (+ (rw/get-time state) (rr/uniform-int 5 10))])))
+      state)))
 
 (defn apply-frog-corpse
   "Apply the secretions of a frog corpse to an inventory item."
   [state frog-corpse target-item]
   (log/info "poisonous frogs" (get-in state [:world :frogs]))
-  (-> state
-    (rc/append-log (format "You touch the %s to the %s." (get frog-corpse :name) (get target-item :name)))
-    (arg-if-> [state] (= :arrow (get target-item :id))
-      (->
+  (as-> state state
+    (rc/append-log state (format "You touch the %s to the %s." (get frog-corpse :name) (get target-item :name)))
+    (if (= :arrow (get target-item :id))
+      (-> state
         (rp/dec-item-count :arrow)
         (rp/dec-item-count (get frog-corpse :id))
         (rp/add-to-inventory (ig/id->item (-> (get target-item :name)
@@ -837,7 +869,7 @@
                                            first
                                            (str "-tipped-arrow")
                                            keyword))))
-      (rc/append-log "You rub it all over but nothing happens."))))
+      (rc/append-log state "You rub it all over but nothing happens."))))
 
 (defn apply-item
   "Applies the selected item."
@@ -846,7 +878,7 @@
         trans->dir? (comp is-direction? translate-directions)]
     (log/info "apply-item" [item keyin])
     (log/info "is-direction?" ((comp is-direction? translate-directions) keyin))
-    (first-vec-match [(get item :id) keyin]
+    (rm/first-vec-match [(get item :id) keyin]
       [:fishing-pole    trans->dir?] (apply-fishing-pole state (translate-directions keyin))
       [:match           trans->dir?] (-> state
                                        (apply-match (translate-directions keyin))
@@ -860,7 +892,7 @@
       [:bow-drill       trans->dir?] (-> state
                                        (apply-bow-drill (translate-directions keyin))
                                        (rw/assoc-current-state :normal))
-      [:plant-guide     :*         ] (if-let [item (inventory-hotkey->item state keyin)]
+      [:plant-guide     :*         ] (if-let [item (rp/inventory-hotkey->item state keyin)]
                                        (-> state
                                          (apply-plant-guide item)
                                          (rw/assoc-current-state  :normal))
@@ -874,13 +906,13 @@
       [:saw             trans->dir?] (-> state
                                        (saw (translate-directions keyin) keyin)
                                        (rw/assoc-current-state :normal))
-      [:flint           :*         ] (if-let [item (inventory-hotkey->item state keyin)]
+      [:flint           :*         ] (if-let [item (rp/inventory-hotkey->item state keyin)]
                                        (apply-flint state item)
                                        state)
       [:flint-and-steel trans->dir?] (-> state
                                        (start-fire (translate-directions keyin))
                                        (rw/assoc-current-state :normal))
-      [ig/id-is-sharp?  :*         ] (if-let [item (inventory-hotkey->item state keyin)]
+      [ig/id-is-sharp?  :*         ] (if-let [item (rp/inventory-hotkey->item state keyin)]
                                        (-> state
                                          (apply-sharp-item item)
                                          (rw/assoc-current-state :normal))
@@ -898,7 +930,7 @@
          :green-frog-corpse
          :blue-frog-corpse
          :purple-frog-corpse}
-                      :*          ] (if-let [target-item (inventory-hotkey->item state keyin)]
+                      :*          ] (if-let [target-item (rp/inventory-hotkey->item state keyin)]
                                       (-> state
                                         (apply-frog-corpse (get item :id) target-item)
                                         (rw/assoc-current-state  :normal))
@@ -930,7 +962,7 @@
                                                                 (> (get cell :water) 10)))
                                                 (rw/player-adjacent-cells state)))
         _ (log/info "player-adj-cells" (rw/player-adjacent-cells state))
-        quaffable-inventory-item? (some (fn [item] (contains? item :thirst)) (player-inventory state))]
+        quaffable-inventory-item? (some (fn [item] (contains? item :thirst)) (rp/player-inventory state))]
     (cond
       (and (pos? num-adjacent-quaffable-cells)
            quaffable-inventory-item?)
@@ -973,38 +1005,40 @@
 
 (defn quaff-inventory
   [state keyin]
-  (if-let [item (inventory-hotkey->item state keyin)]
+  (if-let [item (rp/inventory-hotkey->item state keyin)]
     (-> state
       (rc/append-log (format "The %s tastes %s." (lower-case (get item :name))
                                               (rr/rand-nth ["great" "foul" "greasy" "delicious" "burnt" "sweet" "salty"])))
-      (update-eaten item)
+      (rp/update-eaten item)
       ;; reduce thirst
       (update-in [:world :player :thirst]
         (fn [thirst]
           (let [new-thirst (- thirst (item :thirst))]
             (max 0 new-thirst))))
       ;; remove the item from inventory
-      (remove-from-inventory (get item :id))
-      ((fn [state]
+      (rp/remove-from-inventory (get item :id))
+      (as-> state
         (case (get item :id)
           :coconut (rp/add-to-inventory state [(ig/gen-coconut-empty)])
-          state))))
+          state)))
      state))
      
 (defn do-rest
   "NOP action. Player's hp increases a little."
   [state]
-  (-> state
+  (as-> state state
     ;; rest better then in shelter
-    (arg-when-> [state] (let [[cell _ _] (rw/player-cellxy state)]
-                          (type->shelter? (get cell :type)))
-      (update-in [:world :player :will-to-live]
-        (fn [will-to-live] (+ 0.05 will-to-live))))
-    ;; rest better when near a fire
-    (arg-when-> [state] (some #{:fire :campfire} (map :type (rw/player-adjacent-cells state)))
+    (if (let [[cell _ _] (rw/player-cellxy state)]
+          (rw/type->shelter? (get cell :type)))
       (update-in state [:world :player :will-to-live]
-        (fn [will-to-live] (+ 0.05 will-to-live))))
-    (update-in [:world :player]
+        (fn [will-to-live] (+ 0.05 will-to-live)))
+      state)
+    ;; rest better when near a fire
+    (if (some #{:fire :campfire} (map :type (rw/player-adjacent-cells state)))
+      (update-in state [:world :player :will-to-live]
+        (fn [will-to-live] (+ 0.05 will-to-live)))
+      state)
+    (update-in state [:world :player]
                (fn [player] (if (< (int (player :hp)) (player :max-hp))
                               (assoc-in player [:hp] (+ (player :hp) 0.05))
                               player)))))
@@ -1022,25 +1056,29 @@
    hunger the item's `:hunger` value."
   [state keyin]
   (log/info "poisoned fruit" (get-in state [:world :fruit :poisonous]))
-  (if-let [item (inventory-and-player-cell-hotkey->item state keyin)]
+  (if-let [item (rw/inventory-and-player-cell-hotkey->item state keyin)]
     (-> state
       (rc/append-log (format "The %s tastes %s." (lower-case (get item :name))
                                               (rr/rand-nth ["great" "foul" "greasy" "delicious" "burnt" "sweet" "salty"])))
-      (update-eaten item)
+      (rp/update-eaten item)
       ;; reduce hunger
       (update-in [:world :player :hunger]
         (fn [hunger]
           (let [new-hunger (- hunger (item :hunger))]
             (max 0 new-hunger))))
-      (arg-if-> [state] (contains? (set (map :hotkey (player-inventory state))) keyin)
-        ;; remove the item from inventory
-        (rp/dec-item-count (get item :id))
-        ;; remove the item from the current-cell
-        (rw/dec-cell-item-count (get item :id)))
-      (arg-when-> [state] (= (get item :id) :coconut-empty)
-        (rp/add-to-inventory [(ig/gen-coconut-shell)]))
+      (as-> state
+        (if (contains? (set (map :hotkey (rp/player-inventory state))) keyin)
+          (-> state
+            ;; remove the item from inventory
+            (rp/dec-item-count (get item :id))
+            ;; remove the item from the current-cell
+            (rw/dec-cell-item-count (get item :id)))
+          state)
+        (if (= (get item :id) :coconut-empty)
+          (rp/add-to-inventory state [(ig/gen-coconut-shell)])
+          state))
       ;; if the item was a poisonous fruit, set a poisoned timebomb
-      ((fn [state]
+      (as-> state
         (if (and (ig/is-fruit? item)
                  (contains? (set (get-in state [:world :fruit :poisonous])) (get item :id)))
           (do
@@ -1050,7 +1088,7 @@
                       (apply min (remove nil?
                                          [(get-in state [:world :player :poisoned-time])
                                           (+ (rw/get-time state) (rr/uniform-int 100 200))]))))
-          state))))
+          state)))
     state))
 
 (defn init-cursor
@@ -1123,7 +1161,7 @@
       (-> state
         (rp/add-to-inventory harvest-items)
         (rw/update-cell target-x target-y (fn [cell] (dissoc cell :harvestable)))
-        ((fn [state] (reduce update-harvested state harvest-items)))
+        (as-> state (reduce rp/update-harvested state harvest-items))
         (rc/append-log (format "You gather %s." (clojure.string/join ", " (map #(if (> (get % :count 1) 1)
                                                                                   (format "%d %s" (get % :count) (get % :name-plural))
                                                                                   (format "%s %s" (if (contains? #{\a \e \i \o} (first (get % :name)))
@@ -1214,7 +1252,7 @@
   [state]
   (let [cursor-pos (get-in state [:world :cursor])]
     (-> state
-      (rc/append-log (describe-cell-at-xy state (cursor-pos :x) (cursor-pos :y)))
+      (rc/append-log (rdesc/describe-cell-at-xy state (cursor-pos :x) (cursor-pos :y)))
       (free-cursor))))
 
 (defn start-talking
@@ -1233,18 +1271,18 @@
                                :down 1
                                0))]
     (log/debug "start-talking")
-    (if-let [target-npc (rnpc/npc-at-xy state target-x target-y)]
+    (if-let [target-npc (rw/npc-at-xy state target-x target-y)]
       ;; store update the npc and world state with talking
       (let [state (-> state
                       (rnpc/update-npc-at-xy target-x target-y #(assoc % :talking true))
                       (rw/assoc-current-state :talking))
             fsm (get-in state [:dialog (target-npc :id)])
             ;; get the dialog input options for the npc
-            valid-input (get-valid-input fsm)]
+            valid-input (rdiag/get-valid-input fsm)]
         ;; if the first option is `nil` then advance the fsm one step.
         ;; this auto step can be used to have the npc speak first when approached.
         (if (nil? (first valid-input))
-          (step-fsm state fsm nil)
+          (rdiag/step-fsm state fsm nil)
           state))
       (rw/assoc-current-state state :normal))))
 
@@ -1261,15 +1299,15 @@
   (start-talking state :down))
 
 (defn talk [state keyin]
-  (let [npc (first (talking-npcs state))
+  (let [npc (first (rnpc/talking-npcs state))
         fsm (get-in state [:dialog (get npc :id)])
-        valid-input (get-valid-input fsm)
+        valid-input (rdiag/get-valid-input fsm)
         options (zipmap (take (count valid-input) [\a \b \c \d \e \f]) valid-input)
         input (get options keyin)
         _ (log/debug "Stepping fsm. valid-input:" valid-input)
         _ (log/debug "Stepping fsm. options:" options)
         _ (log/debug "Stepping fsm. input:" input)]
-    (step-fsm state fsm input)))
+    (rdiag/step-fsm state fsm input)))
 
 (defn stop-talking
   "Remove :talking key from all npcs."
@@ -1302,7 +1340,7 @@
   [state npc]
     ;; store update the npc and world state with talking
     (-> state
-        (update-npc npc #(assoc % :shopping true))
+        (rnpc/update-npc npc #(assoc % :shopping true))
         (rw/assoc-current-state :shopping)))
     
 (defn shop
@@ -1316,7 +1354,7 @@
 (defn buy
   "Buy an item from an npc in exchange for money."
   [state keyin]
-  (let [npc       (first (talking-npcs state))
+  (let [npc       (first (rnpc/talking-npcs state))
         options   (zipmap [\a \b \c \d \e \f]
                           (get npc :inventory []))
         item      (get options keyin)]
@@ -1324,14 +1362,14 @@
                      (get-in state [:world :player :$])))
       (-> state
           (update-in [:world :player :$] (fn [gold] (- gold (item :price))))
-          (transfer-items-from-npc-to-player (get npc :id) (partial = item)))
+          (rnpc/transfer-items-from-npc-to-player (get npc :id) (partial = item)))
       state)))
 
 
 (defn sell
   "Sell an item to an npc in exchange for money."
   [state keyin]
-  (let [npc       (first (talking-npcs state))
+  (let [npc       (first (rnpc/talking-npcs state))
         buy-fn    (get-in state (get npc :buy-fn-path) (fn [_] nil))
         sellable-items (filter #(not (nil? (buy-fn %)))
                                 (get-in state [:world :player :inventory]))
@@ -1345,7 +1383,7 @@
             _ (log/debug "current $" (get-in state [:world :player :$]))]
         (-> state
             (update-in [:world :player :$] (fn [gold] (+ gold price)))
-            (transfer-items-from-player-to-npc (get npc :id) (partial = item))))
+            (rnpc/transfer-items-from-player-to-npc (get npc :id) (partial = item))))
         state)))
 
 (defn craft-select-recipe
@@ -1357,7 +1395,7 @@
                            :craft-shelter :shelter
                            :craft-transportation :transportation)
         matching-recipes (filter (fn [recipe] (= (get recipe :hotkey) keyin))
-                                 (get (get-recipes state) recipe-type))]
+                                 (get (rcraft/get-recipes state) recipe-type))]
     (log/info "selecting matching recipe" matching-recipes)
     (if (empty? matching-recipes)
       (rc/ui-hint state "Pick a valid recipe.")
@@ -1375,7 +1413,7 @@
 
 (defn throw-select-inventory
   [state keyin]
-  (if-let [item (inventory-and-player-cell-hotkey->item state keyin)]
+  (if-let [item (rw/inventory-and-player-cell-hotkey->item state keyin)]
     (-> state
       (rc/ui-hint "Select direction.")
       (assoc-throw-item item))
@@ -1386,20 +1424,21 @@
   {:pre  [(contains? #{:left :right :up :down} direction)]}
   (let [item           (get-throw-item state)
         throw-distance 5
-        obj            (first-collidable-object state direction throw-distance)]
+        obj            (rw/first-collidable-object state direction throw-distance)]
     (cond
       (contains? obj :npc)
         ;; do attack
         (-> state
-          (attack [:world :player] (npc->keys state (get obj :npc)) item)
+          (rcombat/attack [:world :player] (rnpc/npc->keys state (get obj :npc)) item)
           (rw/conj-cell-items (get-in obj [:pos :x]) (get-in obj [:pos :y]) item)
           (rp/dec-item-count (get item :id)))
       (contains? obj :cell)
         ;; drop item into cell before hitting colliding cell
-        (-> state
-          (arg-if-> [state] (= (get-in obj [:cell :type]) :fire)
-            (rw/update-cell (get-in obj [:pos :x]) (get-in obj [:pos :y]) (fn [cell] (update-in cell [:fuel] (partial + (ig/id->fuel (get item :id))))))
-            (rw/conj-cell-items (+ (get-in obj [:pos :x])
+        (as-> state state
+          (if (= (get-in obj [:cell :type]) :fire)
+            (rw/update-cell state (get-in obj [:pos :x]) (get-in obj [:pos :y]) (fn [cell] (update-in cell [:fuel] (partial + (ig/id->fuel (get item :id))))))
+            (rw/conj-cell-items state
+                                (+ (get-in obj [:pos :x])
                                    (case direction
                                      :left 1
                                      :right -1
@@ -1412,10 +1451,10 @@
                                 (if (get item :rot-time)
                                   (assoc item :rot-time (inc (rw/get-time state)))
                                   item)))
-          (rp/dec-item-count (get item :id)))
+          (rp/dec-item-count state (get item :id)))
       :else
         ;; didn't hit anything, drop into cell at max-distance
-        (let [[x y] (nth (direction->xys state direction) throw-distance)]
+        (let [[x y] (nth (rw/direction->xys state direction) throw-distance)]
           (-> state
             (rw/conj-cell-items x y item)
             (rp/dec-item-count (get item :id)))))))
@@ -1457,13 +1496,13 @@
   "Craft the selected recipe."
   [state]
   (let [[recipe-type hotkey] (get-in state [:world :craft-recipe-path])
-        recipes (get (get-recipes state) recipe-type)
+        recipes (get (rcraft/get-recipes state) recipe-type)
         recipe (first (filter #(= hotkey (get % :hotkey))
                               recipes))]
     (log/info "recipe-type" recipe-type "hotkey" hotkey "recipes" recipes "recipe" recipe)
     (if recipe
       (-> state
-        (craft-recipe recipe)
+        (rcraft/craft-recipe recipe)
         (rw/assoc-current-state :normal))
       (rc/append-log state "Pick a valid recipe." :white))))
 
@@ -1475,12 +1514,12 @@
     (log/info "scroll-log logs-viewed" (get-in state [:world :logs-viewed]))
     (-> state
       (update-in [:world :logs-viewed] inc)
-      ((fn [state]
+      (as-> state
         (let [c (count (filter #(= t (get % :time)) (get-in state [:world :log])))
               logs-viewed (get-in state [:world :logs-viewed])]
           (if (>= logs-viewed c)
             (rw/assoc-current-state state :normal)
-            state)))))))
+            state))))))
 
 (defn init-log-scrolling
   [state]
@@ -1511,7 +1550,7 @@
                       []
                       logs-with-same-time)))
           (vals (group-by :time logs)))))
-    ((fn [state]
+    (as-> state
       (let [t    (get-in state [:world :time])
             logs (filter #(= t (get % :time)) (get-in state [:world :log]))
             logs-viewed (get-in state [:world :logs-viewed] 1)]
@@ -1521,7 +1560,7 @@
           (if (and (> (count logs) 1)
                    (= logs-viewed 1))
             (rw/assoc-current-state state :more-log)
-            state)))))))
+            state))))))
 
 (defn get-hungrier-and-thirstier
   "Increase player's hunger."
@@ -1534,17 +1573,17 @@
           (update-in [:world :player :hunger] (partial + 0.01))
           (update-in [:world :player :thirst] (partial + 0.05)))
         (-> state
-          (update-in [:world :player :hunger] (partial + 0.05 (* 0.02 (count (player-inventory state)))))
+          (update-in [:world :player :hunger] (partial + 0.05 (* 0.02 (count (rp/player-inventory state)))))
           (update-in [:world :player :thirst] (partial + 0.1))))
-      (if (> (player-hunger state) (player-max-hunger state))
+      (if (> (rp/player-hunger state) (rp/player-max-hunger state))
         (-> state
           (rc/conj-in [:world :player :status] :dead)
-          (update-player-died :hunger))
+          (rp/update-player-died :hunger))
         state)
-      (if (> (player-thirst state) (player-max-thirst state))
+      (if (> (rp/player-thirst state) (rp/player-max-thirst state))
         (-> state
           (rc/conj-in [:world :player :status] :dead)
-          (update-player-died :thirst))
+          (rp/update-player-died :thirst))
         state)
       (let [new-hunger (get-in state [:world :player :hunger])]
         (log/info "hunger" hunger "new-hunger" new-hunger)
@@ -1577,7 +1616,7 @@
     (let [[cell _ _] (rw/player-cellxy state)
           bedroll?   (contains? (set (map :id (get cell :items []))) :bedroll)]
       (if bedroll?
-        (update-in [:world :player :will-to-live]
+        (update-in state [:world :player :will-to-live]
           (fn [will-to-live] (+ 0.05 will-to-live)))
         state))
     (-> state
@@ -1587,7 +1626,7 @@
                 ;; if it is night and the player is not within range of a fire, things are extra tough.
                 dwtl       (if (and (rw/is-night? state)
                                     (not-any? #(= (get % :type) :fire)
-                                              (cells-in-range-of-player state 3)))
+                                              (rw/cells-in-range-of-player state 3)))
                              (+ dwtl 0.02)
                              dwtl)
                 hp         (get-in state [:world :player :hp])
@@ -1608,17 +1647,17 @@
                 dwtl       (+ dwtl (if (> (/ thirst max-thirst) 0.5)
                                      1
                                      0))
-                wounded    (player-wounded? state)
+                wounded    (rp/player-wounded? state)
                 _          (log/info "wounded" wounded)
                 dwtl       (+ dwtl (if wounded
                                      1
                                      0))
-                poisoned   (player-poisoned? state)
+                poisoned   (rp/player-poisoned? state)
                 _          (log/info "poisoned" poisoned)
                 dwtl       (+ dwtl (if poisoned
                                      1
                                      0))
-                infected   (player-infected? state)
+                infected   (rp/player-infected? state)
                 _          (log/info "infected" infected)
                 dwtl       (+ dwtl (if infected
                                      1
@@ -1630,8 +1669,10 @@
                    (set (if (neg? (get-in state [:world :player :will-to-live]))
                           (conj status :dead)
                           status))))
-      (arg-when-> [state] (contains? (set (get-in state [:world :player :status])) :dead)
-         (update-player-died :zero-will-to-live)))))
+      (as-> state
+        (if (contains? (set (get-in state [:world :player :status])) :dead)
+          (rp/update-player-died state :zero-will-to-live)
+          state)))))
 
 (defn log-will-to-live-flavor
   "Log a flavor message when will-to-live increases or decreases by a lot."
@@ -1649,46 +1690,48 @@
   (log/info "time" (rw/get-time state))
   (log/info "skin-id-time" (get-in state [:world :player :skin-identify-activate-time]))
   (log/info "tongue-id-time" (get-in state [:world :player :tongue-identify-activate-time]))
-  (-> state
-    (arg-when-> [state]
-      (let [activate-time (get-in state [:world :player :skin-identify-activate-time])]
-        (and activate-time
-             (< activate-time (rw/get-time state))))
-      (rc/append-log (rr/rand-nth ["Your skin feels burning."
-                                "Your skin is numb."
-                                "Your skin is has a rash."
-                                "Your skin hurts."]))
-      (dissoc-in [:world :player :skin-identify-activate-time]))
-    (arg-when-> [state]
-      (let [activate-time (get-in state [:world :player :tongue-identify-activate-time])]
-        (and activate-time
-             (< activate-time (rw/get-time state))))
-      (rc/append-log (rr/rand-nth ["Your tongue feels burning."
-                                "Your tongue is numb."
-                                "Your tongue hurts."]))
-      (dissoc-in [:world :player :tongue-identify-activate-time]))))
+  (as-> state state
+    (if (let [activate-time (get-in state [:world :player :skin-identify-activate-time])]
+          (and activate-time
+               (< activate-time (rw/get-time state))))
+      (-> state
+        (rc/append-log (rr/rand-nth ["Your skin feels burning."
+                                  "Your skin is numb."
+                                  "Your skin is has a rash."
+                                  "Your skin hurts."]))
+        (rc/dissoc-in [:world :player :skin-identify-activate-time]))
+      state)
+    (if (let [activate-time (get-in state [:world :player :tongue-identify-activate-time])]
+          (and activate-time
+               (< activate-time (rw/get-time state))))
+      (-> state
+        (rc/append-log (rr/rand-nth ["Your tongue feels burning."
+                                  "Your tongue is numb."
+                                  "Your tongue hurts."]))
+        (rc/dissoc-in [:world :player :tongue-identify-activate-time]))
+      state)))
 
 (defn if-poisoned-get-hurt
   "Decrease player's hp if they are poisoned."
   [state]
   (log/info "player" (get-in state [:world :player]))
-  (-> state
-    (arg-when-> [state]
-      (let [poisoned-time (get-in state [:world :player :poisoned-time])]
-        (and poisoned-time
-             (< poisoned-time (rw/get-time state))))
-      (->
-        (rc/conj-in [:world :player :status] :poisoned)
-        (rc/append-log "You vomit.")
-        (update-in [:world :player :hunger] (fn [hunger] (min (+ hunger 30)
-                                                              (get-in state [:world :player :max-hunger]))))
-        (update-in [:world :player :thirst] (fn [thirst] (min (+ thirst 30)
-                                                              (get-in state [:world :player :max-thirst]))))
-        (dissoc-in [:world :player :poisoned-time])))
-    (update-in [:world :player :hp] (fn [hp] (if (contains? (get-in state [:world :player :status]) :poisoned)
-                                               (- hp 0.1)
-                                               (min (get-in state [:world :player :max-hp])
-                                                    (+ hp 0.2)))))))
+  (as-> state state
+    (if (let [poisoned-time (get-in state [:world :player :poisoned-time])]
+          (and poisoned-time
+               (< poisoned-time (rw/get-time state))))
+        (-> state
+          (rc/conj-in [:world :player :status] :poisoned)
+          (rc/append-log "You vomit.")
+          (update-in [:world :player :hunger] (fn [hunger] (min (+ hunger 30)
+                                                                (get-in state [:world :player :max-hunger]))))
+          (update-in [:world :player :thirst] (fn [thirst] (min (+ thirst 30)
+                                                                (get-in state [:world :player :max-thirst]))))
+          (rc/dissoc-in [:world :player :poisoned-time]))
+        state)
+    (update-in state [:world :player :hp] (fn [hp] (if (contains? (get-in state [:world :player :status]) :poisoned)
+                                                     (- hp 0.1)
+                                                     (min (get-in state [:world :player :max-hp])
+                                                          (+ hp 0.2)))))))
 
 (defn if-wounded-get-infected
   [state]
@@ -1757,11 +1800,13 @@
 (defn decrease-flashlight-charge
   [state]
   (if-let [flashlight (rp/inventory-id->item state :flashlight)]
-    (rp/update-inventory-item state :flashlight (fn [flashlight] (-> flashlight
-                                                                   (arg-when-> [flashlight] (= (get flashlight :state :off) :on)
-                                                                       (update-in [:charge] dec))
-                                                                   (arg-when-> [flashlight] (neg? (get flashlight :charge))
-                                                                       (assoc :state :off)))))
+    (rp/update-inventory-item state :flashlight (fn [flashlight] (as-> flashlight flashlight
+                                                                   (if (= (get flashlight :state :off) :on)
+                                                                       (update-in flashlight [:charge] dec)
+                                                                       flashlight)
+                                                                   (if (neg? (get flashlight :charge))
+                                                                       (assoc flashlight :state :off)
+                                                                       flashlight))))
     state))
 
 ;; forward declaration because update-state and repeat-cmmands are mutually recursive.
@@ -1861,7 +1906,7 @@
    from the npc to the target. Returns the moved npc and not the updated state.
    `target` is a map with the keys `:x` and `:y`."
   [state npc target]
-    (let [npcs                   (npcs-in-viewport state)
+    (let [npcs                   (rnpc/npcs-in-viewport state)
           ;_                      (log/debug "meta" (-> move-to-target var meta))
           ;_                      (log/debug "move-to-target npc" npc "target" target)
           npc-pos                (get npc :pos)
@@ -1910,7 +1955,13 @@
           path                   (try
                                    (log/debug "a* params" [width height] traversable? npc-pos-vec [(target :x) (target :y)])
                                    (clj-tiny-astar.path/a* [width height] traversable? npc-pos-vec [(target :x) (target :y)])
+                                   #+clj
                                    (catch Exception e
+                                     (log/error "Caught exception during a* traversal." npc-pos-vec [(target :x) (target :y)] e)
+                                     (st/print-cause-trace e)
+                                     nil)
+                                   #+cljs
+                                   (catch js/Error e
                                      (log/error "Caught exception during a* traversal." npc-pos-vec [(target :x) (target :y)] e)
                                      ;(st/print-cause-trace e)
                                      nil))
@@ -1937,7 +1988,7 @@
    from the npc to the target. Returns the moved npc and not the updated state.
    `target` is a map with the keys `:x` and `:y`."
   [state npc target]
-    (let [npcs                   (npcs-in-viewport state)
+    (let [npcs                   (rnpc/npcs-in-viewport state)
           npc-pos                (get npc :pos)
           npc-pos-vec            [(npc-pos :x) (npc-pos :y)]
           [npc-x npc-y]          [(npc-pos :x) (npc-pos :y)]
@@ -2138,19 +2189,19 @@
                 (fn [state npc]
                   ;; only update npcs that are in the current place and have an :energy value.
                   (if (contains? npc :energy)
-                    (let [npc-keys (npc->keys state npc)
+                    (let [npc-keys (rnpc/npc->keys state npc)
                           ;; add speed value to energy.
                           ;_ (trace "adding speed to" (select-keys npc [:race :place :pos :speed :energy]))
                           state (update-in state (conj npc-keys :energy) (partial + (get npc :speed)))]
                       ;; adjacent hostile npcs attack player.
                       (if (and (contains? (get npc :status) :hostile)
-                               (rp/adjacent-to-player? state (get npc :pos)))
+                               (rw/adjacent-to-player? state (get npc :pos)))
                         (let [_ (log/info "npc attacker" npc)]
-                          (attack state npc-keys [:world :player]))
+                          (rcombat/attack state npc-keys [:world :player]))
                         state))
                     state))
                 state
-                (npcs-in-viewport state))]
+                (rnpc/npcs-in-viewport state))]
     state
     (loop [state          state
            ;; find all npcs in the current place with enough energy to move (energy > 1).
@@ -2158,10 +2209,10 @@
            ;;; to player. The npcs closest will be moved first, leaving a gap
            ;;; behind them allowing the next most distant npc to move forward
            ;;; to fill the gap.
-           remaining-npcs (sort-by (fn [npc] (rp/distance-from-player state (get npc :pos)))
+           remaining-npcs (sort-by (fn [npc] (rw/distance-from-player state (get npc :pos)))
                                    (filter (fn [npc] (and (contains? npc :energy)
                                                           (> (get npc :energy) 1)))
-                                     (npcs-in-viewport state)))
+                                     (rnpc/npcs-in-viewport state)))
            i 5]
       ;(log/info "looping over" (count remaining-npcs) "npcs")
       (if (or (empty? remaining-npcs)
@@ -2196,7 +2247,7 @@
                              ;  (println (select-keys npc [:race :place :pos :speed :energy])))
 
                              ;; decrement energy either way
-                             (update-npc state old-npc
+                             (rnpc/update-npc state old-npc
                                (fn [npc]
                                  ;(trace "updating npc" (select-keys npc [:race :place :pos :speed :energy]))
                                  (update-in
@@ -2216,10 +2267,10 @@
                                    (fn [energy] (max (dec energy) 0))))))
                            state
                            map-result)
-              remaining-npcs (sort-by (fn [npc] (rp/distance-from-player state (get npc :pos)))
+              remaining-npcs (sort-by (fn [npc] (rw/distance-from-player state (get npc :pos)))
                                (filter (fn [npc] (and (contains? npc :energy)
                                                       (> (get npc :energy) 1)))
-                                 (npcs-in-viewport state)))]
+                                 (rnpc/npcs-in-viewport state)))]
               ;_ (trace "count remaining npcs" (count remaining-npcs))]
         (recur state remaining-npcs (dec i)))))))
 
@@ -2236,7 +2287,7 @@
                                         (map-indexed (fn [vx cell]
                                                        [cell (+ v-x vx) (+ v-y vy)])
                                                      line))
-                                      (cells-in-viewport state)))
+                                      (rv/cells-in-viewport state)))
         fire-xys (set (filter (fn filter-fire-cells
                                 [[cell x y]]
                                 (= (get cell :type) :fire))
@@ -2284,12 +2335,12 @@
                 ;; update fire
                 (contains? fire-xys [x y])
                 (as-> state state
-                  (rw/update-cell x y (fn [cell] (update-in cell [:fuel] dec)))
+                  (rw/update-cell state x y (fn [cell] (update-in cell [:fuel] dec)))
                   ;; chance of fire spreading
                   (if (= 0 (rr/uniform-int 0 10))
                     ;; make the fire spread and find an adjacent free cell to spread it into
                     (let [cell-at-xy-flammable? (fn [[x y]]
-                                                  (type->flammable?
+                                                  (rw/type->flammable?
                                                     (get (rw/get-cell state x y) :type)))
                           adj-xys (filter cell-at-xy-flammable?
                                          (rw/adjacent-xys-ext x y))]
@@ -2310,13 +2361,16 @@
                  state)
             ;; rot fruit
             ;; TODO: only rot fruit if it is in the set of visible cells.
-            (arg-when-> [state] (some (fn [item] (< (get item :rot-time (rw/get-time state)) (rw/get-time state)))
-                                      cell-items)
-              (rw/update-cell x y (fn rot-cell-fruit [cell]
-                                 (update-in cell [:items] (fn [items]
-                                   (remove (fn [item] (< (get item :rot-time (rw/get-time state))
-                                                         (rw/get-time state)))
-                                            items)))))))))
+            (as-> state
+              (if (some (fn [item] (< (get item :rot-time (rw/get-time state)) (rw/get-time state)))
+                                        cell-items)
+                (rw/update-cell state
+                                x y (fn rot-cell-fruit [cell]
+                                  (update-in cell [:items] (fn [items]
+                                    (remove (fn [item] (< (get item :rot-time (rw/get-time state))
+                                                          (rw/get-time state)))
+                                             items)))))
+                state)))))
       state
       viewport-cells)))
 
@@ -2605,7 +2659,7 @@
             command-seq (get-in state [:world :command-seq] [])
             _ (log/debug "type of npcs" (type (get-in state [:world :npcs])))
             new-time  (inc (get-in state [:world :time]))
-            state     (clear-rc/ui-hint state)
+            state     (rc/clear-ui-hint state)
             state     (transition-fn
                         (if advance-time
                           (assoc-in state [:world :time] new-time)
@@ -2654,7 +2708,9 @@
                   (update-npcs)
                   (decrease-will-to-live)
                   (update-cells)
-                  ((fn [state] (log/info "Done updating cells") state))
+                  (as-> state
+                    (log/info "Done updating cells")
+                    state)
                   ;; TODO: Add appropriate level
                   (rnpc/add-npcs-random)
                   ;; update visibility
@@ -2663,47 +2719,53 @@
                   (log-will-to-live-flavor wtl))
                 state))
             (update-quests)
-            (arg-when-> [state] (contains? (-> state :world :player :status) :dead)
-              #+clj
-              ((fn [state]
-                 ;; if UPLOADVERSION file is present, upload save/world.edn as json to aaron-santos.com:8888/upload
-                 (when (.exists (io/file "config/.feedbackparticipant"))
-                   (when (not (.exists (io/file "config/.userid")))
-                     (spit "config/.userid" (doto (java.util.UUID/randomUUID)
-                                                  (.toString))))
-                   (let [version (if (.exists (io/file "VERSION"))
-                                   (slurp "VERSION")
-                                   "SNAPSHOT")
-                         userid  (slurp "config/.userid")
-                         url     (format "https://aaron-santos.com/saves/%s" userid)
-                         body    (as-> (get state :world) world
-                                       (assoc world :version version)
-                                       (clojure.walk/postwalk (fn [v] (if (char? v)
-                                                                        (str v)
-                                                                        v))
-                                                               world)
-                                       (json/write-str world))]
-                     (log/info "Uploading save file version" version "userid" userid "to" url)
-                     (async/thread 
-                       (try
-                         (log/info "Starting upload")
-                         (System/setProperty "https.protocols" "TLSv1.2")
-                         (http/post url
-                           {:insecure? true
-                            :body body
-                            :content-type :json})
-                         (log/info "Done uploading save file")
-                         (catch Exception e
-                           (log/error "Caught exception while uploading save" e))))))
-                 (doseq [file (filter (fn [file] (re-matches #".*edn" (.getName file))) (file-seq (io/file "save")))]
-                   (log/info "Deleting" file)
-                   (.delete file))
+            (as-> state
+              (if (contains? (-> state :world :player :status) :dead)
+                (do
+                  #+clj
+                  ;; if UPLOADVERSION file is present, upload save/world.edn as json to aaron-santos.com:8888/upload
+                  (when (.exists (io/file "config/.feedbackparticipant"))
+                    (when (not (.exists (io/file "config/.userid")))
+                      (spit "config/.userid" (doto (java.util.UUID/randomUUID)
+                                                   (.toString))))
+                    (let [version (if (.exists (io/file "VERSION"))
+                                    (slurp "VERSION")
+                                    "SNAPSHOT")
+                          userid  (slurp "config/.userid")
+                          url     (format "https://aaron-santos.com/saves/%s" userid)
+                          body    (as-> (get state :world) world
+                                        (assoc world :version version)
+                                        (clojure.walk/postwalk (fn [v] (if #+clj
+                                                                           (char? v)
+                                                                           #+cljs
+                                                                           (string? v)
+                                                                         (str v)
+                                                                         v))
+                                                                world)
+                                        (json/write-str world))]
+                      (log/info "Uploading save file version" version "userid" userid "to" url)
+                      (async/thread 
+                        (try
+                          (log/info "Starting upload")
+                          (System/setProperty "https.protocols" "TLSv1.2")
+                          (http/post url
+                            {:insecure? true
+                             :body body
+                             :content-type :json})
+                          (log/info "Done uploading save file")
+                          (catch Exception e
+                            (log/error "Caught exception while uploading save" e))))))
+                  #+clj
+                  (doseq [file (filter (fn [file] (re-matches #".*edn" (.getName file))) (file-seq (io/file "save")))]
+                    (log/info "Deleting" file)
+                    (.delete file))
+                  (-> state
+                    (update-in [:world :player :status]
+                     (fn [status]
+                       (disj status :dead)))
+                    (rw/assoc-current-state :dead)))
                 state))
-              (update-in state [:world :player :status]
-               (fn [status]
-                 (disj status :dead)))
-              (rw/assoc-current-state :dead))
-              ;; delete the save game on player death
+                  ;; delete the save game on player death
             ;; only try to start log scrolling if the state we were just in was not more-log
             (as-> state
               (if (and current-state

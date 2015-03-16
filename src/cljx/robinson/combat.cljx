@@ -28,7 +28,7 @@
 
 (defn format [s & args]
   #+clj
-  (apply clojure.string/format s args)
+  (apply format s args)
   #+cljs
   (apply gstring/format s args))
 

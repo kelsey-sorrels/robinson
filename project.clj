@@ -37,6 +37,7 @@
   :source-paths
   ["src/clj"
    "src/clj-macros"
+   "src/cljs"
    "target/generated-src/clj"
    "target/generated-src/cljs"]
 
@@ -56,8 +57,13 @@
                                    ;:source-map true
                                    :pretty-print true}}]}
   :cljx
-  {:builds [{:source-paths ["src/cljx"]
+  {:builds [{:source-paths ["src/clj"
+                            "src/clj-macros"
+                            "src/cljx"]
              :output-path "target/generated-src/clj"
+             ;:files ["src/clj/robinson/swingterminal.clj"
+             ;        "src/clj/robinson/autoreloadcore.clj"
+             ;        "src/clj-macros/robinson/macros.clj"]
              :rules :clj}
             {:source-paths ["src/cljx"]
              :output-path "target/generated-src/cljs"
@@ -91,6 +97,7 @@
              ;"-agentpath:/home/santos/bin/yjp-2014-build-14096/bin/linux-x86-64/libyjpagent.so"
              ;"-Xdebug"
              ;"-Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=5005"
+             "-XX:-OmitStackTraceInFastThrow"
              "-XX:+UseParNewGC"
              "-XX:+UseConcMarkSweepGC"
              "-XX:+CMSConcurrentMTEnabled"

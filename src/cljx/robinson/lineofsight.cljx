@@ -1,8 +1,12 @@
 (ns robinson.lineofsight
-  (:require [robinson.common :as rc :include-macros true]
+  (:require [robinson.common :as rc]
+            #+clj
+            [robinson.macros :as rm]
             [robinson.world :as rw]
             [robinson.math :as math]
-            [robinson.world  :as rw]))
+            [robinson.world  :as rw])
+  #+cljs
+  (:require-macros [robinson.macros :as rm]))
 
 ;; The functions here can severely slow down the game if 
 ;; implemented poorly. Reflection can slow down evaluation,
@@ -86,7 +90,7 @@
     no visibility calculations will be performed on the cell and it will not be visible.
     Exclude? is useful for shortcutting the normal visibility procedure for known
     non-visible cells and speeding up calculations."
-   (rc/log-time "map-visibility"
+   (rm/log-time "map-visibility"
      (let [[ox oy] origin
          width  (-> grid first count)
          height (count grid)

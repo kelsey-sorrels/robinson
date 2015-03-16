@@ -4,19 +4,35 @@
             [robinson.random :as rr]
             [robinson.startgame :as sg]
             [robinson.itemgen :as ig]
-            [robinson.common :as rc]
-            [robinson.world :as rw]
-            [robinson.viewport :as rv]
-            [robinson.player :as rp]
-            [robinson.endgame :as rendgame]
-            [robinson.magic :as rm]
-            [robinson.crafting :as rcrafting]
+            [robinson.common :as rc :refer [farther-than?
+                                            wrap-line
+                                            fill-missing
+                                            xy->pos]]
+                                            
+            [robinson.world :as rw :refer [current-state
+                                           get-time
+                                           get-cell
+                                           player-cellxy
+                                           distance-from-player
+                                           inventory-and-player-cell-items]]
+            [robinson.viewport :as rv :refer [cells-in-viewport]]
+            [robinson.player :as rp :refer [player-xy
+                                            player-wounded?
+                                            player-poisoned?
+                                            player-infected?]]
+            [robinson.endgame :as rendgame :refer [gen-end-madlib]]
+            [robinson.magic :as rm :refer [get-magical-abilities]]
+            [robinson.crafting :as rcrafting :refer [get-recipes]]
             [robinson.itemgen :refer [can-be-wielded?
                                       id->name]]
-            [robinson.lineofsight :as rlos]
-            [robinson.dialog :as rdiag]
-            [robinson.npc :as rnpc]
-            [tinter.core :as rcore]
+            [robinson.lineofsight :as rlos :refer [visible?
+                                                   cell-blocking?]]
+            [robinson.dialog :as rdiag :refer [get-valid-input
+                                               fsm-current-state]]
+            [robinson.npc :as rnpc :refer [talking-npcs
+                                           npcs-in-viewport]]
+            robinson.aterminal
+            [tinter.core :as tinter]
             clojure.set
             #+clj
             [clojure.pprint :as pprint]
@@ -25,17 +41,28 @@
             #+clj
             [taoensso.timbre :as log]
             #+cljs
-            [shodan.console :as log :include-macros true])
+            [shodan.console :as log :include-macros true]
+            #+clj
+            clojure.string
+            #+cljs
+            [goog.string :as gstring]
+            #+cljs
+            [goog.string.format])
   #+clj
-  (:import robinson.aterminal.ATerminal)
-  #+clj
-  (:import  (java.awt Color Image)
-            (java.awt.image BufferedImage)
-            (javax.swing ImageIcon)))
+  (:import  robinson.aterminal.ATerminal
+            (java.awt Color Image)
+            java.awt.image.BufferedImage
+            javax.swing.ImageIcon))
 
 
 #+clj
 (set! *warn-on-reflection* true)
+
+(defn format [s & args]
+  #+clj
+  (apply clojure.core/format s args)
+  #+cljs
+  (apply gstring/format s args))
 
 ;; RBG color definitions. 
 ;; It's easier to use names than numbers.
@@ -46,19 +73,19 @@
    :gray        [128 128 128]
    :light-gray  [64 64 64]
    :dark-gray   [192 192 192]
-   :red         [190 38 51];(vec (hex-str-to-dec "D31C00"))
-   :orange      [235 137 49];(vec (hex-str-to-dec "D36C00"))
-   :yellow      [247 226 107];(vec (hex-str-to-dec "D3B100"))
+   :red         [190 38 51];(vec (tinter/hex-str-to-dec "D31C00"))
+   :orange      [235 137 49];(vec (tinter/hex-str-to-dec "D36C00"))
+   :yellow      [247 226 107];(vec (tinter/hex-str-to-dec "D3B100"))
    :light-green [163 206 39]
-   :green       [68 137 26];(vec (hex-str-to-dec "81D300"))
-   :dark-green  (vec (hex-str-to-dec "406900"))
-   :blue-green  [55 148 110];(vec (hex-str-to-dec "19B4D7"))
-   :blue        [0 87 132];(vec (hex-str-to-dec "00ACD3"))
-   :light-blue  [203 219 252];(vec (hex-str-to-dec "19B4D7"))
+   :green       [68 137 26];(vec (tinter/hex-str-to-dec "81D300"))
+   :dark-green  (vec (tinter/hex-str-to-dec "406900"))
+   :blue-green  [55 148 110];(vec (tinter/hex-str-to-dec "19B4D7"))
+   :blue        [0 87 132];(vec (tinter/hex-str-to-dec "00ACD3"))
+   :light-blue  [203 219 252];(vec (tinter/hex-str-to-dec "19B4D7"))
    :dark-blue   [0 63 116]
-   :purple      (vec (hex-str-to-dec "8500D3"))
-   :fushia      (vec (hex-str-to-dec "D30094"))
-   :beige       (vec (hex-str-to-dec "C8B464"))})
+   :purple      (vec (tinter/hex-str-to-dec "8500D3"))
+   :fushia      (vec (tinter/hex-str-to-dec "D30094"))
+   :beige       (vec (tinter/hex-str-to-dec "C8B464"))})
 
 (defn limit-color
   [v]
@@ -81,7 +108,7 @@
 
 (defn move-cursor
   ([screen x y]
-  (info "moving cursor to" x y)
+  (log/info "moving cursor to" x y)
   (.set-cursor screen [x y]))
   ([screen o]
   (.set-cursor screen o)))
@@ -133,7 +160,7 @@
 (defn class->rgb
   "Convert a class to a color characters of that type should be drawn."
   [pc-class]
-  ;(debug "class->color" pc-class)
+  ;(log/debug "class->color" pc-class)
   (color->rgb
     (case pc-class
       :cleric    :white
@@ -148,6 +175,15 @@
 (defn is-menu-state? [state]
   (contains? #{:inventory :describe-inventory :pickup :drop :eat} (get-in state [:world :current-state])))
 
+(defn center-text [s width]
+  (let [n-ws-left (int (/ (- width (count s)) 2))
+        n-ws-right (int (+ 0.5 (/ (- width (count s)) 2)))]
+   (apply str (concat (repeat n-ws-left " ") s (repeat n-ws-right " ")))))
+
+(defn left-justify-text [s width]
+  (let [n-ws (- width (count s))]
+   (apply str (concat s (repeat n-ws " ")))))
+
 (defn render-line
   [screen x y width line fg bg {:keys [underline center invert]
                                 :or   {:underline false :center false :invert false}}]
@@ -157,16 +193,16 @@
         ;; pad to width
         s        (if center
                    ;; center justify
-                   (pprint/cl-format nil (format "~%d<~;~A~;~>" width) line)
+                   (center-text line width)
                    ;; left justify
-                   (pprint/cl-format nil (format "~%d<~A~;~>" width) line))
+                   (left-justify-text line width))
         [fg bg]  (if invert
                    [bg fg]
                    [fg bg])
         style    (if underline
                    #{:underline}
                    #{})]
-    #_(info "put-string" (format "\"%s\"" line) "width" width)
+    #_(log/info "put-string" (format "\"%s\"" line) "width" width)
     (put-string screen x y s fg bg style)))
 
 
@@ -257,7 +293,7 @@
                     (count items)
                     height)
          title    (if (and title center-title)
-                    (pprint/cl-format nil (format "~%d<~;~A~;~>" width) title)
+                    (center-text title width)
                     (when title
                       (format "  %s" title)))
          items    (if title
@@ -275,7 +311,7 @@
         frame  (nth atmo t)
         indexed-colors (map vector (partition 3 frame) (range))]
     (doseq [[column i] indexed-colors]
-      #_(info x i y column)
+      #_(log/info x i y column)
       (put-string screen (+ x i) y       "\u2584" (if (contains? #{0 6} i)
                                                     :black
                                                     (nth column 0))
@@ -331,6 +367,7 @@
     ;    (-> state :world :player :max-hp)
     ;    (apply str (interpose " " (-> state :world :player :status)))
 
+#+clj
 (defn render-img
   "Render an image using block element U+2584."
   [state ^String path x y]
@@ -362,6 +399,13 @@
                        rgb1
                        #{:underline}))))))
 
+#+cljs
+(defn render-img
+  "Render an image using block element U+2584."
+  [state path x y]
+  ;TOOD: implement
+  nil)
+
 (defn translate-identified-items
   [state items]
   (let [identified (get-in state [:world :fruit :identified])
@@ -388,9 +432,9 @@
                                             #(assoc %1 :hotkey %2)
                                             hotkeys
                                             cell-items)]
-  (debug "player-x" player-x "player-y" player-y)
-  (trace "cell" cell)
-  (trace "cell-items" cell-items)
+  (log/debug "player-x" player-x "player-y" player-y)
+  (log/debug "cell" cell)
+  (log/debug "cell-items" cell-items)
   (render-multi-select (state :screen) "Pick up" selected-hotkeys (translate-identified-items state items))))
 
 (defn render-inventory
@@ -464,14 +508,14 @@
   [state]
   (when (= (get-in state [:world :current-state]) :talking)
     (let [npc           (first (talking-npcs state))
-          _ (trace "world state" (get-in state [:world :current-state]))
-          _ (trace "state :dialog" (state :dialog))
-          _ (trace "npcid" (get npc :id))
+          _ (log/debug "world state" (get-in state [:world :current-state]))
+          _ (log/debug "state :dialog" (state :dialog))
+          _ (log/debug "npcid" (get npc :id))
           fsm           (get-in state [:dialog (get npc :id)])
-          _ (trace "fsm" fsm)
+          _ (log/debug "fsm" fsm)
           valid-input   (get-valid-input fsm)
-          _ (trace "render: valid-input:" valid-input)
-          _ (trace "render: current-state:" (fsm-current-state fsm))
+          _ (log/debug "render: valid-input:" valid-input)
+          _ (log/debug "render: current-state:" (fsm-current-state fsm))
           options       (take (count valid-input)
                               (map (fn [k v]
                                      {:hotkey k
@@ -479,9 +523,9 @@
                                    [\a \b \c \d \e \f]
                                valid-input))
           last-response ((or (last (get-in state [:world :dialog*log])) {:text ""}) :text)
-          _ (debug "last-response" last-response)
+          _ (log/debug "last-response" last-response)
           response-wrapped (wrap-line (- 30 17) last-response)
-          _ (debug "response-wrapped" response-wrapped)]
+          _ (log/debug "response-wrapped" response-wrapped)]
       (put-string (state :screen) 0 16 (format "Talking to %-69s" (get npc :name)) :black :white #{:bold})
       (doall (map (fn [y] (put-string (state :screen) 12 y "                    " :black :white #{:bold}))
                   (range 17 (+ 17 6))))
@@ -523,9 +567,9 @@
                                  [\a \b \c \d \e \f]
                              valid-input))
         last-response ((or (last (get-in state [:world :dialog-log])) {:text ""}) :text)
-        _ (debug "last-response" last-response)
+        _ (log/debug "last-response" last-response)
         response-wrapped (wrap-line (- 30 17) last-response)
-        _ (debug "response-wrapped" response-wrapped)
+        _ (log/debug "response-wrapped" response-wrapped)
         style {:fg :black :bg :white :styles #{:bold}}]
     (put-string (state :screen) 0 16 (format "Doing business with %-69s" (get npc :name)) :black :white #{:bold})
     (doall (map (fn [y] (put-string (state :screen) 12 y "                    " :black :white #{:bold}))
@@ -540,15 +584,15 @@
   [state]
   (let [npc           (first (talking-npcs state))
         buy-fn        (get-in state (get npc :buy-fn-path) (fn [_] nil))
-        _ (debug "render-sell (npc :buy-fn-path)" (get npc :buy-fn-path))
-        _ (debug "render-sell buy-fn" buy-fn)
+        _ (log/debug "render-sell (npc :buy-fn-path)" (get npc :buy-fn-path))
+        _ (log/debug "render-sell buy-fn" buy-fn)
         options       (filter #(not (nil? (buy-fn %)))
                                (get-in state [:world :player :inventory]))
-        _ (debug "options" options)
+        _ (log/debug "options" options)
         last-response ((or (last (get-in state [:world :dialog-log])) {:text ""}) :text)
-        _ (debug "last-response" last-response)
+        _ (log/debug "last-response" last-response)
         response-wrapped (wrap-line (- 30 17) last-response)
-        _ (debug "response-wrapped" response-wrapped)
+        _ (log/debug "response-wrapped" response-wrapped)
         style {:fg :black :bg :white :styles #{:bold}}]
     (put-string (state :screen) 0 16 (format "Doing business with %-69s" (get npc :name)) :black :white #{:bold})
     (doall (map (fn [y] (put-string (state :screen) 12 y "                    " :black :white #{:bold}))
@@ -578,9 +622,9 @@
         hotkey               (when selected-recipe-path
                                (last selected-recipe-path))
         recipes              (get (get-recipes state) recipe-type)]
-  (info "recipe-type" recipe-type)
-  (info "recipes" (get-recipes state))
-  (info "selected recipes" recipes)
+  (log/info "recipe-type" recipe-type)
+  (log/info "recipes" (get-recipes state))
+  (log/info "selected recipes" recipes)
   ;; render recipes
   (render-list screen 11 6 29 15
     (concat
@@ -604,7 +648,7 @@
           recipe           (get (first matching-recipes) :recipe)
           exhaust          (get recipe :exhaust [])
           have             (get recipe :have-or [])]
-      (info "exhaust" exhaust "have" have)
+      (log/info "exhaust" exhaust "have" have)
       (render-list screen 41 6 29 15
       (concat
         [{:s "" :fg :black :bg :white :style #{}}
@@ -671,19 +715,19 @@
                                                        [cell vx vy (+ v-x vx) (+ vy v-y)])
                                                      line))
                                       (cells-in-viewport state)))
-        ;_ (info "cells" cells)
+        ;_ (log/info "cells" cells)
         characters     (persistent!
                          (reduce (fn [characters [cell vx vy wx wy]]
-                                   ;(debug "begin-render")
+                                   ;(log/debug "begin-render")
                                    ;(clear (state :screen))
-                                   ;;(trace "rendering place" (current-place state))
+                                   ;;(debug "rendering place" (current-place state))
                                    ;; draw map
-                                   ;(info "render-cell" cell vx vy wx wy)
+                                   ;(log/info "render-cell" cell vx vy wx wy)
                                    (if (or (nil? cell)
                                            (not (cell :discovered)))
                                      (conj! characters {:x vx :y vy :c " " :fg [0 0 0] :bg [0 0 0]})
                                      (let [cell-items (cell :items)
-                                           ;_ (info "cell" cell)
+                                           ;_ (log/info "cell" cell)
                                            out-char (apply fill-put-string-color-style-defaults
                                                       (if (and cell-items
                                                                (seq cell-items)
@@ -787,7 +831,7 @@
                                                                             ["~" (rand-nth [:blue :light-blue :dark-blue]) :black]
                                                                             ["O"])
                                                          :dry-hole        ["O"]
-                                                         (do (info (format "unknown type: %s %s" (str (get cell :type)) (str cell)))
+                                                         (do (log/info (format "unknown type: %s %s" (str (get cell :type)) (str cell)))
                                                          ["?"]))))
                                            shaded-out-char (cond
                                                              (not= (cell :discovered) current-time)
@@ -797,7 +841,7 @@
                                                                  [chr bg fg])
                                                              (contains? (set (map :id cell-items)) :raft)
                                                                (let [[chr fg bg] out-char]
-                                                                 (info "raft-cell" out-char cell-items)
+                                                                 (log/info "raft-cell" out-char cell-items)
                                                                  (if (> (count cell-items) 1)
                                                                    [chr fg (color->rgb :brown)]
                                                                    ["\u2225" (color->rgb :black) (color->rgb :brown)]))
@@ -809,10 +853,10 @@
                                          (conj! characters {:x vx :y vy :c (get shaded-out-char 0) :fg (get shaded-out-char 1) :bg (get shaded-out-char 2)}))))
                                     (transient [])
                                     cells))]
-    ;(info "putting chars" characters)
+    ;(log/info "putting chars" characters)
     (put-chars screen characters)
     ;; draw character
-    ;(debug (-> state :world :player))
+    ;(log/debug (-> state :world :player))
     (put-string
       screen
       (- (-> state :world :player :pos :x)
@@ -846,7 +890,7 @@
       
     ;; draw npcs
     (let [place-npcs (npcs-in-viewport state)
-          ;_ (debug "place-npcs" place-npcs)
+          ;_ (log/debug "place-npcs" place-npcs)
           pos (-> state :world :player :pos)
           get-cell (memoize (fn [x y] (get-cell state x y)))]
       (doall (map (fn [npc]
@@ -865,7 +909,7 @@
                                                  (pos :y)
                                                  x
                                                  y))]
-                      ;(debug "npc@" x y "visible?" visible)
+                      ;(log/debug "npc@" x y "visible?" visible)
                       (when visible
                         (apply put-string screen
                                             vx
@@ -912,7 +956,7 @@
                                               ["@"])))))
                    place-npcs)))
     (render-hud state)
-    (info "current-state" (current-state state))
+    (log/info "current-state" (current-state state))
     (case (current-state state)
       :pickup               (render-pick-up state)
       :inventory            (render-inventory state)
@@ -941,21 +985,21 @@
       (let [logs-viewed (get-in state [:world :logs-viewed])
             current-time (get-in state [:world :time])
             cur-state (current-state state)]
-        (debug "current-state" cur-state)
+        (log/debug "current-state" cur-state)
         (if (= cur-state :more-log)
           (let [logs (vec (filter #(= (get % :time) current-time) (get-in state [:world :log])))
-                _ (info "logs-viewed" logs-viewed "current-time" current-time "logs" logs)
+                _ (log/info "logs-viewed" logs-viewed "current-time" current-time "logs" logs)
                 message (nth logs (dec logs-viewed))]
-            ;(debug "message" message)
+            ;(log/debug "message" message)
             (put-string screen 0 0 (format "%s --More--" (message :text)) (get message :color) :black))
           (let [message (last (get-in state [:world :log]))]
-            (info "message" message)
+            (log/info "message" message)
             (when (and message
                        (< (- current-time (message :time)) 5))
               (let [darken-factor (inc  (* (/ -1 5) (- current-time (message :time))))
                     log-color (darken-rgb (color->rgb (get message :color)) darken-factor)]
-                (info "darken-factor" darken-factor)
-                (info "log color" log-color)
+                (log/info "darken-factor" darken-factor)
+                (log/info "log color" log-color)
                 (put-string screen 0 0 (get message :text) log-color :black)))))))
     (case (current-state state)
       :quit               (render-quit? state)
@@ -970,7 +1014,7 @@
       (move-cursor screen (cursor-pos :x) (cursor-pos :y))
       (move-cursor screen nil))
     (refresh screen)))
-    ;;(debug "end-render")))
+    ;;(log/debug "end-render")))
 
 (defn render-start [state]
   (let [screen (state :screen)
@@ -989,11 +1033,13 @@
     (clear (state :screen))
     (put-string screen 20 5 "Choose up to three things to take with you:")
     (render-list screen 20 7 60 (count start-inventory)
-                                (map (fn [item] {:s (format "%c%c%s" (get item :hotkey)
-                                                                       (if (contains? selected-hotkeys (get item :hotkey))
-                                                                         \+
-                                                                         \-)
-                                                                       (get item :name))
+                                (map (fn [item] 
+                                       (log/info (get item :hotkey) (type (get item :hotkey)) (get item :name))
+                                       {:s (format "%c%c%s" (get item :hotkey)
+                                                            (if (contains? selected-hotkeys (get item :hotkey))
+                                                              \+
+                                                              \-)
+                                                            (get item :name))
                                                     :fg :white
                                                     :bg :black
                                                     :style #{}})
@@ -1063,10 +1109,19 @@
           (put-string (state :screen) 10 22 "Play again? [yn]")))
     (refresh (state :screen))))
 
+#+clj
+(defn get-help-contents []
+  (read-string (slurp "data/help")))
+
+#+cljs
+(defn get-help-contents []
+  ;TODO: implement
+  [])
+
 (defn render-help
   "Render the help screen."
   [state]
-  (let [help-contents (read-string (slurp "data/help"))]
+  (let [help-contents (get-help-contents)]
     (clear (state :screen))
     (doall (map-indexed (fn [idx line]
                           (put-string (state :screen) 0 idx line))
@@ -1088,7 +1143,7 @@
    game over render function based on the dead state
    of the player."
   [state]
-  (info "render current-state" (current-state state))
+  (log/info "render current-state" (current-state state))
   (cond
     (= (current-state state) :start)
       (render-start state)

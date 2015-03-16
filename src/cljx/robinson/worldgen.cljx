@@ -13,9 +13,11 @@
             [robinson.lineofsight :as rlos]
             [robinson.npc :as rnpc]
             #+clj
+            [robinson.macros :as rm]
+            #+clj
             [taoensso.nippy :as nippy]
             #+clj
-            [clojure.core.async :as async]
+            [clojure.core.async :as async :refer [go go-loop]]
             #+cljs
             [cljs.core.async :as async]
             #+clj
@@ -27,7 +29,8 @@
   #+clj
   (:import [java.io DataInputStream DataOutputStream])
   #+cljs
-  (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
+  (:require-macros [robinson.macros :as rm]
+                   [cljs.core.async.macros :refer [go go-loop]]))
 
 
 (defn rand-xy-in-circle
@@ -128,7 +131,7 @@
         non-water-samples (remove
           (fn [[x y]]
             (let [s (sample-island n x y)]
-              (log/info "sample" x y s)
+              #_(log/debug "sample" x y s)
               (or (= s :surf)
                   (= s :ocean))))
           samples)
@@ -424,16 +427,16 @@
   ;; load the place into state. From file if exists or gen a new random place.
   (let [place
     (if (.exists (io/as-file (format "save/%s.place.edn" (str id))))
-      ;(rc/log-time "read-string time" ;;(clojure.edn/read-string {:readers {'Monster mg/map->Monster}} s)))
+      ;(rm/log-time "read-string time" ;;(clojure.edn/read-string {:readers {'Monster mg/map->Monster}} s)))
         (with-open [o (io/input-stream (format "save/%s.place.edn" (str id)))]
-          (nippy/thaw-from-in! (DataInputStream. o))))
-      (let [[ax ay]            (place-id->anchor-xy state id)
-            [v-width v-height] (viewport-wh state)
+          (nippy/thaw-from-in! (DataInputStream. o)))
+      (let [[ax ay]            (rv/place-id->anchor-xy state id)
+            [v-width v-height] (rv/viewport-wh state)
             w-width            (get-in state [:world :width])
             w-height           (get-in state [:world :height])]
-        (rc/log-time "init-island time" (init-island state
+        (rm/log-time "init-island time" (init-island state
                                                   ax ay
-                                                  v-width v-height)))]
+                                                  v-width v-height))))]
       (log/info "loaded place. width:" (count (first place)) "height:" (count place))
       place))
 
@@ -458,8 +461,9 @@
 (defn unload-place
   [state id]
   (log/info "unloading" id)
-  ;(rc/log-time "unloading"
-  (async/>!! save-place-chan [id (get-in state [:world :places id])])
+  ;(rm/log-time "unloading"
+  (go
+    (async/>! save-place-chan [id (get-in state [:world :places id])]))
   ;; Remove all npcs in place being unloaded
   (->
     (reduce (fn [state npc] (if (= (apply rv/xy->place-id state (rc/pos->xy (get npc :pos)))
@@ -495,7 +499,7 @@
     #_(dorun
       (map (comp (partial apply str) println)
         (partition 70
-          (rc/log-time "for"
+          (rm/log-time "for"
             (for [y (range 28)
                   x (range 70)
                   :let [[s _ _] (vec (map #(.calc ^clisk.IFunction % (double (/ x 70)) (double (/ y 28)) (double 0.0) (double 0.0))

@@ -6,11 +6,13 @@
             [robinson.aterminal :as aterminal]
             [robinson.world :as rw]
             #+clj
-            [clojure.core.async :as async]
+            [clojure.core.async :as async :refer [go go-loop]]
             #+cljs
             [cljs.core.async :as async]
             #+clj
             [clojure.stacktrace :refer [print-stack-trace]]
+            #+clj
+            [taoensso.timbre :as log]
             #+cljs
             [shodan.console :as log :include-macros true])
   #+clj
@@ -24,6 +26,7 @@
 ;; (clojure.core.async/thread (robinson.core/-main))
 ;; (robinson.core/-main)
 
+(def done-chan (async/chan))
 
 (defn -main
   "Entry default point to application.
@@ -39,10 +42,14 @@
   (go-loop [state (main/setup)]
     (reset! state-ref state)
     (if (nil? state)
-      #+clj
-      (System/exit 0)
-      #+cljs
-      nil)
+      (do
+        (log/info "Got nil state. Exiting.")
+        #+clj
+        (async/>! done-chan true)
+        #+clj
+        (System/exit 0)
+        #+cljs
+        nil)
     ; tick the old state through the tick-fn to get the new state
     (recur
       (try
@@ -63,6 +70,7 @@
         (catch js/Error ex
               (log/error (str ex))
               (throw ex))))))
+  (async/<!! done-chan))
           
 #+cljs
 (-main)

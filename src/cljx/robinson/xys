@@ -1,0 +1,12 @@
+update.cljx:(defn is-direction-ext?
+update.cljx:        (let [[x y] (nth (direction->xys state direction) throw-distance)]
+update.cljx:(def translate-direction-states
+update.cljx:        keyin         (if (contains? translate-direction-states current-state)
+world.cljx:(defn direction->xys
+world.cljx:   (direction->xys state direction 5))
+world.cljx:(defn direction->cells
+world.cljx:   (direction->cells state direction 5))
+world.cljx:   (map (fn [[x y]] (get-cell state x y)) (direction->xys state direction distance))))
+world.cljx:(defn direction->cellsxy
+world.cljx:       (direction->xys state direction)))
+world.cljx:                        (direction->cellsxy state direction))]

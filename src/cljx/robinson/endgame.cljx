@@ -14,7 +14,7 @@
             [goog.string.format]))
 
 (defn format [s & args]
-  #+clj          (apply clojure.string/format s args)
+  #+clj   (clojure.core/format s args)
   #+cljs  (apply gstring/format s args))
 
 

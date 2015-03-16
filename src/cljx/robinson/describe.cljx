@@ -4,12 +4,29 @@
     [robinson.itemgen  :as ig]
     [robinson.monstergen :as mg]
     [clojure.string :refer [lower-case]]
-    [robinson.common :as rc]
-    [robinson.world :as rw]
-    [robinson.npc :as rnpc]
-    [robinson.player :as rp]))
+    [robinson.common :as rc :refer [append-log
+                                    noun->indefinite-article]]
+    [robinson.world :as rw :refer [get-cell
+                                   npc-at-xy]]
+    [robinson.npc :as rnpc :refer []]
+    [robinson.player :as rp :refer [player-xy]]
+    #+clj
+    [robinson.macros :as rm]
+    #+clj
+    clojure.string
+    #+cljs
+    [goog.string :as gstring]
+    #+cljs
+    [goog.string.format])
+  #+cljs
+  (:require-macros [robinson.macros :as rm]))
 
-(timbre/refer-timbre)
+
+(defn format [s & args]
+  #+clj
+  (clojure.core/format s args)
+  #+cljs
+  (apply gstring/format s args))
 
 (defn describe-cell-type
   [cell]

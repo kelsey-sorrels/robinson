@@ -2,7 +2,8 @@
 (ns robinson.swingterminal
   (:use     robinson.common
             robinson.aterminal)
-  (:require [taoensso.timbre :as timbre]
+  (:require [robinson.macros :as rm]
+            [taoensso.timbre :as timbre]
             [clojure.core.async :as async :refer [go go-loop]])
   (:import  
             java.util.concurrent.LinkedBlockingQueue
@@ -126,7 +127,7 @@
                                      char-height                (/ screen-height rows)]
                                  (Dimension. screen-width screen-height)))
                              (paintComponent [^Graphics graphics]
-                               (log-time "blit"
+                               (rm/log-time "blit"
                                  (let [graphics-2d ^Graphics2D           (.create graphics)
                                        font-metrics ^FontMetrics         (.getFontMetrics graphics normal-font)
                                        screen-width                      (* columns (.charWidth font-metrics \space))

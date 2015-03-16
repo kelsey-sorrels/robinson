@@ -21,6 +21,7 @@
                                     magic-up magic-right magic-inventory]]
             [robinson.worldgen :as rworldgen]
             [robinson.lineofsight :as rlos]
+            [robinson.macros :as rm]
             #+clj
             clojure.pprint
             ;clojure.core.memoize
@@ -58,7 +59,7 @@
 
 (defn format [s & args]
   #+clj
-  (format s args)
+  (clojure.core/format s args)
   #+cljs
   (apply gstring/format s args))
 
@@ -146,9 +147,10 @@
                     (if-let [w (try
                                  (rworldgen/init-world (system-time-millis))
                                  #+clj
-                                 (catch Throwable t nil)
-                                 #+cljs
-                                 (catch js/Error e nil))]
+                                 (catch #+clj Throwable e
+                                        #+cljs js/Error e
+                                   (log/error e)
+                                   nil))]
                       w
                       (recur))))
     (rworldgen/load-unload-places)
@@ -245,10 +247,10 @@
         height :height}  (get-in state [:world :viewport])]
       (log/debug "viewport-pos" vp-pos)
       #+clj
-      #_(log/debug "npcs" (with-out-str (pprint (-> state :world :npcs))))
+      #_(log/debug "npcs" (with-out-str (clojure.pprint/pprint (-> state :world :npcs))))
       (-> state
         (assoc-in [:world :viewport :pos] vp-pos)
-        (load-unload-places))))
+        (rworldgen/load-unload-places))))
       ;(-> state
       ;  (tx/when-> on-raft 
       ;    (dec-cell-item-count :raft))
@@ -1897,7 +1899,7 @@
       (rc/conj-in [:world :npcs] (get-in state [:world :player]))
       (assoc-in [:world :player] npc))]
     #+clj
-    (log/debug "npcs" (with-out-str (pprint (-> state :world :npcs))))
+    (log/debug "npcs" (with-out-str (clojure.pprint/pprint (-> state :world :npcs))))
     state))
 
 (defn

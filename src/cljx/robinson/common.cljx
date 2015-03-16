@@ -11,16 +11,6 @@
             #+cljs
             [shodan.console :as log :include-macros true]))
 
-
-(defmacro log-time
-  "Log the time it takes to execute body."
-  [msg & body]
-  `(time
-     (let [result# (do ~@body)]
-       (println ~msg)
-       result#)))
-
-
 #+clj
 (t/ann log-io (t/All [a x y ...]
                 [String [(t/U t/EmptySeqable (t/HSeq (y ... y))) -> x] -> [(t/U t/EmptySeqable (t/HSeq (y ... y))) -> x]]))
@@ -34,59 +24,6 @@
     #+cljs
     (println (gstring/format "(%s %s)=>%s" msg (str args) (str result)))
     result)))
-
-(letfn [(arg-when- [threader arg sym condition body]
-  `(let [~sym ~arg
-         arg# ~arg]
-    (if ~condition
-      (~threader arg# ~@body)
-      arg#)))]
-  (defmacro arg-when->
-    "Lexically assign the threaded argument to the specified symbol
-    and conditionally execute the body statements.
-    (-> 3
-      (arg-when-> [x] (> x 2) (* x)))
-    (-> 2
-      (arg-when-> [x] (> x 2) (* x)))
-    => 2"
-    {:indent 1}
-    [arg [sym] condition & body]
-    (arg-when- 'clojure.core/-> arg sym condition body)))
-
-(letfn [(arg-if- [threader arg sym condition form else-form]
-  `(let [~sym ~arg
-         arg# ~arg]
-    (if ~condition
-      (~threader arg# ~form)
-      (~threader arg# ~else-form))))]
-  (defmacro arg-if->
-    "Lexically assign the threaded argument to the specified symbol
-    and conditionally execute the body statements.
-    (-> 3
-      (arg-when-> [x] (> x 2) (* x)))
-    (-> 2
-      (arg-when-> [x] (> x 2) (* x)))
-    => 2"
-    {:indent 1}
-    [arg [sym] condition form else-form]
-    (arg-if- 'clojure.core/-> arg sym condition form else-form)))
-
-#+clj
-(t/ann ^:no-check vec-match? [(t/Vec t/Any) (t/Vec t/Any) -> Boolean])
-(defn vec-match?
-  [test-expr expr]
-  (let [arg-match? (fn [[test-term term]]
-    (cond
-      (fn? test-term)  (test-term term)
-      (= :* test-term) true
-      (set? test-term) (contains? test-term term)
-      :else       (= test-term term)))]
-  (every? arg-match? (map vector test-expr expr))))
-
-(defmacro first-vec-match
-  [match & body]
-  `(condp vec-match? ~match
-     ~@body))
 
 #+clj
 (t/ann noun->indefinite-article [String -> String])

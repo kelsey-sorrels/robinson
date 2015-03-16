@@ -13,6 +13,12 @@
             #+cljs
             [goog.string.format]))
 
+(defn format [s & args]
+  #+clj
+  (clojure.core/format s args)
+  #+cljs
+  (apply gstring/format s args))
+
 (defn start-inventory []
   (let [inventory              [(ig/gen-rope)
                                 (assoc (ig/gen-match) :count 10)

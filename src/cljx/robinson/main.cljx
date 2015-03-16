@@ -16,7 +16,7 @@
             #+clj
             [clojure.stacktrace :as st]
             #+clj
-            [clojure.core.async :as async]
+            [clojure.core.async :as async :refer [go go-loop]]
             #+cljs
             [cljs.core.async :as async]
             #+clj  [robinson.swingterminal :as swingterminal]
@@ -56,7 +56,7 @@
     (try
       (with-open [o (io/output-stream "save/world.edn")]
         (nippy/freeze-to-out! (DataOutputStream. o) (get state :world)))
-      (catch Throwable e (error e)))
+      (catch Throwable e (log/error e)))
     ;(as-> state state
     ;  (get state :world)
     ;  (pp/write state :stream nil)
@@ -113,7 +113,7 @@
       #+clj
       (catch Exception e
         (do
-          (error "Caught exception" e)
+          (log/error "Caught exception" e)
           (.printStackTrace e)
           (st/print-stack-trace e)
           (st/print-cause-trace e)

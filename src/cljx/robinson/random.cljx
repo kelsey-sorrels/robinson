@@ -108,7 +108,8 @@
 
 (defn uniform-int
  ([hi] {:pre [(pos? hi)]} (next-int! *rnd* hi))
- ([lo hi] {:pre [(< lo hi)]} (+ lo (next-int! *rnd* (- hi lo)))))
+ ([lo hi] {:pre [(< lo hi)]} (+ lo (next-int! *rnd* (- hi lo))))
+ ([rnd lo hi] {:pre [(< lo hi)]} (+ lo (next-int! rnd (- hi lo)))))
 
 (defn uniform-double
  ([hi] {:pre [(pos? hi)]} (* hi (next-double! *rnd*)))
@@ -121,14 +122,15 @@
   ([coll]
   (rnd-shuffle *rnd* coll))
   ([rnd coll]
-  (loop [i (count coll)
-         coll coll]
-    (if (> i 1)
-      (recur (dec i) (swap coll (dec i) (next-int! rnd i)))
-      coll))))
+  (let [coll (vec coll)]
+    (loop [i (count coll)
+           coll coll]
+      (if (> i 1)
+        (recur (dec i) (swap coll (dec i) (next-int! rnd i)))
+        coll)))))
 
 (defn rand-nth
   ([coll]
   (rand-nth *rnd* coll))
   ([rnd coll]
-  (nth coll (uniform-int rnd (count coll)))))
+  (nth coll (uniform-int rnd 0 (count coll)))))

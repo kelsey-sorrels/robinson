@@ -161,6 +161,8 @@
 
 (defn add-starting-inventory
   [state]
+  {:pre  [(not (nil? state))]
+   :post [(not (nil? %))]}
   (let [new-state          (reinit-world state)
         selected-hotkeys   (get-in state [:world :selected-hotkeys])
         _                  (log/info "selected-hotkeys" selected-hotkeys)
@@ -171,6 +173,8 @@
 
 (defn select-starting-inventory
   [state keyin]
+  {:pre  [(not (nil? state))]
+   :post [(not (nil? %))]}
   (if (and #+clj
            (char? keyin)
            #+cljs
@@ -187,6 +191,8 @@
 (defn destroy-cell
   "Destroy the cell at xy, changing its type. This is when the player bumps into things like palisades."
   [state x y]
+  {:pre  [(not (nil? state))]
+   :post [(not (nil? %))]}
   (rw/assoc-cell state x y :type :dirt))
 
 (defn pick-up-gold
@@ -215,6 +221,8 @@
   "Move the player when they are near the edge of the map.
    If a pre-generated place does not exist, create a new one using the world seed."
   [state direction]
+  {:pre  [(not (nil? state))]
+   :post [(not (nil? %))]}
   (log/info "move-outside-safe-zone")
   (let [[player-cell x y] (rw/player-cellxy state)
         on-raft           (rw/player-mounted-on-raft? state)
@@ -486,6 +494,8 @@
    the player's inventory. Add to them the hotkeys with
    which they were selected."
   [state]
+  {:pre  [(not (nil? state))]
+   :post [(not (nil? %))]}
     ;; find all the items in the current cell
     ;; divide them into selected and not-selected piles using the selected-hotkeys
     ;; add the selected pile to the player's inventory
@@ -529,6 +539,8 @@
   "Drop the item from the player's inventory whose hotkey matches `keyin`.
    Put the item in the player's current cell."
   [state keyin]
+  {:pre  [(not (nil? state))]
+   :post [(not (nil? %))]}
   (let [[player-cell x y] (rw/player-cellxy state)
         items (-> state :world :player :inventory)
         inventory-hotkeys (map #(% :hotkey) items)
@@ -554,6 +566,8 @@
 
 (defn apply-bandage
   [state]
+  {:pre  [(not (nil? state))]
+   :post [(not (nil? %))]}
   (-> state
     (rp/dec-item-count :bandage)
     (assoc-in [:world :player :hp] (get-in state [:world :player :max-hp]))
@@ -562,6 +576,8 @@
 
 (defn apply-flashlight
   [state]
+  {:pre  [(not (nil? state))]
+   :post [(not (nil? %))]}
   (let [item         (rp/inventory-id->item state :flashlight)
         item-state   (get item :state :off)]
     (case item-state
@@ -580,15 +596,21 @@
 
 (defn assoc-apply-item
   [state item]
+  {:pre  [(not (nil? state))]
+   :post [(not (nil? %))]}
   (assoc-in state [:world :apply-item] item))
 
 (defn get-apply-item
   [state]
+  {:pre  [(not (nil? state))]
+   :post [(not (nil? %))]}
   (get-in state [:world :apply-item]))
 
 (defn select-apply-item
   "Apply the item from the player's inventory whose hotkey matches `keyin`."
   [state keyin]
+  {:pre  [(not (nil? state))]
+   :post [(not (nil? %))]}
   (let [item (rp/inventory-hotkey->item state keyin)]
     (if item
       (let [id (get item :id)]
@@ -876,6 +898,8 @@
 (defn apply-item
   "Applies the selected item."
   [state keyin]
+  {:pre  [(not (nil? state))]
+   :post [(not (nil? %))]}
   (let [item (get-apply-item state)
         trans->dir? (comp is-direction? translate-directions)]
     (log/info "apply-item" [item keyin])
@@ -1028,6 +1052,8 @@
 (defn do-rest
   "NOP action. Player's hp increases a little."
   [state]
+  {:pre  [(not (nil? state))]
+   :post [(not (nil? %))]}
   (as-> state state
     ;; rest better then in shelter
     (if (let [[cell _ _] (rw/player-cellxy state)]
@@ -1567,6 +1593,8 @@
 (defn get-hungrier-and-thirstier
   "Increase player's hunger."
   [state]
+  {:pre [(not (nil? state))]
+   :post [(not (nil? %))]}
   (let [hunger (get-in state [:world :player :hunger])
         thirst (get-in state [:world :player :thirst])]
     (as-> state state
@@ -1600,6 +1628,8 @@
 
 (defn get-rescued
   [state]
+  {:pre [(not (nil? state))]
+   :post [(not (nil? %))]}
   (if (rw/player-mounted-on-raft? state)
     (let [{x :x y :y}         (rp/player-pos state)
           distance-from-start (rc/chebyshev-distance {:x 0 :y 0}
@@ -1679,6 +1709,8 @@
 (defn log-will-to-live-flavor
   "Log a flavor message when will-to-live increases or decreases by a lot."
   [state prev-will-to-live]
+  {:pre [(not (nil? state))]
+   :post [(not (nil? %))]}
   (let [dwtl (- prev-will-to-live (get-in state [:world :player :will-to-live]))]
     (if (> (Math/abs dwtl) 1.5)
       (if (neg? dwtl)
@@ -1689,6 +1721,8 @@
 (defn fruit-identify-activate
   "Display a message if the fruit being identified is poisonous."
   [state]
+  {:pre [(not (nil? state))]
+   :post [(not (nil? %))]}
   (log/info "time" (rw/get-time state))
   (log/info "skin-id-time" (get-in state [:world :player :skin-identify-activate-time]))
   (log/info "tongue-id-time" (get-in state [:world :player :tongue-identify-activate-time]))
@@ -1716,6 +1750,8 @@
 (defn if-poisoned-get-hurt
   "Decrease player's hp if they are poisoned."
   [state]
+  {:pre [(not (nil? state))]
+   :post [(not (nil? %))]}
   (log/info "player" (get-in state [:world :player]))
   (as-> state state
     (if (let [poisoned-time (get-in state [:world :player :poisoned-time])]
@@ -1737,6 +1773,8 @@
 
 (defn if-wounded-get-infected
   [state]
+  {:pre [(not (nil? state))]
+   :post [(not (nil? %))]}
   (let [hp                  (get-in state [:world :player :hp])
         max-hp              (get-in state [:world :player :max-hp])
         chance-of-infection (inc (/ -1 (inc (/ hp (* max-hp 20)))))] 
@@ -1751,6 +1789,8 @@
 
 (defn if-infected-get-hurt
   [state]
+  {:pre [(not (nil? state))]
+   :post [(not (nil? %))]}
   (update-in state [:world :player :hp]
     (fn [hp]
       (if (contains? (get-in state [:world :player :status]) :infected)
@@ -1759,6 +1799,8 @@
 
 (defn if-near-too-much-fire-get-hurt
   [state]
+  {:pre [(not (nil? state))]
+   :post [(not (nil? %))]}
   (update-in state [:world :player :hp]
     (fn [hp]
       (if (>= (count (filter #(= (get % :type) :fire)
@@ -1769,6 +1811,8 @@
 
 (defn heal
   [state]
+  {:pre [(not (nil? state))]
+   :post [(not (nil? %))]}
   (as-> state state
     ;; heal wounds
     (update-in state [:world :player :wounds]
@@ -1801,6 +1845,8 @@
 
 (defn decrease-flashlight-charge
   [state]
+  {:pre [(not (nil? state))]
+   :post [(not (nil? %))]}
   (if-let [flashlight (rp/inventory-id->item state :flashlight)]
     (rp/update-inventory-item state :flashlight (fn [flashlight] (as-> flashlight flashlight
                                                                    (if (= (get flashlight :state :off) :on)
@@ -1816,6 +1862,8 @@
 
 (defn repeat-commands
   [state]
+  {:pre [(not (nil? state))]
+   :post [(not (nil? %))]}
   (let [command-seq (get-in state [:world :command-seq] [])]
     (log/info "repeating commands" command-seq)
     (reduce update-state state command-seq)))
@@ -1823,6 +1871,8 @@
 ;; update visibility
 (defn update-visibility
   [state]
+  {:pre [(not (nil? state))]
+   :post [(not (nil? %))]}
   (let [pos              (-> state :world :player :pos)
         sight-distance   (float (sight-distance state))
         _ (log/info "player-pos" pos)
@@ -1868,6 +1918,8 @@
 (defn toggle-mount
   "Mount or unmount at the current cell."
   [state]
+  {:pre [(not (nil? state))]
+   :post [(not (nil? %))]}
   (let [[{items :items} x y]  (rw/player-cellxy state)
         mounted (get-in state [:world :player :mounted] false)]
     (cond
@@ -1889,6 +1941,8 @@
   "Switch (-> state :world :player) with the next npc where (-> npc :in-party?) is equal to true.
    Place the player at the end of (-> state :world :npcs)."
   [state]
+  {:pre [(not (nil? state))]
+   :post [(not (nil? %))]}
   (let [npc (first (filter #(contains? % :in-party?)
                             (get-in state [:world :npcs])))
     state (-> state
@@ -1908,6 +1962,8 @@
    from the npc to the target. Returns the moved npc and not the updated state.
    `target` is a map with the keys `:x` and `:y`."
   [state npc target]
+  {:pre [(not (nil? state))]
+   :post [(not (nil? %))]}
     (let [npcs                   (rnpc/npcs-in-viewport state)
           ;_                      (log/debug "meta" (-> move-to-target var meta))
           ;_                      (log/debug "move-to-target npc" npc "target" target)
@@ -1990,6 +2046,8 @@
    from the npc to the target. Returns the moved npc and not the updated state.
    `target` is a map with the keys `:x` and `:y`."
   [state npc target]
+  {:pre [(not (nil? state))]
+   :post [(not (nil? %))]}
     (let [npcs                   (rnpc/npcs-in-viewport state)
           npc-pos                (get npc :pos)
           npc-pos-vec            [(npc-pos :x) (npc-pos :y)]
@@ -2053,6 +2111,8 @@
 
 (defn move-random
   [state npc]
+  {:pre [(not (nil? state))]
+   :post [(not (nil? %))]}
   (let [npc-pos  (get npc :pos)
         navigable-types (if (mg/can-move-in-water? (get npc :race))
                           #{:water :surf}
@@ -2078,6 +2138,8 @@
 
 (defn move-to-target-in-range-or-random
   [state npc target]
+  {:pre [(not (nil? state))]
+   :post [(not (nil? %))]}
   (let [threshold (get npc :range-threshold)
         npc-pos  (get npc :pos)
         distance (rc/distance npc-pos target)
@@ -2140,8 +2202,10 @@
   "Returns the moved npc and not the updated state. New npc pos will depend on
    the npc's `:movement-policy which is one of `:constant` `:entourage` `:follow-player` `:random` `:follow-player-in-range-or-random` `:hide-from-player-in-range-or-random`."
   [state npc]
-  {:pre  [(contains? #{:constant :entourage :follow-player :random :follow-player-in-range-or-random :hide-from-player-in-range-or-random} (get npc :movement-policy))]
-   :post [(= (count %) 3)]}
+  {:pre [(not (nil? state))
+         (contains? #{:constant :entourage :follow-player :random :follow-player-in-range-or-random :hide-from-player-in-range-or-random} (get npc :movement-policy))]
+   :post [(not (nil? state))
+          (= (count %) 3)]}
   (let [policy      (get npc :movement-policy)
         temperament (get npc :temperament)
         pos         (-> state :world :player :pos)
@@ -2279,6 +2343,10 @@
 (defn update-cells
   "Fill holes with a small amount of water. Drop fruit. Drop harvest items."
   [state]
+  {:pre  [(not (nil? state))
+          (vector? (get-in state [:world :npcs]))]
+   :post [(not (nil? %))
+          (vector? (get-in % [:world :npcs]))]}
   (log/info "updating cells")
   (let [;xys      (viewport-xys state)
         ;get-cell-m (memoize (fn [x y] (get-cell state x y)))
@@ -2711,8 +2779,9 @@
                   (decrease-will-to-live)
                   (update-cells)
                   (as-> state
-                    (log/info "Done updating cells")
-                    state)
+                    (do
+                      (log/info "Done updating cells")
+                      state))
                   ;; TODO: Add appropriate level
                   (rnpc/add-npcs-random)
                   ;; update visibility

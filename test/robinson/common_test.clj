@@ -2,31 +2,6 @@
   (:use clojure.test
         robinson.common))
 
-(deftest arg-when->test
-  (are [in out] (= (-> in
-                     (arg-when-> [x] (> x 3)
-                       (* 3)))
-                   out)
-    0 0
-    1 1
-    2 2
-    3 3
-    4 12
-    5 15))
-
-(deftest arg-if->test
-  (are [in out] (= (-> in
-                     (arg-if-> [x] (> x 3)
-                       (* 3)
-                       (* 2)))
-                   out)
-    0 0
-    1 2
-    2 4
-    3 6
-    4 12
-    5 15))
-
 (deftest pos->xy-test
   (are [in out] (= (pos->xy in) out)
     {:x -1 :y -2} [-1 -2]

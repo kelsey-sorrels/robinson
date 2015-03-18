@@ -1,7 +1,13 @@
 (ns robinson.update-test
-  (:use clojure.test
-        robinson.common
-        robinson.update))
+  (:require [robinson.update :as ru]
+            #+clj
+            [clojure.test :as t
+              :refer (is deftest with-test run-tests testing)]
+            #+cljs
+            [cemerick.cljs.test :as t])
+  (:require-macros [cemerick.cljs.test
+                    :refer (is deftest with-test run-tests testing test-var)]))
+
 
 (def test-state-0
  {:world {:seed 0
@@ -23,7 +29,7 @@
 
 (deftest first-collidable-cells-0
   (let [state test-state-0
-        state (move state :up)]
+        state (ru/move state :up)]
     (is (= (get-in state [:world :player :pos]) {:x 2 :y 1}))))
 
 
@@ -33,6 +39,6 @@
                     (assoc-in [:world :remaining-hotkeys] [\a])
                     (assoc-in [:world :places [0 0] 2 2 :items] [{:id :test-item}])
                     (assoc-in [:world :selected-hotkeys] #{\a}))
-        new-state (pick-up state)]
+        new-state (ru/pick-up state)]
     (is (= (get-in new-state [:world :player :inventory 0 :id]) :test-item))
     (is (= (get-in new-state [:world :player :inventory 0 :hotkey]) \a))))

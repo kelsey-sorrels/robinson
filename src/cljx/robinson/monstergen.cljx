@@ -86,7 +86,7 @@
   #_(log/info race->monster-map)
   (get race->monster-map id))
 
-(defn gen-monster [level cell-type]
+(defn gen-random-monster [level cell-type]
   "Generate one random monster."
   (log/info "Generating monster at level" level)
   (let [land-monster-ids {
@@ -160,7 +160,7 @@
 (defn gen-monsters
   "Generate `n` random monsters using `gen-monster`."
   [n]
-  (repeatedly n #(gen-monster 1 :floor)))
+  (repeatedly n #(gen-random-monster 1 :floor)))
 
 (defn id->name
   [id]

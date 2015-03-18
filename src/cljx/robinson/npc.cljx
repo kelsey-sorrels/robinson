@@ -167,7 +167,7 @@
     (if-let [[x y] (rr/rand-nth (filter (fn [[x y]] (not (rw/collide? state x y {:include-npcs? true
                                                                                  :collide-water? false})))
                                         (rv/viewport-xys state)))]
-      (add-npc state (mg/gen-monster level (get (rw/get-cell state x y) :type))
+      (add-npc state (mg/gen-random-monster level (get (rw/get-cell state x y) :type))
                      x
                      y)
       state)))

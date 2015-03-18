@@ -20,6 +20,9 @@
   #+cljs
   (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
 
+#+cljs
+(enable-console-print!)
+
 ;; Conveinience ref for accessing the last state when in repl.
 (defonce state-ref (atom nil))
 

@@ -81,9 +81,6 @@
   (apply hash-map (mapcat (fn [[k v]] [k (first v)])
                           (group-by :race monsters))))
 
-#+clj
-(rc/make-gen-fns *ns* race->monster-map)
-
 (defn id->monster [id]
   #_(log/info "id->monster" id)
   #_(log/info race->monster-map)
@@ -157,6 +154,9 @@
       :else
       (id->monster (rr/rand-nth (get land-monster-ids (int (* level (/ 9 10)))))))))
 
+(defn gen-monster [id]
+  (id->monster id))
+
 (defn gen-monsters
   "Generate `n` random monsters using `gen-monster`."
   [n]
@@ -175,43 +175,43 @@
   "Generate five random monsters and display them."
   [& args]
   (if (contains? (set args) "--list")
-    (let [monsters (map #(%) [gen-rat
-                              gen-spider
-                              gen-scorpion
-                              gen-snake
-                              gen-bat
-                              gen-boar
-                              gen-gecko
-                              gen-monkey
-                              gen-bird
-                              gen-centipede
-                              gen-turtle
-                              gen-red-frog
-                              gen-orange-frog
-                              gen-yellow-frog
-                              gen-green-frog
-                              gen-blue-frog
-                              gen-purple-frog
-                              gen-parrot
-                              gen-shark
-                              gen-fish
-                              gen-octopus 
-                              gen-sea-snake 
-                              gen-clam 
-                              gen-urchin 
-                              gen-squid
-                              gen-crocodile
-                              gen-mosquito
-                              gen-mongoose
-                              gen-tarantula
-                              gen-monitor-lizard
-                              gen-komodo-dragon
-                              gen-cobra
-                              gen-puffer-fish
-                              gen-crab
-                              gen-hermit-crab
-                              gen-electric-eel
-                              gen-jellyfish])]
+    (let [monsters (map #(%) [(partial gen-monster :rat)
+                              (partial gen-monster :spider)
+                              (partial gen-monster :scorpion)
+                              (partial gen-monster :snake)
+                              (partial gen-monster :bat)
+                              (partial gen-monster :boar)
+                              (partial gen-monster :gecko)
+                              (partial gen-monster :monkey)
+                              (partial gen-monster :bird)
+                              (partial gen-monster :centipede)
+                              (partial gen-monster :turtle)
+                              (partial gen-monster :red-frog)
+                              (partial gen-monster :orange-frog)
+                              (partial gen-monster :yellow-frog)
+                              (partial gen-monster :green-frog)
+                              (partial gen-monster :blue-frog)
+                              (partial gen-monster :purple-frog)
+                              (partial gen-monster :parrot)
+                              (partial gen-monster :shark)
+                              (partial gen-monster :fish)
+                              (partial gen-monster :octopus )
+                              (partial gen-monster :sea-snake )
+                              (partial gen-monster :clam )
+                              (partial gen-monster :urchin )
+                              (partial gen-monster :squid)
+                              (partial gen-monster :crocodile)
+                              (partial gen-monster :mosquito)
+                              (partial gen-monster :mongoose)
+                              (partial gen-monster :tarantula)
+                              (partial gen-monster :monitor-lizard)
+                              (partial gen-monster :komodo-dragon)
+                              (partial gen-monster :cobra)
+                              (partial gen-monster :puffer-fish)
+                              (partial gen-monster :crab)
+                              (partial gen-monster :hermit-crab)
+                              (partial gen-monster :electric-eel)
+                              (partial gen-monster :jellyfish)])]
       (doseq [monster monsters]
         (doseq [part (get monster :body-parts)]
           (println "[:human :punch" (get monster :race) part "] (+ (rand) 0.5)"))

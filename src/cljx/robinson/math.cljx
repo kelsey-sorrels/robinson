@@ -8,7 +8,7 @@
 (def PI (Math/PI))
 
 #+cljs
-(def PI (.PI js/Math))
+(def PI (.-PI js/Math))
 
 #+clj
 (defn sqrt [n]

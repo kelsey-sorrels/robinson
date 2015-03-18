@@ -8,7 +8,8 @@
                  [lein-kibit "0.0.8"]
                  [lein-typed "0.3.5"]
                  [lein-cloverage "1.0.2"]
-                 [lein-tarsier "0.10.0"]]
+                 [lein-tarsier "0.10.0"]
+                 [com.cemerick/clojurescript.test "0.3.3"]]
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [org.clojure/core.async "0.1.346.0-17112a-alpha"]
                  [org.clojure/core.memoize "0.5.6"]
@@ -36,41 +37,52 @@
   :repl-init robinson.core
   :source-paths
   ["src/clj"
-   "src/clj-macros"
    "src/cljs"
-   "target/generated-src/clj"
-   "target/generated-src/cljs"]
+   "target/generated/src/clj"
+   "target/generated/src/cljs"]
 
   :test-paths
   ["test"]
 
   ;:auto-clean false
 
-  :cljsbuild {:builds [{:source-paths ["src/clj-macros"
-                                       "src/cljs"
-                                       "target/generated-src/cljs"]
+  :cljx
+  {:builds [{:source-paths ["src/clj"
+                            "src/cljx"]
+             :output-path "target/generated/src/clj"
+             :rules :clj}
+            {:source-paths ["src/cljx"
+                            "src/cljs"]
+             :output-path "target/generated/src/cljs"
+             :rules :cljs}
+            {:source-paths ["test/cljx"]
+             :output-path "target/generated/test/clj"
+             :rules :clj}
+            {:source-paths ["src/cljx"]
+             :output-path "target/generated/test/cljs"
+             :rules :cljs}]}
+
+  :prep-tasks [["cljx" "once"]]
+
+
+  :cljsbuild {:builds {:dev {
+                        :source-paths ["src/cljs"
+                                       "target/generated/src/cljs"]
                         :compiler {:output-to "target/main.js"
                                    ;:output-dir "target"
                                    :foreign-libs [{
                                      :file "src/js/gl-matrix-min.js" :provides ["mat4","mat3","vec3"]}]
                                    ;:optimizations :simple
                                    ;:source-map true
-                                   :pretty-print true}}]}
-  :cljx
-  {:builds [{:source-paths ["src/clj"
-                            "src/clj-macros"
-                            "src/cljx"]
-             :output-path "target/generated-src/clj"
-             ;:files ["src/clj/robinson/swingterminal.clj"
-             ;        "src/clj/robinson/autoreloadcore.clj"
-             ;        "src/clj-macros/robinson/macros.clj"]
-             :rules :clj}
-            {:source-paths ["src/cljx"]
-             :output-path "target/generated-src/cljs"
-             :rules :cljs}]}
-
-  :prep-tasks [["cljx" "once"]]
-
+                                   :pretty-print true}}
+                      :test {
+                        :source-paths ["target/generated/src/cljs"
+                                       "target/generated/test/cljs"]
+                        :compiler {:output-to "target/unit-test.js"
+                                   :foreign-libs [{
+                                     :file "src/js/gl-matrix-min.js" :provides ["mat4","mat3","vec3"]}]
+                                   :optimizations :whitespace
+                                   :pretty-print true}}}}
   :profiles {
     :dev {:dependencies
           [#_[org.clojure/clojurescript "0.0-3030"]]

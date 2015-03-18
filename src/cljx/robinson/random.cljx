@@ -41,16 +41,17 @@
                                       :else
                                       (throw "create-random requires either a number or RandomState"))
         next! (fn [bits]
+                (let [new-seed (swap! seed (fn [s]
+                                             (bit-and
+                                               (unchecked-add
+                                                 (unchecked-multiply (long s)
+                                                                     (long multiplier))
+                                                 addend)
+                                                mask)))]
                 (int (bit-and 0x7FFFFFFF
                               (unsigned-bit-shift-right
-                                (swap! seed (fn [s]
-                                              (bit-and
-                                                (unchecked-add
-                                                  (unchecked-multiply (long s)
-                                                                      (long multiplier))
-                                                  addend)
-                                                 mask)))
-                                (- 48 bits)))))]
+                                new-seed
+                                (- 48 bits))))))]
     (reify Random
       (next-int! [this]
         (next! 32))

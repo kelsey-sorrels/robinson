@@ -343,8 +343,3 @@
         (conj lines #+clj (clojure.string/join line)
                     #+cljs (gstring/join line))))))
 
-(defn make-gen-fns [name-space id->obj-map]
- (doseq [id (keys id->obj-map)]
-   (let [sym (->> id name (str "gen-") symbol)]
-   (intern name-space sym (fn [] (get id->obj-map id))))))
-

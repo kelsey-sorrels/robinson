@@ -21,6 +21,7 @@
                                     magic-up magic-right magic-inventory]]
             [robinson.worldgen :as rworldgen]
             [robinson.lineofsight :as rlos]
+            robinson.macros
             [robinson.macros :as rm]
             #+clj
             clojure.pprint
@@ -808,7 +809,7 @@
                                      (dissoc :harvestable)
                                      (assoc :type (rr/rand-nth [:dirt :gravel :tall-grass :short-grass]))
                                      (assoc :items (concat (get cell :items) 
-                                                         (repeat (rr/uniform-int 1 2) (ig/gen-log))))))))
+                                                         (repeat (rr/uniform-int 1 2) (ig/gen-item :log))))))))
       state)))
 
 (defn apply-plant-guide
@@ -844,11 +845,11 @@
     :unhusked-coconut
     (-> state
       (rp/dec-item-count (get item :id))
-      (rp/add-to-inventory [(ig/gen-coconut)]))
+      (rp/add-to-inventory [(ig/gen-item :coconut)]))
     :stick
     (-> state
       (rp/dec-item-count (get item :id))
-      (rp/add-to-inventory [(ig/gen-sharpened-stick)]))
+      (rp/add-to-inventory [(ig/gen-item :sharpened-stick)]))
     state))
 
 
@@ -1045,7 +1046,7 @@
       (rp/remove-from-inventory (get item :id))
       (as-> state
         (case (get item :id)
-          :coconut (rp/add-to-inventory state [(ig/gen-coconut-empty)])
+          :coconut (rp/add-to-inventory state [(ig/gen-item :coconut-empty)])
           state)))
      state))
      
@@ -1103,7 +1104,7 @@
             (rw/dec-cell-item-count (get item :id)))
           state)
         (if (= (get item :id) :coconut-empty)
-          (rp/add-to-inventory state [(ig/gen-coconut-shell)])
+          (rp/add-to-inventory state [(ig/gen-item :coconut-shell)])
           state))
       ;; if the item was a poisonous fruit, set a poisoned timebomb
       (as-> state
@@ -1148,25 +1149,25 @@
                           (= (get target-cell :type) :tree)
                             (if (or harvestable
                                     (= 0 (rr/uniform-int 1000)))
-                              [(rr/rand-nth [(ig/gen-stick) (ig/gen-plant-fiber)])]
+                              [(rr/rand-nth [(ig/gen-item :stick) (ig/gen-item :plant-fiber)])]
                               [])
                           (= (get target-cell :type) :bamboo)
                               (if (or harvestable
                                       (= 0 (rr/uniform-int 1000)))
-                                [(ig/gen-bamboo)]
+                                [(ig/gen-item :bamboo)]
                                 [])
                           (= (get target-cell :type) :palm-tree)
                             (concat
                               (if (or harvestable
                                       (= 0 (rr/uniform-int 1000)))
-                                [(rr/rand-nth [(ig/gen-unhusked-coconut) (ig/gen-plant-fiber)])]
+                                [(rr/rand-nth [(ig/gen-item :unhusked-coconut) (ig/gen-item :plant-fiber)])]
                                 []))
                           (and (= (get target-cell :type) :tall-grass)
                                (= direction :center))
                             (concat
                               (if (or harvestable
                                       (= 0 (rr/uniform-int 1000)))
-                                [(rr/rand-nth [(ig/gen-grass) (ig/gen-plant-fiber)])]
+                                [(rr/rand-nth [(ig/gen-item :grass) (ig/gen-item :plant-fiber)])]
                                 []))
                           (and (= (get target-cell :type) :gravel)
                                (= direction :center))
@@ -1174,12 +1175,12 @@
                                (concat
                                  (if (or harvestable
                                          (= 0 (rr/uniform-int 1000)))
-                                   [(rr/rand-nth [(ig/gen-rock) (ig/gen-obsidian)])]
+                                   [(rr/rand-nth [(ig/gen-item :rock) (ig/gen-item :obsidian)])]
                                    []))
                                (concat
                                  (if (or harvestable
                                          (= 0 (rr/uniform-int 1000)))
-                                   [(rr/rand-nth [(ig/gen-rock) (ig/gen-flint)])]
+                                   [(rr/rand-nth [(ig/gen-item :rock) (ig/gen-item :flint)])]
                                    [])))
                           :else [])
                         [])]
@@ -2534,7 +2535,7 @@
                                           (assoc-in state [:world :player :hunger] 100))
                                           :normal true]
                           \3           [(fn [state]
-                                          (rp/add-to-inventory state [(ig/gen-flint)])) :normal true]
+                                          (rp/add-to-inventory state [(ig/gen-item :flint)])) :normal true]
                            :escape     [identity               :quit?           false]}
                :inventory {:escape     [identity               :normal          false]}
                :describe  {:escape     [free-cursor            :normal          false]

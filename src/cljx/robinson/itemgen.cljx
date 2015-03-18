@@ -1,7 +1,6 @@
 ;; Functions for generating random items.
 (ns robinson.itemgen
-  (:require [robinson.common :refer [make-gen-fns] :include-macros true]
-            [robinson.monstergen :as mg]
+  (:require [robinson.monstergen :as mg]
             #+cljs
             [goog.string :as gstring]
             #+cljs
@@ -158,30 +157,12 @@
   (apply hash-map (mapcat (fn [[k v]] [k (first v)])
                           (group-by :id items))))
 
-(make-gen-fns *ns* id->item-map)
-
-(def id->gen-fn
-  (let [fns (map (fn [[k v]]
-                   (let [f (var-get v)
-                         id (get (f 1) :id)]
-                     [id f]))
-                  (filter (fn [[k v]] (.startsWith (name k) "gen-"))
-                          (ns-publics *ns*)))]
-    fns))
-
-(defn id->items
-  "Generate item from id."
-  [id n]
-  (if (is-corpse-id? id)
-    (mg/id->monster (-> #+clj  (clojure.string/split (name id) #"-")
-                        #+cljs (gstring/split (name id) #"-")
-                        first
-                        keyword))
-    (repeat n (get id->gen-fn id))))
-
 (defn id->item
   [id]
   (get id->item-map id))
+
+(defn gen-item [id]
+  (id->item id))
 
 (defn id->name
   [id]

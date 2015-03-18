@@ -31,7 +31,7 @@
                                                fsm-current-state]]
             [robinson.npc :as rnpc :refer [talking-npcs
                                            npcs-in-viewport]]
-            robinson.aterminal
+            [robinson.aterminal :as rat]
             [tinter.core :as tinter]
             clojure.set
             #+clj
@@ -133,29 +133,29 @@
    {:pre [(clojure.set/superset? #{:underline :bold} styles)]}
    (let [fg        (color->rgb fg)
          bg        (color->rgb bg)]
-     (.put-string screen
-                  x
-                  y
-                  string
-                  fg
-                  bg
-                  styles))))
+     (rat/put-string screen
+                     x
+                     y
+                     string
+                     fg
+                     bg
+                     styles))))
       
 (defn put-chars
   [^robinson.aterminal.ATerminal screen characters]
-  (.put-chars screen characters))
+  (rat/put-chars screen characters))
 
 (defn get-size
   [^robinson.aterminal.ATerminal screen]
-  (.get-size screen))
+  (rat/get-size screen))
 
 (defn refresh
   [^robinson.aterminal.ATerminal screen]
-  (.refresh screen))
+  (rat/refresh screen))
 
 (defn clear
   [^robinson.aterminal.ATerminal screen]
-  (.clear screen))
+  (rat/clear screen))
 
 (defn class->rgb
   "Convert a class to a color characters of that type should be drawn."
@@ -262,7 +262,8 @@
   ([screen title selected-hotkeys items x y width height {:keys [use-applicable center border center-title]
                                                           :or {:use-applicable false :border false :center false :center-title false}}]
    ;; items is list of {:s "string" :fg :black :bg :white}
-   (let [items    (map (fn [item] {:s (format "%c%c%s%s %s %s"
+   (let [items    (map (fn [item] {:s (format #+clj  "%c%c%s%s %s %s"
+                                              #+cljs "%s%s%s%s %s %s"
                                               (or (item :hotkey)
                                                   \ )
                                               (if (contains? selected-hotkeys (item :hotkey))
@@ -630,7 +631,8 @@
     (concat
       [{:s (name recipe-type) :fg :black :bg :white :style #{:underline}}]
        (map (fn [recipe]
-              {:s (format "%c-%s"
+              {:s (format #+clj  "%c-%s"
+                          #+cljs "%s-%s"
                     (get recipe :hotkey)
                     (get recipe :name))
                :fg (if (contains? recipe :applicable)
@@ -1035,14 +1037,16 @@
     (render-list screen 20 7 60 (count start-inventory)
                                 (map (fn [item] 
                                        (log/info (get item :hotkey) (type (get item :hotkey)) (get item :name))
-                                       {:s (format "%c%c%s" (get item :hotkey)
-                                                            (if (contains? selected-hotkeys (get item :hotkey))
-                                                              \+
-                                                              \-)
-                                                            (get item :name))
-                                                    :fg :white
-                                                    :bg :black
-                                                    :style #{}})
+                                       {:s (format #+clj  "%c%c%s"
+                                                   #+cljs "%s%s%s"
+                                                   (get item :hotkey)
+                                                   (if (contains? selected-hotkeys (get item :hotkey))
+                                                     \+
+                                                     \-)
+                                                   (get item :name))
+                                                   :fg :white
+                                                   :bg :black
+                                                   :style #{}})
                                         start-inventory))
     (refresh screen)))
 

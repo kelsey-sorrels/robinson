@@ -385,4 +385,3 @@
         (rat/refresh terminal))
         (recur))))
 
-(-main)

@@ -255,7 +255,7 @@
        {width :width
         height :height}  (get-in state [:world :viewport])]
       (log/debug "viewport-pos" vp-pos)
-      #+clj
+      ;#+clj
       #_(log/debug "npcs" (with-out-str (clojure.pprint/pprint (-> state :world :npcs))))
       (-> state
         (assoc-in [:world :viewport :pos] vp-pos)
@@ -279,6 +279,7 @@
    with party member. Else hack something down."
   [state direction]
   {:pre  [(contains? #{:left :right :up :down :up-left :up-right :down-left :down-right} direction)
+          (not (nil? state))
           (vector? (get-in state [:world :npcs]))]
    :post [(vector? (get-in % [:world :npcs]))]}
   (let [player-x (-> state :world :player :pos :x)
@@ -719,7 +720,7 @@
     (cond
       (= p 0)
       ;; catch a fish
-      (rp/add-to-inventory state [(ig/gen-corpse (mg/gen-monster 1 :water))])
+      (rp/add-to-inventory state [(ig/gen-corpse (mg/gen-random-monster 1 :water))])
       :else
       state)))
 

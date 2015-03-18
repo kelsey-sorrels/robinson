@@ -42,7 +42,7 @@
    "target/generated/src/cljs"]
 
   :test-paths
-  ["test"]
+  ["target/generated/clj"]
 
   ;:auto-clean false
 
@@ -58,7 +58,7 @@
             {:source-paths ["test/cljx"]
              :output-path "target/generated/test/clj"
              :rules :clj}
-            {:source-paths ["src/cljx"]
+            {:source-paths ["test/cljx"]
              :output-path "target/generated/test/cljs"
              :rules :cljs}]}
 
@@ -82,7 +82,10 @@
                                    :foreign-libs [{
                                      :file "src/js/gl-matrix-min.js" :provides ["mat4","mat3","vec3"]}]
                                    :optimizations :whitespace
-                                   :pretty-print true}}}}
+                                   :pretty-print true}}}
+              :test-commands {"unit-tests" [;"rhino" "-opt" "-1" :rhino-runner
+                                            "phantomjs" :runner
+                                            "target/unit-test.js"]}}
   :profiles {
     :dev {:dependencies
           [#_[org.clojure/clojurescript "0.0-3030"]]

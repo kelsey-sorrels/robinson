@@ -1,6 +1,13 @@
 (ns robinson.viewport-test
-  (:use clojure.test
-        robinson.viewport))
+  (:require [robinson.viewport :as rv]
+            #+clj
+            [clojure.test :as t
+              :refer (is deftest with-test run-tests testing)]
+            #+cljs
+            [cemerick.cljs.test :as t])
+ (:require-macros [cemerick.cljs.test
+                    :refer (is deftest with-test run-tests testing test-var)]))
+
 
 (def cells-in-viewport-state
  {:world {:viewport {:pos    {:x 2 :y 1}
@@ -20,14 +27,14 @@
                           [:7 :8 :9]]}}})
 
 (deftest cells-in-viewport-test-0
-  (is (= (cells-in-viewport
+  (is (= (rv/cells-in-viewport
             cells-in-viewport-state)
          [[:i :j :k]
           [:o :p :q]
           [:u :v :w]])))
 
 (deftest cells-in-viewport-test-1
-  (is (= (cells-in-viewport
+  (is (= (rv/cells-in-viewport
           (assoc-in cells-in-viewport-state [:world :viewport :pos] {:x 0 :y 0}))
         [[:a :b :c]
          [:g :h :i]

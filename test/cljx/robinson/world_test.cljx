@@ -1,15 +1,21 @@
-(ns robinson.common-test
-  (:use clojure.test
-        robinson.common
-        robinson.world))
+(ns robinson.world-test
+  (:require [robinson.world :as rw]
+            #+clj
+            [clojure.test :as t
+              :refer (is deftest with-test run-tests testing)]
+            #+cljs
+            [cemerick.cljs.test :as t])
+ (:require-macros [cemerick.cljs.test
+                    :refer (is deftest with-test run-tests testing test-var)]))
+
 
 (deftest test-adjacent-to-player-0
-  (is (false? (adjacent-to-player? {:world {:player {:pos {:x 26, :y 9}}}}
-                                  {:x 34 :y 7}))))
+  (is (false? (rw/adjacent-to-player? {:world {:player {:pos {:x 26, :y 9}}}}
+                                      {:x 34 :y 7}))))
 
 (deftest test-adjacent-to-player-1
-  (is (true? (adjacent-to-player? {:world {:player {:pos {:x 26, :y 9}}}}
-                                  {:x 25 :y 9}))))
+  (is (true? (rw/adjacent-to-player? {:world {:player {:pos {:x 26, :y 9}}}}
+                                     {:x 25 :y 9}))))
 
 (def direction->cells-state
  {:world {:viewport {:width 6
@@ -24,28 +30,28 @@
                           [:y :z :0 :1 :2 :3]]}}})
 
 (deftest direction->cells-0
-  (is (= (direction->cells
+  (is (= (rw/direction->cells
             direction->cells-state
             :left
             2)
          [:n :m])))
 
 (deftest direction->cells-1
-  (is (= (direction->cells
+  (is (= (rw/direction->cells
             direction->cells-state
             :right
             3)
          [:p :q :r])))
 
 (deftest direction->cells-2
-  (is (= (direction->cells
+  (is (= (rw/direction->cells
             direction->cells-state
             :up
             2)
          [:i :c])))
 
 (deftest direction->cells-3
-  (is (= (direction->cells
+  (is (= (rw/direction->cells
             direction->cells-state
             :down
             2)
@@ -68,5 +74,5 @@
 (deftest first-collidable-cells-0
   (is (= {:cell {:type :vertical-wall} :pos {:x 2 :y 0}}
          (let [state first-collidable-cells-state] 
-           (first-collidable-object state :up 3)))))
+           (rw/first-collidable-object state :up 3)))))
 

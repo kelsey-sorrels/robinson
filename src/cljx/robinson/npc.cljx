@@ -60,11 +60,14 @@
   (first (filter (fn [npc] (= (npc :id) id))
                  (get-in state [:world :npcs]))))
 
+(defn index-of [coll item]
+  (ffirst (filter  #(= (second %) item) (map-indexed vector coll))))
+
 (defn npc->keys
   "Find the keys required to lookup the npc.
    npc and (get-in state (npc->path state npc)) refer to the same npc."
   [state npc]
-  [:world :npcs (.indexOf (get-in state [:world :npcs]) npc)])
+  [:world :npcs (index-of (get-in state [:world :npcs]) npc)])
 
 (defn add-npc
   "Add an npc to the specified place and position."

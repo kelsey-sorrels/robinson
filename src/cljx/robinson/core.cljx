@@ -73,6 +73,7 @@
         (catch js/Error ex
               (log/error (str ex))
               (throw ex))))))
+  #+clj
   (async/<!! done-chan))
           
 #+cljs

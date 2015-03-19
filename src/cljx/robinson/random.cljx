@@ -18,7 +18,11 @@
 
 (def ^:private addend 0xB)
 (def ^:private multiplier 0x5DEECE66D)
+#+clj
 (def ^:private mask (dec (bit-shift-left 1 48)))
+#+cljs
+(def ^:private mask 0xFFFFFFFFFFFF)
+
 
 (defn create-random
   [seed-or-state]

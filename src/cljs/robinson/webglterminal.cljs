@@ -61,12 +61,6 @@
 (defn next-pow-2 [v]
   (int (.pow js/Math 2 (count (.toString v 2)))))
 
-(def character-canvas-dom (by-id :character-canvas))
-(def character-canvas (:ctx (canvas/monet-canvas character-canvas-dom "2d")))
-
-(def terminal-canvas-dom (by-id :terminal-canvas))
-;(def terminal-canvas (canvas/init terminal-canvas-dom "2d"))
-
 ;(timbre/refer-timbre)
 
 (def characters
@@ -123,7 +117,7 @@
 (log/info "character->uvs" (str character->uvs))
 
 (defn draw-character-canvas!
-  []
+  [character-canvas-dom character-canvas]
   ;; Adjust canvas to fit character atlas size
   (let [width  (next-pow-2 (* 12 (count (first character-layout))))
         height (next-pow-2 (* 16 (count character-layout)))
@@ -196,9 +190,14 @@
           default-fg-color [(long default-fg-color-r) (long default-fg-color-g) (long default-fg-color-b)]
           default-bg-color [(long default-bg-color-g) (long default-bg-color-g) (long default-bg-color-b)]
           ;; create texture atlas
-          _                (draw-character-canvas!)
           character-map    (atom (vec (repeat rows (vec (repeat columns (make-terminal-character \space default-fg-color default-bg-color #{}))))))
           cursor-xy        (atom nil)
+          character-canvas-dom (by-id :character-canvas)
+          character-canvas (:ctx (canvas/monet-canvas character-canvas-dom "2d"))
+          terminal-canvas-dom (by-id :terminal-canvas)
+
+          _                (draw-character-canvas! character-canvas-dom character-canvas)
+
           ;; adjust terminal canvas height
           _                (dom/setProperties 
                              terminal-canvas-dom

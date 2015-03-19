@@ -32,7 +32,7 @@
 
 #+cljs
 (defn round [n]
-  (.round js/math n))
+  (.round js/Math n))
 
 #+clj
 (defn ceil [n]
@@ -40,7 +40,7 @@
 
 #+cljs
 (defn ceil [n]
-  (.ceil js/math n))
+  (.ceil js/Math n))
 
 #+clj
 (defn sin [n]

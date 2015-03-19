@@ -2,11 +2,11 @@
   (:require [robinson.common :as rc]
             #+clj
             [clojure.test :as t
-              :refer (is deftest with-test run-tests testing)]
+              :refer (is are deftest with-test run-tests testing)]
             #+cljs
             [cemerick.cljs.test :as t])
   (:require-macros [cemerick.cljs.test
-                     :refer (is deftest with-test run-tests testing test-var)]))
+                     :refer (is are deftest with-test run-tests testing test-var)]))
             
 
 (deftest pos->xy-test

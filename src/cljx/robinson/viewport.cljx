@@ -144,6 +144,10 @@
         ur-place-id       [(inc px) py]
         ll-place-id       [px       (inc py)]
         lr-place-id       [(inc px) (inc py)]
+        _ (log/info "ul-place-id" (str ul-place-id))
+        _ (log/info "ur-place-id" (str ur-place-id))
+        _ (log/info "ll-place-id" (str ll-place-id))
+        _ (log/info "lr-place-id" (str lr-place-id))
         [ax ay] (place-id->anchor-xy state lr-place-id)
         _ (log/info "v-x" v-x "v-y" v-y)
         _ (log/info "v-width" v-width "v-height" v-height)
@@ -159,10 +163,17 @@
         ;                    start-y
         ;                    (- v-height start-y))
         _ (log/info "start-x" start-x "start-y" start-y)
+        _ (log/info "place-ids" (str (keys (get-in state [:world :places]))))
         ul-place          (get-in state [:world :places ul-place-id])
         ur-place          (get-in state [:world :places ur-place-id])
         ll-place          (get-in state [:world :places ll-place-id])
         lr-place          (get-in state [:world :places lr-place-id])
+        _ (log/info "ul-place-0" (str (type (get-in state [:world ]))))
+        _ (log/info "ul-place-1" (str (type (get-in state [:world :places ]))))
+        _ (log/info "ul-place-2" (str (type (get-in state [:world :places ul-place-id]))))
+        _ (log/info "ur-place" (str ur-place))
+        _ (log/info "ll-place" (str ll-place))
+        _ (log/info "lr-place" (str lr-place))
     cells (concat 
       (map (fn [line1 line2]
            (when-not (vector? line1)

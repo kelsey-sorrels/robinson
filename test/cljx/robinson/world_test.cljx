@@ -77,3 +77,17 @@
            (rw/first-collidable-object state :up 3)))))
 
 
+(def get-cell-state
+ {:world {:viewport {:width 5
+                     :height 5}
+          :width 5
+          :height 5
+          :player {:pos {:x 2 :y 2}}
+          :npcs []
+          :places {[ 0  0] [[{:type :floor}]]
+                   [-1 -1] [[{:type :wall}]]}}})
+
+(deftest get-cell-test-0
+  (is (= (get-in get-cell-state [:world :places [0 0] 0 0]) {:type :floor}))
+  (is (= (get-in get-cell-state [:world :places [-1 -1] 0 0]) {:type :wall})))
+

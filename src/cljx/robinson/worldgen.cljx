@@ -445,7 +445,17 @@
 (defn load-place
   "Returns a place, not state."
   [state id]
-  (log/info "loading" id))
+  (log/info "loading" id)
+  (let [place
+    (let [[ax ay]            (rv/place-id->anchor-xy state id)
+          [v-width v-height] (rv/viewport-wh state)
+          w-width            (get-in state [:world :width])
+          w-height           (get-in state [:world :height])]
+      (rm/log-time "init-island time" (init-island state
+                                                ax ay
+                                                v-width v-height)))]
+    (log/info "loaded place. width:" (count (first place)) "height:" (count place))
+    place))
 
 (def save-place-chan (async/chan))
 

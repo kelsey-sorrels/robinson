@@ -2383,7 +2383,7 @@
                   (fn increase-still-water [cell] (assoc cell :water (min 20 (+ 0.2 (* (rr/uniform-double 1) 0.1) (get cell :water 0.0))))))
                 ;; drop harvest items
                 (contains? #{:gravel :tree :palm-tree :tall-grass} cell-type)
-                (if (= (rr/uniform-int 0 100000) 0)
+                (if (= (rr/uniform-int 0 1000) 0)
                   (rw/update-cell state x y
                     (fn drop-harvest-items [cell]
                       (assoc cell :harvestable true)))

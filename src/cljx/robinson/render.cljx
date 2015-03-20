@@ -107,11 +107,11 @@
   (get color-to-rgb-map color color))
 
 (defn move-cursor
-  ([screen x y]
+  ([^robinson.aterminal.ATerminal screen x y]
   (log/info "moving cursor to" x y)
-  (.set-cursor screen [x y]))
-  ([screen o]
-  (.set-cursor screen o)))
+  (rat/set-cursor screen [x y]))
+  ([^robinson.aterminal.ATerminal screen o]
+  (rat/set-cursor screen o)))
 
 (defn fill-put-string-color-style-defaults
   ([string]

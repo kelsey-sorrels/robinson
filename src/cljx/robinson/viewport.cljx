@@ -168,12 +168,12 @@
         ur-place          (get-in state [:world :places ur-place-id])
         ll-place          (get-in state [:world :places ll-place-id])
         lr-place          (get-in state [:world :places lr-place-id])
-        _ (log/info "ul-place-0" (str (type (get-in state [:world ]))))
-        _ (log/info "ul-place-1" (str (type (get-in state [:world :places ]))))
-        _ (log/info "ul-place-2" (str (type (get-in state [:world :places ul-place-id]))))
-        _ (log/info "ur-place" (str ur-place))
-        _ (log/info "ll-place" (str ll-place))
-        _ (log/info "lr-place" (str lr-place))
+        ;_ (log/info "ul-place-0" (str (type (get-in state [:world ]))))
+        ;_ (log/info "ul-place-1" (str (type (get-in state [:world :places ]))))
+        ;_ (log/info "ul-place-2" (str (type (get-in state [:world :places ul-place-id]))))
+        ;_ (log/info "ur-place" (str ur-place))
+        ;_ (log/info "ll-place" (str ll-place))
+        ;_ (log/info "lr-place" (str lr-place))
     cells (concat 
       (map (fn [line1 line2]
            (when-not (vector? line1)

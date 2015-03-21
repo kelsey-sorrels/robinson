@@ -92,16 +92,17 @@
 
 (defn sight-distance
   [state]
-  (let [atmo   (get-in state [:data :atmo])
-        frames (count atmo)
-        t      (mod (get-in state [:world :time]) frames)
-        frame  (nth atmo t)
-        values (flatten frame)
-        item   (rp/inventory-id->item state :flashlight)
-        on     (and item (= (get item :state) :on))
-        _      (log/info "sight-distance. flashlight:" item "state:" on)
-        values (map (fn [v] (if on (max v 100) v)) values)]
-    (+ 1.5 (* 8 (/ (reduce + values) (* 255 (count values)))))))
+  (if-let [atmo   (get-in state [:data :atmo])]
+    (let [frames (count atmo)
+          t      (mod (get-in state [:world :time]) frames)
+          frame  (nth atmo t)
+          values (flatten frame)
+          item   (rp/inventory-id->item state :flashlight)
+          on     (and item (= (get item :state) :on))
+          _      (log/info "sight-distance. flashlight:" item "state:" on)
+          values (map (fn [v] (if on (max v 100) v)) values)]
+    (+ 1.5 (* 8 (/ (reduce + values) (* 255 (count values))))))
+    5))
       
 (defn backspace-name
   [state]

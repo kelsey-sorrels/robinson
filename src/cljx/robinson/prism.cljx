@@ -101,7 +101,7 @@
 
 (defn v*
   [s xy-or-f]
-  (case
+  (cond
     (vector? xy-or-f)
       (let [[x y] xy-or-f]
         [(* s x) (* s y)])

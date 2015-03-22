@@ -2,6 +2,8 @@
 (ns robinson.combat
   (:require #+clj
             [robinson.macros :as rm]
+            #+cljs
+            [robinson.macros :as rm :include-macros true]
             [robinson.common :as rc]
             [robinson.random :as rr]
             [robinson.world :as rw]
@@ -17,9 +19,7 @@
             #+cljs
             [goog.string :as gstring]
             #+cljs
-            [goog.string.format])
-  #+cljs
-  (:require-macros [robinson.macros :as rm]))
+            [goog.string.format]))
 
 
 (defn sharp-weapon?

@@ -42,39 +42,41 @@
    the next state after one iteration."
   []
   ; start with initial state from setup-fn
-  (go-loop [state (main/setup)]
-    (reset! state-ref state)
-    (if (nil? state)
-      (do
-        (log/info "Got nil state. Exiting.")
-        #+clj
-        (async/>! done-chan true)
-        #+clj
-        (System/exit 0)
-        #+cljs
-        nil)
-    ; tick the old state through the tick-fn to get the new state
-    (recur
-      (try
-        (let [keyin (or (when (= (rw/current-state state) :sleep)
-                          \.)
-                        (let [key-chan (aterminal/get-key-chan (state :screen))]
-                          (log/info  "waiting for key-chan")
-                          (async/<! key-chan)))]
-             (if keyin
-               (main/tick state keyin)
-               state))
-        #+clj
-        (catch Exception ex
-          (do 
-              (print-stack-trace ex)
-              (throw ex)))
-        #+cljs
-        (catch js/Error ex
-              (log/error (str ex))
-              (throw ex))))))
-  #+clj
-  (async/<!! done-chan))
+  (main/setup
+    (fn [state]
+    (go-loop [state state]
+      (reset! state-ref state)
+      (if (nil? state)
+        (do
+          (log/info "Got nil state. Exiting.")
+          #+clj
+          (async/>! done-chan true)
+          #+clj
+          (System/exit 0)
+          #+cljs
+          nil)
+      ; tick the old state through the tick-fn to get the new state
+      (recur
+        (try
+          (let [keyin (or (when (= (rw/current-state state) :sleep)
+                            \.)
+                          (let [key-chan (aterminal/get-key-chan (state :screen))]
+                            (log/info  "waiting for key-chan")
+                            (async/<! key-chan)))]
+               (if keyin
+                 (main/tick state keyin)
+                 state))
+          #+clj
+          (catch Exception ex
+            (do 
+                (print-stack-trace ex)
+                (throw ex)))
+          #+cljs
+          (catch js/Error ex
+                (log/error (str ex))
+                (throw ex))))))
+    #+clj
+    (async/<!! done-chan))))
           
 #+cljs
 (-main)

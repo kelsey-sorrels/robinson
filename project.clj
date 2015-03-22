@@ -23,10 +23,9 @@
                  [org.clojure/clojurescript "0.0-3030"]
                  [clj-http "1.0.1"]
                  [cljs-webgl "0.1.5-SNAPSHOT"]
-                 [com.palletops/thread-expr "1.3.0"]
                  [ns-tracker "0.2.2"]
+                 [jamesmacaulay/cljs-promises "0.1.0"]
                  [aaron-santos/tinter "0.1.1-SNAPSHOT"]
-                 ;; TODO: point to fork
                  [aaron-santos/clj-tiny-astar "0.1.1-SNAPSHOT"]
                  [dorothy "0.0.6"]
                  [shodan "0.4.1"]

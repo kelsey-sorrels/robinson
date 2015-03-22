@@ -9,6 +9,8 @@
             [robinson.update :as ru]
             [robinson.monstergen :as mg]
             [robinson.render :as rrender]
+            #+clj  [robinson.swingterminal :as swingterminal]
+            #+cljs [robinson.webglterminal :as webglterminal]
             #+clj
             [robinson.macros :as rm]
             #+cljs
@@ -19,8 +21,10 @@
             [clojure.core.async :as async :refer [go go-loop]]
             #+cljs
             [cljs.core.async :as async]
-            #+clj  [robinson.swingterminal :as swingterminal]
-            #+cljs [robinson.webglterminal :as webglterminal]
+            #+cljs
+            [cljs-promises.core :as p]
+            #+cljs
+            [cljs-promises.async :refer-macros [<?]]
             [robinson.aterminal :as aterminal]
             #+clj
             [clojure.java.io :as io]
@@ -33,10 +37,17 @@
             #+clj
             [taoensso.timbre :as log]
             #+cljs
-            [shodan.console :as log :include-macros true])
+            [shodan.console :as log :include-macros true]
+            #+cljs
+            [cljs-promises.core :as p]
+            #+cljs
+            [cljs-promises.async :refer-macros [<?]])
 
   #+clj
   (:import [java.io DataInputStream DataOutputStream])
+  #+cljs
+  (:import [goog.net XhrIo]
+           [goog Uri])
   #+cljs
   (:require-macros [cljs.core.async.macros :refer [go go-loop]]
                    [robinson.macros :as rm]))
@@ -44,6 +55,9 @@
 
 #+clj
 (log/set-config! [] (read-string (slurp "config/timbre.clj")))
+
+#+cljs
+#_(cljs-promises.async/extend-promises-as-pair-channels!)
 
 (def save-chan (async/chan (async/sliding-buffer 1)))
 
@@ -122,6 +136,19 @@
       (catch js/Error e
         (log/error e)
         state)))
+#+cljs
+(defn get-resource [path]
+  (-> (p/promise (fn [resolve reject]
+                   (XhrIo/send path (fn [e]
+                                      (log/info e)
+                                      (if (.isSuccess (.-target e))
+                                        (resolve (.getResponseText (.-target e)))
+                                        (reject (.-target e)))))))
+      (p/then (fn [e]
+                (log/info "Got response" e)
+                (cljs.reader/read-string e))
+              (fn [e] (log/error (str e))))
+      (p/catch (fn [e] (log/error (str e))))))
 
 ;; Example setup and tick fns
 (defn setup
@@ -139,8 +166,8 @@
    * a `:settings` the contents of `/config/settings.edn`.
 
    * `quests` that are loaded dynamically on startup."
-  ([] (setup nil))
-  ([screen]
+  ([f] (setup nil f))
+  ([screen f]
   (let [data  #+clj
               (apply hash-map
                 (mapcat (fn [file]
@@ -151,7 +178,8 @@
                         (.listFiles (clojure.java.io/file "data"))))
               ;TODO: read from js var
               #+cljs
-              {}
+              (p/all [(get-resource "data/atmo")
+                      (get-resource "data/help")])
         _     (when (get data :seed)
                 (rr/set-rnd! (rr/create-random (get data :seed))))
         world #+clj
@@ -201,8 +229,13 @@
                       (webglterminal/make-terminal 80 24 [255 255 255] [0 0 0] nil
                                                (get settings :windows-font)
                                                (get settings :else-font)
-                                               (get settings :font-size)))
-        state {:world world :screen terminal :quests {} #_quest-map :dialog {} #_dialog :data data :settings settings}]
+                                               (get settings :font-size)))]
     ;; tick once to render frame
-    (tick state \.))))
+    #+clj
+    (let [state {:world world :screen terminal :quests {} #_quest-map :dialog {} #_dialog :data data :settings settings}]
+      (f (tick state \.)))
+    #+cljs
+    (p/then data (fn [[atmo help]]
+      (let [state {:world world :screen terminal :quests {} #_quest-map :dialog {} #_dialog :data {:atmo atmo :help help}  :settings settings}]
+        (f (tick state \.))))))))
 

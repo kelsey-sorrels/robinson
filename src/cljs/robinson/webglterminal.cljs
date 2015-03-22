@@ -304,6 +304,7 @@
                                     line
                                     (map-indexed vector s)))))))))
         (put-chars [this characters]
+          #_(log/info "characters" (str characters))
           (swap! character-map
             (fn [cm]
               (reduce (fn [cm [row row-characters]]
@@ -325,7 +326,8 @@
                                      row-characters)))
                           cm))
                       cm
-                      (group-by :y characters)))))
+                      (group-by :y characters))))
+            #_(log/info "character-map" (str @character-map)))
         (get-key-chan [this]
           key-chan)
         (set-cursor [this xy]

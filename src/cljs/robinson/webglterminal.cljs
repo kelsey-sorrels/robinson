@@ -49,8 +49,11 @@
                     (= kc key-codes/NUMPAD7)    :numpad7
                     (= kc key-codes/NUMPAD8)    :numpad8
                     (= kc key-codes/NUMPAD9)    :numpad9
-                    true (when (<= \a (.toLowerCase (char kc)) \z)
-                           (.toLowerCase (char kc))))]
+                    true (when (or (<= \a (char kc) \z)
+                                   (<= \A (char kc) \Z)
+                                   (<= \0 (char kc) \9)
+                                   (contains? #{\, \. \? \;} (char kc)))
+                           (char kc)))]
       (go
         (async/>! key-chan kc))))))
 

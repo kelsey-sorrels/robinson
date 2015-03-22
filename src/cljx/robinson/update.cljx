@@ -22,7 +22,10 @@
             [robinson.worldgen :as rworldgen]
             [robinson.lineofsight :as rlos]
             robinson.macros
+            #+clj
             [robinson.macros :as rm]
+            #+cljs
+            [robinson.macros :as rm :include-macros true]
             #+clj
             clojure.pprint
             ;clojure.core.memoize
@@ -53,9 +56,7 @@
             #+cljs
             [goog.string :as gstring]
             #+cljs
-            [goog.string.format])
-  #+cljs
-  (:require-macros [robinson.macros :as rm]))
+            [goog.string.format]))
 
 
 (defn format [s & args]

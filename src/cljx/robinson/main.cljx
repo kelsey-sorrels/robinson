@@ -39,6 +39,8 @@
             #+cljs
             [shodan.console :as log :include-macros true]
             #+cljs
+            [goog.net.XhrIo :as xhr]
+            #+cljs
             [cljs-promises.core :as p]
             #+cljs
             [cljs-promises.async :refer-macros [<?]])
@@ -46,8 +48,7 @@
   #+clj
   (:import [java.io DataInputStream DataOutputStream])
   #+cljs
-  (:import [goog.net XhrIo]
-           [goog Uri])
+  (:import [goog Uri])
   #+cljs
   (:require-macros [cljs.core.async.macros :refer [go go-loop]]
                    [robinson.macros :as rm]))
@@ -139,11 +140,13 @@
 #+cljs
 (defn get-resource [path]
   (-> (p/promise (fn [resolve reject]
-                   (XhrIo/send path (fn [e]
-                                      (log/info e)
-                                      (if (.isSuccess (.-target e))
-                                        (resolve (.getResponseText (.-target e)))
-                                        (reject (.-target e)))))))
+                   (xhr/send
+                     path
+                     (fn [e]
+                       (log/info e)
+                       (if (.isSuccess (.-target e))
+                         (resolve (.getResponseText (.-target e)))
+                         (reject (.-target e)))))))
       (p/then (fn [e]
                 (log/info "Got response" e)
                 (cljs.reader/read-string e))

@@ -71,6 +71,9 @@
                                    ;:output-dir "target"
                                    :foreign-libs [{
                                      :file "src/js/gl-matrix-min.js" :provides ["mat4","mat3","vec3"]}]
+;
+                                   :language-in  :ecmascript5
+                                   ;:optimizations :advanced
                                    ;:optimizations :simple
                                    ;:source-map true
                                    :pretty-print true}}

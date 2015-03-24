@@ -2361,11 +2361,11 @@
                                         (map-indexed (fn [vx cell]
                                                        [cell (+ v-x vx) (+ v-y vy)])
                                                      line))
-                                      (rv/cells-in-viewport state)))
-        fire-xys (set (filter (fn filter-fire-cells
-                                [[cell x y]]
-                                (= (get cell :type) :fire))
-                              viewport-cells))]
+                                      (rv/cells-in-viewport state)))]
+        ;fire-xys (set (filter (fn filter-fire-cells
+        ;                        [[cell x y]]
+        ;                        (= (get cell :type) :fire))
+        ;                      viewport-cells))]
     (reduce 
       (fn cell-reduction-fn [state [cell x y]]
         (let [;cell       (get-cell-m x y)
@@ -2407,7 +2407,8 @@
                       state))
                   state)
                 ;; update fire
-                (contains? fire-xys [x y])
+                (= cell-type :fire)
+                ;(contains? fire-xys [x y])
                 (as-> state state
                   (rw/update-cell state x y (fn [cell] (update-in cell [:fuel] dec)))
                   ;; chance of fire spreading

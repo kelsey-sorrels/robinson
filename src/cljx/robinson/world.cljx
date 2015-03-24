@@ -490,14 +490,20 @@
   [state hotkey]
   (first (filter (fn [item] (= hotkey (get item :hotkey))) (inventory-and-player-cell-items state))))
 
+(def night-cache (atom {}))
+
 (defn is-night?
   [state]
   (let [atmo   (get-in state [:data :atmo])
         frames (count atmo)
-        t      (mod (get-in state [:world :time]) frames)
-        frame  (nth atmo t)
-        values (flatten frame)]
-    (zero? (reduce + values))))
+        t      (mod (get-in state [:world :time]) frames)]
+    (if (contains? @night-cache (/ t 80))
+      (get @night-cache (/ t 80))
+      (let [frame  (nth atmo t)
+            values (flatten frame)
+            night? (zero? (reduce + values))]
+      (swap! night-cache (fn [c] (assoc c (/ t 80) night?)))
+      night?))))
 
 (defn is-day?
   [state]

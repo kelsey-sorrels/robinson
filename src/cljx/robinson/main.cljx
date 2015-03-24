@@ -57,9 +57,6 @@
 #+clj
 (log/set-config! [] (read-string (slurp "config/timbre.clj")))
 
-#+cljs
-#_(cljs-promises.async/extend-promises-as-pair-channels!)
-
 (def save-chan (async/chan (async/sliding-buffer 1)))
 
 (def render-chan (async/chan (async/sliding-buffer 1)))

@@ -729,7 +729,7 @@
                                            (not (cell :discovered)))
                                      (conj! characters {:x vx :y vy :c " " :fg [0 0 0] :bg [0 0 0]})
                                      (let [cell-items (cell :items)
-                                           _ (log/info "cell" (str cell))
+                                           ;_ (log/info "cell" (str cell))
                                            out-char (apply fill-put-string-color-style-defaults
                                                       (if (and cell-items
                                                                (seq cell-items)
@@ -855,7 +855,7 @@
                                          (conj! characters {:x vx :y vy :c (get shaded-out-char 0) :fg (get shaded-out-char 1) :bg (get shaded-out-char 2)}))))
                                     (transient [])
                                     cells))]
-    (log/info "putting chars" characters)
+    #_(log/info "putting chars" characters)
     (put-chars screen characters)
     ;; draw character
     ;(log/debug (-> state :world :player))

@@ -1911,13 +1911,12 @@
         _                (log/info "delta will-to-live" (float dwtl))
         will-to-live     (min (+ will-to-live dwtl)
                               max-will-to-live)]
-  (-> state
-    ((fn [place]
-            (reduce (fn [state [x y]]
-                      (rw/assoc-cell state x y :discovered new-time))
-                    state
-                    visible-cells)))
-    (assoc-in [:world :player :will-to-live] will-to-live))))
+  (as-> state state
+    (reduce (fn [state [x y]]
+              (rw/assoc-cell state x y :discovered new-time))
+            state
+            visible-cells)
+    (assoc-in state [:world :player :will-to-live] will-to-live))))
 
 (defn toggle-mount
   "Mount or unmount at the current cell."

@@ -39,6 +39,8 @@
             #+cljs
             [shodan.console :as log :include-macros true]
             #+cljs
+            [alandipert.storage-atom :refer [local-storage]]
+            #+cljs
             [goog.net.XhrIo :as xhr]
             #+cljs
             [cljs-promises.core :as p]
@@ -57,9 +59,15 @@
 #+clj
 (log/set-config! [] (read-string (slurp "config/timbre.clj")))
 
+#+cljs
+(cljs.reader/register-tag-parser! "robinson.monstergen.Monster" mg/map->Monster)
+
 (def save-chan (async/chan (async/sliding-buffer 1)))
 
 (def render-chan (async/chan (async/sliding-buffer 1)))
+
+#+cljs
+(def world-storage (local-storage (atom nil) :world))
 
 (go-loop []
   (let [state (async/<! save-chan)]
@@ -69,6 +77,8 @@
       (with-open [o (io/output-stream "save/world.edn")]
         (nippy/freeze-to-out! (DataOutputStream. o) (get state :world)))
       (catch Throwable e (log/error e)))
+    #+cljs
+    (reset! world-storage (get state :world))
     ;(as-> state state
     ;  (get state :world)
     ;  (pp/write state :stream nil)
@@ -176,7 +186,6 @@
                              (slurp)
                              (clojure.edn/read-string))])
                         (.listFiles (clojure.java.io/file "data"))))
-              ;TODO: read from js var
               #+cljs
               (p/all [(get-resource "data/atmo")
                       (get-resource "data/help")])
@@ -191,8 +200,10 @@
                  :time 0})
               ;TODO: read from local storage
               #+cljs
-              {:current-state :start
-               :time 0}
+              (if-let [world @world-storage]
+                world
+                {:current-state :start
+                 :time 0})
         ;; load quests
         ;_ (doall (map #(load-file (.getPath %))
         ;               (filter (fn [file] (.endsWith (.getPath file) ".clj"))

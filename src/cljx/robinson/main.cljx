@@ -198,7 +198,7 @@
       
                 {:current-state :start
                  :time 0})
-              ;TODO: read from local storage
+              ;; Read from local storage
               #+cljs
               (if-let [world @world-storage]
                 world

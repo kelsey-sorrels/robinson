@@ -408,20 +408,21 @@
                   _                (.disable gl capability/polygon-offset-fill)
                   _                (.disable gl capability/sample-alpha-to-coverage)
                   _                (.activeTexture gl texture-unit/texture1)
-                  _                (.bindTexture gl texture-target/texture-2d glyph-texture)]
+                  _                (.bindTexture gl texture-target/texture-2d glyph-texture)
+                  data             (.-data glyph-image-data)]
                 ;; Update glyph texture in memory
                 (doseq [row (range rows)
                         col (range columns)]
                    (let [c         (get-in @character-map [row col])
                          chr       (str (get c :character))
-                         i         (* 4 (+ (* columns row) col))
+                         i         (* 4 (+ (* glyph-texture-width row) col))
                          highlight (= @cursor-xy [col row])
                          [x y]     (get character->xy chr)]
-                     (aset (.-data glyph-image-data) (+ i 0) x)
-                     (aset (.-data glyph-image-data) (+ i 1) y)
-                     (aset (.-data glyph-image-data) (+ i 2) 0)
-                     (aset (.-data glyph-image-data) (+ i 3) 0)))
-
+                     (aset data (+ i 0) x)
+                     (aset data (+ i 1) y)
+                     (aset data (+ i 2) 0)
+                     (aset data (+ i 3) 0)))
+                (.putImageData glyph-canvas glyph-image-data 0 0)
                 (log/info "Updating glyph texture with data:" (.-data glyph-image-data))
                 ; Send updated glyph texture to gl
                 (.texImage2D

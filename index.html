@@ -6,17 +6,44 @@
   </head>
   <body style="background-color: black;">
     <canvas id="character-canvas" style="display:none"></canvas>
+    <!--<canvas id="character-canvas"></canvas>-->
+    <!--<canvas id="glyph-canvas" style="display:none"></canvas>-->
+    <canvas id="glyph-canvas"></canvas>
     <canvas id="terminal-canvas" style=" display: block; margin: 0 auto;"></canvas>
 
     <script id="shader-fs" type="x-shader/x-fragment">
       precision mediump float;
-
-      uniform sampler2D uSampler;
+      uniform sampler2D uFont, uGlyphs;//, uForeground, uBackground;
+      uniform vec2 fontSize, termDimensions, fontTextureDimensions, glyphTextureDimensions;
 
       varying vec2 vTextureCoord;
 
       void main(void) {
-          gl_FragColor = texture2D(uSampler, vTextureCoord);
+        // gx = column
+        // gy = row
+        float gx = floor(vTextureCoord.x * termDimensions.x);
+        float gy = floor(vTextureCoord.y * termDimensions.y);
+        // row,column -> glyph texture uvs
+        float gu = gx / glyphTextureDimensions.x;
+        float gv = gy / glyphTextureDimensions.y;
+        // look up which glyph to use at [col, row]
+        vec2 g = texture2D(uGlyphs, vec2(gu, gv)).xy;
+        // That green and red channel mingling? Yeah that's because some
+        // mobile devices have less than 8 bits per channel
+        //float gp = floor(glyph.r * 256.0 + floor((glyph.g * 16.0) * 256.0)) / 16.0;
+        //float gy = 0.9375 - (floor(gp) / 16.0);
+        //float gx = gp - floor(gp);
+        // calc the position of the fragment relative to the cell
+        float cu = fract(vTextureCoord.x * termDimensions.x);
+        float cv = fract(vTextureCoord.y * termDimensions.y);
+        float fu = ((g.x * fontTextureDimensions.x) + cu) * fontSize.x / fontTextureDimensions.x;
+        float fv = ((g.y * fontTextureDimensions.y) + cv) * fontSize.y / fontTextureDimensions.y;
+        vec4 fnt = texture2D(uFont, vec2(fu, fv)); 
+        //gl_FragColor = vec4(cu, cv, 0, 0);
+        //gl_FragColor = vec4(fu, fv, 0, 0);
+        //gl_FragColor = vec4(g.x, g.y, 0, 0);
+        //gl_FragColor = vec4(gu, gv, 0, 0);
+        gl_FragColor = fnt;
 
           //gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
           //gl_FragColor = vec4(texture2D(uSampler, vec2(vTextureCoord.s, vTextureCoord.t)).r, 1.0, 1.0, 1.0);

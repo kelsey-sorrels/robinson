@@ -148,13 +148,14 @@
                 :height height}))
     (-> ctx
       (canvas/fill-style "#000000")
-      (canvas/fill-rect {:x 0 :y 0 :w 600 :h 600}))
+      (canvas/fill-rect {:x 0 :y 0 :w 600 :h 600})
+      (canvas/font-style "14px sans-serif"))
     (doseq [line character-layout]
       (doseq [[c x y] line]
       (log/info c x y)
       (-> ctx
-        (canvas/fill-style "#f9fdf1")
-        (canvas/text {:text (str c) :x (+ 2 x) :y (+ 9 y)}))))
+        (canvas/fill-style "#ffffff")
+        (canvas/text {:text (str c) :x (+ 0 x) :y (+ 14 y)}))))
     [width height]))
 
 (defn init-shaders [gl]
@@ -205,29 +206,41 @@
                  windows-font
                  else-font
                  font-size]
-    (let [normal-font      "20px Georgia"
-          _                (log/info "Using font" normal-font)
-          default-fg-color [(long default-fg-color-r) (long default-fg-color-g) (long default-fg-color-b)]
-          default-bg-color [(long default-bg-color-g) (long default-bg-color-g) (long default-bg-color-b)]
+    (let [normal-font          "20px Georgia"
+          _                    (log/info "Using font" normal-font)
+          default-fg-color     [(long default-fg-color-r) (long default-fg-color-g) (long default-fg-color-b)]
+          default-bg-color     [(long default-bg-color-g) (long default-bg-color-g) (long default-bg-color-b)]
           ;; create texture atlas
-          character-map    (atom (vec (repeat rows (vec (repeat columns (make-terminal-character \space default-fg-color default-bg-color #{}))))))
-          cursor-xy        (atom nil)
+          character-map        (atom (vec (repeat rows (vec (repeat columns (make-terminal-character \space default-fg-color default-bg-color #{}))))))
+          cursor-xy            (atom nil)
           character-canvas-dom (by-id :character-canvas)
-          character-canvas (:ctx (canvas/monet-canvas character-canvas-dom "2d"))
-          glyph-canvas-dom (by-id :glyph-canvas)
-          terminal-canvas-dom (by-id :terminal-canvas)
+          glyph-canvas-dom     (by-id :glyph-canvas)
+          fg-canvas-dom        (by-id :fg-canvas)
+          bg-canvas-dom        (by-id :bg-canvas)
+          terminal-canvas-dom  (by-id :terminal-canvas)
+
+          character-canvas     (:ctx (canvas/monet-canvas character-canvas-dom "2d"))
 
           [font-texture-width
            font-texture-height] (draw-character-canvas! character-canvas-dom character-canvas)
           ;; Set glyph canvas and texture to power of 2 dimensions.
           glyph-texture-width  (next-pow-2 (max columns rows))
           glyph-texture-height (next-pow-2 (max columns rows))
-          _                    (log/info "Setting glyph texture width/height to" glyph-texture-width glyph-texture-height)
           _                    (dom/setProperties 
                                  glyph-canvas-dom
                                  (clj->js {:width  glyph-texture-width
                                            :height glyph-texture-height})) 
-          glyph-canvas     (:ctx (canvas/monet-canvas glyph-canvas-dom "2d"))
+          _                    (dom/setProperties 
+                                 fg-canvas-dom
+                                 (clj->js {:width  glyph-texture-width
+                                           :height glyph-texture-height})) 
+          _                    (dom/setProperties 
+                                 bg-canvas-dom
+                                 (clj->js {:width  glyph-texture-width
+                                           :height glyph-texture-height})) 
+          glyph-canvas         (:ctx (canvas/monet-canvas glyph-canvas-dom "2d"))
+          fg-canvas            (:ctx (canvas/monet-canvas fg-canvas-dom "2d"))
+          bg-canvas            (:ctx (canvas/monet-canvas bg-canvas-dom "2d"))
 
           ;; adjust terminal canvas height
           _                (dom/setProperties 
@@ -245,10 +258,20 @@
           _ (log/info "Creating glyph array")
           ;glyph-array    (ta/unsigned-int8 (repeat (* columns rows) 0))
           glyph-image-data (.createImageData glyph-canvas glyph-texture-width glyph-texture-height)
-          glyph-texture  (texture/create-texture gl
-                                                      :image glyph-image-data
-                                                      :parameters {texture-parameter-name/texture-mag-filter texture-filter/nearest
-                                                                   texture-parameter-name/texture-min-filter texture-filter/nearest})
+          fg-image-data    (.createImageData fg-canvas    glyph-texture-width glyph-texture-height)
+          bg-image-data    (.createImageData bg-canvas    glyph-texture-width glyph-texture-height)
+          glyph-texture    (texture/create-texture gl
+                                                   :image glyph-image-data
+                                                   :parameters {texture-parameter-name/texture-mag-filter texture-filter/nearest
+                                                                texture-parameter-name/texture-min-filter texture-filter/nearest})
+          fg-texture       (texture/create-texture gl
+                                                   :image fg-image-data
+                                                   :parameters {texture-parameter-name/texture-mag-filter texture-filter/nearest
+                                                                texture-parameter-name/texture-min-filter texture-filter/nearest})
+          bg-texture       (texture/create-texture gl
+                                                   :image bg-image-data
+                                                   :parameters {texture-parameter-name/texture-mag-filter texture-filter/nearest
+                                                                texture-parameter-name/texture-min-filter texture-filter/nearest})
           ;; init shaders
           shader-prog         (init-shaders gl)
           ;; We just need one vertex buffer, a texture-mapped quad will suffice for drawing the terminal.
@@ -274,7 +297,16 @@
               2)
           vertex-position-attribute (shaders/get-attrib-location gl shader-prog "aVertexPosition")
           texture-coord-attribute   (shaders/get-attrib-location gl shader-prog "aTextureCoord")
-          uMVMatrix                 (.getUniformLocation gl shader-prog, "uMVMatrix")
+          uMVMatrix                 (.getUniformLocation gl shader-prog "uMVMatrix")
+          uPMatrix                  (.getUniformLocation gl shader-prog "uPMatrix")
+          uFont                     (.getUniformLocation gl shader-prog "uFont")
+          uGlyphs                   (.getUniformLocation gl shader-prog "uGlyphs")
+          uFg                       (.getUniformLocation gl shader-prog "uFg")
+          uBg                       (.getUniformLocation gl shader-prog "uBg")
+          font-size                 (.getUniformLocation gl shader-prog "fontSize")
+          term-dim                  (.getUniformLocation gl shader-prog "termDimensions")
+          font-tex-dim              (.getUniformLocation gl shader-prog "fontTextureDimensions")
+          glyph-tex-dim             (.getUniformLocation gl shader-prog "glyphTextureDimensions")
           last-uvs-buffer           (atom nil)
           last-fg-color             (atom nil)
           last-bg-color             (atom nil)
@@ -372,31 +404,27 @@
         (refresh [this]
           (.requestAnimationFrame js/window (fn []
             (buffers/clear-color-buffer gl 0.0 0.0 0.0 1.0)
-            (let [uPMatrix         (.getUniformLocation gl shader-prog "uPMatrix")
-                  _                (.uniformMatrix4fv gl uPMatrix nil (get-ortho-matrix gl))
+            (let [_                (.uniformMatrix4fv gl uPMatrix nil (get-ortho-matrix gl))
                   _                (.uniformMatrix4fv gl uMVMatrix, nil, (get-position-matrix [0 0 -1.0]))
                   ; Setup vertex buffer
                   _                (.bindBuffer gl buffer-object/array-buffer, square-vertex-buffer)
                   _                (.enableVertexAttribArray gl 0)
                   _                (.vertexAttribPointer gl 0, 3, data-type/float, false, 0, 0)
-                  ; Setup texture buffer
+                  ; Setup uv buffer
                   _                (.bindBuffer gl buffer-object/array-buffer, square-texture-buffer)
-                  _                (.vertexAttribPointer gl 1, 2, data-type/float, false, 0, 0)
                   _                (.enableVertexAttribArray gl 1)
-
+                  _                (.vertexAttribPointer gl 1, 2, data-type/float, false, 0, 0)
+                  ; Setup font texture
                   _                (.activeTexture gl texture-unit/texture0)
                   _                (.bindTexture gl texture-target/texture-2d font-texture)
-                  uFont            (.getUniformLocation gl shader-prog, "uFont")
                   _                (.uniform1i gl uFont, 0)
-                  uGlyphs          (.getUniformLocation gl shader-prog, "uGlyphs")
+                  ; Setup uniforms for glyph, fg, bg, textures
                   _                (.uniform1i gl uGlyphs 1)
-                  font-size        (.getUniformLocation gl shader-prog, "fontSize")
+                  _                (.uniform1i gl uFg 2)
+                  _                (.uniform1i gl uBg 3)
                   _                (.uniform2f gl font-size, 12.0 16.0)
-                  term-dim         (.getUniformLocation gl shader-prog, "termDimensions")
                   _                (.uniform2f gl term-dim columns rows)
-                  font-tex-dim     (.getUniformLocation gl shader-prog, "fontTextureDimensions")
                   _                (.uniform2f gl font-tex-dim font-texture-width font-texture-height)
-                  glyph-tex-dim    (.getUniformLocation gl shader-prog, "glyphTextureDimensions")
                   _                (.uniform2f gl glyph-tex-dim glyph-texture-width glyph-texture-height)
                   _                (.disable gl capability/sample-coverage)
                   _                (.disable gl capability/blend)
@@ -407,24 +435,34 @@
                   _                (.disable gl capability/depth-test)
                   _                (.disable gl capability/polygon-offset-fill)
                   _                (.disable gl capability/sample-alpha-to-coverage)
-                  _                (.activeTexture gl texture-unit/texture1)
-                  _                (.bindTexture gl texture-target/texture-2d glyph-texture)
-                  data             (.-data glyph-image-data)]
+                  glyph-data       (.-data glyph-image-data)
+                  fg-data          (.-data fg-image-data)
+                  bg-data          (.-data bg-image-data)]
                 ;; Update glyph texture in memory
                 (doseq [row (range rows)
                         col (range columns)]
                    (let [c         (get-in @character-map [row col])
                          chr       (str (get c :character))
+                         [fg-r fg-g fg-b] (get c :fg-color)
+                         [bg-r bg-g bg-b] (get c :bg-color)
                          i         (* 4 (+ (* glyph-texture-width row) col))
                          highlight (= @cursor-xy [col row])
                          [x y]     (get character->xy chr)]
-                     (aset data (+ i 0) x)
-                     (aset data (+ i 1) y)
-                     (aset data (+ i 2) 0)
-                     (aset data (+ i 3) 0)))
-                (.putImageData glyph-canvas glyph-image-data 0 0)
-                (log/info "Updating glyph texture with data:" (.-data glyph-image-data))
+                     (aset glyph-data (+ i 0) x)
+                     (aset glyph-data (+ i 1) y)
+                     (aset glyph-data (+ i 2) 0)
+                     (aset glyph-data (+ i 3) 0)
+                     (aset fg-data    (+ i 0) fg-r)
+                     (aset fg-data    (+ i 1) fg-g)
+                     (aset fg-data    (+ i 2) fg-b)
+                     (aset fg-data    (+ i 3) 0)
+                     (aset bg-data    (+ i 0) bg-r)
+                     (aset bg-data    (+ i 1) bg-g)
+                     (aset bg-data    (+ i 2) bg-b)
+                     (aset bg-data    (+ i 3) 0)))
                 ; Send updated glyph texture to gl
+                (.activeTexture gl texture-unit/texture1)
+                (.bindTexture gl texture-target/texture-2d glyph-texture)
                 (.texImage2D
                   gl
                   texture-target/texture-2d
@@ -433,6 +471,28 @@
                   pixel-format/rgba
                   data-type/unsigned-byte
                   glyph-image-data)
+                ; Send updated fg texture to gl
+                (.activeTexture gl texture-unit/texture2)
+                (.bindTexture gl texture-target/texture-2d fg-texture)
+                (.texImage2D
+                  gl
+                  texture-target/texture-2d
+                  0
+                  pixel-format/rgba
+                  pixel-format/rgba
+                  data-type/unsigned-byte
+                  fg-image-data)
+                ; Send updated bg texture to gl
+                (.activeTexture gl texture-unit/texture3)
+                (.bindTexture gl texture-target/texture-2d bg-texture)
+                (.texImage2D
+                  gl
+                  texture-target/texture-2d
+                  0
+                  pixel-format/rgba
+                  pixel-format/rgba
+                  data-type/unsigned-byte
+                  bg-image-data)
                 (.drawArrays gl draw-mode/triangle-strip, 0, 4)))))
         (clear [this]
           (let [c (make-terminal-character \space default-fg-color default-bg-color #{})]

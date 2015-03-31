@@ -8,12 +8,14 @@
     <canvas id="character-canvas" style="display:none"></canvas>
     <!--<canvas id="character-canvas"></canvas>-->
     <!--<canvas id="glyph-canvas" style="display:none"></canvas>-->
-    <canvas id="glyph-canvas"></canvas>
+    <canvas id="glyph-canvas" style="display:none;"></canvas>
+    <canvas id="fg-canvas" style="display:none;"></canvas>
+    <canvas id="bg-canvas" style="display:none;"></canvas>
     <canvas id="terminal-canvas" style=" display: block; margin: 0 auto;"></canvas>
 
     <script id="shader-fs" type="x-shader/x-fragment">
       precision mediump float;
-      uniform sampler2D uFont, uGlyphs;//, uForeground, uBackground;
+      uniform sampler2D uFont, uGlyphs, uFg, uBg;
       uniform vec2 fontSize, termDimensions, fontTextureDimensions, glyphTextureDimensions;
 
       varying vec2 vTextureCoord;
@@ -39,11 +41,16 @@
         float fu = ((g.x * fontTextureDimensions.x) + cu) * fontSize.x / fontTextureDimensions.x;
         float fv = ((g.y * fontTextureDimensions.y) + cv) * fontSize.y / fontTextureDimensions.y;
         vec4 fnt = texture2D(uFont, vec2(fu, fv)); 
+        vec4 fg  = texture2D(uFg, vec2(gu, gv));
+        vec4 bg  = texture2D(uBg, vec2(gu, gv));
         //gl_FragColor = vec4(cu, cv, 0, 0);
         //gl_FragColor = vec4(fu, fv, 0, 0);
         //gl_FragColor = vec4(g.x, g.y, 0, 0);
         //gl_FragColor = vec4(gu, gv, 0, 0);
-        gl_FragColor = fnt;
+        //gl_FragColor = fnt;
+        //gl_FragColor = fg;
+        //gl_FragColor = mix(bg, fg, fnt.a);
+        gl_FragColor = mix(bg, fg, fnt.r);
 
           //gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
           //gl_FragColor = vec4(texture2D(uSampler, vec2(vTextureCoord.s, vTextureCoord.t)).r, 1.0, 1.0, 1.0);

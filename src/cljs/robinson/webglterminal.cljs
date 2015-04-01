@@ -33,6 +33,8 @@
 (log/info "getting character-canvas")
 
 (def key-chan (async/chan))
+(def char-width 9)
+(def char-height 16)
 
 (events/listen js/window event-type/KEYPRESS (fn [ev]
   (let [kc (.-keyCode ev)]
@@ -107,7 +109,7 @@
         (mapv concat
         (map-indexed (fn [y line]
                        (map-indexed (fn [x c]
-                                      [c (* x 12) (* y 16)])
+                                      [c (* x char-width) (* y char-height)])
                                     line))
                      character-matrix))))
 
@@ -123,7 +125,7 @@
 ;;              [u1 v1]
 (def character->uvs
   (reduce (fn [m [c x y]]
-            (assoc m c [x y (+ x 12) (+ y 16)]))
+            (assoc m c [x y (+ x char-width) (+ y char-height)]))
           {}
           (mapcat concat character-layout)))
 
@@ -138,9 +140,11 @@
 (defn draw-character-canvas!
   [character-canvas-dom character-canvas]
   ;; Adjust canvas to fit character atlas size
-  (let [width  (next-pow-2 (* 12 (count (first character-layout))))
-        height (next-pow-2 (* 16 (count character-layout)))
-        ctx    character-canvas]
+  (let [cwidth  (next-pow-2 (* char-width (count (first character-layout))))
+        cheight (next-pow-2 (* char-height (count character-layout)))
+        width   (max cwidth cheight)
+        height  (max cwidth cheight)
+        ctx     character-canvas]
     (log/info "width" width "height" height)
     (dom/setProperties 
       character-canvas-dom
@@ -149,13 +153,22 @@
     (-> ctx
       (canvas/fill-style "#000000")
       (canvas/fill-rect {:x 0 :y 0 :w 600 :h 600})
-      (canvas/font-style "14px sans-serif"))
+      (canvas/font-style "15.0px monospace"))
     (doseq [line character-layout]
       (doseq [[c x y] line]
       (log/info c x y)
-      (-> ctx
-        (canvas/fill-style "#ffffff")
-        (canvas/text {:text (str c) :x (+ 0 x) :y (+ 14 y)}))))
+      (let [cx (+ 0 x)
+            cy (+ 12 y)]
+        (-> ctx
+          (canvas/fill-style "#ffffff")
+          (canvas/save)
+          ((fn [ctx]
+            (log/info "rect" x y char-width char-height)
+            (.rect ctx x y char-width char-height)
+            ctx))
+          (canvas/clip)
+          (canvas/text {:text (str c) :x cx :y cy})
+          (canvas/restore)))))
     [width height]))
 
 (defn init-shaders [gl]
@@ -245,8 +258,8 @@
           ;; adjust terminal canvas height
           _                (dom/setProperties 
                              terminal-canvas-dom
-                             (clj->js {:width  (* columns 12)
-                                       :height (* rows    16)}))
+                             (clj->js {:width  (* columns char-width)
+                                       :height (* rows    char-height)}))
           ;; create gl context
           gl                  (context/get-context terminal-canvas-dom)
           ;; create texture atlas as gl texture
@@ -275,8 +288,8 @@
           ;; init shaders
           shader-prog         (init-shaders gl)
           ;; We just need one vertex buffer, a texture-mapped quad will suffice for drawing the terminal.
-          vx                  (* columns 12)
-          vy                  (* rows 16)
+          vx                  (* columns char-width)
+          vy                  (* rows char-height)
           square-vertex-buffer
             (buffers/create-buffer gl
               (ta/float32 [vx,  vy,  0.0,
@@ -306,46 +319,7 @@
           font-size                 (.getUniformLocation gl shader-prog "fontSize")
           term-dim                  (.getUniformLocation gl shader-prog "termDimensions")
           font-tex-dim              (.getUniformLocation gl shader-prog "fontTextureDimensions")
-          glyph-tex-dim             (.getUniformLocation gl shader-prog "glyphTextureDimensions")
-          last-uvs-buffer           (atom nil)
-          last-fg-color             (atom nil)
-          last-bg-color             (atom nil)
-          ;; Draws character c at position [x y] on the terminal canvas using gl.
-          ;draw-character   (fn [c x y]
-          ;                   (let [highlight (= [x y] @cursor-xy)
-          ;                         fg-color  (if highlight
-          ;                                     (get c :bg-color)
-          ;                                     (get c :fg-color))
-          ;                         bg-color  (if  highlight
-          ;                                     (get c :fg-color)
-          ;                                     (get c :bg-color))
-          ;                         s         (str (get c :character))
-          ;                         style     (get c :style)]
-          ;                     ;(println "filling rect" (* col char-width) (* row char-height) char-width char-height bg-color)
-          ;                     (when-not (and (= s " " )
-          ;                                    (= bg-color default-bg-color))
-          ;                       ;(println "drawing" s "@" x y fg-color bg-color)
-          ;                       ;(.setColor fg-color)
-          ;                       (let [uvs        (character->uvs (get c :character))
-          ;                             uvs-buffer (square-texture-buffer-fn uvs)]
-          ;                       ;(log/info "character->pos" (str character->pos))
-          ;                       ;(log/info "Drawing character" (str c) "uvs" (str uvs))
-          ;                         (when (not= @last-uvs-buffer uvs-buffer)
-          ;                           (reset! last-uvs-buffer uvs-buffer)
-          ;                           (.bindBuffer gl buffer-object/array-buffer, uvs-buffer)
-          ;                           (.vertexAttribPointer gl 1, 2, data-type/float, false, 0, 0))
-          ;                         (.uniformMatrix4fv gl uMVMatrix, nil, (get-position-matrix [x y -1.0]))
-          ;                         (.drawArrays gl draw-mode/triangle-strip, 0, 4)))
-
-          ;                     #_(when (contains? style :underline)
-          ;                       (let [y (dec  char-height)]
-          ;                         (doto offscreen-graphics-2d
-          ;                           (.setColor fg-color)
-          ;                           (.drawLine 0
-          ;                                      y
-          ;                                      char-width
-          ;                                      y))))))]
-          ]
+          glyph-tex-dim             (.getUniformLocation gl shader-prog "glyphTextureDimensions")]
       (reify rat/ATerminal
         (get-size [this]
           [columns rows])
@@ -422,7 +396,7 @@
                   _                (.uniform1i gl uGlyphs 1)
                   _                (.uniform1i gl uFg 2)
                   _                (.uniform1i gl uBg 3)
-                  _                (.uniform2f gl font-size, 12.0 16.0)
+                  _                (.uniform2f gl font-size, char-width char-height)
                   _                (.uniform2f gl term-dim columns rows)
                   _                (.uniform2f gl font-tex-dim font-texture-width font-texture-height)
                   _                (.uniform2f gl glyph-tex-dim glyph-texture-width glyph-texture-height)
@@ -442,12 +416,18 @@
                 (doseq [row (range rows)
                         col (range columns)]
                    (let [c         (get-in @character-map [row col])
-                         chr       (str (get c :character))
-                         [fg-r fg-g fg-b] (get c :fg-color)
-                         [bg-r bg-g bg-b] (get c :bg-color)
-                         i         (* 4 (+ (* glyph-texture-width row) col))
+                         chr       (get c :character)
                          highlight (= @cursor-xy [col row])
+                         [fg-r fg-g fg-b] (if highlight
+                                            (get c :bg-color)
+                                            (get c :fg-color))
+                         [bg-r bg-g bg-b] (if highlight
+                                            (get c :fg-color)
+                                            (get c :bg-color))
+                         s         (str (get c :character))
+                         i         (* 4 (+ (* glyph-texture-width row) col))
                          [x y]     (get character->xy chr)]
+                   ;(when (contains? style :underline)
                      (aset glyph-data (+ i 0) x)
                      (aset glyph-data (+ i 1) y)
                      (aset glyph-data (+ i 2) 0)

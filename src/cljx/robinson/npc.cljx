@@ -72,6 +72,8 @@
 (defn add-npc
   "Add an npc to the specified place and position."
   ([state npc x y]
+  {:pre [(vector? (get-in state [:world :npcs]))]
+   :post [(vector? (get-in % [:world :npcs]))]}
   (add-npc state npc x y nil))
   ([state npc x y buy-fn-path]
   (rc/conj-in state [:world :npcs] (assoc npc :pos {:x x :y y}
@@ -82,11 +84,15 @@
 (defn remove-npc
   "Remove npc from state."
   [state npc]
+  {:pre [(vector? (get-in state [:world :npcs]))]
+   :post [(vector? (get-in % [:world :npcs]))]}
   (rc/remove-in state [:world :npcs] (partial = npc)))
 
 (defn transfer-items-from-npc-to-player
   "Remove items from npc's inventory and add them to the player's inventory."
   [state npc-id item-pred]
+  {:pre [(vector? (get-in state [:world :npcs]))]
+   :post [(vector? (get-in % [:world :npcs]))]}
   (let [npcs                     (get-in state [:world :npcs])
         npc                      (first (filter #(= (% :id) npc-id) npcs))]
     (if npc
@@ -167,9 +173,9 @@
   "Randomly add monsters to the current place's in floor cells."
   [state]
   (let [level (monster-level state)]
-    (if-let [[x y] (rr/rand-nth (filter (fn [[x y]] (not (rw/collide? state x y {:include-npcs? true
-                                                                                 :collide-water? false})))
-                                        (rv/viewport-xys state)))]
+    (if-let [[x y] (first (filter (fn [[x y]] (not (rw/collide? state x y {:include-npcs? true
+                                                                           :collide-water? false})))
+                                  (rr/rnd-shuffle (rv/viewport-xys state))))]
       (add-npc state (mg/gen-random-monster level (get (rw/get-cell state x y) :type))
                      x
                      y)

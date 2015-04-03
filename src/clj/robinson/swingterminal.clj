@@ -74,7 +74,8 @@
           _                (info "Using font" (.getFontName normal-font))
           default-fg-color (Color. (long default-fg-color-r) (long default-fg-color-g) (long default-fg-color-b))
           default-bg-color (Color. (long default-bg-color-g) (long default-bg-color-g) (long default-bg-color-b))
-          character-map    (atom (vec (repeat rows (vec (repeat columns (make-terminal-character \space default-fg-color default-bg-color #{}))))))
+          character-map-cleared (vec (repeat rows (vec (repeat columns (make-terminal-character \space default-fg-color default-bg-color #{})))))
+          character-map    (atom character-map-cleared)
           cursor-xy        (atom nil)
           ;; draws a character to an image and returns the image. 
           glyph-cache      (memoize (fn [component font-metrics highlight char-width char-height c]
@@ -254,10 +255,7 @@
           (SwingUtilities/invokeLater
             (fn refresh-fn [] (.repaint terminal-renderer))))
         (clear [this]
-          (let [c (make-terminal-character \space default-fg-color default-bg-color #{})]
-          (doseq [row (range rows)
-                  col (range columns)]
-            (reset! character-map (assoc-in @character-map [row col] c)))))))))
+          (reset! character-map character-map-cleared))))))
 
 
 (defn -main

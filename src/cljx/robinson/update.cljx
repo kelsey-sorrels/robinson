@@ -1881,7 +1881,9 @@
         _ (log/info "sight-distance" sight-distance)
         will-to-live     (get-in state [:world :player :will-to-live])
         max-will-to-live (get-in state [:world :player :max-will-to-live])
-        get-cell-m       (memoize (fn [x y] (rw/get-cell state x y)))
+                         
+        get-cell-m       #+clj  (memoize (fn [x y] (rw/get-cell state x y)))
+                         #+cljs (fn [x y] (rw/get-cell state x y))
         new-time         (get-in state [:world :time])
         test-cells       (for [x (range (- (get pos :x) (int (rmath/ceil sight-distance)))
                                         (+ (get pos :x) (int (rmath/ceil sight-distance))))
@@ -2366,28 +2368,32 @@
       (fn cell-reduction-fn [state [cell x y]]
         (let [;cell       (get-cell-m x y)
               cell-type  (get cell :type)
-              cell-items (get cell :items)]
+              cell-items (get cell :items)
+              hole-types #{:freshwater-hole :saltwater-hole}
+              still-types #{:solar-still}
+              harvest-types #{:gravel :tree :palm-tree :tall-grass}
+              fruit-tree-types #{:fruit-tree}]
           #_(log/info "updating cell" cell "@" x y)
           #_(log/info "viewport" (get-in state [:world :viewport]))
           (-> 
             (cond
                 ;; update holes
-                (contains? #{:freshwater-hole :saltwater-hole} cell-type)
+                (contains? hole-types cell-type)
                 (rw/update-cell state x y
                   (fn increase-hole-water [cell] (assoc cell :water (min 20 (+ 0.1 (* (rr/uniform-double 1) 0.1) (get cell :water 0.0))))))
                 ;; update solar stills
-                (contains? #{:solar-still} (get cell :type))
+                (contains? still-types (get cell :type))
                 (rw/update-cell state x y
                   (fn increase-still-water [cell] (assoc cell :water (min 20 (+ 0.2 (* (rr/uniform-double 1) 0.1) (get cell :water 0.0))))))
                 ;; drop harvest items
-                (contains? #{:gravel :tree :palm-tree :tall-grass} cell-type)
+                (contains? harvest-types cell-type)
                 (if (= (rr/uniform-int 0 1000) 0)
                   (rw/update-cell state x y
                     (fn drop-harvest-items [cell]
                       (assoc cell :harvestable true)))
                   state)
                 ;; drop fruit
-                (contains? #{:fruit-tree} cell-type)
+                (contains? fruit-tree-types cell-type)
                 ;; chance of dropped a fruit
                 (if (= (rr/uniform-int 0 1000) 0)
                   ;; make the fruit item and find an adjacent free cell to drop it into

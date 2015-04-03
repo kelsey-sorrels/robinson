@@ -55,10 +55,10 @@
                    [robinson.macros :as rm]))
 
 
-#+clj
-(log/set-config! [] (read-string (slurp "config/timbre.clj")))
+;TODO: refer timbre to set this.
+;#+clj
+;(log/set-config! [] (read-string (slurp "config/timbre.clj")))
 
-#+cljs
 (log/set-log-level! :none)
 
 #+cljs

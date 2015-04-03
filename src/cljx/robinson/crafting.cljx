@@ -3,13 +3,10 @@
   (:require #+clj
             [clojure.core.typed :as t]
             [robinson.common :as rc]
+            [robinson.log :as log]
             [robinson.world :as rw]
             [robinson.itemgen :as ig]
             [robinson.player :as rp]
-            #+clj
-            [taoensso.timbre :as log]
-            #+cljs
-            [shodan.console :as log :include-macros true]
             #+cljs
             [goog.string :as gstring]
             #+cljs

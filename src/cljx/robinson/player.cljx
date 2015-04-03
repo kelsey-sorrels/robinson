@@ -1,12 +1,9 @@
 ;; Functions for manipulating player state
 (ns robinson.player
-  (:require [robinson.common :as rc :include-macros true]
+  (:require [robinson.common :as rc]
+            [robinson.log :as log]
             [robinson.random :as rr]
             clojure.set
-            #+clj
-            [taoensso.timbre :as log]
-            #+cljs
-            [shodan.console :as log :include-macros true]
             #+clj
             clojure.string
             #+cljs

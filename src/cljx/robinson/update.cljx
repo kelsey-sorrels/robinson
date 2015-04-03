@@ -2,6 +2,7 @@
 (ns robinson.update
   (:require 
             [robinson.common :as rc]
+            [robinson.log :as log]
             [robinson.random :as rr]
             [robinson.world :as rw]
             [robinson.viewport :as rv]
@@ -47,10 +48,6 @@
             [clj-http.client :as http]
             #+clj
             [clojure.stacktrace :as st]
-            #+clj
-            [taoensso.timbre :as log]
-            #+cljs
-            [shodan.console :as log :include-macros true]
             #+clj
             clojure.string
             #+cljs

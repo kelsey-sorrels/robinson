@@ -1,15 +1,13 @@
 ;; Utility functions and functions for manipulating state
 (ns robinson.common
-  (:require #+clj
+  (:require 
+            [robinson.log :as log]
+            #+clj
             [clojure.core.typed :as t]
             #+cljs
             [goog.string :as gstring]
             #+cljs
-            [goog.string.format]
-            #+clj
-            [taoensso.timbre :as log]
-            #+cljs
-            [shodan.console :as log :include-macros true]))
+            [goog.string.format]))
 
 #+clj
 (t/ann log-io (t/All [a x y ...]

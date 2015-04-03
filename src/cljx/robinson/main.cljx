@@ -1,6 +1,7 @@
 (ns robinson.main
   (:require 
             [robinson.common :as rc]
+            [robinson.log :as log]
             [robinson.random :as rr]
             [robinson.world :as rw]
             [robinson.worldgen :as rwgen]
@@ -34,10 +35,8 @@
             [taoensso.nippy :as nippy]
             #+clj
             [clojure.pprint :refer :all]
-            #+clj
-            [taoensso.timbre :as log]
             #+cljs
-            [shodan.console :as log :include-macros true]
+            shodan.logging
             #+cljs
             [alandipert.storage-atom :refer [local-storage]]
             #+cljs
@@ -60,6 +59,9 @@
 (log/set-config! [] (read-string (slurp "config/timbre.clj")))
 
 #+cljs
+(log/set-log-level! :none)
+
+#+cljs
 (cljs.reader/register-tag-parser! "robinson.monstergen.Monster" mg/map->Monster)
 
 (def save-chan (async/chan (async/sliding-buffer 1)))
@@ -67,7 +69,8 @@
 (def render-chan (async/chan (async/sliding-buffer 1)))
 
 #+cljs
-(def world-storage (local-storage (atom nil) :world))
+;(def world-storage (local-storage (atom nil) :world))
+(def world-storage (atom nil))
 
 (go-loop []
   (let [state (async/<! save-chan)]

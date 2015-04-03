@@ -3,6 +3,7 @@
 ;(set! *warn-on-reflection* true)
 (ns robinson.core
   (:require [robinson.main :as main]
+            [robinson.log :as log]
             [robinson.aterminal :as aterminal]
             [robinson.world :as rw]
             #+clj
@@ -10,11 +11,7 @@
             #+cljs
             [cljs.core.async :as async]
             #+clj
-            [clojure.stacktrace :refer [print-stack-trace]]
-            #+clj
-            [taoensso.timbre :as log]
-            #+cljs
-            [shodan.console :as log :include-macros true])
+            [clojure.stacktrace :refer [print-stack-trace]])
   #+clj
   (:gen-class)
   #+cljs

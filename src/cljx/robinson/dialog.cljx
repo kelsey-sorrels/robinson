@@ -1,12 +1,9 @@
 ;; Functions for drawing dialog trees as finite state machines
 (ns robinson.dialog
   (:require [robinson.common :as rc]
+            [robinson.log :as log]
             #+clj
-            [dorothy.core :refer :all]
-            #+clj
-            [taoensso.timbre :as log]
-            #+cljs
-            [shodan.console :as log :include-macros true]))
+            [dorothy.core :refer :all]))
 
 ;; State Machine Functions
 ;; =======================

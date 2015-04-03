@@ -1,6 +1,7 @@
 ;; Utility functions and functions for manipulating state
 (ns robinson.world
   (:require [robinson.common :as rc]
+            [robinson.log :as log]
             [robinson.player :as rp]
             [robinson.viewport :as rv]
             #+clj
@@ -8,11 +9,7 @@
             #+cljs
             [cljs.core.async :as async]
             #+clj
-            [clojure.java.io :as io]
-            #+clj
-            [taoensso.timbre :as log]
-            #+cljs
-            [shodan.console :as log :include-macros true])
+            [clojure.java.io :as io])
   #+clj
   (:import [java.io DataInputStream DataOutputStream]))
 

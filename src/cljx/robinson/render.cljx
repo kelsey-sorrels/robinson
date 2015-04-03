@@ -1,6 +1,7 @@
 ;; Functions for rendering state to screen
 (ns robinson.render
   (:require 
+            [robinson.log :as log]
             [robinson.random :as rr]
             [robinson.startgame :as sg]
             [robinson.itemgen :as ig]
@@ -38,10 +39,6 @@
             [clojure.pprint :as pprint]
             #+cljs
             [cljs.pprint :as pprint]
-            #+clj
-            [taoensso.timbre :as log]
-            #+cljs
-            [shodan.console :as log :include-macros true]
             #+clj
             clojure.string
             #+cljs
@@ -98,9 +95,9 @@
 
 (defn darken-rgb
   ([rgb]
-  (vec (map #(int (/ % 10)) rgb)))
+  (mapv #(int (/ % 10)) rgb))
   ([rgb d]
-  (vec (map #(int (limit-color (* % d))) rgb))))
+  (mapv #(int (limit-color (* % d))) rgb)))
 
 (defn color->rgb
   [color]
@@ -711,25 +708,28 @@
         [player-x player-y] (player-xy state)
         {{v-x :x v-y :y} :pos}
                        (get-in state [:world :viewport])
-        cells          (apply concat
+        cells          (vec
+                         (filter #(not (get % :discovered))
+                                 (apply concat
                          (map-indexed (fn [vy line]
                                         (map-indexed (fn [vx cell]
                                                        [cell vx vy (+ v-x vx) (+ vy v-y)])
                                                      line))
-                                      (cells-in-viewport state)))
-        ;_ (log/info "cells" cells)
+                                      (cells-in-viewport state)))))
+        ;cells (rv/cellsxy-in-viewport state)
+        ;_ (log/info "cells" (str cells))
         characters     (persistent!
                          (reduce (fn [characters [cell vx vy wx wy]]
                                    ;(log/debug "begin-render")
-                                   ;(clear (state :screen))
+                                   (clear (state :screen))
                                    ;;(debug "rendering place" (current-place state))
                                    ;; draw map
                                    #_(log/info "render-cell" (str cell) vx vy wx wy)
                                    (if (or (nil? cell)
                                            (not (cell :discovered)))
-                                     (conj! characters {:x vx :y vy :c " " :fg [0 0 0] :bg [0 0 0]})
+                                     characters
                                      (let [cell-items (cell :items)
-                                           ;_ (log/info "cell" (str cell))
+                                           ;_ (log/info "cell" (str cell) vx vy)
                                            out-char (apply fill-put-string-color-style-defaults
                                                       (if (and cell-items
                                                                (seq cell-items)

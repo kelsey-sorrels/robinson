@@ -3,13 +3,13 @@
   (:require ;[robinson.common :as rc :refer [error warn info debug trace]]
             [vec3]
             [mat4]
+            [robinson.log :as log]
             [robinson.aterminal :as rat]
             [cljs.core.async :as async]
             [goog.dom :as dom]
             [goog.events :as events]
             [goog.events.EventType :as event-type]
             [goog.events.KeyCodes :as key-codes]
-            [shodan.console :as log :include-macros true]
             [monet.canvas :as canvas]
             [cljs-webgl.context :as context]
             [cljs-webgl.constants.capability :as capability]
@@ -224,15 +224,16 @@
           default-fg-color     [(long default-fg-color-r) (long default-fg-color-g) (long default-fg-color-b)]
           default-bg-color     [(long default-bg-color-g) (long default-bg-color-g) (long default-bg-color-b)]
           ;; create texture atlas
-          character-map        (atom (vec (repeat rows (vec (repeat columns (make-terminal-character \space default-fg-color default-bg-color #{}))))))
-          cursor-xy            (atom nil)
-          character-canvas-dom (by-id :character-canvas)
-          glyph-canvas-dom     (by-id :glyph-canvas)
-          fg-canvas-dom        (by-id :fg-canvas)
-          bg-canvas-dom        (by-id :bg-canvas)
-          terminal-canvas-dom  (by-id :terminal-canvas)
+          character-map-cleared (vec (repeat rows (vec (repeat columns (make-terminal-character \space default-fg-color default-bg-color #{})))))
+          character-map         (atom character-map-cleared)
+          cursor-xy             (atom nil)
+          character-canvas-dom  (by-id :character-canvas)
+          glyph-canvas-dom      (by-id :glyph-canvas)
+          fg-canvas-dom         (by-id :fg-canvas)
+          bg-canvas-dom         (by-id :bg-canvas)
+          terminal-canvas-dom   (by-id :terminal-canvas)
 
-          character-canvas     (:ctx (canvas/monet-canvas character-canvas-dom "2d"))
+          character-canvas      (:ctx (canvas/monet-canvas character-canvas-dom "2d"))
 
           [font-texture-width
            font-texture-height] (draw-character-canvas! character-canvas-dom character-canvas)
@@ -475,10 +476,7 @@
                   bg-image-data)
                 (.drawArrays gl draw-mode/triangle-strip, 0, 4)))))
         (clear [this]
-          (let [c (make-terminal-character \space default-fg-color default-bg-color #{})]
-          (doseq [row (range rows)
-                  col (range columns)]
-            (reset! character-map (assoc-in @character-map [row col] c)))))))))
+          (reset! character-map character-map-cleared))))))
 
 
 (defn -main

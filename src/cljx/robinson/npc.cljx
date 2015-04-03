@@ -1,17 +1,14 @@
 ;; Functions for querying and manipulating npc state
 (ns robinson.npc
   (:require [robinson.random :as rr]
+            [robinson.log :as log]
             [robinson.common :as rc]
             [robinson.player :as rp]
             [robinson.viewport :as rv]
             [robinson.world :as rw]
             [robinson.monstergen :as mg]
             [robinson.dialog :as rdiag]
-            clojure.walk
-            #+clj
-            [taoensso.timbre :as log]
-            #+cljs
-            [shodan.console :as log :include-macros true]))
+            clojure.walk))
 
 (defn adjacent-navigable-pos
   "Return a collection of positions of `:floor` type cells centered around pos.

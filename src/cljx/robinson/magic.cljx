@@ -1,13 +1,10 @@
 ;; Functions for querying and manipulating magic
 (ns robinson.magic
   (:require [robinson.common :as rc]
+            [robinson.log :as log]
             [robinson.world :as rw]
             [robinson.combat :as rcombat]
-            [robinson.npc :as rnpc]
-            #+clj
-            [taoensso.timbre :as log]
-            #+cljs
-            [shodan.console :as log :include-macros true]))
+            [robinson.npc :as rnpc]))
 
 (defn heal [state player-path target-path]
   {:pre [(every? (get-in state target-path) [:hp :max-hp])]}

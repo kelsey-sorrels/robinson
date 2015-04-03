@@ -2,6 +2,7 @@
 (ns robinson.worldgen
   (:require 
             [robinson.common :as rc]
+            [robinson.log :as log]
             [robinson.random :as rr]
             [robinson.math :as rmath]
             [robinson.noise :as rn]
@@ -21,11 +22,7 @@
             #+cljs
             [cljs.core.async :as async]
             #+clj
-            [clojure.java.io :as io]
-            #+clj
-            [taoensso.timbre :as log]
-            #+cljs
-            [shodan.console :as log :include-macros true])
+            [clojure.java.io :as io])
   #+clj
   (:import [java.io DataInputStream DataOutputStream])
   #+cljs

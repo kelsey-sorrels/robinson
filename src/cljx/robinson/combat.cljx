@@ -5,6 +5,7 @@
             #+cljs
             [robinson.macros :as rm :include-macros true]
             [robinson.common :as rc]
+            [robinson.log :as log]
             [robinson.random :as rr]
             [robinson.world :as rw]
             [robinson.player :as rp]
@@ -12,10 +13,6 @@
             [robinson.monstergen :as mg]
             #+clj
             [clojure.pprint :refer [pprint]]
-            #+clj
-            [taoensso.timbre :as log]
-            #+cljs
-            [shodan.console :as log :include-macros true]
             #+cljs
             [goog.string :as gstring]
             #+cljs

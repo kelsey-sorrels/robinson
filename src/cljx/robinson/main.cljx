@@ -59,7 +59,7 @@
 ;#+clj
 ;(log/set-config! [] (read-string (slurp "config/timbre.clj")))
 
-(log/set-log-level! :none)
+(log/set-log-level! :debug)
 
 #+cljs
 (cljs.reader/register-tag-parser! "robinson.monstergen.Monster" mg/map->Monster)
@@ -69,8 +69,8 @@
 (def render-chan (async/chan (async/sliding-buffer 1)))
 
 #+cljs
-;(def world-storage (local-storage (atom nil) :world))
-(def world-storage (atom nil))
+(def world-storage (local-storage (atom nil) :world))
+;(def world-storage (atom nil))
 
 (go-loop []
   (let [state (async/<! save-chan)]

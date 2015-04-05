@@ -3,8 +3,8 @@
   (:require ;[robinson.common :as rc :refer [error warn info debug trace]]
             [vec3]
             [mat4]
-            [robinson.log :as log]
-            ;[shodan.console :as log :include-macros true]
+            ;[robinson.log :as log]
+            [shodan.console :as log :include-macros true]
             [robinson.aterminal :as rat]
             [cljs.core.async :as async]
             [goog.dom :as dom]
@@ -37,28 +37,33 @@
 (def char-width 9)
 (def char-height 16)
 
-(events/listen js/document event-type/KEYPRESS (fn [ev]
+(events/listen js/document event-type/KEYDOWN (fn [ev]
   (let [kc (.-keyCode ev)]
-    (log/info "Got key" kc)
+    (log/info "Got keydown" kc (char kc))
     (when-let [kc (cond
                     (= kc key-codes/ENTER)      :enter
                     (= kc key-codes/ESC)        :escape
                     (= kc key-codes/SPACE)      :space
                     (= kc key-codes/BACKSPACE)  :backspace
-                    (= kc key-codes/NUMPAD1)    :numpad1
-                    (= kc key-codes/NUMPAD2)    :numpad2
-                    (= kc key-codes/NUMPAD3)    :numpad3
-                    (= kc key-codes/NUMPAD4)    :numpad4
-                    (= kc key-codes/NUMPAD5)    :numpad5
-                    (= kc key-codes/NUMPAD6)    :numpad6
-                    (= kc key-codes/NUMPAD7)    :numpad7
-                    (= kc key-codes/NUMPAD8)    :numpad8
-                    (= kc key-codes/NUMPAD9)    :numpad9
-                    true (when (or (<= \a (char kc) \z)
-                                   (<= \A (char kc) \Z)
-                                   (<= \0 (char kc) \9)
-                                   (contains? #{\, \. \? \;} (char kc)))
-                           (char kc)))]
+                    (= kc key-codes/NUM_ONE)    :numpad1
+                    (= kc key-codes/NUM_TWO)    :numpad2
+                    (= kc key-codes/NUM_THREE)  :numpad3
+                    (= kc key-codes/NUM_FOUR)   :numpad4
+                    (= kc key-codes/NUM_FIVE)   :numpad5
+                    (= kc key-codes/NUM_SIX)    :numpad6
+                    (= kc key-codes/NUM_SEVEN)  :numpad7
+                    (= kc key-codes/NUM_EIGHT)  :numpad8
+                    (= kc key-codes/NUM_NINE)   :numpad9)]
+      (go
+        (async/>! key-chan kc))))))
+
+(events/listen js/document event-type/KEYPRESS (fn [ev]
+  (let [kc (.-keyCode ev)]
+    (log/info "Got keypress" kc (char kc))
+    (when-let [kc (when (or (<= \a (char kc) \z)
+                            (<= \A (char kc) \Z)
+                            (contains? #{\, \. \? \;} (char kc)))
+                    (char kc))]
       (go
         (async/>! key-chan kc))))))
 

@@ -4,6 +4,7 @@
             [vec3]
             [mat4]
             [robinson.log :as log]
+            ;[shodan.console :as log :include-macros true]
             [robinson.aterminal :as rat]
             [cljs.core.async :as async]
             [goog.dom :as dom]
@@ -36,13 +37,14 @@
 (def char-width 9)
 (def char-height 16)
 
-(events/listen js/window event-type/KEYPRESS (fn [ev]
+(events/listen js/document event-type/KEYPRESS (fn [ev]
   (let [kc (.-keyCode ev)]
+    (log/info "Got key" kc)
     (when-let [kc (cond
                     (= kc key-codes/ENTER)      :enter
-                    (= kc key-codes/ESCAPE)     :escape
+                    (= kc key-codes/ESC)        :escape
                     (= kc key-codes/SPACE)      :space
-                    (= kc key-codes/BACK_SPACE) :backspace
+                    (= kc key-codes/BACKSPACE)  :backspace
                     (= kc key-codes/NUMPAD1)    :numpad1
                     (= kc key-codes/NUMPAD2)    :numpad2
                     (= kc key-codes/NUMPAD3)    :numpad3
@@ -69,79 +71,59 @@
 
 ;(timbre/refer-timbre)
 
+;; A sequence of [character underline?]
 (def characters
-  (map identity 
-       (concat "abcdefghijklmnopqrstuvwxyz"
-               "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-               " ~!@#$%^&*()_-+=[]{}|:;,./<>?'\""
-               "\u00A7"
-               "\u039B"
-               "\u03B1"
-               "\u03C2"
-               "\u2206"
-               "\u2225"
-               "\u2240"
-               "\u2248"
-               "\u2500"
-               "\u2502"
-               "\u250C"
-               "\u2514"
-               "\u2518"
-               "\u2534"
-               "\u2584"
-               "\u2592"
-               "\u2648"
-               "\u2665")))
+  (let [c (concat
+            "abcdefghijklmnopqrstuvwxyz"
+            "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+            " ~!@#$%^&*()_-+=[]{}|:;,./<>?'\""
+            "\u00A7"
+            "\u039B"
+            "\u03B1"
+            "\u03C2"
+            "\u2206"
+            "\u2225"
+            "\u2240"
+            "\u2248"
+            "\u2500"
+            "\u2502"
+            "\u250C"
+            "\u2514"
+            "\u2518"
+            "\u2534"
+            "\u2584"
+            "\u2592"
+            "\u2648"
+            "\u2665")
+       c (concat (map vector c (repeat false))
+                 (map vector c (repeat true)))]
+    c))
 
-;; A 2d nested sequence of [\character x y] where [x y] is the column,row in the character atlas.
+;; A sequence of [[\character underline?] x y] where [x y] is the column,row in the character atlas.
 (def character-idxs
+  ;(let [character-matrix (partition-all (int (inc (Math/sqrt (count characters)))) characters)]
   (let [character-matrix (partition-all (int (inc (.sqrt js/Math (count characters)))) characters)]
-        (mapv concat
-        (map-indexed (fn [y line]
-                       (map-indexed (fn [x c]
-                                      [c x y])
+        (mapcat concat
+        (map-indexed (fn [row line]
+                       (map-indexed (fn [col c-underline?]
+                                      [c-underline? col row])
                                     line))
                      character-matrix))))
 
-;; A 2d nested sequence of [\character u v] where [u v] is the position in the character atlas.
-(def character-layout
-  (let [character-matrix (partition-all (int (inc (.sqrt js/Math (count characters)))) characters)]
-        (mapv concat
-        (map-indexed (fn [y line]
-                       (map-indexed (fn [x c]
-                                      [c (* x char-width) (* y char-height)])
-                                    line))
-                     character-matrix))))
+(log/info "character-layout" (str character-idxs))
 
-(log/info "character-layout" (str character-layout))
-(log/info "cl" (str (mapcat concat character-layout)))
-
-;; A map from \character to [u0 v0 u1 v1] in the character atlas where
-;;    [u0 v0]
-;;    +--------+
-;;    |        |
-;;    |        |
-;;    +--------+
-;;              [u1 v1]
-(def character->uvs
-  (reduce (fn [m [c x y]]
-            (assoc m c [x y (+ x char-width) (+ y char-height)]))
+;; Map [\character underline?] to [col row]
+(def character->col-row
+  (reduce (fn [m [c-underline? x y]]
+            (assoc m c-underline? [x y]))
           {}
-          (mapcat concat character-layout)))
-
-(def character->xy
-  (reduce (fn [m [c x y]]
-            (assoc m c [x y]))
-          {}
-          (mapcat concat character-idxs)))
-
-(log/info "character->uvs" (str character->uvs))
+          character-idxs))
 
 (defn draw-character-canvas!
   [character-canvas-dom character-canvas]
   ;; Adjust canvas to fit character atlas size
-  (let [cwidth  (next-pow-2 (* char-width (count (first character-layout))))
-        cheight (next-pow-2 (* char-height (count character-layout)))
+  (let [cwidth  (next-pow-2 (* char-width (int (inc (.sqrt js/Math (count characters))))))
+        cheight (next-pow-2 (* char-height (int (inc (.sqrt js/Math (count characters))))))
         width   (max cwidth cheight)
         height  (max cwidth cheight)
         ctx     character-canvas]
@@ -154,11 +136,12 @@
       (canvas/fill-style "#000000")
       (canvas/fill-rect {:x 0 :y 0 :w 600 :h 600})
       (canvas/font-style "15.0px monospace"))
-    (doseq [line character-layout]
-      (doseq [[c x y] line]
-      (log/info c x y)
-      (let [cx (+ 0 x)
+    (doseq [[[c underline?] col row]  character-idxs]
+      (let [x  (* col char-width)
+            y  (* row char-height)
+            cx (+ 0 x)
             cy (+ 12 y)]
+        (log/info c x y)
         (-> ctx
           (canvas/fill-style "#ffffff")
           (canvas/save)
@@ -168,7 +151,16 @@
             ctx))
           (canvas/clip)
           (canvas/text {:text (str c) :x cx :y cy})
-          (canvas/restore)))))
+          (as-> ctx
+            (if underline?
+              (-> ctx
+                (canvas/begin-path)
+                (canvas/stroke-style :white)
+                (canvas/move-to x (+ cy 3.5))
+                (canvas/line-to (+ x char-width) (+ cy 3.5))
+                (canvas/stroke))
+              ctx))
+          (canvas/restore))))
     [width height]))
 
 (defn init-shaders [gl]
@@ -347,6 +339,7 @@
                                           line)))
                                     line
                                     (map-indexed vector s)))))))))
+        ;; characters is a list of {:c \character :x col :y row :fg [r g b] :bg [r g b]}
         (put-chars [this characters]
           #_(log/info "characters" (str characters))
           (swap! character-map
@@ -363,7 +356,7 @@
                                                  bg        (get c :bg)
                                                  fg-color  fg
                                                  bg-color  bg
-                                                 character (make-terminal-character (first (get c :c)) fg-color bg-color {})]
+                                                 character (make-terminal-character (first (get c :c)) fg-color bg-color #{})]
                                              (assoc! line (get c :x) character))
                                            line))
                                      (transient (get cm row))
@@ -426,9 +419,10 @@
                                             (get c :fg-color)
                                             (get c :bg-color))
                          s         (str (get c :character))
+                         style     (get c :style)
                          i         (* 4 (+ (* glyph-texture-width row) col))
-                         [x y]     (get character->xy chr)]
-                   ;(when (contains? style :underline)
+                         [x y]     (get character->col-row [chr (contains? style :underline)])]
+                     ;(log/info "Drawing at col row" col row "character from atlas col row" x y c)
                      (aset glyph-data (+ i 0) x)
                      (aset glyph-data (+ i 1) y)
                      (aset glyph-data (+ i 2) 0)

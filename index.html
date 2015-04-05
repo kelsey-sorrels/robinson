@@ -6,9 +6,9 @@
   </head>
   <body style="background-color: black;">
   <!--<canvas id="character-canvas" style="display:none"></canvas>-->
-    <canvas id="character-canvas"></canvas>
+    <canvas id="character-canvas" style="display:none"></canvas>
     <!--<canvas id="glyph-canvas" style="display:none"></canvas>-->
-    <canvas id="glyph-canvas" style="display:none;"></canvas>
+    <canvas id="glyph-canvas" style="display:none"></canvas>
     <canvas id="fg-canvas" style="display:none;"></canvas>
     <canvas id="bg-canvas" style="display:none;"></canvas>
     <canvas id="terminal-canvas" style=" display: block; margin: 0 auto;"></canvas>
@@ -39,7 +39,7 @@
         float cu = fract(vTextureCoord.x * termDimensions.x);
         float cv = fract(vTextureCoord.y * termDimensions.y);
         float fu = ((g.x * fontTextureDimensions.x) + cu) * fontSize.x / fontTextureDimensions.x;
-        float fv = ((g.y * fontTextureDimensions.y) + cv) * fontSize.y / fontTextureDimensions.y;
+        float fv = (((g.y * fontTextureDimensions.y) + cv) * fontSize.y - 1.0)/ fontTextureDimensions.y;
         vec4 fnt = texture2D(uFont, vec2(fu, fv)); 
         vec4 fg  = texture2D(uFg, vec2(gu, gv));
         vec4 bg  = texture2D(uBg, vec2(gu, gv));

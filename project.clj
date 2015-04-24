@@ -75,7 +75,7 @@
 ;
                                    :language-in  :ecmascript5
                                    ;:optimizations :advanced
-                                   ;:optimizations :simple
+                                   :optimizations :simple
                                    ;:source-map true
                                    :pretty-print true}}
                       :test {

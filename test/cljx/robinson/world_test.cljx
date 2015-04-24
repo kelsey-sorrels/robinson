@@ -76,6 +76,37 @@
          (let [state first-collidable-cells-state] 
            (rw/first-collidable-object state :up 3)))))
 
+(def assoc-cells-state
+  {:world {:viewport {:width 5
+                     :height 5}
+          :width 5
+          :height 5
+          :player {:pos {:x 2 :y 2}}
+          :npcs []
+          :places {[0 0] [[{:type :vertical-wall}  {:type :vertical-wall}{:type :vertical-wall}{:type :vertical-wall}{:type :vertial-wall}]
+                          [{:type :horizontal-wall}{:type :floor}        {:type :floor}        {:type :floor}        {:type :horizontal-wall}]
+                          [{:type :horizontal-wall}{:type :floor}        {:type :floor}        {:type :floor}        {:type :horizontal-wall}]
+                          [{:type :horizontal-wall}{:type :floor}        {:type :floor}        {:type :floor}        {:type :horizontal-wall}]
+                          [{:type :vertical-wall}  {:type :vertical-wall}{:type :vertical-wall}{:type :vertical-wall}{:type :vertial-wall}]]}}})
+
+(def assoc-cells-result
+  {:world {:viewport {:width 5
+                     :height 5}
+          :width 5
+          :height 5
+          :player {:pos {:x 2 :y 2}}
+          :npcs []
+          :places {[0 0] [[{:type :vertical-wall}  {:type :vertical-wall}{:type :vertical-wall}{:type :vertical-wall}{:type :vertial-wall}]
+                          [{:type :horizontal-wall}{:type :floor}        {:type :floor}        {:type :floor}        {:type :horizontal-wall}]
+                          [{:type :horizontal-wall}{:type :floor}        {:type :floor}        {:type :floor}        {:type :horizontal-wall}]
+                          [{:type :horizontal-wall}{:type :floor}        {:type :floor}        {:type :floor}        {:type :horizontal-wall}]
+                          [{:type :vertical-wall}  {:type :vertical-wall}{:type :vertical-wall}{:type :vertical-wall}{:type :vertial-wall}]]}}})
+
+(deftest assoc-cells-state
+  (is (= (assoc-cells assoc-cells-state {[1 1] {:discovered 10}
+                                         [1 2] {:discovered 10 :type :sand}})
+         assoc-cells-result)))
+
 
 (def m
   {[ 0  0] :a

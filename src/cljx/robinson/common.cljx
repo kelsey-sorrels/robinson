@@ -1,6 +1,7 @@
 ;; Utility functions and functions for manipulating state
 (ns robinson.common
   (:require 
+            [robinson.math :as math]
             [robinson.log :as log]
             #+clj
             [clojure.core.typed :as t]
@@ -57,8 +58,8 @@
 (defn chebyshev-distance
   "Chebyshev/chessboard distance between 2 points"
   [p1 p2]
-  (max (Math/abs (long (- (get p1 :x) (get p2 :x))))
-       (Math/abs (long (- (get p1 :y) (get p2 :y))))))
+  (max (math/abs (long (- (get p1 :x) (get p2 :x))))
+       (math/abs (long (- (get p1 :y) (get p2 :y))))))
 
 #+clj
 (t/ann distance-sq [Pos Pos -> t/AnyInteger])
@@ -73,15 +74,20 @@
 (defn distance
   "Euclidean distance between 2 points"
   [p1 p2]
-  (Math/sqrt (double (distance-sq p1 p2))))
+  (math/sqrt (double (distance-sq p1 p2))))
 
 #+clj
 (t/ann farther-than? [Pos Pos Number -> Boolean])
 (defn farther-than?
   "Are the two points farther in distance than l?"
-  [p1 p2 l]
+  ([p1 p2 l]
   (> (distance-sq p1 p2) (* l l)))
-
+  ([x1 y1 x2 y2 l]
+  (if (or (> (math/abs (- x1 x2)) l)
+          (> (math/abs (- y1 y2)) l))
+    true
+    (> (distance-sq (xy->pos x1 y1) (xy->pos x2 y2)) (* l l)))))
+  
 #+clj
 (t/ann fill-missing (t/All [x y] [(t/Pred x)
                                    (t/IFn [x y -> x])

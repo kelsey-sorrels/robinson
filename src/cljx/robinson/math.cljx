@@ -19,7 +19,7 @@
   (.sqrt js/Math n))
 
 #+clj
-(defn abs [n]
+(defn abs [^double n]
   (Math/abs n))
 
 #+cljs
@@ -27,7 +27,7 @@
   (.abs js/Math n))
 
 #+clj
-(defn round [n]
+(defn round [^double n]
   (Math/round n))
 
 #+cljs

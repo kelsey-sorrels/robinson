@@ -57,9 +57,10 @@
 
 ;TODO: refer timbre to set this.
 ;#+clj
-;(log/set-config! [] (read-string (slurp "config/timbre.clj")))
+;(log/set-config! [] (read-string (slurp "config/timbre.clj"))(log/set-log-level! :error)
 
-(log/set-log-level! :debug)
+;(log/set-log-level! :debug)
+(log/set-log-level! :error)
 
 #+cljs
 (cljs.reader/register-tag-parser! "robinson.monstergen.Monster" mg/map->Monster)

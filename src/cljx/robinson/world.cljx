@@ -158,6 +158,30 @@
             state
             (partition 2 keyvals))))
 
+;(assoc-cells state {[1 2] {:discovered 10} [0 0] {:discovered 10}})
+(defn assoc-cells
+  [state xyvs]
+  (let [place-id->xyvs (group-by (fn [[[x y] _]]
+                                   (let [place-id  (rv/xy->place-id state x y)]
+                                     place-id))
+                                 xyvs)]
+    #_(log/info "reducing" place-id->xyvs)
+    (reduce-kv (fn [state place-id  xyvs]
+                 (let [place   (get-in state [:world :places place-id])
+                       [ax ay] (rv/place-id->anchor-xy state place-id)]
+                   (assoc-in state
+                             [:world :places place-id]
+                             (reduce (fn [place [[x y] v]]
+                                       #_(log/info "updating place" place-id "x" x "y" y "with value" v)
+                                       (let [px (- x ax)
+                                             py (- y ay)]
+                                          (update-in place [py px] (fn [cell] (merge cell v)))))
+                                     place
+                                     xyvs))))
+               state
+               place-id->xyvs)))
+                       
+
 (defn dissoc-cell
   [state x y k] 
   (let [place-id (rv/xy->place-id state x y)

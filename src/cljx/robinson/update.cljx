@@ -321,8 +321,7 @@
                     items (get cell :items)]
                 (if (seq items)
                   (rdesc/search state)
-                  state))
-              (pick-up-gold state))))
+                  state)))))
       (= (get (rw/npc-at-xy state target-x target-y) :in-party?) true)
         (-> state
           (assoc-in [:world :player :pos :x] target-x)
@@ -1875,33 +1874,22 @@
   {:pre [(not (nil? state))]
    :post [(not (nil? %))]}
   (let [pos              (-> state :world :player :pos)
+        {px :x
+         py :y}          pos
         sight-distance   (float (sight-distance state))
         _ (log/info "player-pos" pos)
         _ (log/info "player place-id" (str (apply rv/xy->place-id state (rc/pos->xy pos))))
         _ (log/info "sight-distance" sight-distance)
+        _ (log/info "loaded place ids" (keys (get-in state [:world :places])))
         will-to-live     (get-in state [:world :player :will-to-live])
         max-will-to-live (get-in state [:world :player :max-will-to-live])
-                         
-        get-cell-m       #+clj  (memoize (fn [x y] (rw/get-cell state x y)))
-                         #+cljs (fn [x y] (rw/get-cell state x y))
         new-time         (get-in state [:world :time])
-        test-cells       (for [x (range (- (get pos :x) (int (rmath/ceil sight-distance)))
-                                        (+ (get pos :x) (int (rmath/ceil sight-distance))))
-                               y (range (- (get pos :y) (int (rmath/ceil sight-distance)))
-                                        (+ (get pos :y) (int (rmath/ceil sight-distance))))]
-                            [x y])
-        _ (log/info "test-cells" test-cells)
-        visible-cells    (filter (fn [[x y]] (and (not (nil? (rw/get-cell state x y)))
-                                                  (not (rc/farther-than? pos
-                                                                      {:x x :y y}
-                                                                      sight-distance))
-                                                  (rlos/visible?
-                                                    get-cell-m
-                                                    rlos/cell-blocking?
-                                                    (pos :x)
-                                                    (pos :y)
-                                                    x y)))
-                                 test-cells)
+        visible-cells (rlos/visible-xys px py sight-distance (fn [[x y]]
+                                                               (let [cell      (rw/get-cell state x y)
+                                                                     blocking? (rlos/cell-blocking? cell)]
+                                                                 ;(log/info "cell place-id" (str (rv/xy->place-id state x y)))
+                                                                 ;(log/debug "blocking?" x y cell blocking?)
+                                                                 blocking?)))
         _ (log/info "visible-cells" visible-cells)
         dwtl             (/ (reduce (fn [acc [x y]] (+ acc (- (dec new-time)
                                                            (get (rw/get-cell state x y) :discovered (- new-time 10000)))))
@@ -1911,10 +1899,7 @@
         will-to-live     (min (+ will-to-live dwtl)
                               max-will-to-live)]
   (as-> state state
-    (reduce (fn [state [x y]]
-              (rw/assoc-cell state x y :discovered new-time))
-            state
-            visible-cells)
+    (rw/assoc-cells state (zipmap visible-cells (repeat {:discovered new-time})))
     (assoc-in state [:world :player :will-to-live] will-to-live))))
 
 (defn toggle-mount

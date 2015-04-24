@@ -1,10 +1,13 @@
 (ns robinson.lineofsight
   (:require [robinson.common :as rc]
+            [robinson.log :as log]
             #+clj
             [robinson.macros :as rm]
             [robinson.world :as rw]
             [robinson.math :as math]
-            [robinson.world  :as rw])
+            [robinson.world  :as rw]
+            [clojure.walk :as w]
+            [clojure.zip :as z])
   #+cljs
   (:require-macros [robinson.macros :as rm]))
 
@@ -57,13 +60,135 @@
           (map (fn [[x y]] [(+ ox x) (+ oy y)])
                (line-segment [0 0] [(- dx ox) (- dy oy)]))))))))
 
+(defn square-points [x0 y0 radius]
+  (letfn [(points [x y m]
+            (let [x+   (+ x0 x)
+                  x-   (- x0 x)
+                  y+   (+ y0 y)
+                  y-   (- y0 y)
+                  x0y+ (+ x0 y)
+                  x0y- (- x0 y)
+                  xy0+ (+ y0 x)
+                  xy0- (- y0 x)
+                  xys  [[x+ y+]
+                        [x+ y-]
+                        [x- y+]
+                        [x- y-]
+                        [x0y+ xy0+]
+                        [x0y+ xy0-]
+                        [x0y- xy0+]
+                        [x0y- xy0-]]
+                  oy    y
+                  om    m
+                  [y m] (if (pos? m)
+                            [(dec y) (- m (* 8 y))]
+                            [y m])]
+                (if (<= x y)
+                 (concat xys
+                         (points (if (pos? om)
+                                   x
+                                   (inc x))
+                                 (if (pos? m)
+                                   y
+                                   oy)
+                                 (+ m 4 (* 8 x))))
+                 xys)))]
+    (points 0 radius (- 5 (* 4 radius)))))
+
+
+(defn remove-points-beyond-radius
+  [x0 y0 r segment]
+  (remove (fn [[x y]]
+            (rc/farther-than? x0 y0 x y r))
+          segment))
+
+(defn paths->trie [segments]
+  (reduce (fn [tree segment]
+            (assoc-in tree segment {}))
+          {}
+          segments))
+
+(defn trie->paths [trie]
+  (reduce
+    (fn [paths [k subtree]]
+      (if (empty? subtree)
+        (conj paths (list k))
+        (concat
+          paths
+          (map (fn [path]
+                 (cons k path))
+                 (trie->paths subtree)))))
+    (list)
+    trie))
+
+(defn replace-vals [kvs m]
+  (reduce-kv (fn [r k v]
+               (assoc r k (get kvs k v)))
+             {}
+             m))
+
+;; cull subtries with parent keys if `(exclude-subree? key)` is false.
+(defn cull-trie [exclude-subtree? trie]
+  (w/prewalk (fn [m] (if (and (map? m)
+                              (not (empty? m)))
+                       (reduce-kv (fn [m k v]
+                                    (if (exclude-subtree? k)
+                                      (assoc m k {})
+                                      (assoc m k v)))
+                                  {}
+                                  m)
+                       m))
+               trie))
+
+(defn trie->keys [trie]
+  (loop [t  (z/zipper map? vals #(zipmap (keys %1) %2) trie)
+         ks #{}]
+    (cond
+      (z/end? t) ks
+      (empty? (z/node t)) (recur (z/next t) ks)
+      (z/branch? t) (let [new-keys (set (keys (z/node t)))]
+        (recur (z/next t) (clojure.set/union new-keys ks)))
+      :leaf
+      (log/info "got leaf" (z/node t)))))
+
+(def r->trie
+  (reduce (fn [result r]
+            (let [perimeter-points (square-points 0 0 r)
+                  segments         (remove empty?
+                                     (map #(->>
+                                             (line-segment [0 0] %)
+                                             (remove-points-beyond-radius 0 0 r))
+                                          perimeter-points))
+                  ;; truncate segments to radius
+                  ;segments         (remove-points-beyond-radius 0 0 k segments)
+                  ;_ (log/info "segments")
+                  ;_ (log/info segments)
+                  trie             (paths->trie segments)]
+              (assoc result r trie)))
+          {}
+          (range 8)))
+
+(defn visible-xys
+  [center-x center-y r xy-visible?]
+  (let [trie (get r->trie (int r))
+        ;_ (log/info "potential visibility trie" trie)
+        trie (cull-trie (fn [[x y]] (xy-visible? [(+ x center-x) (+ y center-y)]))
+                        trie)
+        ;_ (log/info "visibility trie" trie)
+        xys  (trie->keys trie)
+        xys  (map (fn [[x y]] [(+ x center-x) (+ y center-y)])
+                   xys)]
+    xys))
+
 (defn visible?
-  [get-cell blocking? x1 y1 x2 y2]
-  (not-any? blocking?
-    (map (fn [[x y]] (get-cell x y))
+  [;get-cell
+   visibility-cache
+   ;blocking?
+   x1 y1 x2 y2]
+  (every? (fn [[x y]] (visibility-cache x y))
     ;(map (fn [[x y]] ((fn [x y] (get-in grid [y x])) x y))
     ;(map (fn [[x y]] (get-in grid [y x]))
-         (line-segment-fast-without-endpoints [x1 y1] [x2 y2]))))
+         (line-segment-fast-without-endpoints [x1 y1] [x2 y2])))
  
 (defn map-visibility
   ([origin blocking? grid]

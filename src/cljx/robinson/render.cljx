@@ -905,7 +905,8 @@
                                               pos
                                               {:x x :y y}
                                               5))
-                                       (visible? get-cell
+                                       true
+                                       #_(visible? get-cell
                                                  cell-blocking?
                                                  (pos :x)
                                                  (pos :y)

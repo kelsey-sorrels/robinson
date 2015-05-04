@@ -25,6 +25,8 @@
                  [cljs-webgl "0.1.5-SNAPSHOT"]
                  [ns-tracker "0.2.2"]
                  [jamesmacaulay/cljs-promises "0.1.0"]
+                 [tailrecursion/cljson "1.0.7"]
+                 [servant "0.1.3"]
                  [aaron-santos/tinter "0.1.1-SNAPSHOT"]
                  [aaron-santos/clj-tiny-astar "0.1.1-SNAPSHOT"]
                  [dorothy "0.0.6"]

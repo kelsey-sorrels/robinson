@@ -181,6 +181,29 @@
                state
                place-id->xyvs)))
                        
+(defn update-cells
+   [state xy-fns]
+  (let [place-id->xy-fns (group-by (fn [[[x y] _]]
+                                   (let [place-id  (rv/xy->place-id state x y)]
+                                     place-id))
+                                 xy-fns)]
+    #_(log/info "reducing" place-id->xyvs)
+    (update-in state [:world :places]
+      (fn [places]
+        (reduce-kv (fn [places place-id xy-fns]
+                     (let [place   (get places place-id)
+                           [ax ay] (rv/place-id->anchor-xy state place-id)]
+                       (assoc places
+                              place-id
+                              (reduce (fn [place [[x y] f]]
+                                        #_(log/info "updating place" place-id "x" x "y" y "with value" v)
+                                        (let [px (- x ax)
+                                              py (- y ay)]
+                                           (update-in place [py px] f)))
+                                      place
+                                      xy-fns))))
+                   places
+                   place-id->xy-fns)))))
 
 (defn dissoc-cell
   [state x y k] 

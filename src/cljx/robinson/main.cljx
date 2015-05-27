@@ -60,6 +60,7 @@
 ;(log/set-config! [] (read-string (slurp "config/timbre.clj"))(log/set-log-level! :error)
 
 ;(log/set-log-level! :debug)
+;(log/set-log-level! :info)
 (log/set-log-level! :error)
 
 #+cljs

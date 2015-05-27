@@ -166,7 +166,7 @@
                   trie             (paths->trie segments)]
               (assoc result r trie)))
           {}
-          (range 8)))
+          (range 20)))
 
 (defn visible-xys
   [center-x center-y r xy-visible?]

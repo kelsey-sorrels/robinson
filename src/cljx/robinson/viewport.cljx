@@ -251,35 +251,45 @@
         ;_ (log/info "ul-place-0" (str (type (get-in state [:world ]))))
         ;_ (log/info "ul-place-1" (str (type (get-in state [:world :places ]))))
         ;_ (log/info "ul-place-2" (str (type (get-in state [:world :places ul-place-id]))))
+        ;_ (log/info "ul-place" (str ul-place))
         ;_ (log/info "ur-place" (str ur-place))
         ;_ (log/info "ll-place" (str ll-place))
         ;_ (log/info "lr-place" (str lr-place))
         ;first-wx (drop (dec v-x) (range))
         ;first-vx (drop (dec start-x) (range))
         ;rest-wx  (drop (+ -1 v-x start-x) (range))
-        first-wx (range (dec v-x) v-width)
-        first-vx (range (dec start-x) v-width)
-        rest-wx  (range (+ -1 v-x start-x) (+ v-x v-width))
         r        (range)
         rrest    (range (dec start-y) v-height)
         ul-cellsxy (mapcat
-                     (fn [line y]
-                      (map vector (subvec line start-x)    r        (repeat y) first-wx (repeat (+ v-y y))))
+                     (fn [line sy]
+                      (map (fn [cell sx]
+                             [cell sx sy (+ sx v-x) (+ sy v-y)])
+                           (subvec line start-x)
+                           r))
                      (subvec ul-place start-y)
                      r)
         ur-cellsxy (mapcat
-                     (fn [line y]
-                      (map vector (subvec line 0 start-x)  first-vx (repeat y) rest-wx  (repeat (+ v-y y))))
+                     (fn [line sy]
+                      (map (fn [cell sx]
+                             [cell sx sy (+ sx v-x) (+ sy v-y)])
+                           (subvec line 0 start-x)
+                           r))
                      (subvec ur-place start-y)
                      r)
         ll-cellsxy (mapcat
-                     (fn [line y]
-                       (map vector (subvec line start-x)   r        (repeat y) first-wx (repeat (+ v-y y))))
+                     (fn [line sy]
+                       (map (fn [cell sx]
+                             [cell sx sy (+ sx v-x) (+ sy v-y)])
+                           (subvec line start-x)
+                           r))
                      (subvec ll-place 0 start-y)
                      rrest)
         lr-cellsxy (mapcat
-                     (fn [line y]
-                       (map vector (subvec line 0 start-x) first-vx (repeat y) rest-wx  (repeat (+ v-y y))))
+                     (fn [line sy]
+                       (map (fn [cell sx]
+                             [cell sx sy (+ sx v-x) (+ sy v-y)])
+                            (subvec line 0 start-x)
+                            r))
                      (subvec lr-place 0 start-y)
                      rrest)
     cells (concat ul-cellsxy
@@ -311,5 +321,5 @@
     ;(log/info "\n\n")
     ;(log/info "lr-place" lr-place)
     ;(log/info "\n\n")
-    (time (log/info "cells" cells))
+    ;(time (log/info "cells" cells))
     cells))

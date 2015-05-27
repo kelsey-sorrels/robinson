@@ -99,7 +99,7 @@
           on     (and item (= (get item :state) :on))
           _      (log/info "sight-distance. flashlight:" item "state:" on)
           values (map (fn [v] (if on (max v 100) v)) values)]
-    (+ 1.5 (* 8 (/ (reduce + values) (* 255 (count values))))))
+    (+ 2.5 (* 18 (/ (reduce + values) (* 255 (count values))))))
     5))
       
 (defn backspace-name

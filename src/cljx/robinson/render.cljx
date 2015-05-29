@@ -706,16 +706,7 @@
         [columns rows] (get-size screen)
         current-time   (get-in state [:world :time])
         [player-x player-y] (player-xy state)
-        {{v-x :x v-y :y} :pos}
-                       (get-in state [:world :viewport])
-        cells          (vec
-                         (filter #(not (get % :discovered))
-                                 (apply concat
-                         (map-indexed (fn [vy line]
-                                        (map-indexed (fn [vx cell]
-                                                       [cell vx vy (+ v-x vx) (+ vy v-y)])
-                                                     line))
-                                      (cells-in-viewport state)))))
+        cells          (rv/cellsxy-in-viewport state)
         ;cells (rv/cellsxy-in-viewport state)
         ;_ (log/info "cells" (str cells))
         characters     (persistent!

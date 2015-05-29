@@ -259,37 +259,34 @@
         ;first-vx (drop (dec start-x) (range))
         ;rest-wx  (drop (+ -1 v-x start-x) (range))
         r        (range)
-        rrest    (range (dec start-y) v-height)
+        rrest    (range (dec start-y))
+        dx       (- v-width start-x)
         ul-cellsxy (mapcat
                      (fn [line sy]
-                      (map (fn [cell sx]
+                       (map-indexed (fn [sx cell]
                              [cell sx sy (+ sx v-x) (+ sy v-y)])
-                           (subvec line start-x)
-                           r))
+                           (subvec line start-x)))
                      (subvec ul-place start-y)
                      r)
         ur-cellsxy (mapcat
                      (fn [line sy]
-                      (map (fn [cell sx]
-                             [cell sx sy (+ sx v-x) (+ sy v-y)])
-                           (subvec line 0 start-x)
-                           r))
+                       (map-indexed (fn [x cell]
+                             [cell (+ x dx) sy (+ x dx v-x) (+ sy v-y)])
+                           (subvec line 0 start-x)))
                      (subvec ur-place start-y)
                      r)
         ll-cellsxy (mapcat
                      (fn [line sy]
-                       (map (fn [cell sx]
+                       (map-indexed (fn [sx cell]
                              [cell sx sy (+ sx v-x) (+ sy v-y)])
-                           (subvec line start-x)
-                           r))
+                           (subvec line start-x)))
                      (subvec ll-place 0 start-y)
                      rrest)
         lr-cellsxy (mapcat
                      (fn [line sy]
-                       (map (fn [cell sx]
-                             [cell sx sy (+ sx v-x) (+ sy v-y)])
-                            (subvec line 0 start-x)
-                            r))
+                       (map-indexed (fn [x cell]
+                             [cell (+ x dx) sy (+ x dx v-x) (+ sy v-y)])
+                            (subvec line 0 start-x)))
                      (subvec lr-place 0 start-y)
                      rrest)
     cells (concat ul-cellsxy

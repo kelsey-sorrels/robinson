@@ -199,7 +199,15 @@
                                         #_(log/info "updating place" place-id "x" x "y" y "with value" v)
                                         (let [px (- x ax)
                                               py (- y ay)]
-                                           (update-in place [py px] f)))
+                                          (if (get-in place [py px])
+                                            (update-in place [py px] f)
+                                            (do (log/error "Tried associng in unloaded place"
+                                                           place
+                                                           place-id
+                                                           px
+                                                           py
+                                                           (keys places))
+                                                place))))
                                       place
                                       xy-fns))))
                    places

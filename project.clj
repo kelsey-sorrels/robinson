@@ -20,7 +20,8 @@
                  [org.clojure/clojure-contrib "1.2.0"]
                  [org.clojars.vishk/algotools "0.1.0"]
                  [org.clojure/data.json "0.2.5"]
-                 [org.clojure/clojurescript "0.0-3030"]
+                 ;[org.clojure/clojurescript "0.0-3030"]
+                 [org.clojure/clojurescript "0.0-3269"]
                  [clj-http "1.0.1"]
                  [cljs-webgl "0.1.5-SNAPSHOT"]
                  [ns-tracker "0.2.2"]
@@ -44,7 +45,8 @@
    "target/generated/src/cljs"]
 
   :test-paths
-  ["target/generated/clj"]
+  ["src/clj"
+   "target/generated/test/clj"]
 
   ;:auto-clean false
 

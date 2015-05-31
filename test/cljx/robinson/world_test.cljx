@@ -97,15 +97,15 @@
           :height 5
           :player {:pos {:x 2 :y 2}}
           :npcs []
-          :places {[0 0] [[{:type :vertical-wall}  {:type :vertical-wall}{:type :vertical-wall}{:type :vertical-wall}{:type :vertial-wall}]
-                          [{:type :horizontal-wall}{:type :floor}        {:type :floor}        {:type :floor}        {:type :horizontal-wall}]
-                          [{:type :horizontal-wall}{:type :floor}        {:type :floor}        {:type :floor}        {:type :horizontal-wall}]
-                          [{:type :horizontal-wall}{:type :floor}        {:type :floor}        {:type :floor}        {:type :horizontal-wall}]
-                          [{:type :vertical-wall}  {:type :vertical-wall}{:type :vertical-wall}{:type :vertical-wall}{:type :vertial-wall}]]}}})
+          :places {[0 0] [[{:type :vertical-wall}  {:type :vertical-wall}        {:type :vertical-wall}{:type :vertical-wall}{:type :vertial-wall}]
+                          [{:type :horizontal-wall}{:type :floor :discovered 10} {:type :floor}        {:type :floor}        {:type :horizontal-wall}]
+                          [{:type :horizontal-wall}{:type :sand :discovered 10} {:type :floor}        {:type :floor}        {:type :horizontal-wall}]
+                          [{:type :horizontal-wall}{:type :floor}                {:type :floor}        {:type :floor}        {:type :horizontal-wall}]
+                          [{:type :vertical-wall}  {:type :vertical-wall}        {:type :vertical-wall}{:type :vertical-wall}{:type :vertial-wall}]]}}})
 
-(deftest assoc-cells-state
-  (is (= (assoc-cells assoc-cells-state {[1 1] {:discovered 10}
-                                         [1 2] {:discovered 10 :type :sand}})
+(deftest assoc-cells-state-0
+  (is (= (rw/assoc-cells assoc-cells-state {[1 1] {:discovered 10}
+                                            [1 2] {:discovered 10 :type :sand}})
          assoc-cells-result)))
 
 

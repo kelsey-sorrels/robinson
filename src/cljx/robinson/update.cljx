@@ -1890,7 +1890,7 @@
                                                                  ;(log/info "cell place-id" (str (rv/xy->place-id state x y)))
                                                                  ;(log/debug "blocking?" x y cell blocking?)
                                                                  blocking?)))
-        _ (log/info "visible-cells" visible-cells)
+        ;_ (log/info "visible-cells" visible-cells)
         dwtl             (/ (reduce (fn [acc [x y]] (+ acc (- (dec new-time)
                                                            (get (rw/get-cell state x y) :discovered (- new-time 10000)))))
                                  0 visible-cells)

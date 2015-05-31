@@ -92,7 +92,7 @@
   [state]
   (get-in state [:world :player :max-thirst]))
 
-(defn- merge-items
+(defn merge-items
   [item1 item2]
   (log/info "merging" item1 item2)
   (cond 

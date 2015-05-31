@@ -47,11 +47,12 @@
   (let [{v-width     :width
          v-height    :height}
         (get-in state [:world :viewport])]
-    ;(log/info "xy->place-id")
-    ;(log/info x)
-    ;(log/info v-width)
-    ;(log/info y)
-    ;(log/info v-height)
+    (log/info "xy->place-id")
+    (log/info (get-in state [:world :viewport]))
+    (log/info x)
+    (log/info v-width)
+    (log/info y)
+    (log/info v-height)
     [(if (neg? x)
        (dec (int (/ (inc x) v-width)))
        (int (/ x v-width)))
@@ -259,8 +260,15 @@
         ;first-vx (drop (dec start-x) (range))
         ;rest-wx  (drop (+ -1 v-x start-x) (range))
         r        (range)
-        rrest    (range (dec start-y))
+        rrest    (range (inc start-y) v-height)
         dx       (- v-width start-x)
+        _ (println "v-x" v-x)
+        _ (println "v-y" v-y)
+        _ (println "ax" ax)
+        _ (println "ay" ay)
+        _ (println "start-x" start-x)
+        _ (println "start-y" start-y)
+        _ (println "dx" dx)
         ul-cellsxy (mapcat
                      (fn [line sy]
                        (map-indexed (fn [sx cell]

@@ -47,12 +47,12 @@
   (let [{v-width     :width
          v-height    :height}
         (get-in state [:world :viewport])]
-    (log/info "xy->place-id")
-    (log/info (get-in state [:world :viewport]))
-    (log/info x)
-    (log/info v-width)
-    (log/info y)
-    (log/info v-height)
+    #_(log/info "xy->place-id")
+    #_(log/info (get-in state [:world :viewport]))
+    #_(log/info x)
+    #_(log/info v-width)
+    #_(log/info y)
+    #_(log/info v-height)
     [(if (neg? x)
        (dec (int (/ (inc x) v-width)))
        (int (/ x v-width)))

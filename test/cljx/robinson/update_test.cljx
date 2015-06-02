@@ -20,8 +20,11 @@
           :volcano-pos {:x 100 :y 100}
           :volcano-xys []
           :player {:pos {:x 2 :y 2}
+                   :will-to-live 0
+                   :max-will-to-live 100
                    :inventory []}
           :npcs []
+          :time 5
           :places {[0 0] [[{:type :vertical-wall}  {:type :vertical-wall}{:type :vertical-wall}{:type :vertical-wall}{:type :vertial-wall}]
                           [{:type :horizontal-wall}{:type :floor}        {:type :floor}        {:type :floor}        {:type :horizontal-wall}]
                           [{:type :horizontal-wall}{:type :floor}        {:type :floor}        {:type :floor}        {:type :horizontal-wall}]
@@ -43,3 +46,18 @@
         new-state (ru/pick-up state)]
     (is (= (get-in new-state [:world :player :inventory 0 :id]) :test-item))
     (is (= (get-in new-state [:world :player :inventory 0 :hotkey]) \a))))
+
+
+
+(deftest update-visibility-test-0
+  (let [state test-state-0]
+    (with-redefs [ru/sight-distance (constantly 1.1)]
+      (let [state (ru/update-visibility state)
+            place-00  (get-in state [:world :places [0 0]])]
+        (is (= place-00
+               [[{:type :vertical-wall}   {:type :vertical-wall}       {:type :vertical-wall}       {:type :vertical-wall}       {:type :vertial-wall}]
+                [{:type :horizontal-wall} {:type :floor}               {:type :floor :discovered 5} {:type :floor}               {:type :horizontal-wall}]
+                [{:type :horizontal-wall} {:type :floor :discovered 5} {:type :floor :discovered 5} {:type :floor :discovered 5} {:type :horizontal-wall}]
+                [{:type :horizontal-wall} {:type :floor}               {:type :floor :discovered 5} {:type :floor}               {:type :horizontal-wall}]
+                [{:type :vertical-wall}   {:type :vertical-wall}       {:type :vertical-wall}       {:type :vertical-wall}       {:type :vertial-wall}]]))))))
+

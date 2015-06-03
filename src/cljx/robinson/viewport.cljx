@@ -269,38 +269,40 @@
         _ (println "start-x" start-x)
         _ (println "start-y" start-y)
         _ (println "dx" dx)
-        ul-cellsxy (mapcat
+        ; upper left quadant 
+        cells (->
+              (into [] (mapcat
                      (fn [line sy]
-                       (map-indexed (fn [sx cell]
+                       (into [] (map-indexed (fn [sx cell]
                              [cell sx sy (+ sx v-x) (+ sy v-y)])
-                           (subvec line start-x)))
+                           (subvec line start-x))))
                      (subvec ul-place start-y)
-                     r)
-        ur-cellsxy (mapcat
+                     r))
+              (into (mapcat
                      (fn [line sy]
-                       (map-indexed (fn [x cell]
+                       (into [] (map-indexed (fn [x cell]
                              [cell (+ x dx) sy (+ x dx v-x) (+ sy v-y)])
-                           (subvec line 0 start-x)))
+                           (subvec line 0 start-x))))
                      (subvec ur-place start-y)
-                     r)
-        ll-cellsxy (mapcat
+                     r))
+              (into (mapcat
                      (fn [line sy]
-                       (map-indexed (fn [sx cell]
+                       (into [] (map-indexed (fn [sx cell]
                              [cell sx sy (+ sx v-x) (+ sy v-y)])
-                           (subvec line start-x)))
+                           (subvec line start-x))))
                      (subvec ll-place 0 start-y)
-                     rrest)
-        lr-cellsxy (mapcat
+                     rrest))
+              (into (mapcat
                      (fn [line sy]
-                       (map-indexed (fn [x cell]
+                       (into [] (map-indexed (fn [x cell]
                              [cell (+ x dx) sy (+ x dx v-x) (+ sy v-y)])
-                            (subvec line 0 start-x)))
+                            (subvec line 0 start-x))))
                      (subvec lr-place 0 start-y)
-                     rrest)
-    cells (concat ul-cellsxy
-                  ur-cellsxy
-                  ll-cellsxy
-                  lr-cellsxy)
+                     rrest))
+    #_#_cells (reduce into ul-cellsxy
+                  [ur-cellsxy
+                   ll-cellsxy
+                   lr-cellsxy])
       #_(mapcat concat 
         (map (fn [line1 line2 y]
                (concat (map vector (subvec line1 start-x) (range) (repeat y) first-wx (repeat (+ v-y y)))

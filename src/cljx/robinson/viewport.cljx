@@ -262,6 +262,7 @@
         r        (range)
         rrest    (range (inc start-y) v-height)
         dx       (- v-width start-x)
+        rxrest   (range dx v-width)
         _ (println "v-x" v-x)
         _ (println "v-y" v-y)
         _ (println "ax" ax)
@@ -269,53 +270,24 @@
         _ (println "start-x" start-x)
         _ (println "start-y" start-y)
         _ (println "dx" dx)
-        ; upper left quadant 
-        cells (->
-              (into [] (mapcat
-                     (fn [line sy]
-                       (into [] (map-indexed (fn [sx cell]
-                             [cell sx sy (+ sx v-x) (+ sy v-y)])
-                           (subvec line start-x))))
-                     (subvec ul-place start-y)
-                     r))
-              (into (mapcat
-                     (fn [line sy]
-                       (into [] (map-indexed (fn [x cell]
-                             [cell (+ x dx) sy (+ x dx v-x) (+ sy v-y)])
-                           (subvec line 0 start-x))))
-                     (subvec ur-place start-y)
-                     r))
-              (into (mapcat
-                     (fn [line sy]
-                       (into [] (map-indexed (fn [sx cell]
-                             [cell sx sy (+ sx v-x) (+ sy v-y)])
-                           (subvec line start-x))))
-                     (subvec ll-place 0 start-y)
-                     rrest))
-              (into (mapcat
-                     (fn [line sy]
-                       (into [] (map-indexed (fn [x cell]
-                             [cell (+ x dx) sy (+ x dx v-x) (+ sy v-y)])
-                            (subvec line 0 start-x))))
-                     (subvec lr-place 0 start-y)
-                     rrest))
-    #_#_cells (reduce into ul-cellsxy
-                  [ur-cellsxy
-                   ll-cellsxy
-                   lr-cellsxy])
-      #_(mapcat concat 
-        (map (fn [line1 line2 y]
-               (concat (map vector (subvec line1 start-x) (range) (repeat y) first-wx (repeat (+ v-y y)))
-                       (map vector (subvec line2 0 start-x) first-vx (repeat y) rest-wx (repeat (+ v-y y)))))
-             (subvec ul-place start-y)
-             (subvec ur-place start-y)
-             (range))
-        (map (fn [line3 line4 y]
-               (concat (map vector (subvec line3 start-x) (range) (repeat y) first-wx (repeat (+ v-y y)))
-                       (map vector (subvec line4 0 start-x) first-vx (repeat y) rest-wx (repeat (+ v-y y)))))
-             (subvec ll-place 0 start-y)
-             (subvec lr-place 0 start-y)
-             (range (dec start-y) v-height)))]
+        conj-cells (fn [cells place min-x min-y max-x max-y x-range y-range]
+                     (reduce (fn [cells [line sy]]
+                               (reduce (fn [cells [cell sx]]
+                                         (conj! cells 
+                                                [cell sx sy (+ sx v-x) (+ sy v-y)]))
+                                       cells
+                                       (map vector (subvec line min-x max-x)
+                                                   x-range)))
+                             cells
+                             (map vector
+                                  (subvec place min-y max-y)
+                                  y-range)))
+        cells (-> (transient [])
+                    (conj-cells ul-place start-x start-y v-width v-height r      r)
+                    (conj-cells ur-place 0       start-y start-x v-height rxrest r)
+                    (conj-cells ll-place start-x 0       v-width start-y  r      rrest)
+                    (conj-cells lr-place 0       0       v-width start-y  rxrest rrest)
+                    persistent!)]
     ;(log/info "ul-place-id" ul-place-id)
     ;(log/info "ur-place-id" ur-place-id)
     ;(log/info "lr-place-id" lr-place-id)

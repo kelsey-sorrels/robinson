@@ -151,6 +151,31 @@
       :leaf
       (log/info "got leaf" (z/node t)))))
 
+(defn cull-trie->keys [exclude-subtree? trie]
+  (loop [t  (z/zipper ; branch?
+                      map?
+                      ; children
+                      (fn [node]
+                        (persistent!
+                          (reduce-kv (fn [children xy subtree]
+                                       (if (exclude-subtree? xy)
+                                         children
+                                         (conj! children subtree)))
+                                     (transient [])
+                                     node)))
+                      ; make node
+                      #(zipmap (keys %1) %2)
+                      ; root
+                      trie)
+         ks #{}]
+    (cond
+      (z/end? t) ks
+      (empty? (z/node t)) (recur (z/next t) ks)
+      (z/branch? t) (let [new-keys (set (keys (z/node t)))]
+        (recur (z/next t) (clojure.set/union new-keys ks)))
+      :leaf
+      (log/info "got leaf" (z/node t)))))
+
 (def r->trie
   (reduce (fn [result r]
             (let [perimeter-points (square-points 0 0 r)
@@ -179,6 +204,18 @@
         xys  (map (fn [[x y]] [(+ x center-x) (+ y center-y)])
                    xys)]
     xys))
+
+(defn visible-xys
+  [center-x center-y r xy-visible?]
+  (let [trie (get r->trie (int r))
+        ;_ (log/info "potential visibility trie" trie)
+        ;_ (log/info "visibility trie" trie)
+        xys  (cull-trie->keys (fn [[x y]] (xy-visible? [(+ x center-x) (+ y center-y)]))
+                              trie)
+        xys  (map (fn [[x y]] [(+ x center-x) (+ y center-y)])
+                   xys)]
+    xys))
+
 
 (defn visible?
   [;get-cell

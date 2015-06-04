@@ -1,6 +1,6 @@
 (defproject robinson "0.0.1-SNAPSHOT"
   :description "robinson"
-  :plugins      [[lein-ancient "0.6.0"]
+  :plugins      [[lein-ancient "0.6.7"]
                  [lein-autoreload "0.1.0"]
                  [lein-bikeshed "0.1.8"]
                  [lein-idefiles "0.2.1"]
@@ -32,8 +32,8 @@
                  [aaron-santos/clj-tiny-astar "0.1.1-SNAPSHOT"]
                  [dorothy "0.0.6"]
                  [shodan "0.4.1"]
+                 [com.taoensso/nippy "2.9.0"]
                  [com.taoensso/timbre "3.4.0"]
-                 [com.taoensso/nippy "2.8.0"]
                  [alandipert/storage-atom "1.2.4"]
                  [rm-hull/monet "0.2.1"]]
   :main robinson.core
@@ -100,7 +100,7 @@
           :plugins
           [[com.keminglabs/cljx "0.6.0"]
            [com.cemerick/piggieback "0.1.5-SNAPSHOT"]
-           [lein-cljsbuild "1.0.4"]]
+           [lein-cljsbuild "1.0.6"]]
           :repl-options {:nrepl-middleware [cljx.repl-middleware/wrap-cljx]}}}
 
 
@@ -120,7 +120,7 @@
              "-Xdebug"
              ;"-Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=5005"
              "-XX:+UnlockCommercialFeatures"
-             "-XX:+FlightRecorder"
+             ;"-XX:+FlightRecorder"
              "-XX:-OmitStackTraceInFastThrow"
              "-XX:+UseParNewGC"
              "-XX:+UseConcMarkSweepGC"

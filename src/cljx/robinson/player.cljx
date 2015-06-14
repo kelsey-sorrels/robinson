@@ -1,7 +1,7 @@
 ;; Functions for manipulating player state
 (ns robinson.player
   (:require [robinson.common :as rc]
-            [robinson.log :as log]
+            [taoensso.timbre :as log]
             [robinson.random :as rr]
             clojure.set
             #+clj

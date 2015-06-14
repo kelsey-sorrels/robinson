@@ -1,7 +1,10 @@
 (ns robinson.main
   (:require 
             [robinson.common :as rc]
-            [robinson.log :as log]
+            #+clj
+            [taoensso.timbre :as log]
+            #+cljs
+            [taoensso.timbre :as log :include-macros true]
             [robinson.random :as rr]
             [robinson.world :as rw]
             [robinson.worldgen :as rwgen]
@@ -36,8 +39,6 @@
             #+clj
             [clojure.pprint :refer :all]
             #+cljs
-            shodan.logging
-            #+cljs
             [alandipert.storage-atom :refer [local-storage]]
             #+cljs
             [goog.net.XhrIo :as xhr]
@@ -59,9 +60,9 @@
 ;#+clj
 ;(log/set-config! [] (read-string (slurp "config/timbre.clj"))(log/set-log-level! :error)
 
-;(log/set-log-level! :debug)
-;(log/set-log-level! :info)
-(log/set-log-level! :error)
+(log/set-level! :debug)
+;(log/set-level! :info)
+;(log/set-level! :error)
 
 #+cljs
 (cljs.reader/register-tag-parser! "robinson.monstergen.Monster" mg/map->Monster)

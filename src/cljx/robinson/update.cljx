@@ -2,7 +2,10 @@
 (ns robinson.update
   (:require 
             [robinson.common :as rc]
-            [robinson.log :as log]
+            #+clj
+            [taoensso.timbre :as log]
+            #+cljs
+            [taoensso.timbre :as log :include-macros true]
             [robinson.random :as rr]
             [robinson.world :as rw]
             [robinson.viewport :as rv]

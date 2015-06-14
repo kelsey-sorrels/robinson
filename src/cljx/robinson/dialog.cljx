@@ -1,7 +1,7 @@
 ;; Functions for drawing dialog trees as finite state machines
 (ns robinson.dialog
   (:require [robinson.common :as rc]
-            [robinson.log :as log]
+            [taoensso.timbre :as log]
             #+clj
             [dorothy.core :refer :all]))
 

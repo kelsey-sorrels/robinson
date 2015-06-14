@@ -1,7 +1,7 @@
 ;; Functions for generating random monsters
 (ns robinson.monstergen
   (:require [robinson.common :as rc]
-            [robinson.log :as log]
+            [taoensso.timbre :as log]
             [robinson.random :as rr]))
 
 (defn can-move-in-water?

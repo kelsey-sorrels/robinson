@@ -1,6 +1,6 @@
 (ns robinson.lineofsight
   (:require [robinson.common :as rc]
-            [robinson.log :as log]
+            [taoensso.timbre :as log]
             #+clj
             [robinson.macros :as rm]
             [robinson.world :as rw]

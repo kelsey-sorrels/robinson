@@ -2,7 +2,7 @@
 (ns robinson.common
   (:require 
             [robinson.math :as math]
-            [robinson.log :as log]
+            [taoensso.timbre :as log]
             #+clj
             [clojure.core.typed :as t]
             #+cljs

@@ -3,7 +3,7 @@
   (:require #+clj
             [clojure.core.typed :as t]
             [robinson.common :as rc]
-            [robinson.log :as log]
+            [taoensso.timbre :as log]
             [robinson.world :as rw]
             [robinson.itemgen :as ig]
             [robinson.player :as rp]

@@ -1,7 +1,7 @@
 ;; Functions for querying and manipulating magic
 (ns robinson.magic
   (:require [robinson.common :as rc]
-            [robinson.log :as log]
+            [taoensso.timbre :as log]
             [robinson.world :as rw]
             [robinson.combat :as rcombat]
             [robinson.npc :as rnpc]))

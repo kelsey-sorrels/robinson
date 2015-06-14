@@ -707,15 +707,16 @@
         current-time   (get-in state [:world :time])
         [player-x player-y] (player-xy state)
         cells          (rv/cellsxy-in-viewport state)
-        ;cells (rv/cellsxy-in-viewport state)
         ;_ (log/info "cells" (str cells))
         characters     (persistent!
                          (reduce (fn [characters [cell vx vy wx wy]]
                                    ;(log/debug "begin-render")
-                                   (clear (state :screen))
+                                   ;(clear (state :screen))
                                    ;;(debug "rendering place" (current-place state))
                                    ;; draw map
                                    #_(log/info "render-cell" (str cell) vx vy wx wy)
+                                   #_(when (= (get cell :discovered 0) current-time)
+                                     (println "render-cell" (select-keys cell [:type :discovered]) vx vy wx wy))
                                    (if (or (nil? cell)
                                            (not (cell :discovered)))
                                      characters
@@ -846,6 +847,7 @@
                                          (conj! characters {:x vx :y vy :c (get shaded-out-char 0) :fg (get shaded-out-char 1) :bg (get shaded-out-char 2)}))))
                                     (transient [])
                                     cells))]
+    (clear (state :screen))
     #_(log/info "putting chars" characters)
     (put-chars screen characters)
     ;; draw character

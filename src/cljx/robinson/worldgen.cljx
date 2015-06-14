@@ -2,7 +2,7 @@
 (ns robinson.worldgen
   (:require 
             [robinson.common :as rc]
-            [robinson.log :as log]
+            [taoensso.timbre :as log]
             [robinson.random :as rr]
             [robinson.math :as rmath]
             [robinson.noise :as rn]

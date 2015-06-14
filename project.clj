@@ -31,9 +31,8 @@
                  [aaron-santos/tinter "0.1.1-SNAPSHOT"]
                  [aaron-santos/clj-tiny-astar "0.1.1-SNAPSHOT"]
                  [dorothy "0.0.6"]
-                 [shodan "0.4.1"]
                  [com.taoensso/nippy "2.9.0"]
-                 [com.taoensso/timbre "3.4.0"]
+                 [com.taoensso/timbre "4.0.1"]
                  [alandipert/storage-atom "1.2.4"]
                  [rm-hull/monet "0.2.1"]]
   :main robinson.core

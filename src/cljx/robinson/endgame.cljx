@@ -1,7 +1,7 @@
 ;; Functions for manipulating player state
 (ns robinson.endgame
   (:require [robinson.common :as rc]
-            [robinson.log :as log]
+            [taoensso.timbre :as log]
             [robinson.random :as rr]
             [robinson.monstergen :as mg]
             [robinson.itemgen :as ig]

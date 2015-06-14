@@ -1,7 +1,7 @@
 ;; Functions for helping with start of game
 (ns robinson.startgame
   (:require [robinson.common :as rc]
-            [robinson.log :as log]
+            [taoensso.timbre :as log]
             [robinson.random :as rr]
             [robinson.monstergen :as mg]
             [robinson.itemgen :as ig]

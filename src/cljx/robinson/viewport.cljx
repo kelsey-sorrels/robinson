@@ -1,6 +1,7 @@
 ;; Utility functions and functions for manipulating state
 (ns robinson.viewport
-  (:require [robinson.log :as log]
+  (:require
+            [taoensso.timbre :as log]
             [robinson.player :as rp]
             #+cljs
             [goog.string :as gstring]

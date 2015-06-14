@@ -1,7 +1,7 @@
 ;; Utility functions and functions for manipulating state
 (ns robinson.world
   (:require [robinson.common :as rc]
-            [robinson.log :as log]
+            [taoensso.timbre :as log]
             [robinson.player :as rp]
             [robinson.viewport :as rv]
             #+clj

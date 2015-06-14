@@ -1,7 +1,7 @@
 ;; Functions for querying and manipulating npc state
 (ns robinson.npc
   (:require [robinson.random :as rr]
-            [robinson.log :as log]
+            [taoensso.timbre :as log]
             [robinson.common :as rc]
             [robinson.player :as rp]
             [robinson.viewport :as rv]

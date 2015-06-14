@@ -1,7 +1,7 @@
 ;; Functions for rendering state to screen
 (ns robinson.render
   (:require 
-            [robinson.log :as log]
+            [taoensso.timbre :as log]
             [robinson.random :as rr]
             [robinson.startgame :as sg]
             [robinson.itemgen :as ig]

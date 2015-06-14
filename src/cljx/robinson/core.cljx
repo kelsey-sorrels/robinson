@@ -3,7 +3,10 @@
 ;(set! *warn-on-reflection* true)
 (ns robinson.core
   (:require [robinson.main :as main]
-            [robinson.log :as log]
+            #+clj
+            [taoensso.timbre :as log]
+            #+cljs
+            [taoensso.timbre :as log :include-macros true]
             [robinson.aterminal :as aterminal]
             [robinson.world :as rw]
             #+clj

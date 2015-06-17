@@ -44,39 +44,43 @@
   ; start with initial state from setup-fn
   (main/setup
     (fn [state]
-    (go-loop [state state]
-      (reset! state-ref state)
-      (if (nil? state)
-        (do
-          (log/info "Got nil state. Exiting.")
-          #+clj
-          (async/>! done-chan true)
-          #+clj
-          (System/exit 0)
-          #+cljs
-          nil)
-      ; tick the old state through the tick-fn to get the new state
-      (recur
-        (try
-          (let [keyin (or (when (= (rw/current-state state) :sleep)
-                            \.)
-                          (let [key-chan (aterminal/get-key-chan (state :screen))]
-                            (log/info  "waiting for key-chan")
-                            (async/<! key-chan)))]
-               (if keyin
-                 (main/tick state keyin)
-                 state))
-          #+clj
-          (catch Exception ex
-            (do 
-                (print-stack-trace ex)
-                (throw ex)))
-          #+cljs
-          (catch js/Error ex
-                (log/error (str ex))
-                (throw ex))))))
-    #+clj
-    (async/<!! done-chan))))
+      (go-loop [state state]
+        (reset! state-ref state)
+        (if (nil? state)
+          (do
+            (log/info "Got nil state. Exiting.")
+            #+clj
+            (async/>! done-chan true)
+            #+clj
+            (System/exit 0)
+            #+cljs
+            nil)
+          ; tick the old state through the tick-fn to get the new state
+          (recur
+            (try
+              (log/info "Core current-state" (rw/current-state state))
+              (let [keyin (if (= (rw/current-state state) :sleep)
+                            (do
+                              (log/info "State = sleep, Auto-pressing .")
+                              \.)
+                            (let [key-chan (aterminal/get-key-chan (state :screen))]
+                              (log/info  "waiting for key-chan")
+                              (async/<! key-chan)))
+                    _ (log/info "Core got key" keyin)]
+                   (if keyin
+                     (main/tick state keyin)
+                     state))
+              #+clj
+              (catch Exception ex
+                (do 
+                    (print-stack-trace ex)
+                    (throw ex)))
+              #+cljs
+              (catch js/Error ex
+                    (log/error (str ex))
+                    (throw ex))))))
+      #+clj
+      (async/<!! done-chan))))
           
 #+cljs
 (-main)

@@ -1755,7 +1755,6 @@
   [state]
   {:pre [(not (nil? state))]
    :post [(not (nil? %))]}
-  (log/info "player" (get-in state [:world :player]))
   (as-> state state
     (if (let [poisoned-time (get-in state [:world :player :poisoned-time])]
           (and poisoned-time
@@ -2238,7 +2237,8 @@
   "Move all npcs in the current place using `move-npc`."
   [state]
   {:pre  [(vector? (get-in state [:world :npcs]))]
-   :post [(vector? (get-in % [:world :npcs]))]}
+   :post [(not (nil? %))
+          (vector? (get-in % [:world :npcs]))]}
   ;; do npc->player attacks if adjacent
   (let [;; increase all npcs energy by their speed value and have any adjacent npcs attack the player.
         state (reduce
@@ -2270,11 +2270,13 @@
                                                           (> (get npc :energy) 1)))
                                      (rnpc/npcs-in-viewport state)))
            i 5]
-      ;(log/info "looping over" (count remaining-npcs) "npcs")
+      (log/info "looping over" (count remaining-npcs) "npcs i" i)
       (if (or (empty? remaining-npcs)
               (neg? i))
         ;; no more results to process, stop looping and return state
-        state
+        (do
+          (log/info "State" (dissoc (get state :world) :player :places))
+          state)
         ;; In parallel, find their next step
         ;; Each element in this list has the form [new-pos new-npc npc] (a list of 3-tuples.
         ;; new-pos: a map {:x <int> :y <int>}  describing where the npc is trying to move to

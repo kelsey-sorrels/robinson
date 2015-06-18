@@ -24,33 +24,35 @@
 
 (defn format [s & args]
   #+clj
-  (clojure.core/format s args)
+  (apply clojure.core/format s args)
   #+cljs
   (apply gstring/format s args))
 
 (defn describe-cell-type
   [cell]
-  (and cell
-       (case (get cell :type)
-         :water                  "water"
-         :surf                   "surf"
-         :sand                   "sand"
-         :dirt                   "dirt"
-         :gravel                 "gravel"
-         :tree                   "a tree"
-         :palm-tree              "a palm tree"
-         :fruit-tree             "a fruit tree"
-         :tall-grass             "tall grass"
-         :short-grass            "short grass"
-         :bamboo                 "a bamboo grove"
-         :freshwater-hole        (if (> (get cell :water 0) 10)
-                                   "a hole full of water"
-                                   "an empty hole")
-         :saltwater-hole         (if (> (get cell :water 0) 10)
-                                    "a hole full of water"
-                                    "an empty hole")
-         :palisade               "a palisade"
-         :bamboo-water-collector "a bamboo water collector")))
+  (or
+    (and cell
+         (case (get cell :type)
+           :water                  "water"
+           :surf                   "surf"
+           :sand                   "sand"
+           :dirt                   "dirt"
+           :gravel                 "gravel"
+           :tree                   "a tree"
+           :palm-tree              "a palm tree"
+           :fruit-tree             "a fruit tree"
+           :tall-grass             "tall grass"
+           :short-grass            "short grass"
+           :bamboo                 "a bamboo grove"
+           :freshwater-hole        (if (> (get cell :water 0) 10)
+                                     "a hole full of water"
+                                     "an empty hole")
+           :saltwater-hole         (if (> (get cell :water 0) 10)
+                                      "a hole full of water"
+                                      "an empty hole")
+           :palisade               "a palisade"
+           :bamboo-water-collector "a bamboo water collector"))
+    "strange land"))
 
 (defn describe-npc
   [npc]
@@ -82,11 +84,11 @@
       npc
         (format "there is %s, on %s" (describe-npc npc) (describe-cell-type cell))
       (seq items)
-        (format "on the %s, there %s %s" (describe-cell-type cell)
-                                         (if (> (count items) 1)
+        (format "on the %s, there %s %s" (str (describe-cell-type cell))
+                                         (str (if (> (count items) 1)
                                            "are"
-                                           "is")
-                                         (describe-items items))
+                                           "is"))
+                                         (str (describe-items items)))
       :else
         (format "there is %s" (describe-cell-type cell)))))
 

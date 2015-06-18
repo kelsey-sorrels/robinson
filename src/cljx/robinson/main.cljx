@@ -60,9 +60,9 @@
 ;#+clj
 ;(log/set-config! [] (read-string (slurp "config/timbre.clj"))(log/set-log-level! :error)
 
-(log/set-level! :debug)
+;(log/set-level! :debug)
 ;(log/set-level! :info)
-;(log/set-level! :error)
+(log/set-level! :error)
 
 #+cljs
 (cljs.reader/register-tag-parser! "robinson.monstergen.Monster" mg/map->Monster)

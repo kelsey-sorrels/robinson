@@ -269,17 +269,23 @@
                                      line)))
                 (rw/with-xygrid grid)))))))
 
+(def blocking-cell-types
+  #{:vertical-wall
+    :horizontal-wall
+    :close-door
+    :tree
+    :mountain
+    :bamboo
+    :palm-tree
+    :fruit-tree})
+
+
 (defn cell-blocking?
   "Walls, closed doors, and `nil` cells block visibility."
   [cell]
   (if (nil? cell)
     true
-    (contains? #{:vertical-wall
-                 :horizontal-wall
-                 :close-door
-                 :tree
-                 :palm-tree
-                 :fruit-tree} (cell :type))))
+    (contains? blocking-cell-types (cell :type))))
 
 
 (defn -main

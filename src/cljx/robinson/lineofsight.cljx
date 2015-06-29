@@ -176,6 +176,10 @@
       :leaf
       (log/info "got leaf" (z/node t)))))
 
+(defn trie->leaves [trie]
+  "Given a trie, returns the set of nodes without children."
+  #{})
+
 (def r->trie
   (reduce (fn [result r]
             (let [perimeter-points (square-points 0 0 r)
@@ -192,6 +196,24 @@
               (assoc result r trie)))
           {}
           (range 20)))
+
+(defn trie->leaves [trie]
+  "Given a trie, return a set containing all of the leaf nodes, ie: the keys
+   that have empty children."
+  (map last (trie->paths trie)))
+
+(def r->perimeter-xys
+  "Map radius to the set of `[x y]`'s that form the perimeter of the visibility trie."
+  (into {}
+        (map (fn [[r trie]]
+               [r (trie->leaves trie)])
+             r->trie)))
+
+(defn perimeter-xys [center-x center-y r]
+  (let [xys  (get r->perimeter-xys r)
+        xys  (map (fn [[x y]] [(+ x center-x) (+ y center-y)])
+                   xys)]
+    xys))
 
 (defn visible-xys
   [center-x center-y r xy-visible?]

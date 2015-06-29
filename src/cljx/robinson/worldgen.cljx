@@ -179,7 +179,14 @@
                 cell-type (case biome
                             :ocean         {:type :water}
                             :surf          {:type :surf}
-                            :sand          {:type :sand}
+                            :sand          (case (rr/uniform-int 3)
+                                             0 {:type :sand}
+                                             1 {:type :sand}
+                                             2 {:type :sand}
+                                             3 {:type :sand}
+                                             4 {:type :short-grass}
+                                             5 {:type :short-grass}
+                                             6 {:type :tall-grass})
                             :dirt          (case (rr/uniform-int 3)
                                              0 {:type :dirt}
                                              1 {:type :gravel}

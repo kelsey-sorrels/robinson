@@ -113,8 +113,8 @@
 
 (defn uniform-int
  ([hi] {:pre [(pos? hi)]} (next-int! *rnd* hi))
- ([lo hi] {:pre [(< lo hi)]} (+ lo (next-int! *rnd* (- hi lo))))
- ([rnd lo hi] {:pre [(< lo hi)]} (+ lo (next-int! rnd (- hi lo)))))
+ ([lo hi] {:pre [(<= lo hi)]} (+ lo (next-int! *rnd* (- hi lo))))
+ ([rnd lo hi] {:pre [(<= lo hi)]} (+ lo (next-int! rnd (- hi lo)))))
 
 (defn uniform-double
  ([hi] {:pre [(pos? hi)]} (* hi (next-double! *rnd*)))

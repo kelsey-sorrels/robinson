@@ -30,6 +30,7 @@
             [robinson.macros :as rm]
             #+cljs
             [robinson.macros :as rm :include-macros true]
+            clojure.inspector
             #+clj
             clojure.pprint
             ;clojure.core.memoize
@@ -2232,6 +2233,22 @@
       :follow-player-in-range-or-random    (move-to-target-in-range-or-random state npc pos)
       :hide-from-player-in-range-or-random (move-away-from-target-in-range-or-random state npc pos)
       [nil nil npc])))
+
+
+(defn add-monsters-debug
+  "Add 1-2 monsters randomly just inside the player's view."
+  [state]
+  (let [r          (sight-distance state)
+        [player-x
+         player-y] (rp/player-xy state)
+        xys        (rlos/perimeter-xys player-x player-y (min 5 r))
+        xys        (remove (fn [[x y]] (rw/collide? state x y)) xys)]
+    (if (not (empty? xys))
+      (let [[x y]  (rand-nth xys)
+            monster (mg/gen-random-monster (rand 10) :floor)]
+       (log/info "Adding monster" monster "@ [" x y "] r" r)
+       (rnpc/add-npc state monster x y))
+      state)))
  
 (defn update-npcs
   "Move all npcs in the current place using `move-npc`."
@@ -2330,6 +2347,7 @@
                                                       (> (get npc :energy) 1)))
                                  (rnpc/npcs-in-viewport state)))]
               ;_ (trace "count remaining npcs" (count remaining-npcs))]
+        (log/info "recurring over" (count remaining-npcs) "npcs i" (dec i))
         (recur state remaining-npcs (dec i)))))))
 
 (defn update-cells
@@ -2537,6 +2555,10 @@
                                           :normal true]
                           \3           [(fn [state]
                                           (rp/add-to-inventory state [(ig/gen-item :flint)])) :normal true]
+                          \4           [add-monsters-debug     :normal          false]
+                          \5           [(fn [state]
+                                          (clojure.inspector/inspect-tree (get state :world))
+                                          state)               :normal          false]
                            :escape     [identity               :quit?           false]}
                :inventory {:escape     [identity               :normal          false]}
                :describe  {:escape     [free-cursor            :normal          false]

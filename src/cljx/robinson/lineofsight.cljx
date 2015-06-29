@@ -1,5 +1,6 @@
 (ns robinson.lineofsight
   (:require [robinson.common :as rc]
+            [robinson.player :as rp]
             [taoensso.timbre :as log]
             #+clj
             [robinson.macros :as rm]
@@ -308,6 +309,21 @@
   (if (nil? cell)
     true
     (contains? blocking-cell-types (cell :type))))
+
+
+(defn sight-distance
+  [state]
+  (if-let [atmo   (get-in state [:data :atmo])]
+    (let [frames (count atmo)
+          t      (mod (get-in state [:world :time]) frames)
+          frame  (nth atmo t)
+          values (flatten frame)
+          item   (rp/inventory-id->item state :flashlight)
+          on     (and item (= (get item :state) :on))
+          _      (log/info "sight-distance. flashlight:" item "state:" on)
+          values (map (fn [v] (if on (max v 100) v)) values)]
+    (max 2.5 (+ 2.5 (* 18 (/ (reduce + values) (* 255 (count values)))))))
+    5))
 
 
 (defn -main

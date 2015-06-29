@@ -92,20 +92,6 @@
   (or (is-direction? keyin)
       (contains? #{:up-left :up-right :down-left :down-right} keyin)))
 
-(defn sight-distance
-  [state]
-  (if-let [atmo   (get-in state [:data :atmo])]
-    (let [frames (count atmo)
-          t      (mod (get-in state [:world :time]) frames)
-          frame  (nth atmo t)
-          values (flatten frame)
-          item   (rp/inventory-id->item state :flashlight)
-          on     (and item (= (get item :state) :on))
-          _      (log/info "sight-distance. flashlight:" item "state:" on)
-          values (map (fn [v] (if on (max v 100) v)) values)]
-    (max 2.5 (+ 2.5 (* 18 (/ (reduce + values) (* 255 (count values)))))))
-    5))
-      
 (defn backspace-name
   [state]
   (update-in state
@@ -1078,7 +1064,7 @@
 (defn do-sleep
   "Sleep."
   [state keyin]
-  (let [d (sight-distance state)]
+  (let [d (rlos/sight-distance state)]
     (if (> d 2)
       (rw/assoc-current-state state :normal)
       (do-rest state))))
@@ -1879,7 +1865,7 @@
   (let [pos              (-> state :world :player :pos)
         {px :x
          py :y}          pos
-        sight-distance   (float (sight-distance state))
+        sight-distance   (float (rlos/sight-distance state))
         _ (log/info "player-pos" pos)
         _ (log/info "player place-id" (str (apply rv/xy->place-id state (rc/pos->xy pos))))
         _ (log/info "sight-distance" sight-distance)
@@ -2236,9 +2222,9 @@
 
 
 (defn add-monsters-debug
-  "Add 1-2 monsters randomly just inside the player's view."
+  "Add a monster randomly just inside the player's view."
   [state]
-  (let [r          (sight-distance state)
+  (let [r          (rlos/sight-distance state)
         [player-x
          player-y] (rp/player-xy state)
         xys        (rlos/perimeter-xys player-x player-y (min 5 r))

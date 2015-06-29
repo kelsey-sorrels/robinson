@@ -5,6 +5,7 @@
             [robinson.common :as rc]
             [robinson.player :as rp]
             [robinson.viewport :as rv]
+            [robinson.lineofsight :as rlos]
             [robinson.world :as rw]
             [robinson.monstergen :as mg]
             [robinson.dialog :as rdiag]
@@ -169,21 +170,26 @@
 (defn add-npcs
   "Randomly add monsters to the current place's in floor cells."
   [state]
-  (let [level (monster-level state)]
-    (if-let [[x y] (first (filter (fn [[x y]] (not (rw/collide? state x y {:include-npcs? true
-                                                                           :collide-water? false})))
-                                  (rr/rnd-shuffle (rv/viewport-xys state))))]
-      (add-npc state (mg/gen-random-monster level (get (rw/get-cell state x y) :type))
-                     x
-                     y)
+  (let [level      (monster-level state)
+        r          (rlos/sight-distance state)
+        [player-x
+         player-y] (rp/player-xy state)
+        xys        (rlos/perimeter-xys player-x player-y (min 5 r))
+        xys        (remove (fn [[x y]] (rw/collide? state x y {:include-npcs? true
+                                                               :collide-water? false})) xys)]
+    (if (not (empty? xys))
+      (let [[x y]  (rand-nth xys)
+            monster (mg/gen-random-monster level (get (rw/get-cell state x y) :type))]
+       (log/info "Adding monster" monster "@ [" x y "] r" r)
+       (add-npc state monster x y))
       state)))
 
 (defn add-npcs-random
   "Randomly add monsters inside the viewport."
   [state]
-  (if (and (< (rr/uniform-int 100) (if (rw/is-night? state) 18 8))
+  (if (and (< (rr/uniform-int 10) (if (rw/is-night? state) 18 8))
            (< (count (-> state :world :npcs))
-              20))
+             60))
     (add-npcs state)
     state))
 

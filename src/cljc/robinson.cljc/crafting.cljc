@@ -1,31 +1,30 @@
 ;; Functions for generating random items.
 (ns robinson.crafting
-  (:require #+clj
-            [clojure.core.typed :as t]
-            [robinson.common :as rc]
+  (:require [robinson.common :as rc]
             [taoensso.timbre :as log]
             [robinson.world :as rw]
             [robinson.itemgen :as ig]
             [robinson.player :as rp]
-            #+cljs
-            [goog.string :as gstring]
-            #+cljs
-            [goog.string.format]))
-
+            #?(:clj
+               [clojure.core.typed :as t]
+               :cljs
+               [goog.string :as gstring]
+               [goog.string.format])))
 
 (defn format [s & args]
-  #+clj   (clojure.core/format s args)
-  #+cljs  (apply gstring/format s args))
+  #?(:clj
+     (apply clojure.core/format s args)
+     :cljs
+     (apply gstring/format s args)))
 
-#+clj
+#?(:clj
 (t/defalias Recipe (t/HMap :mandatory {:name String :hotkey Character :recipe (t/Map t/Kw (t/Vec t/Kw))}))
 
-#+clj
 (t/ann recipes (t/HMap :mandatory {:weapons        (t/Vec Recipe)
                                    :survival       (t/Vec Recipe)
                                    :shelter        (t/Vec Recipe)
                                    :traps          (t/Vec Recipe)
-                                   :transportation (t/Vec Recipe)}))
+                                   :transportation (t/Vec Recipe)})))
 (def recipes 
   {:weapons  [
      {:name "obsidian spear"         :hotkey \a :recipe {:exhaust [:obsidian-blade :stick :rope] :add [:obsidian-spear]}}
@@ -81,8 +80,8 @@
      {:name "raft"               :hotkey \a :recipe {:exhaust [:rope :log :log
                                                                :log :log :log]
                                                          :add [:raft]} :place :drop}]})
-#+clj
-(t/ann has-prerequisites? (t/Fn [State Recipe -> Boolean]))
+#?(:clj
+(t/ann has-prerequisites? (t/Fn [State Recipe -> Boolean])))
 (defn has-prerequisites?
   "Return true if the player has the ability to make the recipe."
   [state recipe]

@@ -110,12 +110,12 @@
                          npc)))
           (assoc-in [:world :player :inventory] new-player-inventory)
           (assoc-in [:world :remaining-hotkeys] (vec (second hotkey-groups)))))
-      (throw #+clj
-             (IllegalArgumentException.
-               (println-str "Could not find npc with id [" npc-id "]. Valid ids:" (map :id npcs)))
-             #+cljs
-             (js/Error.
-               (println-str "Could not find npc with id [" npc-id "]. Valid ids:" (map :id npcs)))))))
+      (throw #?(:clj
+                (IllegalArgumentException.
+                  (println-str "Could not find npc with id [" npc-id "]. Valid ids:" (map :id npcs)))
+                :cljs
+                (js/Error.
+                  (println-str "Could not find npc with id [" npc-id "]. Valid ids:" (map :id npcs))))))))
 
 (defn transfer-items-from-player-to-npc
   "Remove items from player's inventory and add them to the npc's inventory."
@@ -136,12 +136,12 @@
                          (assoc npc :inventory new-npc-inventory)
                          npc)))
           (assoc-in [:world :player :inventory] new-player-inventory)))
-      (throw #+clj
-             (IllegalArgumentException.
-               (println-str "Could not find npc with id [" npc-id "]. Valid ids:" (map :id npcs)))
-             #+cljs
-             (js/Error.
-               (println-str "Could not find npc with id [" npc-id "]. Valid ids:" (map :id npcs)))))))
+      (throw #?(:clj
+                (IllegalArgumentException.
+                  (println-str "Could not find npc with id [" npc-id "]. Valid ids:" (map :id npcs)))
+                :cljs
+                (js/Error.
+                  (println-str "Could not find npc with id [" npc-id "]. Valid ids:" (map :id npcs))))))))
 
 (defn talking-npcs
   "A seq of npcs with which the player is talking."

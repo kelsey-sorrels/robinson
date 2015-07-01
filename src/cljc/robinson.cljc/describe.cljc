@@ -10,23 +10,20 @@
                                    npc-at-xy]]
     [robinson.npc :as rnpc :refer []]
     [robinson.player :as rp :refer [player-xy]]
-    #+clj
-    [robinson.macros :as rm]
-    #+clj
-    clojure.string
-    #+cljs
-    [goog.string :as gstring]
-    #+cljs
-    [goog.string.format])
-  #+cljs
-  (:require-macros [robinson.macros :as rm]))
-
+    #?(:clj
+       [robinson.macros :as rm]
+       clojure.string
+       :cljs
+       [goog.string :as gstring]
+       [goog.string.format]))
+  #?(:cljs
+  (:require-macros [robinson.macros :as rm])))
 
 (defn format [s & args]
-  #+clj
-  (apply clojure.core/format s args)
-  #+cljs
-  (apply gstring/format s args))
+  #?(:clj
+     (apply clojure.core/format s args)
+     :cljs
+     (apply gstring/format s args)))
 
 (defn describe-cell-type
   [cell]

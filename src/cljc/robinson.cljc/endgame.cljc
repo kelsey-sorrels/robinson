@@ -5,15 +5,15 @@
             [robinson.random :as rr]
             [robinson.monstergen :as mg]
             [robinson.itemgen :as ig]
-            #+cljs
-            [goog.string :as gstring]
-            #+cljs
-            [goog.string.format]))
+            #?(:cljs
+               [goog.string :as gstring]
+               [goog.string.format])))
 
 (defn format [s & args]
-  #+clj   (clojure.core/format s args)
-  #+cljs  (apply gstring/format s args))
-
+  #?(:clj
+     (apply clojure.core/format s args)
+     :cljs
+     (apply gstring/format s args)))
 
 (defn gen-end-madlib
   [state]

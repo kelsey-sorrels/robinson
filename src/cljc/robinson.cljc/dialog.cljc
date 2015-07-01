@@ -2,8 +2,8 @@
 (ns robinson.dialog
   (:require [robinson.common :as rc]
             [taoensso.timbre :as log]
-            #+clj
-            [dorothy.core :refer :all]))
+            #?(:clj
+            [dorothy.core :refer :all])))
 
 ;; State Machine Functions
 ;; =======================
@@ -60,11 +60,10 @@
                                                                 e))
                                                          (butlast couplet)))))}])
 
-#+clj
+#?(:clj
 (defn- transform-to-graph
   "Transforms a dialog tree into a dorothy graph."
   [dialog]
-#+clj
   (digraph (concat [(node-attrs {:style :filled})]
                    (mapcat (fn [[start-node couplets]]
                              (map (fn [couplet]
@@ -72,11 +71,10 @@
                                   couplets))
                            (dialog :m)))))
 
-#+clj
 (defn draw-dialog
   "Draw a dialog tree using dorothy."
   [dialog]
-  (.start (Thread. (fn [] (-> dialog transform-to-graph dot show!)))))
+  (.start (Thread. (fn [] (-> dialog transform-to-graph dot show!))))))
 
 ;; Functions for converting dialog to finite state machine
 ;; =======================================================

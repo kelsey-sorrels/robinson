@@ -2,21 +2,21 @@
   (:require [robinson.common :as rc]
             [robinson.player :as rp]
             [taoensso.timbre :as log]
-            #+clj
-            [robinson.macros :as rm]
+            #?(:clj
+               [robinson.macros :as rm])
             [robinson.world :as rw]
             [robinson.math :as math]
             [robinson.world  :as rw]
             [clojure.walk :as w]
             [clojure.zip :as z])
-  #+cljs
-  (:require-macros [robinson.macros :as rm]))
+  #?(:cljs
+  (:require-macros [robinson.macros :as rm])))
 
 ;; The functions here can severely slow down the game if 
 ;; implemented poorly. Reflection can slow down evaluation,
 ;; so warn if it is occurring.
-#+clj
-(set! *warn-on-reflection* true)
+#?(:clj
+(set! *warn-on-reflection* true))
 
 ;; Memoized function that returns the points between
 ;; `[x1 y1]` and `[x2 y2]`
@@ -282,15 +282,16 @@
          get-cell (memoize (fn [x y] (get-in grid [y x])))
          blocking?-memo (memoize blocking?)]
      ;(println (with-xygrid grid))
-     (vec (#+clj
-           pmap
-           #+cljs
-           map (fn [line] (vec (map (fn [[cell x y]]
-                                       (if (exclude? cell x y)
-                                         false
-                                         (visible? get-cell blocking?-memo ox oy x y)))
-                                     line)))
-                (rw/with-xygrid grid)))))))
+     (vec (#?(:clj
+              pmap
+              :cljs
+              map
+              (fn [line] (vec (map (fn [[cell x y]]
+                                     (if (exclude? cell x y)
+                                       false
+                                       (visible? get-cell blocking?-memo ox oy x y)))
+                                   line)))
+              (rw/with-xygrid grid))))))))
 
 (def blocking-cell-types
   #{:vertical-wall

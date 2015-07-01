@@ -3,10 +3,9 @@
   (:require
             [taoensso.timbre :as log]
             [robinson.player :as rp]
-            #+cljs
-            [goog.string :as gstring]
-            #+cljs
-            [goog.string.format]))
+            #?(:cljs
+               [goog.string :as gstring]
+               [goog.string.format])))
 
 (defn xy-in-rect?
   [x y rx ry rw rh]
@@ -177,16 +176,16 @@
       (map (fn [line1 line2]
            (when-not (vector? line1)
               (log/info "line1 not vector" line1)
-              (throw #+clj
-                    (Exception. (spit line2))
-                     #+cljs
-                    (js/Error. (gstring/spit line1))))
+              (throw #?(:clj
+                        (Exception. (spit line2))
+                         :cljs
+                        (js/Error. (gstring/spit line1)))))
            (when-not (vector? line2)
               (log/info "line2 not vector" line2)
-              (throw #+clj
-                     (Exception. (spit line2))
-                     #+cljs
-                     (js/Error. (gstring/spit line2))))
+              (throw #?(:clj
+                        (Exception. (spit line2))
+                        :cljs
+                        (js/Error. (gstring/spit line2)))))
            (concat (subvec line1 start-x)
                    (subvec line2 0 start-x)))
            

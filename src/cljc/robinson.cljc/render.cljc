@@ -35,31 +35,28 @@
             [robinson.aterminal :as rat]
             [tinter.core :as tinter]
             clojure.set
-            #+clj
-            [clojure.pprint :as pprint]
-            #+cljs
-            [cljs.pprint :as pprint]
-            #+clj
-            clojure.string
-            #+cljs
-            [goog.string :as gstring]
-            #+cljs
-            [goog.string.format])
-  #+clj
+            #?(:clj
+               [clojure.pprint :as pprint]
+               clojure.string
+               :cljs
+               [cljs.pprint :as pprint]
+               [goog.string :as gstring]
+               [goog.string.format]))
+  #?(:clj
   (:import  robinson.aterminal.ATerminal
             (java.awt Color Image)
             java.awt.image.BufferedImage
-            javax.swing.ImageIcon))
+            javax.swing.ImageIcon)))
 
 
-#+clj
-(set! *warn-on-reflection* true)
+#?(:clj
+(set! *warn-on-reflection* true))
 
 (defn format [s & args]
-  #+clj
-  (apply clojure.core/format s args)
-  #+cljs
-  (apply gstring/format s args))
+  #?(:clj
+     (apply clojure.core/format s args)
+     :cljs
+     (apply gstring/format s args)))
 
 ;; RBG color definitions. 
 ;; It's easier to use names than numbers.
@@ -259,8 +256,8 @@
   ([screen title selected-hotkeys items x y width height {:keys [use-applicable center border center-title]
                                                           :or {:use-applicable false :border false :center false :center-title false}}]
    ;; items is list of {:s "string" :fg :black :bg :white}
-   (let [items    (map (fn [item] {:s (format #+clj  "%c%c%s%s %s %s"
-                                              #+cljs "%s%s%s%s %s %s"
+   (let [items    (map (fn [item] {:s (format #?(:clj  "%c%c%s%s %s %s"
+                                                 :cljs "%s%s%s%s %s %s")
                                               (or (item :hotkey)
                                                   \ )
                                               (if (contains? selected-hotkeys (item :hotkey))
@@ -365,7 +362,7 @@
     ;    (-> state :world :player :max-hp)
     ;    (apply str (interpose " " (-> state :world :player :status)))
 
-#+clj
+#?(:clj
 (defn render-img
   "Render an image using block element U+2584."
   [state ^String path x y]
@@ -397,12 +394,12 @@
                        rgb1
                        #{:underline}))))))
 
-#+cljs
+:cljs
 (defn render-img
   "Render an image using block element U+2584."
   [state path x y]
   ;TOOD: implement
-  nil)
+  nil))
 
 (defn translate-identified-items
   [state items]
@@ -628,8 +625,8 @@
     (concat
       [{:s (name recipe-type) :fg :black :bg :white :style #{:underline}}]
        (map (fn [recipe]
-              {:s (format #+clj  "%c-%s"
-                          #+cljs "%s-%s"
+              {:s (format #?(:clj  "%c-%s"
+                             :cljs "%s-%s")
                     (get recipe :hotkey)
                     (get recipe :name))
                :fg (if (contains? recipe :applicable)
@@ -1031,8 +1028,8 @@
     (render-list screen 20 7 60 (count start-inventory)
                                 (map (fn [item] 
                                        (log/info (get item :hotkey) (type (get item :hotkey)) (get item :name))
-                                       {:s (format #+clj  "%c%c%s"
-                                                   #+cljs "%s%s%s"
+                                       {:s (format #?(:clj  "%c%c%s"
+                                                      :cljs "%s%s%s")
                                                    (get item :hotkey)
                                                    (if (contains? selected-hotkeys (get item :hotkey))
                                                      \+
@@ -1107,14 +1104,14 @@
           (put-string (state :screen) 10 22 "Play again? [yn]")))
     (refresh (state :screen))))
 
-#+clj
-(defn get-help-contents []
-  (read-string (slurp "data/help")))
-
-#+cljs
-(defn get-help-contents []
-  ;TODO: implement
-  [])
+#?(:clj
+   (defn get-help-contents []
+     (read-string (slurp "data/help")))
+   
+   :cljs
+   (defn get-help-contents []
+     ;TODO: implement
+     []))
 
 (defn render-help
   "Render the help screen."

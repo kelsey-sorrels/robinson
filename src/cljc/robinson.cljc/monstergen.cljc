@@ -167,7 +167,7 @@
   [id]
   (get (race->monster-map id) :name-plural))
 
-#+clj
+#?(:clj
 (defn -main
   "Generate five random monsters and display them."
   [& args]
@@ -216,4 +216,4 @@
           (doseq [part #{:head :neck :face :abdomen :arm :leg :foot}]
             (println "[" (get monster :race) attack ":human" part "] (+ (rand) 0.5)")))))
           
-    (println (gen-monsters 5))))
+    (println (gen-monsters 5)))))

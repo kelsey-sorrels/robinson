@@ -18,10 +18,10 @@
 
 (def ^:private addend 0xB)
 (def ^:private multiplier 0x5DEECE66D)
-#+clj
-(def ^:private mask (dec (bit-shift-left 1 48)))
-#+cljs
-(def ^:private mask 0xFFFFFFFFFFFF)
+#?(:clj
+   (def ^:private mask (dec (bit-shift-left 1 48)))
+   :cljs
+   (def ^:private mask 0xFFFFFFFFFFFF))
 
 
 (defn create-random
@@ -93,8 +93,8 @@
                     v2 (dec (* 2 (next-double! this)))
                     s  (+ (* v1 v1) (* v2 v2))]
                 (recur v1 v2 s))
-              (let [multiplier #+clj (StrictMath/sqrt (* -2 (/ (StrictMath/log s) s)))
-                               #+cljs (.sqrt js/Math (* -2 (/ (.log js/Math s) s)))]
+              (let [multiplier #?(:clj  (StrictMath/sqrt (* -2 (/ (StrictMath/log s) s)))
+                                  :cljs (.sqrt js/Math (* -2 (/ (.log js/Math s) s))))]
                 (reset! next-next-gaussian (* v2 multiplier))
                 (reset! have-next-next-gaussian true)
                 (* v1 multiplier))))))
@@ -106,10 +106,10 @@
   (create-random 42))
 
 (defn set-rnd! [rnd]
-  #+clj
-  (alter-var-root *rnd* (constantly rnd))
-  #+cljs
-  (def *rnd* rnd))
+  #?(:clj
+     (alter-var-root *rnd* (constantly rnd))
+     :cljs
+     (def *rnd* rnd)))
 
 (defn uniform-int
  ([hi] {:pre [(pos? hi)]} (next-int! *rnd* hi))

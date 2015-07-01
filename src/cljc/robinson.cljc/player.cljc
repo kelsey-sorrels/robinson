@@ -4,18 +4,17 @@
             [taoensso.timbre :as log]
             [robinson.random :as rr]
             clojure.set
-            #+clj
-            clojure.string
-            #+cljs
-            [goog.string :as gstring]
-            #+cljs
-            [goog.string.format]))
+            #?(:clj
+               clojure.string
+               :cljs
+               [goog.string :as gstring]
+               [goog.string.format])))
 
 (defn format [s & args]
-  #+clj
-  (apply clojure.core/format s args)
-  #+cljs
-  (apply gstring/format s args))
+  #?(:clj
+     (apply clojure.core/format s args)
+     :cljs
+     (apply gstring/format s args)))
 
 (defn neg-hp?
   "Return `true` if the player has negative hp."
@@ -209,16 +208,16 @@
   (let [id (cond
              (keyword? hotkey-or-id)
              hotkey-or-id
-             #+clj
-             (char? hotkey-or-id)
-             #+cljs
-             (string? hotkey-or-id)
-             (inventory-hotkey->item-id state hotkey-or-id)
+             #?(:clj
+                (char? hotkey-or-id)
+                :cljs
+                (string? hotkey-or-id)
+                (inventory-hotkey->item-id state hotkey-or-id))
              :else
-             #+clj
-             (throw (IllegalArgumentException. "hotkey-or-id was neither a keyword nor a character."))
-             #+cljs
-             (throw (js/Error. "hotkey-or-id was neither a keyword nor a character.")))]
+             #?(:clj
+                (throw (IllegalArgumentException. "hotkey-or-id was neither a keyword nor a character."))
+                :cljs
+                (throw (js/Error. "hotkey-or-id was neither a keyword nor a character."))))]
   (log/info "decrementing utility for item with id" id)
   (as-> state state
     (update-inventory-item

@@ -57,8 +57,8 @@
 
 (defn radius []
   (fn [[x y]]
-    #+clj  (Math/sqrt (+ (* x x) (* y y)))
-    #+cljs (.sqrt js/Math (+ (* x x) (* y y)))))
+    #?(:clj  (Math/sqrt (+ (* x x) (* y y)))
+       :cljs (.sqrt js/Math (+ (* x x) (* y y))))))
 
 (defn center-radius []
   (fn [[x y]]
@@ -132,8 +132,8 @@
   (let [c  ((coerce (scale 4.3 (offset (vnoise n) (radius)))) x y)
         c1 ((coerce (offset [0.5 0.5] (scale 0.6 (snoise n)))) x y)
         c2 ((coerce (offset [-110.5 -640.5] (scale 0.8 (snoise n)))) x y)
-        cgt #+clj (> (Math/abs c1) (Math/abs c2))
-            #+cljs (> (.abs js/Math c1) (.abs js/Math c2))]
+        cgt #?(:clj  (> (Math/abs c1) (Math/abs c2))
+               :cljs (> (.abs js/Math c1) (.abs js/Math c2)))]
     (cond
       ;; interior biomes
       (> 0.55  c)

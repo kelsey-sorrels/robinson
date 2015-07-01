@@ -1,24 +1,20 @@
 ;; Functions that manipulate state to do what the user commands.
 (ns robinson.combat
-  (:require #+clj
-            [robinson.macros :as rm]
-            #+cljs
-            [robinson.macros :as rm :include-macros true]
-            [robinson.common :as rc]
+  (:require [robinson.common :as rc]
             [taoensso.timbre :as log]
             [robinson.random :as rr]
             [robinson.world :as rw]
             [robinson.player :as rp]
             [robinson.itemgen :as ig]
             [robinson.monstergen :as mg]
-            #+clj
-            [clojure.stacktrace :refer [print-stack-trace]]
-            #+clj
-            [clojure.pprint :refer [pprint]]
-            #+cljs
-            [goog.string :as gstring]
-            #+cljs
-            [goog.string.format]))
+            #?(:clj
+               [robinson.macros :as rm]
+               [clojure.stacktrace :refer [print-stack-trace]]
+               [clojure.pprint :refer [pprint]]
+               :cljs
+               [robinson.macros :as rm :include-macros true]
+               [goog.string :as gstring]
+               [goog.string.format])))
 
 
 (defn sharp-weapon?
@@ -26,10 +22,10 @@
   (contains? #{:spear :axe :knife} attack))
 
 (defn format [s & args]
-  #+clj
-  (apply clojure.core/format s args)
-  #+cljs
-  (apply gstring/format s args))
+  #?(:clj
+     (apply clojure.core/format s args)
+     :cljs
+     (apply gstring/format s args)))
 
 (defn- gen-attack-message
   "Logs an attack message to the global state.
@@ -153,10 +149,10 @@
   :obsidian-axe 4
   :obsidian-spear 3
   :sharpened-stick 2
-  #+clj
-  (throw (Exception. (format "No value specified for %s" (name attack))))
-  #+cljs
-  (throw (js/Error. (format "No value specified for %s" (name attack))))))
+  #?(:clj
+     (throw (Exception. (format "No value specified for %s" (name attack))))
+     :cljs
+     (throw (js/Error. (format "No value specified for %s" (name attack)))))))
 
 (defn calc-dmg
   [attacker attack defender defender-body-part]
@@ -427,9 +423,9 @@
                                         :winner winner
                                         :difficulty (format "%.2f" (float (/ hits-to-kill-defender hits-to-kill-attacker)))}))
                                    land-monsters)]
-    #+clj
-    (pprint [:attacker :attack :defender :level :attacker-damage :hits-to-kill-defender
-             :defender-damage :hits-to-kill-attacker :winner :difficulty] land-data)
-    #+cljs
-    "pprint not implemented"))
+    #?(:clj
+       (pprint [:attacker :attack :defender :level :attacker-damage :hits-to-kill-defender
+                :defender-damage :hits-to-kill-attacker :winner :difficulty] land-data)
+       :cljs
+       "pprint not implemented")))
 

@@ -1,9 +1,9 @@
 (ns robinson.log
   (:require 
-            #+clj
-            [taoensso.timbre :as log]
-            #+cljs
-            [taoensso.timbre :as log :include-macros true]))
+            #?(:clj
+               [taoensso.timbre :as log]
+               :cljs
+               [taoensso.timbre :as log :include-macros true])))
 
 (def set-level! log/set-level!)
 

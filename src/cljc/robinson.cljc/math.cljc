@@ -1,68 +1,54 @@
 ;; Ueility functions and functions for manipulating state
 (ns robinson.math)
 
-#+clj
+#?(
+:clj
 (set! *warn-on-reflection* true)
 
-#+clj
 (def PI (Math/PI))
 
-#+cljs
-(def PI (.-PI js/Math))
-
-#+clj
 (defn sqrt [n]
   (Math/sqrt n))
 
-#+cljs
-(defn sqrt [n]
-  (.sqrt js/Math n))
-
-#+clj
 (defn abs [^double n]
   (Math/abs n))
 
-#+cljs
-(defn abs [n]
-  (.abs js/Math n))
-
-#+clj
 (defn round [^double n]
   (Math/round n))
 
-#+cljs
-(defn round [n]
-  (.round js/Math n))
-
-#+clj
 (defn ceil [n]
   (Math/ceil n))
 
-#+cljs
-(defn ceil [n]
-  (.ceil js/Math n))
-
-#+clj
 (defn sin [n]
   (Math/sin n))
 
-#+cljs
-(defn sin [n]
-  (.sin js/Math n))
-
-#+clj
 (defn cos [n]
   (Math/cos n))
 
-#+cljs
-(defn cos [n]
-  (.cos js/Math n))
-
-#+clj
 (defn atan2 [x y]
   (Math/atan2 x y))
 
-#+cljs
+:cljs
+(def PI (.-PI js/Math))
+
+(defn sqrt [n]
+  (.sqrt js/Math n))
+
+(defn abs [n]
+  (.abs js/Math n))
+
+(defn round [n]
+  (.round js/Math n))
+
+(defn ceil [n]
+  (.ceil js/Math n))
+
+(defn sin [n]
+  (.sin js/Math n))
+
+(defn cos [n]
+  (.cos js/Math n))
+
 (defn atan2 [x y]
-  (.atan2 js/Math x y))
+  (.atan2 js/Math x y)))
 

@@ -10,7 +10,7 @@
                  [lein-cloverage "1.0.2"]
                  [lein-tarsier "0.10.0"]
                  [com.cemerick/clojurescript.test "0.3.3"]]
-  :dependencies [[org.clojure/clojure "1.6.0"]
+  :dependencies [[org.clojure/clojure "1.7.0"]
                  [org.clojure/core.async "0.1.346.0-17112a-alpha"]
                  [org.clojure/core.memoize "0.5.6"]
                  [org.clojure/tools.reader "0.8.13"]
@@ -38,39 +38,19 @@
   :main robinson.core
   :repl-init robinson.core
   :source-paths
-  ["src/clj"
-   "src/cljs"
-   "target/generated/src/clj"
-   "target/generated/src/cljs"]
+  ["src/cljc"
+   "src/clj"
+   "src/cljs"]
 
   :test-paths
   ["src/clj"
-   "target/generated/test/clj"]
+   "src/cljc"]
 
   ;:auto-clean false
 
-  :cljx
-  {:builds [{:source-paths ["src/clj"
-                            "src/cljx"]
-             :output-path "target/generated/src/clj"
-             :rules :clj}
-            {:source-paths ["src/cljx"
-                            "src/cljs"]
-             :output-path "target/generated/src/cljs"
-             :rules :cljs}
-            {:source-paths ["test/cljx"]
-             :output-path "target/generated/test/clj"
-             :rules :clj}
-            {:source-paths ["test/cljx"]
-             :output-path "target/generated/test/cljs"
-             :rules :cljs}]}
-
-  :prep-tasks [["cljx" "once"]]
-
-
   :cljsbuild {:builds {:dev {
                         :source-paths ["src/cljs"
-                                       "target/generated/src/cljs"]
+                                       "src/cljc"]
                         :compiler {:output-to "target/main.js"
                                    ;:output-dir "target"
                                    :foreign-libs [{
@@ -82,8 +62,8 @@
                                    ;:source-map true
                                    :pretty-print true}}
                       :test {
-                        :source-paths ["target/generated/src/cljs"
-                                       "target/generated/test/cljs"]
+                        :source-paths ["src/cljs"
+                                       "test/cljs"]
                         :compiler {:output-to "target/unit-test.js"
                                    :foreign-libs [{
                                      :file "src/js/gl-matrix-min.js" :provides ["mat4","mat3","vec3"]}]
@@ -97,10 +77,8 @@
           [#_[org.clojure/clojurescript "0.0-3030"]]
 
           :plugins
-          [[com.keminglabs/cljx "0.6.0"]
-           [com.cemerick/piggieback "0.1.5-SNAPSHOT"]
-           [lein-cljsbuild "1.0.6"]]
-          :repl-options {:nrepl-middleware [cljx.repl-middleware/wrap-cljx]}}}
+          [[com.cemerick/piggieback "0.1.5-SNAPSHOT"]
+           [lein-cljsbuild "1.0.6"]]}}
 
 
   ;:aot :all

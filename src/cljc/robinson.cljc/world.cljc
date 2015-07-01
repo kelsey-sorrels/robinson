@@ -4,14 +4,13 @@
             [taoensso.timbre :as log]
             [robinson.player :as rp]
             [robinson.viewport :as rv]
-            #+clj
-            [clojure.core.async :as async]
-            #+cljs
-            [cljs.core.async :as async]
-            #+clj
-            [clojure.java.io :as io])
-  #+clj
-  (:import [java.io DataInputStream DataOutputStream]))
+            #?(:clj
+               [clojure.core.async :as async]
+               :cljs
+               [cljs.core.async :as async]
+               [clojure.java.io :as io]))
+  #?(:clj
+     (:import [java.io DataInputStream DataOutputStream])))
 
 (defn distance-from-player
   "Calculate the distance between the player and pos."

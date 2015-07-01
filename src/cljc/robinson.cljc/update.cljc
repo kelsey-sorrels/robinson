@@ -2,10 +2,6 @@
 (ns robinson.update
   (:require 
             [robinson.common :as rc]
-            #+clj
-            [taoensso.timbre :as log]
-            #+cljs
-            [taoensso.timbre :as log :include-macros true]
             [robinson.random :as rr]
             [robinson.world :as rw]
             [robinson.viewport :as rv]
@@ -26,45 +22,33 @@
             [robinson.worldgen :as rworldgen]
             [robinson.lineofsight :as rlos]
             robinson.macros
-            #+clj
-            [robinson.macros :as rm]
-            #+cljs
-            [robinson.macros :as rm :include-macros true]
-            clojure.inspector
-            #+clj
-            clojure.pprint
-            ;clojure.core.memoize
-            #+clj
-            clojure.edn
-            #+cljs
-            cljs.reader
-            clojure.walk
-            #+clj
-            [clojure.data.json :as json]
-            clj-tiny-astar.path
-            #+clj
-            [clojure.core.async :as async]
-            #+cljs
-            [cljs.core.async :as async]
-            #+clj
-            [clojure.java.io :as io]
-            #+clj
-            [clj-http.client :as http]
-            #+clj
-            [clojure.stacktrace :as st]
-            #+clj
-            clojure.string
-            #+cljs
-            [goog.string :as gstring]
-            #+cljs
-            [goog.string.format]))
+            #?(:clj
+               [robinson.macros :as rm]
+               clojure.pprint
+               clojure.edn
+               [clojure.core.async :as async]
+               [clojure.data.json :as json]
+               [clojure.java.io :as io]
+               [taoensso.timbre :as log]
+               clj-tiny-astar.path
+               [clj-http.client :as http]
+               [clojure.stacktrace :as st]
+               clojure.inspector
+               clojure.string
+               :cljs
+               [robinson.macros :as rm :include-macros true]
+               [cljs.core.async :as async]
+               clojure.walk
+               cljs.reader
+               [taoensso.timbre :as log :include-macros true]
+               [goog.string.format])))
 
 
 (defn format [s & args]
-  #+clj
-  (apply clojure.core/format s args)
-  #+cljs
-  (apply gstring/format s args))
+  #?(:clj
+     (apply clojure.core/format s args)
+     :cljs
+     (apply gstring/format s args)))
 
 (defn- pass-state
   [state & more]
@@ -120,13 +104,11 @@
                              (disj (set hotkeys) keyin)
                              (conj (set hotkeys) keyin)))))
 
-#+clj
 (defn system-time-millis []
-  (System/currentTimeMillis))
-
-#+cljs
-(defn system-time-millis []
-  (.getMilliseconds (js/Date.)))
+  #?(:clj
+     (System/currentTimeMillis)
+     :cljs
+     (.getMilliseconds (js/Date.))))
 
 (defn reinit-world
   "Re-initialize the value of `:world` within `state`. Used when the player
@@ -136,9 +118,8 @@
     (assoc :world (loop []
                     (if-let [w (try
                                  (rworldgen/init-world (system-time-millis))
-                                 #+clj
-                                 (catch #+clj Throwable e
-                                        #+cljs js/Error e
+                                 (catch #?(:clj  Throwable e
+                                           :cljs js/Error e)
                                    (log/error e)
                                    nil))]
                       w
@@ -165,10 +146,10 @@
   [state keyin]
   {:pre  [(not (nil? state))]
    :post [(not (nil? %))]}
-  (if (and #+clj
-           (char? keyin)
-           #+cljs
-           (string? keyin)
+  (if (and #?(:clj
+              (char? keyin)
+              :cljs
+              (string? keyin))
            (<= (int \a) (int keyin) (int \k)))
     (let [new-state (toggle-hotkey state keyin)
           selected-hotkeys (get-in new-state [:world :selected-hotkeys])]
@@ -1928,8 +1909,8 @@
       (update-in [:world :npcs] vec)
       (rc/conj-in [:world :npcs] (get-in state [:world :player]))
       (assoc-in [:world :player] npc))]
-    #+clj
-    (log/debug "npcs" (with-out-str (clojure.pprint/pprint (-> state :world :npcs))))
+    #?(:clj
+       (log/debug "npcs" (with-out-str (clojure.pprint/pprint (-> state :world :npcs)))))
     state))
 
 (defn
@@ -1989,16 +1970,16 @@
           path                   (try
                                    (log/debug "a* params" [width height] traversable? npc-pos-vec [(target :x) (target :y)])
                                    (clj-tiny-astar.path/a* [width height] traversable? npc-pos-vec [(target :x) (target :y)])
-                                   #+clj
-                                   (catch Exception e
-                                     (log/error "Caught exception during a* traversal." npc-pos-vec [(target :x) (target :y)] e)
-                                     (st/print-cause-trace e)
-                                     nil)
-                                   #+cljs
-                                   (catch js/Error e
-                                     (log/error "Caught exception during a* traversal." npc-pos-vec [(target :x) (target :y)] e)
-                                     ;(st/print-cause-trace e)
-                                     nil))
+                                   #?(:clj
+                                      (catch Exception e
+                                        (log/error "Caught exception during a* traversal." npc-pos-vec [(target :x) (target :y)] e)
+                                        (st/print-cause-trace e)
+                                        nil)
+                                      :cljs
+                                      (catch js/Error e
+                                        (log/error "Caught exception during a* traversal." npc-pos-vec [(target :x) (target :y)] e)
+                                        ;(st/print-cause-trace e)
+                                        nil)))
           ;_                      (log/debug "path to target" path)
           new-pos                (if (and (not (nil? path))
                                           (> (count path) 1)
@@ -2803,43 +2784,42 @@
             (as-> state
               (if (contains? (-> state :world :player :status) :dead)
                 (do
-                  #+clj
-                  ;; if UPLOADVERSION file is present, upload save/world.edn as json to aaron-santos.com:8888/upload
-                  (when (.exists (io/file "config/.feedbackparticipant"))
-                    (when (not (.exists (io/file "config/.userid")))
-                      (spit "config/.userid" (doto (java.util.UUID/randomUUID)
-                                                   (.toString))))
-                    (let [version (if (.exists (io/file "VERSION"))
-                                    (slurp "VERSION")
-                                    "SNAPSHOT")
-                          userid  (slurp "config/.userid")
-                          url     (format "https://aaron-santos.com/saves/%s" userid)
-                          body    (as-> (get state :world) world
-                                        (assoc world :version version)
-                                        (clojure.walk/postwalk (fn [v] (if #+clj
-                                                                           (char? v)
-                                                                           #+cljs
-                                                                           (string? v)
-                                                                         (str v)
-                                                                         v))
-                                                                world)
-                                        (json/write-str world))]
-                      (log/info "Uploading save file version" version "userid" userid "to" url)
-                      (async/thread 
-                        (try
-                          (log/info "Starting upload")
-                          (System/setProperty "https.protocols" "TLSv1.2")
-                          (http/post url
-                            {:insecure? true
-                             :body body
-                             :content-type :json})
-                          (log/info "Done uploading save file")
-                          (catch Exception e
-                            (log/error "Caught exception while uploading save" e))))))
-                  #+clj
-                  (doseq [file (filter (fn [file] (re-matches #".*edn" (.getName file))) (file-seq (io/file "save")))]
-                    (log/info "Deleting" file)
-                    (.delete file))
+                  #?(:clj
+                     ;; if UPLOADVERSION file is present, upload save/world.edn as json to aaron-santos.com:8888/upload
+                     (when (.exists (io/file "config/.feedbackparticipant"))
+                       (when (not (.exists (io/file "config/.userid")))
+                         (spit "config/.userid" (doto (java.util.UUID/randomUUID)
+                                                      (.toString))))
+                       (let [version (if (.exists (io/file "VERSION"))
+                                       (slurp "VERSION")
+                                       "SNAPSHOT")
+                             userid  (slurp "config/.userid")
+                             url     (format "https://aaron-santos.com/saves/%s" userid)
+                             body    (as-> (get state :world) world
+                                           (assoc world :version version)
+                                           (clojure.walk/postwalk (fn [v] (if #?(:clj
+                                                                                 (char? v)
+                                                                                 :cljs
+                                                                                 (string? v))
+                                                                            (str v)
+                                                                            v))
+                                                                   world)
+                                           (json/write-str world))]
+                         (log/info "Uploading save file version" version "userid" userid "to" url)
+                         (async/thread 
+                           (try
+                             (log/info "Starting upload")
+                             (System/setProperty "https.protocols" "TLSv1.2")
+                             (http/post url
+                               {:insecure? true
+                                :body body
+                                :content-type :json})
+                             (log/info "Done uploading save file")
+                             (catch Exception e
+                               (log/error "Caught exception while uploading save" e))))))
+                     (doseq [file (filter (fn [file] (re-matches #".*edn" (.getName file))) (file-seq (io/file "save")))]
+                       (log/info "Deleting" file)
+                       (.delete file)))
                   (-> state
                     (update-in [:world :player :status]
                      (fn [status]

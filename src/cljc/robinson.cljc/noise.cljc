@@ -6,6 +6,9 @@
   (snoise [this xin yin])
   (noise [this x y]))
 
+(defn sqrt [x]
+  #?(:clj (Math/sqrt x)
+     :cljs (.sqrt js/Math x)))
 
 (def ^:private grad3 [[ 1  1  0]
                       [-1  1  0]
@@ -51,19 +54,14 @@
                       [-1,  1, -1,  0]
                       [-1, -1,  1,  0]
                       [-1, -1, -1,  0]])
-(def ^:private f2 (* 0.5 (dec #+clj  (Math/sqrt 3.0)
-                              #+cljs (.sqrt js/Math 3.0))))
-(def ^:private g2 (/ (- 3.0
-                        #+clj  (Math/sqrt 3.0)
-                        #+cljs (.sqrt js/Math 3.0))
+(def ^:private f2 (* 0.5 (dec (sqrt 3.0))))
+(def ^:private g2 (/ (- 3.0 (sqrt 3.0))
                      6.0))
 (def ^:private f3 (/ 1.0 3.0))
 (def ^:private g3 (/ 1.0 6.0))
-(def ^:private f4 (/ (dec #+clj  (Math/sqrt 5.0)
-                          #+cljs (.sqrt js/Math 5.0))
+(def ^:private f4 (/ (dec( sqrt 5.0))
                      4.0))
-(def ^:private g4 (/ (- 5.0 #+clj  (Math/sqrt 5.0)
-                            #+cljs (.sqrt js/Math 5.0))
+(def ^:private g4 (/ (- 5.0 (sqrt 5.0))
                      20.0))
 
 (defn- fast-floor

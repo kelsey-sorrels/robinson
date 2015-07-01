@@ -13,21 +13,18 @@
             [robinson.player :as rp]
             [robinson.lineofsight :as rlos]
             [robinson.npc :as rnpc]
-            #+clj
-            [robinson.macros :as rm]
-            #+clj
-            [taoensso.nippy :as nippy]
-            #+clj
-            [clojure.core.async :as async :refer [go go-loop]]
-            #+cljs
-            [cljs.core.async :as async]
-            #+clj
-            [clojure.java.io :as io])
-  #+clj
-  (:import [java.io DataInputStream DataOutputStream])
-  #+cljs
-  (:require-macros [robinson.macros :as rm]
-                   [cljs.core.async.macros :refer [go go-loop]]))
+            #?(:clj
+               [robinson.macros :as rm]
+               [taoensso.nippy :as nippy]
+               [clojure.core.async :as async :refer [go go-loop]]
+               [clojure.java.io :as io]
+               :cljs
+               [cljs.core.async :as async]))
+  #?(:clj
+     (:import [java.io DataInputStream DataOutputStream])
+     :cljs
+     (:require-macros [robinson.macros :as rm]
+                      [cljs.core.async.macros :refer [go go-loop]])))
 
 
 (defn rand-xy-in-circle
@@ -84,8 +81,8 @@
   (let [c  ((rprism/coerce (rprism/scale 333.0 (rprism/offset (rprism/vnoise n) (rprism/radius)))) x y)
         c1 ((rprism/coerce (rprism/offset [0.5 0.5] (rprism/scale 22 (rprism/snoise n)))) x y)
         c2 ((rprism/coerce (rprism/offset [-110.5 -640.5] (rprism/scale 26 (rprism/snoise n)))) x y)
-        cgt #+clj (> (Math/abs c1) (Math/abs c2))
-            #+cljs (> (.abs js/Math c1) (.abs js/Math c2))]
+        cgt #?(:clj  (> (Math/abs c1) (Math/abs c2))
+               :cljs (> (.abs js/Math c1) (.abs js/Math c2)))]
     (cond
       ;; interior biomes
       (> 0.55  c)
@@ -140,14 +137,14 @@
    :post [(rc/has-keys? % [:x :y])]}
   (let [{x :x y :y}  starting-pos
         _ (log/info "seed" seed "starting-pos" starting-pos "max-x" max-x "max-y" max-y)
-        player-angle #+clj  (Math/atan2 (- x (/ max-x 2)) (- y (/ max-y 2)))
-                     #+cljs (.atan2 js/Math (- x (/ max-x 2)) (- y (/ max-y 2)))
+        player-angle #?(:clj  (Math/atan2 (- x (/ max-x 2)) (- y (/ max-y 2)))
+                        :cljs (.atan2 js/Math (- x (/ max-x 2)) (- y (/ max-y 2))))
         angle        (- player-angle 0.03)
         radius       (/ (min max-x max-y) 2)
-        [x y]        [(* radius #+clj  (Math/cos angle)
-                                #+cljs (.cos js/Math angle))
-                      (* radius #+clj  (Math/sin angle)
-                                #+cljs (.sin js/Math angle))]
+        [x y]        [(* radius #?(:clj  (Math/cos angle)
+                                   :cljs (.cos js/Math angle)))
+                      (* radius #?(:clj  (Math/sin angle)
+                                   :cljs (.sin js/Math angle)))]
         points       (rlos/line-segment [x y] [0 0])
         samples       points
         n            (rn/create-noise (rr/create-random seed))
@@ -421,7 +418,7 @@
 
 
 
-#+clj
+#?(:clj
 (defn load-place
   "Returns a place, not state."
   [state id]
@@ -443,7 +440,7 @@
       place))
 
 ;TODO: fix in clojurescript
-#+cljs
+:cljs
 (defn load-place
   "Returns a place, not state."
   [state id]
@@ -457,7 +454,7 @@
                                                 ax ay
                                                 v-width v-height)))]
     (log/info "loaded place. width:" (count (first place)) "height:" (count place))
-    place))
+    place)))
 
 (def save-place-chan (async/chan))
 
@@ -465,9 +462,9 @@
   (let [[id place] (async/<! save-place-chan)]
     (log/info "Saving" id)
     ;TODO: fix in clojurescript
-    #+clj
+    #?(:clj
     (with-open [o (io/output-stream (format "save/%s.place.edn" (str id)))]
-      (nippy/freeze-to-out! (DataOutputStream. o) place))
+      (nippy/freeze-to-out! (DataOutputStream. o) place)))
     (recur)))
 
 (defn unload-place

@@ -3,25 +3,22 @@
 ;(set! *warn-on-reflection* true)
 (ns robinson.core
   (:require [robinson.main :as main]
-            #+clj
-            [taoensso.timbre :as log]
-            #+cljs
-            [taoensso.timbre :as log :include-macros true]
             [robinson.aterminal :as aterminal]
             [robinson.world :as rw]
-            #+clj
-            [clojure.core.async :as async :refer [go go-loop]]
-            #+cljs
-            [cljs.core.async :as async]
-            #+clj
-            [clojure.stacktrace :refer [print-stack-trace]])
-  #+clj
-  (:gen-class)
-  #+cljs
-  (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
+            #?(:clj
+               [clojure.core.async :as async :refer [go go-loop]]
+               [clojure.stacktrace :refer [print-stack-trace]]
+               [taoensso.timbre :as log]
+               :cljs
+               [cljs.core.async :as async]
+               [taoensso.timbre :as log :include-macros true]))
+  #?(:clj
+     (:gen-class)
+     :cljs
+     (:require-macros [cljs.core.async.macros :refer [go go-loop]])))
 
-#+cljs
-(enable-console-print!)
+#?(:cljs
+(enable-console-print!))
 
 ;; Conveinience ref for accessing the last state when in repl.
 (defonce state-ref (atom nil))
@@ -49,12 +46,11 @@
         (if (nil? state)
           (do
             (log/info "Got nil state. Exiting.")
-            #+clj
-            (async/>! done-chan true)
-            #+clj
-            (System/exit 0)
-            #+cljs
-            nil)
+            #?(:clj
+               (async/>! done-chan true)
+               (System/exit 0)
+               :cljs
+               nil))
           ; tick the old state through the tick-fn to get the new state
           (recur
             (try
@@ -70,18 +66,18 @@
                    (if keyin
                      (main/tick state keyin)
                      state))
-              #+clj
-              (catch Exception ex
-                (do 
-                    (print-stack-trace ex)
-                    (throw ex)))
-              #+cljs
-              (catch js/Error ex
-                    (log/error (str ex))
-                    (throw ex))))))
-      #+clj
-      (async/<!! done-chan))))
+              #?(:clj
+                 (catch Exception ex
+                   (do 
+                       (print-stack-trace ex)
+                       (throw ex)))
+                 :cljs
+                 (catch js/Error ex
+                       (log/error (str ex))
+                       (throw ex)))))))
+      #?(:clj
+         (async/<!! done-chan)))))
           
-#+cljs
-(-main)
+#?(:cljs
+   (-main))
 

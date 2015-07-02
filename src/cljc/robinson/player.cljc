@@ -4,11 +4,11 @@
             [taoensso.timbre :as log]
             [robinson.random :as rr]
             clojure.set
-            #?(:clj
-               clojure.string
-               :cljs
+            #?@(:clj (
+               clojure.string)
+               :cljs (
                [goog.string :as gstring]
-               [goog.string.format])))
+               [goog.string.format]))))
 
 (defn format [s & args]
   #?(:clj
@@ -208,11 +208,11 @@
   (let [id (cond
              (keyword? hotkey-or-id)
              hotkey-or-id
-             #?(:clj
+             #?(:clj 
                 (char? hotkey-or-id)
-                :cljs
-                (string? hotkey-or-id)
-                (inventory-hotkey->item-id state hotkey-or-id))
+                :cljs 
+                (string? hotkey-or-id))
+                (inventory-hotkey->item-id state hotkey-or-id)
              :else
              #?(:clj
                 (throw (IllegalArgumentException. "hotkey-or-id was neither a keyword nor a character."))

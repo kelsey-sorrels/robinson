@@ -7,14 +7,14 @@
             [robinson.player :as rp]
             [robinson.itemgen :as ig]
             [robinson.monstergen :as mg]
-            #?(:clj
-               [robinson.macros :as rm]
-               [clojure.stacktrace :refer [print-stack-trace]]
-               [clojure.pprint :refer [pprint]]
-               :cljs
-               [robinson.macros :as rm :include-macros true]
-               [goog.string :as gstring]
-               [goog.string.format])))
+            #?@(:clj (
+                [robinson.macros :as rm]
+                [clojure.stacktrace :refer [print-stack-trace]]
+                [clojure.pprint :refer [pprint]])
+                :cljs (
+                [robinson.macros :as rm :include-macros true]
+                [goog.string :as gstring]
+                [goog.string.format]))))
 
 
 (defn sharp-weapon?

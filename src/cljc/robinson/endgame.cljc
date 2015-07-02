@@ -5,9 +5,9 @@
             [robinson.random :as rr]
             [robinson.monstergen :as mg]
             [robinson.itemgen :as ig]
-            #?(:cljs
+            #?@(:cljs (
                [goog.string :as gstring]
-               [goog.string.format])))
+               [goog.string.format]))))
 
 (defn format [s & args]
   #?(:clj

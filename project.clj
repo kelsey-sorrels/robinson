@@ -38,13 +38,12 @@
   :main robinson.core
   :repl-init robinson.core
   :source-paths
-  ["src/cljc"
-   "src/clj"
-   "src/cljs"]
-
-  :test-paths
   ["src/clj"
    "src/cljc"]
+
+  :test-paths
+  ["test/clj"
+   "test/cljc"]
 
   ;:auto-clean false
 

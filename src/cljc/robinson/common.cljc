@@ -3,11 +3,11 @@
   (:require 
             [robinson.math :as math]
             [taoensso.timbre :as log]
-            #?(:clj
-               [clojure.core.typed :as t]
-               :cljs
+            #?@(:clj (
+               [clojure.core.typed :as t])
+               :cljs (
                [goog.string :as gstring]
-               [goog.string.format])))
+                [goog.string.format]))))
 
 #?(:clj
 (t/ann log-io (t/All [a x y ...]
@@ -24,10 +24,10 @@
     result)))
 
 #?(:clj
-(t/ann noun->indefinite-article [String -> String])
+(t/ann noun->indefinite-article [String -> String]))
 (defn noun->indefinite-article [noun] (if (contains? #{\a \e \i \o \u} (first noun))
                                         "an"
-                                        "a")))
+                                        "a"))
 
 (defn has-keys? [m keys]
   (apply = (map count [keys (select-keys m keys)])))
@@ -36,16 +36,16 @@
 (t/defalias Pos (t/HMap :mandatory {:x Integer :y Integer} :complete? true)))
 
 #?(:clj
-(t/ann pos->xy [Pos -> (t/I (t/Vec Integer)(t/ExactCount 2))])
+(t/ann pos->xy [Pos -> (t/I (t/Vec Integer)(t/ExactCount 2))]))
 (defn pos->xy
   [{x :x y :y}]
-  [x y]))
+  [x y])
 
 #?(:clj
-(t/ann xy->pos [Integer Integer -> Pos])
+(t/ann xy->pos [Integer Integer -> Pos]))
 (defn xy->pos
   [x y]
-  {:x x :y y}))
+  {:x x :y y})
 
 #?(:clj
 (t/ann ^:no-check Math/abs (t/IFn [Double -> Double]
@@ -322,7 +322,9 @@
 #?(:clj
 (t/ann wrap-line (t/IFn [Integer String -> (t/Vec String)])))
 (defn wrap-line [size text]
-  (loop [left size line [] lines []
+  (loop [left size
+         line []
+         lines []
          words #?(:clj
                   (clojure.string/split text #"\s+")
                   :cljs
@@ -334,7 +336,7 @@
         (if (<= alen left)
           (recur (- left alen) (conj line spacing word) lines (next words))
           (recur (- size wlen) [word] (conj lines #?(:clj  (clojure.string/join line)
-                                                     :cljs (gstring/join line)) (next words)))))
+                                                     :cljs (gstring/join line))) (next words))))
       (when (seq line)
         (conj lines #?(:clj  (clojure.string/join line)
                        :cljs (gstring/join line)))))))

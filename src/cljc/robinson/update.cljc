@@ -22,26 +22,26 @@
             [robinson.worldgen :as rworldgen]
             [robinson.lineofsight :as rlos]
             robinson.macros
-            #?(:clj
-               [robinson.macros :as rm]
-               clojure.pprint
-               clojure.edn
-               [clojure.core.async :as async]
-               [clojure.data.json :as json]
-               [clojure.java.io :as io]
-               [taoensso.timbre :as log]
-               clj-tiny-astar.path
-               [clj-http.client :as http]
-               [clojure.stacktrace :as st]
-               clojure.inspector
-               clojure.string
-               :cljs
-               [robinson.macros :as rm :include-macros true]
-               [cljs.core.async :as async]
-               clojure.walk
-               cljs.reader
-               [taoensso.timbre :as log :include-macros true]
-               [goog.string.format])))
+            #?@(:clj (
+                [robinson.macros :as rm]
+                clojure.pprint
+                clojure.edn
+                [clojure.core.async :as async]
+                [clojure.data.json :as json]
+                [clojure.java.io :as io]
+                [taoensso.timbre :as log]
+                clj-tiny-astar.path
+                [clj-http.client :as http]
+                [clojure.stacktrace :as st]
+                clojure.inspector
+                clojure.string)
+                :cljs (
+                [robinson.macros :as rm :include-macros true]
+                [cljs.core.async :as async]
+                clojure.walk
+                cljs.reader
+                [taoensso.timbre :as log :include-macros true]
+                [goog.string.format]))))
 
 
 (defn format [s & args]
@@ -118,8 +118,8 @@
     (assoc :world (loop []
                     (if-let [w (try
                                  (rworldgen/init-world (system-time-millis))
-                                 (catch #?(:clj  Throwable e
-                                           :cljs js/Error e)
+                                 (catch #?@(:clj  (Throwable e)
+                                            :cljs (js/Error e))
                                    (log/error e)
                                    nil))]
                       w

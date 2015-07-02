@@ -13,13 +13,13 @@
             [robinson.player :as rp]
             [robinson.lineofsight :as rlos]
             [robinson.npc :as rnpc]
-            #?(:clj
-               [robinson.macros :as rm]
-               [taoensso.nippy :as nippy]
-               [clojure.core.async :as async :refer [go go-loop]]
-               [clojure.java.io :as io]
-               :cljs
-               [cljs.core.async :as async]))
+            #?@(:clj (
+                [robinson.macros :as rm]
+                [taoensso.nippy :as nippy]
+                [clojure.core.async :as async :refer [go go-loop]]
+                [clojure.java.io :as io])
+                :cljs (
+                [cljs.core.async :as async])))
   #?(:clj
      (:import [java.io DataInputStream DataOutputStream])
      :cljs
@@ -463,8 +463,8 @@
     (log/info "Saving" id)
     ;TODO: fix in clojurescript
     #?(:clj
-    (with-open [o (io/output-stream (format "save/%s.place.edn" (str id)))]
-      (nippy/freeze-to-out! (DataOutputStream. o) place)))
+       (with-open [o (io/output-stream (format "save/%s.place.edn" (str id)))]
+         (nippy/freeze-to-out! (DataOutputStream. o) place)))
     (recur)))
 
 (defn unload-place

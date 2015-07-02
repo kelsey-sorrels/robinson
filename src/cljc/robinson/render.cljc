@@ -43,10 +43,10 @@
                [goog.string :as gstring]
                [goog.string.format]))
   #?(:clj
-  (:import  robinson.aterminal.ATerminal
-            (java.awt Color Image)
-            java.awt.image.BufferedImage
-            javax.swing.ImageIcon)))
+     (:import  robinson.aterminal.ATerminal
+               (java.awt Color Image)
+               java.awt.image.BufferedImage
+               javax.swing.ImageIcon)))
 
 
 #?(:clj

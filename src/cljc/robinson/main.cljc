@@ -9,35 +9,35 @@
             [robinson.update :as ru]
             [robinson.monstergen :as mg]
             [robinson.render :as rrender]
-            [robinson.aterminal :as aterminal])
-            #?(:clj
-               [taoensso.timbre :as log]
-               [robinson.swingterminal :as swingterminal]
-               [robinson.macros :as rm]
-               [clojure.stacktrace :as st]
-               [clojure.core.async :as async :refer [go go-loop]]
-               [clojure.java.io :as io]
-               clojure.edn
-               [taoensso.nippy :as nippy]
-               [clojure.pprint :refer :all]
-               :cljs
-               [robinson.webglterminal :as webglterminal]
-               [robinson.macros :as rm :include-macros true]
-               [taoensso.timbre :as log :include-macros true]
-               [cljs.core.async :as async]
-               [cljs-promises.core :as p]
-               [cljs-promises.async :refer-macros [<?]]
-               [alandipert.storage-atom :refer [local-storage]]
-               [goog.net.XhrIo :as xhr]
-               [cljs-promises.core :as p]
-               [cljs-promises.async :refer-macros [<?]])
+            [robinson.aterminal :as aterminal]
+            #?@(:clj (
+                [taoensso.timbre :as log]
+                [robinson.swingterminal :as swingterminal]
+                [robinson.macros :as rm]
+                [clojure.stacktrace :as st]
+                [clojure.core.async :as async :refer [go go-loop]]
+                [clojure.java.io :as io]
+                clojure.edn
+                [taoensso.nippy :as nippy]
+                [clojure.pprint :refer :all])
+                :cljs (
+                [robinson.webglterminal :as webglterminal]
+                [robinson.macros :as rm :include-macros true]
+                [taoensso.timbre :as log :include-macros true]
+                [cljs.core.async :as async]
+                [cljs-promises.core :as p]
+                [cljs-promises.async :refer-macros [<?]]
+                [alandipert.storage-atom :refer [local-storage]]
+                [goog.net.XhrIo :as xhr]
+                [cljs-promises.core :as p]
+                [cljs-promises.async :refer-macros [<?]])))
 
-  #?(:clj
-     (:import [java.io DataInputStream DataOutputStream])
-     :cljs
+  #?@(:clj (
+     (:import [java.io DataInputStream DataOutputStream]))
+     :cljs (
      (:import [goog Uri])
      (:require-macros [cljs.core.async.macros :refer [go go-loop]]
-                      [robinson.macros :as rm])))
+                      [robinson.macros :as rm]))))
 
 
 ;TODO: refer timbre to set this.
@@ -48,9 +48,9 @@
 ;(log/set-level! :info)
 (log/set-level! :error)
 
-#?(:cljs
+#?@(:cljs (
 (cljs.reader/register-tag-parser! "robinson.monstergen.Monster" mg/map->Monster)
-(def world-storage (local-storage (atom nil) :world)))
+(def world-storage (local-storage (atom nil) :world))))
 
 (def save-chan (async/chan (async/sliding-buffer 1)))
 
@@ -85,19 +85,20 @@
          (catch js/Error e (log/error e))))
     (recur)))
 
-#?(:clj
-   (defn save-state [state]
-     (async/>!! save-chan state))
-   (defn render-state [state]
-     (async/>!! render-chan state))
-   :cljs
-   (defn save-state [state]
+(defn save-state [state]
+  #?(:clj
+     (async/>!! save-chan state)
+     :cljs
      (go
-       (async/>! save-chan state)))
-   (defn render-state [state]
+       (async/>! save-chan state))))
+  
+(defn render-state [state]
+  #?(:clj
+     (async/>!! render-chan state)
+     :cljs
      (go
        (async/>! render-chan state))))
-  
+
 (defn tick
   "The game loop.
 

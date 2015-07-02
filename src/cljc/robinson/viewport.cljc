@@ -3,9 +3,9 @@
   (:require
             [taoensso.timbre :as log]
             [robinson.player :as rp]
-            #?(:cljs
+            #?@(:cljs (
                [goog.string :as gstring]
-               [goog.string.format])))
+               [goog.string.format]))))
 
 (defn xy-in-rect?
   [x y rx ry rw rh]
@@ -178,7 +178,7 @@
               (log/info "line1 not vector" line1)
               (throw #?(:clj
                         (Exception. (spit line2))
-                         :cljs
+                        :cljs
                         (js/Error. (gstring/spit line1)))))
            (when-not (vector? line2)
               (log/info "line2 not vector" line2)

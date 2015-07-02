@@ -5,11 +5,11 @@
             [robinson.world :as rw]
             [robinson.itemgen :as ig]
             [robinson.player :as rp]
-            #?(:clj
-               [clojure.core.typed :as t]
-               :cljs
-               [goog.string :as gstring]
-               [goog.string.format])))
+            #?@(:clj (
+                [clojure.core.typed :as t])
+                :cljs (
+                [goog.string :as gstring]
+                [goog.string.format]))))
 
 (defn format [s & args]
   #?(:clj

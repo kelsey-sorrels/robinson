@@ -1,9 +1,9 @@
 ;; Functions for generating random items.
 (ns robinson.itemgen
   (:require [robinson.monstergen :as mg]
-            #?(:cljs
+            #?@(:cljs (
                [goog.string :as gstring]
-               [goog.string.format])))
+               [goog.string.format]))))
 
 
 (defn gen-corpse

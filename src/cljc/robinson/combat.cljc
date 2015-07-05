@@ -7,6 +7,7 @@
             [robinson.player :as rp]
             [robinson.itemgen :as ig]
             [robinson.monstergen :as mg]
+            [robinson.characterevents :as ce]
             [robinson.dynamiccharacterproperties :as dcp]
             #?@(:clj (
                 [robinson.macros :as rm]
@@ -189,11 +190,17 @@
        (flush)
        ~v))
 
+(defn assert-msg
+  [v msg]
+  (assert v msg)
+  v)
+
 (defn attack
   "Perform combat. The attacker fights the defender, but not vice-versa.
    Return a new state reflecting combat outcome."
   ([state attacker-path defender-path]
-  {:pre [(every? (set (keys (get-in state attacker-path))) [:attacks])]}
+  {:pre [(every? (set (keys (get-in state attacker-path))) [:attacks])
+         (some? state)]}
    (let [attacker           (get-in state attacker-path)
          attack-type (or (get (first (filter (fn [item] (contains? item :wielded))
                                      (get-in state (conj attacker-path :inventory) [])))
@@ -203,10 +210,10 @@
   ([state attacker-path defender-path attack]
   {:pre [(vector? attacker-path)
          (vector? defender-path)
-         (not (nil? state))
+         (some? state)
          (every? (set (keys (get-in state defender-path))) [:hp :pos :race :body-parts :inventory])
          (vector? (get-in state [:world :npcs]))]
-   :post [(not (nil? %))
+   :post [(some? %)
           (vector? (get-in % [:world :npcs]))]}
   (log/info "attacker-path" attacker-path "defender-path" defender-path)
   (let [defender             (get-in state defender-path)
@@ -323,6 +330,8 @@
             (-> state
               ;; update stats and will-to-live
               (rp/update-npc-killed defender attack)
+              ;; trigger on-death script for defender
+              ((partial ce/on-death defender))
               ;; remove defender
               (rc/remove-in (butlast defender-path) (partial = defender))
               ;; maybe add corpse

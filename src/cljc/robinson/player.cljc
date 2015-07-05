@@ -1,6 +1,7 @@
 ;; Functions for manipulating player state
 (ns robinson.player
   (:require [robinson.common :as rc]
+            [robinson.characterevents :as ce]
             [robinson.dynamiccharacterproperties :as dcp]
             [taoensso.timbre :as log]
             [robinson.random :as rr]
@@ -50,6 +51,15 @@
                    wounds]
   Object
   (toString [this] (str "#Player" (into {} this)))
+  ce/CharacterEvents
+  (on-successful-attack [this state]
+    state)
+  (on-missed-attack [this state]
+    state)
+  (on-death [this state]
+    state)
+  (on-tick [this state]
+    state)
   dcp/DynamicCharacterProperties
   (get-energy [this state]
     (get this :energy))

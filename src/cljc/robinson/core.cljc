@@ -60,20 +60,21 @@
                                         \.)
                                       (let [key-chan (aterminal/get-key-chan (state :screen))]
                                         (log/info  "waiting for key-chan")
-                                        (async/<! key-chan)))
-                              _ (log/info "Core got key" keyin)]
+                                        (async/<! key-chan)))]
+                             (log/info "Core got key" keyin)
                              (if keyin
                                (main/tick state keyin)
                                state))
                         #?(:clj
-                           (catch Exception ex
-                             (do 
-                                 (print-stack-trace ex)
-                                 (throw ex)))
+                           (catch Throwable ex
+                             (log/error ex)
+                             (print-stack-trace ex)
+                             state)
                           :cljs
                           (catch js/Error ex
-                                (log/error (str ex))
-                                (throw ex))))]
+                             (log/error (str ex))
+                             state)))]
+            (log/info "End of game loop")
             (recur state))))
                
       ;#?(:clj

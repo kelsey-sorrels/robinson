@@ -193,3 +193,33 @@
     (add-npcs state)
     state))
 
+(defn has-status?
+  [npc test-status]
+  (contains? (get npc :status) test-status))
+
+(defn conj-status
+  [npc new-status]
+  (update npc :status (fn [status] (assoc status new-status))))
+
+(defn disj-status
+  [npc new-status]
+  (update npc :status (fn [status] (disj status new-status))))
+
+
+;;;; Special monster abilities
+;; Hermit crab
+(defmethod mg/do-on-hit :hermit-crab [npc state [x y]] (-> state
+                                                         (update-npc-at-xy x y (fn [npc] (conj-status npc :in-shell)))
+                                                         (rc/append-log "The hermit crab retreats into its shell.")))
+(defmethod mg/do-get-toughness :hermit-crab [npc _ _] (if (has-status? npc :in-shell)
+                                                       100000
+                                                       (get npc :toughness)))
+(defmethod mg/do-on-tick :hermit-crab [npc state [x y]] (if (has-status? npc :in-shell)
+                                                        (-> state
+                                                          (update-npc-at-xy x y (fn [npc] (disj-status npc :in-shell)))
+                                                          (rc/append-log "The hermet crab pokes out of its shell."))
+                                                       state))
+;; Rat
+;; Bird
+;; Colored Frogs
+

@@ -45,11 +45,12 @@
 ;(log/set-config! [] (read-string (slurp "config/timbre.clj"))(log/set-log-level! :error)
 
 ;(log/set-level! :debug)
-;(log/set-level! :info)
-(log/set-level! :error)
+(log/set-level! :info)
+;(log/set-level! :error)
 
 #?@(:cljs (
 (cljs.reader/register-tag-parser! "robinson.monstergen.Monster" mg/map->Monster)
+(cljs.reader/register-tag-parser! "robinson.player.Player" mg/map->Player)
 (def world-storage (local-storage (atom nil) :world))))
 
 (def save-chan (async/chan (async/sliding-buffer 1)))

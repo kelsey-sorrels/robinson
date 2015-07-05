@@ -17,7 +17,7 @@
    (Thread/sleep 500))
 
 (defn start-nstracker []
- (let [track (ns-tracker ["src" "target/generated-src/clj" "checkouts"])]
+ (let [track (ns-tracker ["src/clj" "src/cljc"])]
    (doto
      (Thread.
        #(while true

@@ -21,7 +21,8 @@
                 :cljs (
                 [cljs.core.async :as async])))
   #?(:clj
-     (:import [java.io DataInputStream DataOutputStream])
+     (:import [java.io DataInputStream DataOutputStream]
+              [robinson.player Player])
      :cljs
      (:require-macros [robinson.macros :as rm]
                       [cljs.core.async.macros :refer [go go-loop]])))
@@ -364,37 +365,67 @@
            :log []
            :ui-hint nil
            :dialog-log []
-           :player {
-                    :id :player
-                    :name "Player"
-                    :race :human
-                    :class :ranger
-                    :movement-policy :entourage
-                    :in-party? true
-                    :inventory inventory-with-hotkeys
-                    :dexterity 1
-                    :speed 1
-                    :size 75
-                    :strength 10
-                    :toughness 5
-                    :hp 10
-                    :max-hp 10
-                    :will-to-live 100
-                    :max-will-to-live 100
-                    :money 50
-                    :xp 0
-                    :level 0
-                    :hunger 0
-                    :max-hunger 100
-                    :thirst 0
-                    :max-thirst 100
-                    :pos starting-pos
-                    :starting-pos starting-pos
-                    :place :0_0
-                    :body-parts #{:head :neck :face :abdomen :arm :leg :foot}
-                    :attacks #{:punch}
-                    :status #{}
-                    :stats {
+           :player (rp/Player.
+                    ;id
+                    :player
+                    ;name
+                    "Player"
+                    ;race
+                    :human
+                    ;class
+                    :ranger
+                    ;movement-policy
+                    :entourage
+                    ;in-party?
+                    true
+                    ;inventory
+                    inventory-with-hotkeys
+                    ;dexterity
+                    1
+                    ;speed
+                    1
+                    ;size
+                    75
+                    ;strength
+                    10
+                    ;toughness
+                    5
+                    ;hp
+                    10
+                    ;max-hp
+                    10
+                    ;will-to-live
+                    100
+                    ;max-will-to-live
+                    100
+                    ;money
+                    50
+                    ;xp
+                    0
+                    ;level
+                    0
+                    ;hunger
+                    0
+                    ;max-hunger
+                    100
+                    ;thirst
+                    0
+                    ;max-thirst
+                    100
+                    ;pos
+                    starting-pos
+                    ;starting-pos
+                    starting-pos
+                    ;place
+                    :0_0
+                    ;body-parts
+                    #{:head :neck :face :abdomen :arm :leg :foot}
+                    ;attacks
+                    #{:punch}
+                    ;status
+                    #{}
+                    ;stats
+                    {
                       :timeline (list)
                       :num-animals-killed       {}
                       :num-items-crafted        {}
@@ -402,7 +433,8 @@
                       :num-kills-by-attack-type {}
                       :num-items-eaten          {}}
                     ;; map from body-part to {:time <int> :damage <float>}
-                    :wounds {}}
+                    ;wounds
+                    {})
            :fruit {
              :poisonous           poisoned-fruit
              :skin-identifiable   skin-identifiable

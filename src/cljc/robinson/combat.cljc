@@ -7,6 +7,7 @@
             [robinson.player :as rp]
             [robinson.itemgen :as ig]
             [robinson.monstergen :as mg]
+            [robinson.dynamiccharacterproperties :as dcp]
             #?@(:clj (
                 [robinson.macros :as rm]
                 [clojure.stacktrace :refer [print-stack-trace]]
@@ -14,7 +15,9 @@
                 :cljs (
                 [robinson.macros :as rm :include-macros true]
                 [goog.string :as gstring]
-                [goog.string.format]))))
+                [goog.string.format])))
+  #?(:clj
+     (:import robinson.dynamiccharacterproperties.DynamicCharacterProperties)))
 
 
 (defn sharp-weapon?
@@ -155,22 +158,23 @@
      (throw (js/Error. (format "No value specified for %s" (name attack)))))))
 
 (defn calc-dmg
-  [attacker attack defender defender-body-part]
+  [state attacker attack defender defender-body-part]
+    (log/info "Attacker" attacker "attacker-type" (type attacker) "Defernder" defender "defender-type" (type defender))
     ;;Damage = Astr * (Adex / Dsp) * (As / Ds) * (At / Dt)
-    (let [attacker-strength  (get attacker :strength)
+    (let [attacker-strength  (dcp/get-strength attacker state)
           attacker-dexterity (get attacker :dexterity 0.1)
-          defender-speed     (get defender :speed)
-          attacker-size      (get attacker :size)
-          defender-size      (get defender :size)
-          attack-toughness   (attack-toughness attack)
-          defender-toughness (get defender :toughness)]
+          defender-speed     (dcp/get-speed defender state)
+          attacker-size      (dcp/get-size attacker state)
+          defender-size      (dcp/get-size defender state)
+          attack-toughness   (dcp/get-toughness attacker state)
+          defender-toughness (dcp/get-toughness defender state)]
       (log/info "attacker-strength" attacker-strength
-            "attacker-dexterity" attacker-dexterity
-            "defender-speed" defender-speed
-            "attacker-size" attacker-size
-            "defender-size" defender-size
-            "attack-toughness" attack-toughness
-            "defender-toughnes" defender-toughness)
+                "attacker-dexterity" attacker-dexterity
+                "defender-speed" defender-speed
+                "attacker-size" attacker-size
+                "defender-size" defender-size
+                "attack-toughness" attack-toughness
+                "defender-toughnes" defender-toughness)
       (* attacker-strength (/ (+ 5 attacker-dexterity) (+ 5 defender-speed)) (/ (+ 25 attacker-size) (+ 25 defender-size)) (/ attack-toughness defender-toughness))))
 
 
@@ -231,7 +235,7 @@
                                                (repeat (get defender :speed) :miss)))
         dmg                  (cond
                                (= hit-or-miss :hit)
-                                 (+ (calc-dmg attacker attack defender defender-body-part) (if shot-poisoned-arrow 1 0))
+                                 (+ (calc-dmg state attacker attack defender defender-body-part) (if shot-poisoned-arrow 1 0))
                                :else 0)
         is-wound             (> dmg 1.5)]
     (log/debug "attack" attacker-path "is attacking defender" defender-path)

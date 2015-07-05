@@ -1,6 +1,7 @@
 ;; Functions for manipulating player state
 (ns robinson.player
   (:require [robinson.common :as rc]
+            [robinson.dynamiccharacterproperties :as dcp]
             [taoensso.timbre :as log]
             [robinson.random :as rr]
             clojure.set
@@ -15,6 +16,51 @@
      (apply clojure.core/format s args)
      :cljs
      (apply gstring/format s args)))
+
+(defrecord Player [id
+                   name
+                   race
+                   class
+                   movement-policy
+                   in-party?
+                   inventory
+                   dexterity
+                   speed
+                   size
+                   strength
+                   toughness
+                   hp
+                   max-hp
+                   will-to-live
+                   max-will-to-live
+                   money
+                   xp
+                   level
+                   hunger
+                   max-hunger
+                   thirst
+                   max-thirst
+                   pos
+                   starting-pos
+                   place
+                   body-parts
+                   attacks
+                   status
+                   stats
+                   wounds]
+  Object
+  (toString [this] (str "#Player" (into {} this)))
+  dcp/DynamicCharacterProperties
+  (get-energy [this state]
+    (get this :energy))
+  (get-speed [this state]
+    (get this :speed))
+  (get-size [this state]
+    (get this :size))
+  (get-strength [this state]
+    (get this :strength))
+  (get-toughness [this state]
+    (get this :toughness)))
 
 (defn neg-hp?
   "Return `true` if the player has negative hp."

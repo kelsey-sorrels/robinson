@@ -12,6 +12,7 @@
                  [com.cemerick/clojurescript.test "0.3.3"]]
   :dependencies [[org.clojure/clojure "1.7.0"]
                  [org.clojure/core.async "0.1.346.0-17112a-alpha"]
+                 [org.clojure/core.match "0.3.0-alpha4"]
                  [org.clojure/core.memoize "0.5.6"]
                  [org.clojure/tools.reader "0.8.13"]
                  [org.clojure/core.typed "0.2.77"]

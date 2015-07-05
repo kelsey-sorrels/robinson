@@ -474,7 +474,7 @@
     ;; remove selected-hotkeys from remaining-hotkeys
     ;; clear selected-hotkeys
     (let [[player-cell x y]  (rw/player-cellxy state)
-          items              (vec (player-cell :items))
+          items              (vec (get player-cell :items))
           remaining-hotkeys  (-> state :world :remaining-hotkeys)
           divided-items      (group-by (fn [item] (if (contains? (-> state :world :selected-hotkeys) (item :hotkey))
                                                       :selected
@@ -1038,8 +1038,8 @@
         (fn [will-to-live] (+ 0.05 will-to-live)))
       state)
     (update-in state [:world :player]
-               (fn [player] (if (< (int (player :hp)) (player :max-hp))
-                              (assoc-in player [:hp] (+ (player :hp) 0.05))
+               (fn [player] (if (< (int (get player :hp)) (get player :max-hp))
+                              (assoc-in player [:hp] (+ (get player :hp) 0.05))
                               player)))))
 
 (defn do-sleep

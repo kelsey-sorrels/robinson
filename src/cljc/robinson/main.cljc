@@ -108,6 +108,9 @@
    world too, in case the  game is interrupted. Then we can load it next
    time we start up."
   [state keyin]
+  {:pre  [(or (char? keyin)
+              (keyword? keyin))]
+   :post [(= (type state) (type %))]}
     (try
       (log/info "got " (str keyin) " type " (type keyin))
       (rm/log-time "tick"

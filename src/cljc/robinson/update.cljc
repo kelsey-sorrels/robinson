@@ -2080,18 +2080,21 @@
                             :dirt
                             :gravel
                             :tall-grass
-                            :short-grass})]
-    ;; move randomly into an adjacent cell
-    (let [target (rr/rand-nth
-                   (rnpc/adjacent-navigable-pos state
-                                                npc-pos
-                                                navigable-types))]
-      ;(log/debug "distance > threshold, move randomly. target" target)
-      [target
-       (-> npc
-         (assoc-in [:pos :x] (get target :x))
-         (assoc-in [:pos :y] (get target :y)))
-       npc])))
+                            :short-grass})
+       adj-positions (rnpc/adjacent-navigable-pos state
+                                                  npc-pos
+                                                  navigable-types)]
+    (if (> (count adj-positions) 1)
+      ;; move randomly into an adjacent cell
+      (let [target (rr/rand-nth
+                     adj-positions)]
+        ;(log/debug "distance > threshold, move randomly. target" target)
+        [target
+         (-> npc
+           (assoc-in [:pos :x] (get target :x))
+           (assoc-in [:pos :y] (get target :y)))
+         npc])
+      [(get npc :pos) npc npc])))
 
 (defn move-to-target-in-range-or-random
   [state npc target]
@@ -2109,13 +2112,15 @@
                             :dirt
                             :gravel
                             :tall-grass
-                            :short-grass})]
-    (if (> distance threshold)
+                            :short-grass})
+       adj-positions (rnpc/adjacent-navigable-pos state
+                                                  npc-pos
+                                                  navigable-types)]
+    (if (and (> distance threshold)
+             (> (count adj-positions) 1))
       ;; outside of range, move randomly into an adjacent cell
       (let [target (rr/rand-nth
-                     (rnpc/adjacent-navigable-pos state
-                                                  npc-pos
-                                                  navigable-types))]
+                     adj-positions)]
         ;(log/debug "distance > threshold, move randomly. target" target)
         [target
          (-> npc

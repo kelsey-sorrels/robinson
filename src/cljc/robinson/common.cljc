@@ -35,6 +35,10 @@
 #?(:clj
 (t/defalias Pos (t/HMap :mandatory {:x Integer :y Integer} :complete? true)))
 
+(defn position?
+  [pos]
+  (= #{:x :y} (-> pos keys set)))
+
 #?(:clj
 (t/ann pos->xy [Pos -> (t/I (t/Vec Integer)(t/ExactCount 2))]))
 (defn pos->xy

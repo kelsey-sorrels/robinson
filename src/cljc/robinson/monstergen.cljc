@@ -2,6 +2,7 @@
 (ns robinson.monstergen
   (:require [robinson.common :as rc]
             [robinson.dynamiccharacterproperties :as dcp]
+            [robinson.characterevents :as ce]
             [taoensso.timbre :as log]
             [robinson.random :as rr]
             [clojure.core.match :refer [match]]))
@@ -40,14 +41,8 @@
   (contains? (get-in state [:world :frogs :poisonous])
              monster-type))
 
-(defprotocol MonsterEvents
-  (on-successful-attack [this state])
-  (on-missed-attack [this state])
-  (on-death [this state])
-  (on-tick [this state]))
-
 (defn dispatch-on-npc-race [npc _] (get npc :race))
-;; multi methods for MonsterEvents
+;; multi methods for CharacterEvents
 (defmulti do-on-successful-attack dispatch-on-npc-race)
 (defmulti do-on-missed-attack dispatch-on-npc-race)
 (defmulti do-on-death dispatch-on-npc-race)
@@ -60,7 +55,7 @@
 (defmulti do-get-strength dispatch-on-npc-race)
 (defmulti do-get-toughness dispatch-on-npc-race)
 
-;; default methods for MonsterEvents
+;; default methods for CharacterEvents
 (defmethod do-on-successful-attack :default [_ state] state)
 (defmethod do-on-missed-attack :default [_ state] state)
 (defmethod do-on-death :default [_ state] state)
@@ -94,14 +89,16 @@
                     status]
   Object
   (toString [this] (str "#Monster" (into {} this)))
-  ;; Dispatch MonsterEvents and DynaimicMonsterProperties to multi-methods
-  MonsterEvents
+  ;; Dispatch CharacterEvents and DynaimicCharacterProperties to multi-methods
+  ce/CharacterEvents
   (on-successful-attack [this state]
     (do-on-successful-attack this state))
   (on-missed-attack [this state]
     (do-on-missed-attack this state))
   (on-death [this state]
     (do-on-death this state))
+  (on-tick [this state]
+    (do-on-tick this state))
   dcp/DynamicCharacterProperties
   (get-energy [this state]
     (do-get-energy this state))

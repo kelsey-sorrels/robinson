@@ -9,6 +9,12 @@
 
 (defn xy-in-rect?
   [x y rx ry rw rh]
+  {:pre [(integer? x)
+         (integer? y)
+         (integer? rx)
+         (integer? ry)
+         (integer? rw)
+         (integer? rh)]}
   (and (<= rx x (+ -1 rx rw))
        (<= ry y (+ -1 ry rh))))
 
@@ -21,11 +27,14 @@
 
 (defn xy-in-viewport?
   [state x y]
+  {:pre [(some? state)
+         (some? (get-in state [:world :viewport]))
+         (integer? x)
+         (integer? y)]}
   (let [{v-width     :width
          v-height    :height
          {v-x :x v-y :y} :pos}
         (get-in state [:world :viewport])]
-        
     (xy-in-rect? x y
                  v-x v-y
                  v-width v-height)))

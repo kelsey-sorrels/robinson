@@ -1,6 +1,7 @@
 ;; Utility functions and functions for manipulating state
 (ns robinson.world
   (:require [robinson.common :as rc]
+            [robinson.random :as rr]
             [taoensso.timbre :as log]
             [robinson.player :as rp]
             [robinson.viewport :as rv]
@@ -273,24 +274,27 @@
 
         item))))))))
 
-
 (defn adjacent-xys
-  [x y]
-  [[(dec x) y]
-   [(inc x) y]
-   [x (dec y)]
-   [x (inc y)]])
+  ([pos]
+   (apply adjacent-xys (rc/pos->xy pos)))
+  ([x y]
+   [[(dec x) y]
+    [(inc x) y]
+    [x (dec y)]
+    [x (inc y)]]))
 
 (defn adjacent-xys-ext
-  [x y]
-  [[(dec x) y]
-   [(inc x) y]
-   [x (dec y)]
-   [x (inc y)]
-   [(dec x) (inc y)]
-   [(inc x) (inc y)]
-   [(dec x) (dec y)]
-   [(inc x) (dec y)]])
+  ([pos]
+   (apply adjacent-xys-ext (rc/pos->xy pos)))
+  ([x y]
+   [[(dec x) y]
+    [(inc x) y]
+    [x (dec y)]
+    [x (inc y)]
+    [(dec x) (inc y)]
+    [(inc x) (inc y)]
+    [(dec x) (dec y)]
+    [(inc x) (dec y)]]))
 
 (defn adjacent-cells
   "Return a collection of adjacent cells (diagonals not-included) around pos.

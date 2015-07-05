@@ -49,7 +49,12 @@
 (defn npcs-in-viewport
   "Seq of npcs at the current place."
   [state]
-  (filter (fn [npc] (apply rv/xy-in-viewport? state (rc/pos->xy (get npc :pos))))
+  {:pre [(some? state)]}
+  (filter (fn [npc]
+            (let [[x y] (rc/pos->xy (get npc :pos))]
+              (assert (integer? x) (str "non-integer x-pos for npc" npc))
+              (assert (integer? y) (str "non-integer y-pos for npc" npc))
+              (rv/xy-in-viewport? state x y)))
           (get-in state [:world :npcs])))
 
 (defn npc-by-id
@@ -69,16 +74,25 @@
 
 (defn add-npc
   "Add an npc to the specified place and position."
+  ([state npc pos]
+   {:pre [(some? state)
+          (some? npc)
+          (rc/position? pos)]}
+   (let [[x y] (rc/pos->xy pos)]
+     (add-npc state npc x y)))
   ([state npc x y]
-  {:pre [(vector? (get-in state [:world :npcs]))]
+  {:pre [(vector? (get-in state [:world :npcs]))
+         (some? npc)
+         (integer? x)
+         (integer? y)]
    :post [(vector? (get-in % [:world :npcs]))]}
   (add-npc state npc x y nil))
   ([state npc x y buy-fn-path]
-  (rc/conj-in state [:world :npcs] (assoc npc :pos {:x x :y y}
-                                           :inventory (if (contains? npc :inventory)
-                                                        (npc :inventory)
-                                                        [])
-                                           :buy-fn-path buy-fn-path))))
+  (rc/conj-in state [:world :npcs] (assoc npc :pos         (rc/xy->pos x y)
+                                              :inventory   (if (contains? npc :inventory)
+                                                             (npc :inventory)
+                                                             [])
+                                              :buy-fn-path buy-fn-path))))
 (defn remove-npc
   "Remove npc from state."
   [state npc]
@@ -208,18 +222,41 @@
 
 ;;;; Special monster abilities
 ;; Hermit crab
-(defmethod mg/do-on-hit :hermit-crab [npc state [x y]] (-> state
-                                                         (update-npc-at-xy x y (fn [npc] (conj-status npc :in-shell)))
-                                                         (rc/append-log "The hermit crab retreats into its shell.")))
-(defmethod mg/do-get-toughness :hermit-crab [npc _ _] (if (has-status? npc :in-shell)
+(defmethod mg/do-on-hit :hermit-crab [npc state] (-> state
+                                                   (update-npc npc (fn [npc] (conj-status npc :in-shell)))
+                                                   (rc/append-log "The hermit crab retreats into its shell.")))
+(defmethod mg/do-get-toughness :hermit-crab [npc _] (if (has-status? npc :in-shell)
                                                        100000
                                                        (get npc :toughness)))
-(defmethod mg/do-on-tick :hermit-crab [npc state [x y]] (if (has-status? npc :in-shell)
-                                                        (-> state
-                                                          (update-npc-at-xy x y (fn [npc] (disj-status npc :in-shell)))
-                                                          (rc/append-log "The hermet crab pokes out of its shell."))
-                                                       state))
+(defmethod mg/do-on-tick :hermit-crab [npc state] (if (has-status? npc :in-shell)
+                                                     (-> state
+                                                       (update-npc npc (fn [npc] (disj-status npc :in-shell)))
+                                                       (rc/append-log "The hermet crab pokes out of its shell."))
+                                                    state))
 ;; Rat
+(defmethod mg/do-on-death :rat [npc state] (cond
+                                             (or true (zero? (rr/uniform-int 10)))
+                                               ;; spawn an additional 2 rats
+                                               (-> state
+                                                 (add-npc (mg/gen-monster :rat)
+                                                          (->> (rw/adjacent-xys-ext (get npc :pos))
+                                                               (remove (fn [[x y]] (rw/collide? state x y {:include-npcs? true
+                                                                                                           :collide-water? false})))
+                                                               rand-nth
+                                                               (apply rc/xy->pos)))
+                                                 (rc/append-log "The rat swarm intensified."))
+                                             (zero? (rr/uniform-int 10))
+                                               (-> state
+                                                 (add-npc (mg/gen-monster :rat)
+                                                          (->> (rw/adjacent-xys-ext (get npc :pos))
+                                                               (remove (fn [[x y]] (rw/collide? state x y {:include-npcs? true
+                                                                                                           :collide-water? false})))
+                                                               rand-nth
+                                                               (apply rc/xy->pos)))
+                                                 (rc/append-log "The rat swarm intensified."))
+                                             :else
+                                                state))
+                                               
 ;; Bird
 ;; Colored Frogs
 

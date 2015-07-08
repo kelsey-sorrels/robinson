@@ -25,7 +25,7 @@
      (.setDaemon true)
      (.start))))
 
-(def done-chan (async/chan))
+(defonce done-chan (async/chan))
 
 (defn -main []
   (let [default-setup-fn (constantly {})
@@ -33,36 +33,42 @@
         get-setup-fn     (fn [] (if-let [f (resolve 'robinson.main/setup)] f default-setup-fn))
         get-tick-fn      (fn [] (if-let [f (resolve 'robinson.main/tick)] f default-tick-fn))]
     (start-nstracker)
-    ; on ticks, this loop will restart. If setup-fn changes,
-    ; the state will be reset through setup-fn but the screen will cary over.
-    (go-loop [setup-fn     (get-setup-fn)
-              setup-fn-var (var-get setup-fn)
-              state        (setup-fn nil)]
-      ; start with initial state from setup-fn
-      ; setup function changed? restart with new setup
-      (if (identical? (var-get (get-setup-fn)) setup-fn-var)
-        ; tick the old state through the tick-fn to get the new state
-        (let [new-state (try
-                          (let [keyin (or (when (= (rw/current-state state) :sleep)
-                                          \.)
-                                        (let [key-chan (aterminal/get-key-chan (state :screen))]
-                                          (log/info  "waiting for key-chan")
-                                          (async/<! key-chan)))]
-                             (if keyin
-                               ((get-tick-fn) state keyin)
-                               state))
-                          (catch Throwable e
-                            (log/error e)
-                            state))]
-          (if (nil? new-state)
-            (System/exit 0)
-            (recur setup-fn setup-fn-var new-state)))
-        ; setup function changed, restart with new setup
-        (let [setup-fn  (get-setup-fn)
-              setup-var (var-get setup-fn)
-              state     (setup-fn (get state :screen))]
-          (println "(Re)starting loop with new setup-fn")
-          (recur setup-fn setup-var state))))
-    (async/<!! done-chan)
-    (println "Core exiting")))
+    ; start with initial state from setup-fn
+    (loop [setup-fn     (get-setup-fn)
+           setup-fn-var (var-get setup-fn)]
+      (setup-fn
+        (fn [state]
+          ; on ticks, this loop will restart. If setup-fn changes,
+          ; the state will be reset through setup-fn but the screen will cary over.
+          (go-loop [state state]
+            ; start with initial state from setup-fn
+            ; setup function changed? restart with new setup
+             (when (identical? (var-get (get-setup-fn)) setup-fn-var)
+              (if (nil? state)
+                ;; nil state, exit
+                (do
+                  (log/info "Got nil state. Exiting.")
+                  (async/>! done-chan true)
+                  (System/exit 0))
+                ; tick the old state through the tick-fn to get the new state
+                (let [new-state (try
+                                  (let [keyin (if (= (rw/current-state state) :sleep)
+                                                  \.
+                                                (let [key-chan (aterminal/get-key-chan (state :screen))]
+                                                  (log/info  "waiting for key-chan")
+                                                  (async/<! key-chan)))]
+                                     (if keyin
+                                       ((get-tick-fn) state keyin)
+                                       state))
+                                  (catch Throwable e
+                                    (log/error e)
+                                    state))]
+                    (recur new-state)))))))
+      ; setup function changed, restart with new setup
+      (let [setup-fn  (get-setup-fn)
+            setup-var (var-get setup-fn)]
+        (println "(Re)starting loop with new setup-fn")
+        (recur setup-fn setup-var)))
+        (async/<!! done-chan)
+        (println "Core exiting")))
 

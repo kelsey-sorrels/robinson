@@ -182,8 +182,6 @@
                              :rat
                              :rat
                              :rat
-                             :rat
-                             :rat
                              :gecko]
                           1 [:rat
                              :rat
@@ -218,6 +216,7 @@
                              :monkey]}
         water-monster-ids {
                           0 [:clam 
+                             :hermit-crab
                              :hermit-crab]
                           1 [:jellyfish]
                           2 [:fish]

@@ -188,7 +188,7 @@
         r          (rlos/sight-distance state)
         [player-x
          player-y] (rp/player-xy state)
-        xys        (rlos/perimeter-xys player-x player-y (min 5 r))
+        xys        (rlos/perimeter-xys player-x player-y (min 5 (inc r)))
         xys        (remove (fn [[x y]] (rw/collide? state x y {:include-npcs? true
                                                                :collide-water? false})) xys)]
     (if (not (empty? xys))

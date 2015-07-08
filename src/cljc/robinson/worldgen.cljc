@@ -166,118 +166,119 @@
         n                     (rn/create-noise (rr/create-random seed))
         volcano-pos           (get-in state [:world :volcano-pos])
         lava-xys              (get-in state [:world :lava-points])]
-    (vec
-     (for [y (range y (+ y height))]
-      (vec
-        (for [x (range x (+ x width))]
-          (let [biome     (sample-island n x y)
-                t         (sample-tree n x y)
-                pos       (rc/xy->pos x y)
-                ;_         (log/info biome t)
-                cell-type (case biome
-                            :ocean         {:type :water}
-                            :surf          {:type :surf}
-                            :sand          (case (rr/uniform-int 3)
-                                             0 {:type :sand}
-                                             1 {:type :sand}
-                                             2 {:type :sand}
-                                             3 {:type :sand}
-                                             4 {:type :short-grass}
-                                             5 {:type :short-grass}
-                                             6 {:type :tall-grass})
-                            :dirt          (case (rr/uniform-int 3)
-                                             0 {:type :dirt}
-                                             1 {:type :gravel}
-                                             2 {:type :short-grass})
-                            :bamboo-grove  (if (< t 0.1)
-                                             (rr/rand-nth [
-                                               {:type :dirt}
-                                               {:type :tall-grass}
-                                               {:type :tall-grass}
-                                               {:type :short-grass}
-                                               {:type :short-grass}])
-                                             {:type :bamboo})
-                            :rocky         (if (< t 0.1)
-                                             (rr/rand-nth [
-                                               {:type :dirt}
-                                               {:type :tall-grass}
-                                               {:type :short-grass}
-                                               {:type :short-grass}])
-                                              {:type :mountain})
-                            :swamp         (rr/rand-nth [
-                                             {:type :dirt}
-                                             {:type :surf}
-                                             {:type :tree}
-                                             {:type :tall-grass}
-                                             {:type :short-grass}])
-                            :meadow        (rr/rand-nth [
-                                             {:type :dirt}
-                                             {:type :tall-grass}
-                                             {:type :tall-grass}
-                                             {:type :short-grass}
-                                             {:type :short-grass}])
-                            :jungle        (if (< t 0.1)
-                                             (rr/rand-nth [
-                                               {:type :tall-grass}
-                                               {:type :short-grass}
-                                               {:type :gravel}])
-                                             (rr/rand-nth [
-                                               {:type :tall-grass}
-                                               {:type :palm-tree}
-                                               {:type :fruit-tree :fruit-type (rr/rand-nth [:red-fruit :orange-fruit :yellow-fruit
-                                                                                            :green-fruit :blue-fruit :purple-fruit
-                                                                                            :white-fruit :black-fruit])}]))
-                            :heavy-forest  (if (< t 0.1)
-                                             (rr/rand-nth [
-                                               {:type :tall-grass}
-                                               {:type :tree}
-                                               {:type :fruit-tree :fruit-type (rr/rand-nth [:red-fruit :orange-fruit :yellow-fruit
-                                                                                            :green-fruit :blue-fruit :purple-fruit
-                                                                                            :white-fruit :black-fruit])}])
-                                             (rr/rand-nth [
-                                               {:type :tall-grass}
-                                               {:type :short-grass}
-                                               {:type :gravel}]))
-                            :light-forest  (if (< t 0.1)
-                                             (rr/rand-nth [
-                                               {:type :tall-grass}
-                                               {:type :tree}
-                                               {:type :fruit-tree :fruit-type (rr/rand-nth [:red-fruit :orange-fruit :yellow-fruit
-                                                                                            :green-fruit :blue-fruit :purple-fruit
-                                                                                            :white-fruit :black-fruit])}])
-                                             (rr/rand-nth [
-                                               {:type :tall-grass}
-                                               {:type :tall-grass}
-                                               {:type :short-grass}
-                                               {:type :short-grass}])))
-                   cell (cond
-                          ;; lava
-                          (not-every? #(rc/farther-than? x y (first %) (second %) 3) lava-xys)
-                          {:type :lava}
-                          (not (rc/farther-than? pos volcano-pos 7))
-                          {:type :mountain}
-                          :else cell-type)]
-            ;; drop initial harvestable items
-            (if (or (and (= :gravel (get cell :type))
-                         (= :rocky biome)
-                         (= (rr/uniform-int 0 50) 0))
-                    (and (= :tree (get cell :type))
-                         (= :heavy-forest biome)
-                         (= (rr/uniform-int 0 50) 0))
-                    (and (= :tall-grass (get cell :type))
-                         (= :meadow biome)
-                         (= (rr/uniform-int 0 50) 0))
-                    (and (= :palm-tree (get cell :type))
-                         (= :jungle biome)
-                         (= (rr/uniform-int 0 50) 0))
-                    (and (contains? #{:gravel :tree :palm-tree :tall-grass} (get cell :type))
-                         (= (rr/uniform-int 0 200) 0)))
-              (assoc cell :harvestable true)
-              (if (and (= :gravel (get cell :type))
-                       (not-every? #(rc/farther-than? x y (first %) (second %) 10) lava-xys)
-                       (= (rr/uniform-int 0 50) 0))
-                (assoc cell :harvestable true :near-lava true)
-                cell)))))))))
+    {:spawned-monsters {}
+     :cells            (vec
+                        (for [y (range y (+ y height))]
+                         (vec
+                           (for [x (range x (+ x width))]
+                             (let [biome     (sample-island n x y)
+                                   t         (sample-tree n x y)
+                                   pos       (rc/xy->pos x y)
+                                   ;_         (log/info biome t)
+                                   cell-type (case biome
+                                               :ocean         {:type :water}
+                                               :surf          {:type :surf}
+                                               :sand          (case (rr/uniform-int 3)
+                                                                0 {:type :sand}
+                                                                1 {:type :sand}
+                                                                2 {:type :sand}
+                                                                3 {:type :sand}
+                                                                4 {:type :short-grass}
+                                                                5 {:type :short-grass}
+                                                                6 {:type :tall-grass})
+                                               :dirt          (case (rr/uniform-int 3)
+                                                                0 {:type :dirt}
+                                                                1 {:type :gravel}
+                                                                2 {:type :short-grass})
+                                               :bamboo-grove  (if (< t 0.1)
+                                                                (rr/rand-nth [
+                                                                  {:type :dirt}
+                                                                  {:type :tall-grass}
+                                                                  {:type :tall-grass}
+                                                                  {:type :short-grass}
+                                                                  {:type :short-grass}])
+                                                                {:type :bamboo})
+                                               :rocky         (if (< t 0.1)
+                                                                (rr/rand-nth [
+                                                                  {:type :dirt}
+                                                                  {:type :tall-grass}
+                                                                  {:type :short-grass}
+                                                                  {:type :short-grass}])
+                                                                 {:type :mountain})
+                                               :swamp         (rr/rand-nth [
+                                                                {:type :dirt}
+                                                                {:type :surf}
+                                                                {:type :tree}
+                                                                {:type :tall-grass}
+                                                                {:type :short-grass}])
+                                               :meadow        (rr/rand-nth [
+                                                                {:type :dirt}
+                                                                {:type :tall-grass}
+                                                                {:type :tall-grass}
+                                                                {:type :short-grass}
+                                                                {:type :short-grass}])
+                                               :jungle        (if (< t 0.1)
+                                                                (rr/rand-nth [
+                                                                  {:type :tall-grass}
+                                                                  {:type :short-grass}
+                                                                  {:type :gravel}])
+                                                                (rr/rand-nth [
+                                                                  {:type :tall-grass}
+                                                                  {:type :palm-tree}
+                                                                  {:type :fruit-tree :fruit-type (rr/rand-nth [:red-fruit :orange-fruit :yellow-fruit
+                                                                                                               :green-fruit :blue-fruit :purple-fruit
+                                                                                                               :white-fruit :black-fruit])}]))
+                                               :heavy-forest  (if (< t 0.1)
+                                                                (rr/rand-nth [
+                                                                  {:type :tall-grass}
+                                                                  {:type :tree}
+                                                                  {:type :fruit-tree :fruit-type (rr/rand-nth [:red-fruit :orange-fruit :yellow-fruit
+                                                                                                               :green-fruit :blue-fruit :purple-fruit
+                                                                                                               :white-fruit :black-fruit])}])
+                                                                (rr/rand-nth [
+                                                                  {:type :tall-grass}
+                                                                  {:type :short-grass}
+                                                                  {:type :gravel}]))
+                                               :light-forest  (if (< t 0.1)
+                                                                (rr/rand-nth [
+                                                                  {:type :tall-grass}
+                                                                  {:type :tree}
+                                                                  {:type :fruit-tree :fruit-type (rr/rand-nth [:red-fruit :orange-fruit :yellow-fruit
+                                                                                                               :green-fruit :blue-fruit :purple-fruit
+                                                                                                               :white-fruit :black-fruit])}])
+                                                                (rr/rand-nth [
+                                                                  {:type :tall-grass}
+                                                                  {:type :tall-grass}
+                                                                  {:type :short-grass}
+                                                                  {:type :short-grass}])))
+                                      cell (cond
+                                             ;; lava
+                                             (not-every? #(rc/farther-than? x y (first %) (second %) 3) lava-xys)
+                                             {:type :lava}
+                                             (not (rc/farther-than? pos volcano-pos 7))
+                                             {:type :mountain}
+                                             :else cell-type)]
+                               ;; drop initial harvestable items
+                               (if (or (and (= :gravel (get cell :type))
+                                            (= :rocky biome)
+                                            (= (rr/uniform-int 0 50) 0))
+                                       (and (= :tree (get cell :type))
+                                            (= :heavy-forest biome)
+                                            (= (rr/uniform-int 0 50) 0))
+                                       (and (= :tall-grass (get cell :type))
+                                            (= :meadow biome)
+                                            (= (rr/uniform-int 0 50) 0))
+                                       (and (= :palm-tree (get cell :type))
+                                            (= :jungle biome)
+                                            (= (rr/uniform-int 0 50) 0))
+                                       (and (contains? #{:gravel :tree :palm-tree :tall-grass} (get cell :type))
+                                            (= (rr/uniform-int 0 200) 0)))
+                                 (assoc cell :harvestable true)
+                                 (if (and (= :gravel (get cell :type))
+                                          (not-every? #(rc/farther-than? x y (first %) (second %) 10) lava-xys)
+                                          (= (rr/uniform-int 0 50) 0))
+                                   (assoc cell :harvestable true :near-lava true)
+                                   cell)))))))}))
 
 (defn init-world
   "Create a randomly generated world.

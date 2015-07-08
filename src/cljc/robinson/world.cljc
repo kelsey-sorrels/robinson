@@ -131,15 +131,15 @@
   ([state place-id ax ay x y]
    (let [[px py]    [(- x ax) (- y ay)]]
      #_(log/info "get-cell" place-id ax ay x y px py)
-     #_(log/info "matching-keys" (matching-keys state [:world :places place-id py px]))
-     (get-in state [:world :places place-id py px]))))
+     #_(log/info "matching-keys" (matching-keys state [:world :places place-id :cells py px]))
+     (get-in state [:world :places  place-id :cells py px]))))
 
 (defn update-cell
   [state x y f]
   (let [place-id (rv/xy->place-id state x y)
         [ax ay]  (rv/place-id->anchor-xy state place-id)
         [x y]    [(- x ax) (- y ay)]]
-    (update-in state [:world :places place-id y x] f)))
+    (update-in state [:world :places place-id :cells y x] f)))
 
 (defn assoc-cell-fn
   [state ks v]
@@ -153,8 +153,8 @@
         [px py]    [(- x ax) (- y ay)]]
     #_(log/info "assoc-cell" "place-id" place-id "x" x "y" y "ax" ax "ay" ay "px" px "py" py "kvs" keyvals)
     (reduce (fn [state [k v]]
-              #_(log/info "matching-keys" (matching-keys state [:world :places place-id py px k]))
-              (assoc-cell-fn state [:world :places place-id py px k] v))
+              #_(log/info "matching-keys" (matching-keys state [:world :places place-id :cells py px k]))
+              (assoc-cell-fn state [:world :places place-id :cells py px k] v))
             state
             (partition 2 keyvals))))
 
@@ -167,17 +167,19 @@
                                  xyvs)]
     #_(log/info "reducing" place-id->xyvs)
     (reduce-kv (fn [state place-id  xyvs]
-                 (let [place   (get-in state [:world :places place-id])
+                 (let [place   (get-in state [:world :places place-id :cells])
                        [ax ay] (rv/place-id->anchor-xy state place-id)]
-                   (assoc-in state
-                             [:world :places place-id]
+                   (if (some? place)
+                     (assoc-in state
+                             [:world :places place-id :cells]
                              (reduce (fn [place [[x y] v]]
                                        #_(log/info "updating place" place-id "x" x "y" y "with value" v)
                                        (let [px (- x ax)
                                              py (- y ay)]
                                           (update-in place [py px] (fn [cell] (merge cell v)))))
                                      place
-                                     xyvs))))
+                                     xyvs))
+                     state)))
                state
                place-id->xyvs)))
                        
@@ -195,21 +197,23 @@
                            [ax ay] (rv/place-id->anchor-xy state place-id)]
                        (assoc places
                               place-id
-                              (reduce (fn [place [[x y] f]]
-                                        #_(log/info "updating place" place-id "x" x "y" y "with value" v)
-                                        (let [px (- x ax)
-                                              py (- y ay)]
-                                          (if (get-in place [py px])
-                                            (update-in place [py px] f)
-                                            (do (log/error "Tried associng in unloaded place"
-                                                           place
-                                                           place-id
-                                                           px
-                                                           py
-                                                           (keys places))
-                                                place))))
-                                      place
-                                      xy-fns))))
+                              (assoc place
+                                      :cells
+                                      (reduce (fn [place [[x y] f]]
+                                                #_(log/info "updating place" place-id "x" x "y" y "with value" v)
+                                                (let [px (- x ax)
+                                                      py (- y ay)]
+                                                  (if (get-in place [py px])
+                                                    (update-in place [py px] f)
+                                                    (do (log/error "Tried associng in unloaded place"
+                                                                   place
+                                                                   place-id
+                                                                   px
+                                                                   py
+                                                                   (keys places))
+                                                        place))))
+                                              (get place :cells)
+                                              xy-fns)))))
                    places
                    place-id->xy-fns)))))
 
@@ -218,7 +222,7 @@
   (let [place-id (rv/xy->place-id state x y)
         [ax ay]  (rv/place-id->anchor-xy state place-id)
         [x y]    [(- x ax) (- y ay)]]
-    (rc/dissoc-in state [:world :places place-id y x k])))
+    (rc/dissoc-in state [:world :places place-id :cells y x k])))
 
 (defn update-cell-items
   [state x y f]

@@ -276,6 +276,8 @@
     (log/info "not collide?" (not (rw/collide? state target-x target-y {:include-npcs? false})))
     (log/info "not mounted-on-raft?" (not (rw/player-mounted-on-raft? state)))
     (cond
+      (rp/player-paralyzed? state)
+        (rc/append-log "You can not move (paralyzed).")
       (and (not (rw/collide? state target-x target-y {:include-npcs? false}))
            (not (rw/player-mounted-on-raft? state)))
         (as-> state state
@@ -1577,9 +1579,11 @@
           (update-in [:world :player :hunger] (partial + 0.05 (* 0.02 (count (rp/player-inventory state)))))
           (update-in [:world :player :thirst] (partial + 0.1))))
       (if (> (rp/player-hunger state) (rp/player-max-hunger state))
-        (-> state
-          (rc/conj-in [:world :player :status] :dead)
-          (rp/update-player-died :hunger))
+        (do
+          (log/info "Player died from hunger")
+          (-> state
+            (rc/conj-in [:world :player :status] :dead)
+            (rp/update-player-died :hunger)))
         state)
       (if (> (rp/player-thirst state) (rp/player-max-thirst state))
         (-> state
@@ -1718,6 +1722,14 @@
         (rc/dissoc-in [:world :player :tongue-identify-activate-time]))
       state)))
 
+(defmacro if-player-attribute-elapsed
+  [state player-key true-expr false-expr]
+  `(if (let [time-value# (rp/get-player-value ~state ~player-key)]
+         (and (some? time-value#)
+              (< time-value# (rw/get-time ~state))))
+     ~true-expr
+     ~false-expr))
+
 (defn if-poisoned-get-hurt
   "Decrease player's hp if they are poisoned."
   [state]
@@ -1740,6 +1752,25 @@
                                                      (- hp 0.1)
                                                      (min (get-in state [:world :player :max-hp])
                                                           (+ hp 0.2)))))))
+(defn check-paralyzed
+  "Set and upset paralyzation player attribute."
+  [state]
+  {:pre [(not (nil? state))]
+   :post [(not (nil? %))]}
+  (as-> state state
+    ;; after delay, make player paralyzed
+    (if-player-attribute-elapsed state :paralyed-start-time
+      (-> state
+        ;; make player paralyzed
+        (rp/assoc-player-attribute :paralyzed-expire-time)
+        ;; clean up delay-time attribute
+        (rp/dissoc-player-attribute :paralyzed-start-time)
+      state)
+    ;; after paralyzation, un-paralyze player
+    (if-player-attribute-elapsed state :paralyed-expire-time
+      ;; make player not paralyzed
+      (rp/dissoc-player-attribute state :paralyzed-expire-time)
+      state))))
 
 (defn if-wounded-get-infected
   [state]
@@ -2768,6 +2799,7 @@
                   (if-poisoned-get-hurt)
                   (heal)
                   (decrease-flashlight-charge)
+                  (check-paralyzed)
                   (if-wounded-get-infected)
                   (if-infected-get-hurt)
                   (if-near-too-much-fire-get-hurt)

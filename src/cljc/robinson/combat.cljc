@@ -303,6 +303,12 @@
                                                                                 (= (rr/uniform-int 10) 0))
                                                                          (conj status :poisioned)
                                                                          status)))
+            ;; chance of being paralyzed by frog
+            (if (and (= (get defender :id) :player)
+                     (mg/is-poisonous-frog? state (get attacker :race)))
+              (rp/assoc-player-attribute :paralyzed-start-time (inc (rw/get-time state)))
+              state)
+
             (log-with-line state "7")
             ;; chance of being wounded
             (update-in state defender-path (fn [defender] (if (and is-wound

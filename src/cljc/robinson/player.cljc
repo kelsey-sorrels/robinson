@@ -72,6 +72,54 @@
   (get-toughness [this state]
     (get this :toughness)))
 
+(defn get-player
+  [state]
+  (get-in state [:world :player]))
+
+(defn get-player-value
+  [state k]
+  (get (get-player state) k))
+
+(defn update-player
+  [state f]
+  (update-in state [:world :player] f))
+
+(defn update-player-status
+  [state f]
+  (update-in state [:world :player :status] f))
+
+(defn get-player-attribute
+  [state k]
+  (get (get-player state) k))
+
+(defn assoc-player-attribute
+  [state k v & kvs]
+  (update-player state
+                 (fn [player]
+                   (apply assoc player k v kvs))))
+
+(defn dissoc-player-attribute
+  [state k & ks]
+  (update-player state
+                 (fn [player]
+                   (apply dissoc player k ks))))
+
+(defn conj-player-status
+  [state k & ks]
+  (update-player-status state
+                        (fn [status]
+                          (apply conj status k ks))))
+
+(defn disj-player-status
+  [state k & ks]
+  (update-player-status state
+                        (fn [status]
+                          (apply disj status k ks))))
+
+(defn some-player-status
+  [state pred]
+  (some pred (get-in state [:world :player :status])))
+
 (defn neg-hp?
   "Return `true` if the player has negative hp."
   [state]
@@ -98,6 +146,14 @@
 (defn player-infected?
   [state]
   (contains? (get-in state [:world :player :status]) :infected))
+
+(defn player-to-be-paralyzed?
+  [state]
+  (contains? (get-player state) :paralyzed-start-expire-time))
+
+(defn player-paralyzed?
+  [state]
+  (contains? (get-player state) :paralyzed-expire-time))
 
 (defn player-pos
   "Return the position of the player."

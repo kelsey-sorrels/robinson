@@ -75,16 +75,27 @@
     ;  (spit "save/world.edn.out" state))
     (recur)))
 
-(go-loop []
-  (let [state (async/<! render-chan)]
-    (log/info "Rendering world at time" (get-in state [:world :time]))
-    (try
-      (rm/log-time "render" (rrender/render state))
-      #?(:clj
-         (catch Throwable e (log/error e))
-         :cljs
-         (catch js/Error e (log/error e))))
-    (recur)))
+(defonce last-rendered-state (atom nil))
+(go-loop [interrupted-state nil]
+  (if-let [state (or interrupted-state
+                     (async/alt!
+                       render-chan ([v] v)
+                       :default @last-rendered-state))]
+    (do
+      (reset! last-rendered-state state)
+      (log/info "Rendering world at time" (get-in state [:world :time]))
+      (try
+        (rm/log-time "render" (rrender/render state))
+        #?(:clj
+           (catch Throwable e (log/error e))
+           :cljs
+           (catch js/Error e (log/error e))))
+      (recur (async/alt!
+               (async/timeout 600) nil
+               render-chan ([v] v))))
+    (recur (async/alt!
+             (async/timeout 600) nil
+             render-chan ([v] v)))))
 
 (defn save-state [state]
   #?(:clj

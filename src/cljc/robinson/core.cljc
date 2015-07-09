@@ -26,7 +26,7 @@
 ;; (clojure.core.async/thread (robinson.core/-main))
 ;; (robinson.core/-main)
 
-(def done-chan (async/chan))
+(defonce done-chan (async/chan))
 
 (defn -main
   "Entry default point to application.

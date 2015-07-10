@@ -151,35 +151,60 @@
           keyListener      (reify KeyListener
                              (keyPressed [this e]
                                ;(println "keyPressed keyCode" (.getKeyCode e) "escape" KeyEvent/VK_ESCAPE "escape?" (= (.getKeyCode e) KeyEvent/VK_ESCAPE))
-                               (when-let [k (cond
-                                              (= (.getKeyCode e) KeyEvent/VK_ENTER)      :enter
-                                              (= (.getKeyCode e) KeyEvent/VK_ESCAPE)     :escape
-                                              (= (.getKeyCode e) KeyEvent/VK_SPACE)      :space
-                                              (= (.getKeyCode e) KeyEvent/VK_BACK_SPACE) :backspace
-                                              (= (.getKeyCode e) KeyEvent/VK_NUMPAD1)    :numpad1
-                                              (= (.getKeyCode e) KeyEvent/VK_NUMPAD2)    :numpad2
-                                              (= (.getKeyCode e) KeyEvent/VK_NUMPAD3)    :numpad3
-                                              (= (.getKeyCode e) KeyEvent/VK_NUMPAD4)    :numpad4
-                                              (= (.getKeyCode e) KeyEvent/VK_NUMPAD5)    :numpad5
-                                              (= (.getKeyCode e) KeyEvent/VK_NUMPAD6)    :numpad6
-                                              (= (.getKeyCode e) KeyEvent/VK_NUMPAD7)    :numpad7
-                                              (= (.getKeyCode e) KeyEvent/VK_NUMPAD8)    :numpad8
-                                              (= (.getKeyCode e) KeyEvent/VK_NUMPAD9)    :numpad9
-                                              true (let [altDown (not= (bit-and (.getModifiersEx e) InputEvent/ALT_DOWN_MASK) 0)
-                                                         ctrlDown (not= (bit-and (.getModifiersEx e) InputEvent/CTRL_DOWN_MASK) 0)]
-                                                     ;(println "processing non-enter non-escape keypress")
-                                                     (when (and altDown ctrlDown (<= \A (.getKeyCode e) \Z))
-                                                       (.toLowerCase (char (.getKeyCode e))))))]
+                               (let [numpad? (= (.getKeyLocation e) KeyEvent/KEY_LOCATION_NUMPAD)]
+                                 (when-let [k (cond
+                                                (= (.getKeyCode e) KeyEvent/VK_ENTER)      :enter
+                                                (= (.getKeyCode e) KeyEvent/VK_ESCAPE)     :escape
+                                                (= (.getKeyCode e) KeyEvent/VK_SPACE)      :space
+                                                (= (.getKeyCode e) KeyEvent/VK_BACK_SPACE) :backspace
+                                                (and numpad?
+                                                     (= (.getKeyCode e) KeyEvent/VK_NUMPAD1))    :numpad1
+                                                (and numpad?
+                                                     (= (.getKeyCode e) KeyEvent/VK_NUMPAD2))    :numpad2
+                                                (and numpad?
+                                                     (= (.getKeyCode e) KeyEvent/VK_NUMPAD3))    :numpad3
+                                                (and numpad?
+                                                     (= (.getKeyCode e) KeyEvent/VK_NUMPAD4))    :numpad4
+                                                (and numpad?
+                                                     (= (.getKeyCode e) KeyEvent/VK_NUMPAD5))    :numpad5
+                                                (and numpad?
+                                                     (= (.getKeyCode e) KeyEvent/VK_NUMPAD6))    :numpad6
+                                                (and numpad?
+                                                     (= (.getKeyCode e) KeyEvent/VK_NUMPAD7))    :numpad7
+                                                (and numpad?
+                                                     (= (.getKeyCode e) KeyEvent/VK_NUMPAD8))    :numpad8
+                                                (and numpad?
+                                                     (= (.getKeyCode e) KeyEvent/VK_NUMPAD9))    :numpad9
+                                                (contains? #{KeyEvent/VK_0
+                                                             KeyEvent/VK_1
+                                                             KeyEvent/VK_2
+                                                             KeyEvent/VK_3
+                                                             KeyEvent/VK_4
+                                                             KeyEvent/VK_5
+                                                             KeyEvent/VK_6
+                                                             KeyEvent/VK_7
+                                                             KeyEvent/VK_8
+                                                             KeyEvent/VK_9}
+                                                           (.getKeyCode e))
+                                                  (char (.getKeyCode e))
+                                                #_#_true (let [altDown (not= (bit-and (.getModifiersEx e) InputEvent/ALT_DOWN_MASK) 0)
+                                                           ctrlDown (not= (bit-and (.getModifiersEx e) InputEvent/CTRL_DOWN_MASK) 0)]
+                                                       ;(println "processing non-enter non-escape keypress")
+                                                       (when (and altDown ctrlDown (<= \A (.getKeyCode e) \Z))
+                                                         (.toLowerCase (char (.getKeyCode e))))))]
 
-                                 (on-key-fn k)))
+                                   (info "KeyPressed" k e)
+                                   (on-key-fn k))))
                              (keyReleased [this keyEvent]
                                nil)
                              (keyTyped [this e]
                                (let [character (.getKeyChar e)
+                                     numpad?   (= (.getKeyLocation e) KeyEvent/KEY_LOCATION_NUMPAD)
                                      altDown   (not= (bit-and (.getModifiersEx e) InputEvent/ALT_DOWN_MASK) 0)
                                      ctrlDown  (not= (bit-and (.getModifiersEx e) InputEvent/CTRL_DOWN_MASK) 0)
                                      ignore    #{(char 10) (char 33) (char 27)}]
-                                 (when-not (contains? ignore character)
+                                 (when (and (re-matches #"[ -~]" (str character))
+                                            (not (re-matches #"[0-9]" (str character))))
                                    (if ctrlDown
                                        (on-key-fn (char (+ (int \a) -1 (int character))))
                                        (on-key-fn character))))))

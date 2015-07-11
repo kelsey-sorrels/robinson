@@ -25,3 +25,9 @@
 
 (defn atan2 [x y]
   (Math/atan2 x y))
+
+(defn log [n]
+  (Math/log n))
+
+(defn exp [n]
+  (Math/exp n))

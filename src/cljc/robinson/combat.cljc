@@ -7,6 +7,7 @@
             [robinson.player :as rp]
             [robinson.itemgen :as ig]
             [robinson.monstergen :as mg]
+            [robinson.math :as rmath]
             [robinson.characterevents :as ce]
             [robinson.dynamiccharacterproperties :as dcp]
             #?@(:clj (
@@ -158,6 +159,12 @@
      :cljs
      (throw (js/Error. (format "No value specified for %s" (name attack)))))))
 
+(defn is-hit? [state attacker defender]
+  (let [attacker-speed   (dcp/get-speed attacker state)
+        defender-speed   (dcp/get-speed defender state)
+        target-value     (/ 1 (inc (rmath/exp (/ (- defender-speed attacker-speed) 4))))]
+    (> (rr/uniform-double 1.0) target-value)))
+
 (defn calc-dmg
   [state attacker attack defender defender-body-part]
     (log/info "Attacker" attacker "attacker-type" (type attacker) "Defernder" defender "defender-type" (type defender))
@@ -238,18 +245,16 @@
         defender-body-part   (rr/rand-nth (vec (get defender :body-parts)))
         {x :x y :y}          (get defender :pos)
         hp                   (get defender :hp)
-        hit-or-miss          (rr/rand-nth (concat (repeat (get attacker :speed) :hit)
-                                               (repeat (get defender :speed) :miss)))
+        hit                  (is-hit? state attacker defender)
         dmg                  (cond
-                               (= hit-or-miss :hit)
-                                 (+ (calc-dmg state attacker attack defender defender-body-part) (if shot-poisoned-arrow 1 0))
+                               hit   (+ (calc-dmg state attacker attack defender defender-body-part) (if shot-poisoned-arrow 1 0))
                                :else 0)
         is-wound             (> dmg 1.5)]
     (log/debug "attack" attacker-path "is attacking defender" defender-path)
     (log/debug "attacker-detail" attacker)
     (log/debug "defender-detail" defender)
     (log/debug "attack" attack)
-    (log/debug "hit?" hit-or-miss)
+    (log/debug "hit?" hit)
     (log/debug "hp" hp)
     (log/debug "dmg" dmg)
     (try
@@ -290,13 +295,15 @@
                                           defender
                                           attack
                                           defender-body-part
-                                          hit-or-miss)]
+                                          (if hit
+                                            :hit
+                                            :miss))]
               (log/debug "attack msg" msg)
               (rc/append-log state 
                              msg
-                          (case hit-or-miss
-                            :hit :red
-                            :miss :white)))
+                          (if hit
+                            :red
+                            :white)))
             (log-with-line state "6")
             ;; chance of being envenomed by venomous attacks
             (update-in state (conj defender-path :status) (fn [status] (if (and (re-find #"venom" (str attack))

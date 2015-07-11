@@ -63,12 +63,12 @@
                                   (catch Throwable e
                                     (log/error e)
                                     state))]
-                    (recur new-state)))))))
+                    (recur new-state)))))
+          (async/<!! done-chan)))
       ; setup function changed, restart with new setup
       (let [setup-fn  (get-setup-fn)
             setup-var (var-get setup-fn)]
         (println "(Re)starting loop with new setup-fn")
         (recur setup-fn setup-var)))
-        (async/<!! done-chan)
         (println "Core exiting")))
 

@@ -44,6 +44,9 @@
 ;#+clj
 ;(log/set-config! [] (read-string (slurp "config/timbre.clj"))(log/set-log-level! :error)
 
+(log/merge-config!
+  {:ns-blacklist ["robinson.render"]})
+
 ;(log/set-level! :debug)
 (log/set-level! :info)
 ;(log/set-level! :error)
@@ -83,9 +86,10 @@
                        :default @last-rendered-state))]
     (do
       (reset! last-rendered-state state)
-      (log/info "Rendering world at time" (get-in state [:world :time]))
+      #_(log/info "Rendering world at time" (get-in state [:world :time]))
       (try
-        (rm/log-time "render" (rrender/render state))
+        ;(rm/log-time "render" (rrender/render state))
+        (rrender/render state)
         #?(:clj
            (catch Throwable e (log/error e))
            :cljs

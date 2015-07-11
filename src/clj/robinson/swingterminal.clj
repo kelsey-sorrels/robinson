@@ -128,7 +128,7 @@
                                      char-height                (/ screen-height rows)]
                                  (Dimension. screen-width screen-height)))
                              (paintComponent [^Graphics graphics]
-                               (rm/log-time "blit"
+                               ;(rm/log-time "blit"
                                  (let [graphics-2d ^Graphics2D           (.create graphics)
                                        font-metrics ^FontMetrics         (.getFontMetrics graphics normal-font)
                                        screen-width                      (* columns (.charWidth font-metrics \space))
@@ -147,7 +147,8 @@
                                            highlight (= @cursor-xy [col row])
                                            char-img  (glyph-cache this font-metrics highlight char-width char-height c)]
                                        (.drawImage graphics char-img x (- y char-height) this)))
-                                   (.dispose graphics-2d)))))
+                                   (.dispose graphics-2d))))
+                                ;)
           keyListener      (reify KeyListener
                              (keyPressed [this e]
                                ;(println "keyPressed keyCode" (.getKeyCode e) "escape" KeyEvent/VK_ESCAPE "escape?" (= (.getKeyCode e) KeyEvent/VK_ESCAPE))

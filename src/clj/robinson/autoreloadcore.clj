@@ -10,9 +10,9 @@
 (defn check-namespace-changes [track]
  (try
    (doseq [ns-sym (track)]
-     (println "Reloading namespace:" ns-sym)
+     (log/info "Reloading namespace:" ns-sym)
      (require ns-sym :reload)
-     (println "Done."))
+     (log/info "Done."))
    (catch Throwable e (log/error e)))
    (Thread/sleep 500))
 

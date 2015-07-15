@@ -183,7 +183,7 @@
                 "defender-size" defender-size
                 "attack-toughness" attack-toughness
                 "defender-toughnes" defender-toughness)
-      (* attacker-strength (/ (+ 5 attacker-dexterity) (+ 5 defender-speed)) (/ (+ 25 attacker-size) (+ 25 defender-size)) (/ attack-toughness defender-toughness))))
+      (* attacker-strength (/ (+ 15 attacker-dexterity) (+ 15 defender-speed)) (/ (+ 25 attacker-size) (+ 25 defender-size)) (/ attack-toughness defender-toughness))))
 
 
 

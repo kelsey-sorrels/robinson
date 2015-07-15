@@ -59,6 +59,7 @@
 (def save-chan (async/chan (async/sliding-buffer 1)))
 
 (def render-chan (async/chan (async/sliding-buffer 1)))
+(defonce last-rendered-state (atom nil))
 
 ;(def world-storage (atom nil))
 
@@ -78,7 +79,6 @@
     ;  (spit "save/world.edn.out" state))
     (recur)))
 
-(defonce last-rendered-state (atom nil))
 (go-loop [interrupted-state nil]
   (if-let [state (or interrupted-state
                      (async/alt!

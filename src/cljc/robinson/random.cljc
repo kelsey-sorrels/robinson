@@ -118,7 +118,8 @@
 
 (defn uniform-double
  ([hi] {:pre [(pos? hi)]} (* hi (next-double! *rnd*)))
- ([lo hi] {:pre [(< lo hi)]} (+ lo (* (next-double! *rnd*) (- hi lo)))))
+ ([lo hi] {:pre [(< lo hi)]} (+ lo (* (next-double! *rnd*) (- hi lo))))
+ ([rnd lo hi] {:pre [(< lo hi)]} (+ lo (* (next-double! rnd) (- hi lo)))))
 
 (defn- swap [v i1 i2]
   (assoc v i2 (nth v i1) i1 (nth v i2)))
@@ -139,3 +140,13 @@
   (rand-nth *rnd* coll))
   ([rnd coll]
   (nth coll (uniform-int rnd 0 (count coll)))))
+
+(defn rand-weighted-nth
+  ([m]
+    (rand-weighted-nth *rnd* m))
+  ([rnd m]
+   "Randomly select a value from a map of weights to values."
+   (let [[wm a]     (reduce (fn [[m a] [weight v]]
+                              [(conj m [a v]) (+ weight a)]) [[] 0] m)
+         n          (uniform-double rnd 0 a)]
+     (second (last (remove (fn [[wn _]] (> wn n)) wm))))))

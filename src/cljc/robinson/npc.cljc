@@ -6,6 +6,7 @@
             [robinson.player :as rp]
             [robinson.viewport :as rv]
             [robinson.lineofsight :as rlos]
+            [robinson.random :as rr]
             [robinson.world :as rw]
             [robinson.monstergen :as mg]
             [robinson.dialog :as rdiag]
@@ -190,9 +191,17 @@
          player-y] (rp/player-xy state)
         xys        (rlos/perimeter-xys player-x player-y (min 5 (inc r)))
         xys        (remove (fn [[x y]] (rw/collide? state x y {:include-npcs? true
-                                                               :collide-water? false})) xys)]
-    (if (not (empty? xys))
-      (let [[x y]  (rand-nth xys)
+                                                               :collide-water? false})) xys)
+        weighted-xys (zipmap (map (fn [[x y]]
+                                    (let [cell       (rw/get-cell state x y)
+                                          discovered (get cell :discovered (- (rw/get-time state) 1000))
+                                          w          (min 1000 (- (rw/get-time state) discovered))]
+                                      w))
+                                  xys)
+                             xys)]
+    (log/info "weighted-xys" weighted-xys)
+    (if (seq weighted-xys)
+      (let [[x y]  (rr/rand-weighted-nth weighted-xys)
             monster (mg/gen-random-monster level (get (rw/get-cell state x y) :type))]
        (log/info "Adding monster" monster "@ [" x y "] r" r)
        (add-npc state monster x y))

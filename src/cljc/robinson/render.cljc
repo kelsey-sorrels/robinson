@@ -890,18 +890,12 @@
                           y       (-> npc :pos :y)
                           vx      (- x (-> state :world :viewport :pos :x))
                           vy      (- y (-> state :world :viewport :pos :y))
-                          visible 
-                                  (and (not (farther-than?
+                          t       (rw/get-time state)
+                          visible (and (not (farther-than?
                                               pos
                                               {:x x :y y}
-                                              5))
-                                       true
-                                       #_(visible? get-cell
-                                                 cell-blocking?
-                                                 (pos :x)
-                                                 (pos :y)
-                                                 x
-                                                 y))]
+                                              8))
+                                       (= (get (rw/get-cell state x y) :discovered) t))]
                       ;(log/debug "npc@" x y "visible?" visible)
                       (when visible
                         (apply put-string screen

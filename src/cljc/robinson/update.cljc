@@ -1965,19 +1965,16 @@
           player-pos-vec         [(-> player :pos :x) (-> player :pos :y)]
           width                  (get-in state [:world :width])
           height                 (get-in state [:world :height])
+          bounds                 [(- width) (- height) width height]
           get-type               (memoize (fn [x y] (do
                                                       ;(log/debug "traversable?" x y "type" (get-in place [y x :type]))
                                                       (or (get (rw/get-cell state x y) :type) :unknown))))
           water-traversable?     (fn water-traversable? [[x y]]
-                                   (and (< 0 x width)
-                                        (< 0 y height)
-                                        (not (rc/farther-than? npc-pos {:x x :y y} threshold))
+                                   (and (not (rc/farther-than? npc-pos {:x x :y y} threshold))
                                         (contains? #{:water :surf} (get-type x y))
                                         #_(every? water-traversable? (rw/adjacent-xys-ext x y))))
           land-traversable?      (fn [[x y]]
-                                   (and (< 0 x width)
-                                        (< 0 y height)
-                                        (not (rc/farther-than? npc-pos {:x x :y y} threshold))
+                                   (and (not (rc/farther-than? npc-pos {:x x :y y} threshold))
                                         (contains? #{:floor
                                                      :open-door
                                                      :corridor
@@ -1999,8 +1996,8 @@
                                    npc-can-move-on-land
                                      land-traversable?)
           path                   (try
-                                   (log/debug "a* params" [width height] traversable? npc-pos-vec [(target :x) (target :y)])
-                                   (clj-tiny-astar.path/a* [width height] traversable? npc-pos-vec [(target :x) (target :y)])
+                                   (log/debug "a* params" bounds traversable? npc-pos-vec (rc/pos->xy target))
+                                   (clj-tiny-astar.path/a* bounds traversable? npc-pos-vec (rc/pos->xy target))
                                    #?(:clj
                                       (catch Exception e
                                         (log/error "Caught exception during a* traversal." npc-pos-vec [(target :x) (target :y)] e)
@@ -2011,7 +2008,7 @@
                                         (log/error "Caught exception during a* traversal." npc-pos-vec [(target :x) (target :y)] e)
                                         ;(st/print-cause-trace e)
                                         nil)))
-          ;_                      (log/debug "path to target" path)
+          _                      (log/debug "path to target" (str (type path)) (str path))
           new-pos                (if (and (not (nil? path))
                                           (> (count path) 1)
                                           ;; don't collide with player
@@ -2020,11 +2017,11 @@
                                                   ((juxt first second) player-pos-vec))))
                                    (second path)
                                    npc-pos-vec)
-          ;_                      (log/debug "new-pos" new-pos)
+          _                      (log/debug "new-pos" new-pos)
           new-npc                (-> npc
                                      (assoc-in [:pos :x] (first new-pos))
                                      (assoc-in [:pos :y] (second new-pos)))
-          ;_                      (log/debug "new-npc" new-npc)
+          _                      (log/debug "new-npc" new-npc)
         ]
       [{:x (first new-pos) :y (second new-pos)} new-npc npc]))
 
@@ -2561,6 +2558,15 @@
                           \4           [add-monsters-debug     :normal          false]
                           \5           [(fn [state]
                                           (clojure.inspector/inspect-tree (get state :world))
+                                          state)               :normal          false]
+                          \6           [(fn [state]
+                                          (assoc-in state [:world :npcs] []))
+                                                               :normal          false]
+                          \7           [(fn [state]
+                                          (log/set-level! :debug)
+                                          state)               :normal          false]
+                          \8           [(fn [state]
+                                          (log/set-level! :info)
                                           state)               :normal          false]
                            :escape     [identity               :quit?           false]}
                :inventory {:escape     [identity               :normal          false]}

@@ -112,6 +112,7 @@
      (def *rnd* rnd)))
 
 (defn uniform-int
+ ([] (next-int! *rnd* 0xFFFFFFFF))
  ([hi] {:pre [(pos? hi)]} (next-int! *rnd* hi))
  ([lo hi] {:pre [(<= lo hi)]} (+ lo (next-int! *rnd* (- hi lo))))
  ([rnd lo hi] {:pre [(<= lo hi)]} (+ lo (next-int! rnd (- hi lo)))))

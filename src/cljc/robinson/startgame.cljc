@@ -29,14 +29,20 @@
                                 (ig/gen-item :saw)]
         hotkeys                (vec (seq "abcdefghijklmnopqrstuvwxyzABCdEFGHIJKLMNOPQRSTUVWQYZ"))
         inventory-with-hotkeys (mapv #(assoc %1 :hotkey %2) inventory hotkeys)]
-    (log/info "start-inventory" inventory-with-hotkeys)
+    #_(log/info "start-inventory" inventory-with-hotkeys)
     inventory-with-hotkeys))
 
-(defn start-text []
-  (let [mode-of-transport (rr/rand-nth ["boat" "airplane" "train" "blimp" "jetpack" "hovercraft" "bicycle"
-                                        "sailboat" "steamboat" "barge" "oceanliner" "ferry" "helicopter"
-                                        "biplane"])
-        natural-disaster  (rr/rand-nth ["hurricane" "tornado" "dark storm" "cyclone" "squall"])]
-    (format "While traveling by %s, a %s engulfs you.\n\n             You awake on an island.\n\n     One thing is certain - you'll have to escape."
+(defn start-text [state]
+  (let [[n1 n2]            (get-in state [:world :random-numbers])
+        _                  (log/info "Using random numbers" n1 n2)
+        modes-of-transport ["boat" "airplane" "train" "blimp" "jetpack" "hovercraft" "bicycle"
+                           "sailboat" "steamboat" "barge" "oceanliner" "ferry" "helicopter"
+                           "biplane"]
+        mode-of-transport (nth modes-of-transport (mod n1 (count modes-of-transport)))
+        natural-disasters ["hurricane" "tornado" "dark storm" "cyclone" "squall"]
+        natural-disaster  (nth natural-disasters (mod n2 (count natural-disasters)))
+        text              (format "While traveling by %s, a %s engulfs you.\n\n             You awake on an island.\n\n     One thing is certain - you'll have to escape."
              mode-of-transport
-             natural-disaster)))
+             natural-disaster)]
+    (log/info "start-text" text)
+    text))

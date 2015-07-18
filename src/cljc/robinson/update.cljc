@@ -110,6 +110,40 @@
      :cljs
      (.getMilliseconds (js/Date.))))
 
+;; update visibility
+(defn update-visibility
+  [state]
+  {:pre [(not (nil? state))]
+   :post [(not (nil? %))]}
+  (let [pos              (-> state :world :player :pos)
+        {px :x
+         py :y}          pos
+        sight-distance   (float (rlos/sight-distance state))
+        _ (log/info "player-pos" pos)
+        _ (log/info "player place-id" (str (apply rv/xy->place-id state (rc/pos->xy pos))))
+        _ (log/info "sight-distance" sight-distance)
+        _ (log/info "loaded place ids" (keys (get-in state [:world :places])))
+        will-to-live     (get-in state [:world :player :will-to-live])
+        max-will-to-live (get-in state [:world :player :max-will-to-live])
+        new-time         (get-in state [:world :time])
+        visible-cells (rlos/visible-xys px py sight-distance (fn [[x y]]
+                                                               (let [cell      (rw/get-cell state x y)
+                                                                     blocking? (rlos/cell-blocking? cell)]
+                                                                 ;(log/info "cell place-id" (str (rv/xy->place-id state x y)))
+                                                                 ;(log/debug "blocking?" x y cell blocking?)
+                                                                 blocking?)))
+        #_#__ (log/info "visible-cells" visible-cells)
+        dwtl             (/ (reduce (fn [acc [x y]] (+ acc (- (dec new-time)
+                                                              (get (rw/get-cell state x y) :discovered (- new-time 10000)))))
+                                 0 visible-cells)
+                            48000)
+        _                (log/info "delta will-to-live" (float dwtl))
+        will-to-live     (min (+ will-to-live dwtl)
+                              max-will-to-live)]
+  (as-> state state
+    (rw/assoc-cells state (zipmap visible-cells (repeat {:discovered new-time})))
+    (assoc-in state [:world :player :will-to-live] will-to-live))))
+
 (defn reinit-world
   "Re-initialize the value of `:world` within `state`. Used when the player
    dies and a new game is started."
@@ -140,7 +174,8 @@
         start-inventory    (filter #(contains? (set selected-hotkeys) (get % :hotkey)) (sg/start-inventory))
         _                  (log/info "Adding to starting inventory:" start-inventory)
         state              (rp/add-to-inventory new-state start-inventory)]
-    state))
+    ;; update visiblilty after re-initing world
+    (update-visibility state)))
 
 (defn select-starting-inventory
   [state keyin]
@@ -1869,40 +1904,6 @@
     (log/info "repeating commands" command-seq)
     (reduce update-state state command-seq)))
 
-;; update visibility
-(defn update-visibility
-  [state]
-  {:pre [(not (nil? state))]
-   :post [(not (nil? %))]}
-  (let [pos              (-> state :world :player :pos)
-        {px :x
-         py :y}          pos
-        sight-distance   (float (rlos/sight-distance state))
-        _ (log/info "player-pos" pos)
-        _ (log/info "player place-id" (str (apply rv/xy->place-id state (rc/pos->xy pos))))
-        _ (log/info "sight-distance" sight-distance)
-        _ (log/info "loaded place ids" (keys (get-in state [:world :places])))
-        will-to-live     (get-in state [:world :player :will-to-live])
-        max-will-to-live (get-in state [:world :player :max-will-to-live])
-        new-time         (get-in state [:world :time])
-        visible-cells (rlos/visible-xys px py sight-distance (fn [[x y]]
-                                                               (let [cell      (rw/get-cell state x y)
-                                                                     blocking? (rlos/cell-blocking? cell)]
-                                                                 ;(log/info "cell place-id" (str (rv/xy->place-id state x y)))
-                                                                 ;(log/debug "blocking?" x y cell blocking?)
-                                                                 blocking?)))
-        #_#__ (log/info "visible-cells" visible-cells)
-        dwtl             (/ (reduce (fn [acc [x y]] (+ acc (- (dec new-time)
-                                                              (get (rw/get-cell state x y) :discovered (- new-time 10000)))))
-                                 0 visible-cells)
-                            48000)
-        _                (log/info "delta will-to-live" (float dwtl))
-        will-to-live     (min (+ will-to-live dwtl)
-                              max-will-to-live)]
-  (as-> state state
-    (rw/assoc-cells state (zipmap visible-cells (repeat {:discovered new-time})))
-    (assoc-in state [:world :player :will-to-live] will-to-live))))
-
 (defn toggle-mount
   "Mount or unmount at the current cell."
   [state]
@@ -2873,7 +2874,7 @@
             ;; only try to start log scrolling if the state we were just in was not more-log
             (as-> state
               (if (and current-state
-                       (not= current-state :more-log))
+                       (not (contains? #{:dead :more-log} current-state)))
                 (init-log-scrolling state)
                 state))))
       state)))

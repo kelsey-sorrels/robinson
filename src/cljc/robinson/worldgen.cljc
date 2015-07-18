@@ -125,10 +125,14 @@
         _ (log/info "find-starting-pos samples" samples)
         non-water-samples (remove
           (fn [[x y]]
-            (let [s (sample-island n x y)]
-              #_(log/debug "sample" x y s)
-              (or (= s :surf)
-                  (= s :ocean))))
+            (let [s (sample-island n x y)
+                  adj-types (map (fn [[x y]] (sample-island n x y))
+                                 (rw/adjacent-xys x y))]
+              (log/debug "sample" x y s)
+              (or
+                (contains? #{:ocean :surf} s)
+                (some (partial = :ocean) adj-types)
+                (some (partial = :mountain) adj-types))))
           samples)
         [sx sy] (first non-water-samples)]
     (rc/xy->pos sx sy)))
@@ -359,7 +363,7 @@
            :current-place :0_0
            :volcano-pos (apply rc/xy->pos volcano-xy)
            :lava-points lava-points
-           :time 0
+           :time 25
            :current-state :start
            :selected-hotkeys #{}
            :remaining-hotkeys remaining-hotkeys

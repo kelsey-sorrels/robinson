@@ -370,6 +370,7 @@
            :log []
            :ui-hint nil
            :dialog-log []
+           :random-numbers [(rr/uniform-int 100) (rr/uniform-int 100) (rr/uniform-int 100) (rr/uniform-int 100)]
            :player (rp/Player.
                     ;id
                     :player

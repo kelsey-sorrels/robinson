@@ -15,13 +15,19 @@
      :cljs
      (apply gstring/format s args)))
 
+(defn rnd-nth
+  [coll n]
+  (nth coll (mod n (count coll))))
+
 (defn gen-end-madlib
   [state]
-  (let [death-msg-type (rr/rand-nth [:num-animals-killed
-                                  :num-items-crafted
-                                  :num-items-harvested
-                                  :num-kills-by-attack-type
-                                  :num-items-eaten])
+  (let [[_ _ n1 n2 n3] (get-in state [:world :random-numbers])
+        death-msg-type (rnd-nth [:num-animals-killed
+                                 :num-items-crafted
+                                 :num-items-harvested
+                                 :num-kills-by-attack-type
+                                 :num-items-eaten]
+                                n1)
         _ (log/info "stats" (get-in state [:world :player :stats]))
         death-text     (case death-msg-type
                          :num-animals-killed
@@ -34,7 +40,7 @@
                              (if (nil? max-stat)
                                "A pacifist"
                                (let [[monster-id n] max-stat]
-                                 (format (rr/rand-nth ["Slayer of %s" "Defeater of %s" "Eliminator of %s" "Dominator of %" "The nightmare of %s"])
+                                 (format (rnd-nth ["Slayer of %s" "Defeater of %s" "Eliminator of %s" "Dominator of %" "The nightmare of %s"] n2)
                                          (mg/id->name-plural monster-id)))))
                          :num-items-crafted
                            (let [max-stat (reduce (fn [acc [id n]]
@@ -47,7 +53,7 @@
                                "The dainty-handed, who never made anything"
                                 (let [[item-id n] max-stat]
                                   (log/info "item-id" item-id)
-                                  (format (rr/rand-nth ["Artisan of %s" "Maker of %s" "Crafter of %s"])
+                                  (format (rnd-nth ["Artisan of %s" "Maker of %s" "Crafter of %s"] n2)
                                           (ig/id->name-plural item-id)))))
                          :num-items-harvested
                            (let [max-stat (reduce (fn [acc [id n]]
@@ -59,7 +65,7 @@
                              (if (nil? max-stat)
                                "Oblivious to nature's bounty"
                                (let [[item-id n] max-stat]
-                                 (format (rr/rand-nth ["Gatherer of %s" "Farmer of %s" "Harvester of %s" "Finder of %s"])
+                                 (format (rnd-nth ["Gatherer of %s" "Farmer of %s" "Harvester of %s" "Finder of %s"] n2)
                                          (ig/id->name-plural item-id)))))
                          :num-kills-by-attack-type
                            (let [max-stat (reduce (fn [acc [id n]]
@@ -71,11 +77,10 @@
                              (if (nil? max-stat)
                                "A pacifist"
                                (let [[attack-id n] max-stat]
-                                  (rr/rand-nth
-                                    (case attack-id
-                                      :punch (rr/rand-nth ["Puncher of enemies." "Who fought with fists."])
-                                      :axe   (rr/rand-nth ["Who speared enemies." "Spearer of enemies."])
-                                      :spear   (rr/rand-nth ["Who axed enemies." "Axer of enemies."]))))))
+                                 (case attack-id
+                                   :punch (rnd-nth ["Puncher of enemies." "Who fought with fists."] n2)
+                                   :axe   (rnd-nth ["Who speared enemies." "Spearer of enemies."] n2)
+                                   :spear (rnd-nth ["Who axed enemies." "Axer of enemies."] n2)))))
                          :num-items-eaten
                            (let [max-stat (reduce (fn [acc [id n]]
                                                     (cond
@@ -86,7 +91,7 @@
                              (if (nil? max-stat)
                                "Too picky to eat"
                                (let [[item-id n] max-stat]
-                             (format (rr/rand-nth ["Eater of %s" "Who gorged on %s" "Purveyor of %s" "Connoisseur of %s"])
+                             (format (rnd-nth ["Eater of %s" "Who gorged on %s" "Purveyor of %s" "Connoisseur of %s"] n2)
                                      (ig/id->name-plural item-id))))))]
     death-text))
 

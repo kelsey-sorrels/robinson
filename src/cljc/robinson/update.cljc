@@ -144,6 +144,17 @@
     (rw/assoc-cells state (zipmap visible-cells (repeat {:discovered new-time})))
     (assoc-in state [:world :player :will-to-live] will-to-live))))
 
+(defn add-starting-inventory
+  [state]
+  {:pre  [(not (nil? state))]
+   :post [(not (nil? %))]}
+  (let [selected-hotkeys   (get-in state [:world :selected-hotkeys])
+        _                  (log/info "selected-hotkeys" selected-hotkeys)
+        start-inventory    (filter #(contains? (set selected-hotkeys) (get % :hotkey)) (sg/start-inventory))
+        _                  (log/info "Adding to starting inventory:" start-inventory)
+        state              (rp/add-to-inventory state start-inventory)]
+    state))
+
 (defn reinit-world
   "Re-initialize the value of `:world` within `state`. Used when the player
    dies and a new game is started."
@@ -159,23 +170,12 @@
                       w
                       (recur))))
     (rworldgen/load-unload-places)
+    (add-starting-inventory)
+    (update-visibility)
     (as-> state
       (reduce (fn [state _] (rnpc/add-npcs state))
               state
               (range 5)))))
-
-(defn add-starting-inventory
-  [state]
-  {:pre  [(not (nil? state))]
-   :post [(not (nil? %))]}
-  (let [new-state          (reinit-world state)
-        selected-hotkeys   (get-in state [:world :selected-hotkeys])
-        _                  (log/info "selected-hotkeys" selected-hotkeys)
-        start-inventory    (filter #(contains? (set selected-hotkeys) (get % :hotkey)) (sg/start-inventory))
-        _                  (log/info "Adding to starting inventory:" start-inventory)
-        state              (rp/add-to-inventory new-state start-inventory)]
-    ;; update visiblilty after re-initing world
-    (update-visibility state)))
 
 (defn select-starting-inventory
   [state keyin]
@@ -2502,9 +2502,11 @@
                            :backspace  [backspace-name         :start           false]
                            :else       [append-name            :start           false]}
                :start-inventory
-                          {:enter      [add-starting-inventory :start-text      false]
+                          {:enter      [identity               :loading         false]
                            :else       [select-starting-inventory
                                                                :start-inventory false]}
+               :loading   {:advance    [reinit-world           :start-text      false]
+                           :else       [identity               :loading         false]}
                :start-text
                           {:else       [(fn [state _]
                                           (do-rest state))     :normal          true]}

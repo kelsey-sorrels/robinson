@@ -54,13 +54,17 @@
           ; tick the old state through the tick-fn to get the new state
           (let [state (try
                         (log/info "Core current-state" (rw/current-state state))
-                        (let [keyin (if (= (rw/current-state state) :sleep)
+                        (let [keyin (cond
+                                      (= (rw/current-state state) :sleep)
                                       (do
                                         (log/info "State = sleep, Auto-pressing .")
                                         \.)
-                                      (let [key-chan (aterminal/get-key-chan (state :screen))]
-                                        (log/info  "waiting for key-chan")
-                                        (async/<! key-chan)))]
+                                      (= (rw/current-state state) :loading)
+                                        :advance
+                                      :else
+                                        (let [key-chan (aterminal/get-key-chan (state :screen))]
+                                          (log/info  "waiting for key-chan")
+                                          (async/<! key-chan)))]
                              (log/info "Core got key" keyin)
                              (if keyin
                                (main/tick state keyin)

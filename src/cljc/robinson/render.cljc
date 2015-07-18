@@ -1037,7 +1037,6 @@
 
 
 (defn render-start-text [state]
-  (log/info "render-start-text")
   (let [screen     (state :screen)
         start-text (sg/start-text state)]
     (clear (state :screen))
@@ -1045,6 +1044,51 @@
       (fn [idx line] (put-string screen 12 (+ idx 9) line))
       (clojure.string/split-lines start-text)))
     (put-string screen 17 19 "Press any key to continue and ? to view help.")
+    (refresh screen)))
+
+(def loading-index (atom 0))
+(def loading-tidbits
+  ["rat swarm"
+   "poisonous frog"
+   "coconut"
+   "palm tree"
+   "human blood"
+   "monkey"
+   "island"
+   "terrain"
+   "lava"
+   "volcano"
+   "abandoned hut"
+   "lair"
+   "pirate"
+   "clam"
+   "leaf"
+   "ancient temple"
+   "beaches"
+   "crab legs. (8) check."
+   "cannibal"
+   "beeshive"
+   "monkey ambush"
+   "cave"
+   "spider tunnel"
+   "insane castaway"
+   "watering hole"
+   "other survivor"
+   "goat"
+   "hurricane"])
+(def tidbit-freqs (atom (zipmap (range (count loading-tidbits)) (repeat 0))))
+
+(defn render-loading [state]
+  (let [screen     (state :screen)
+        n          (->> (sort-by val @tidbit-freqs)
+                        (partition-by val)
+                        first
+                        rand-nth
+                        first)]
+    (swap! tidbit-freqs (fn [freqs] (update freqs n inc)))
+    (clear (state :screen))
+    (put-string screen 30 12 (format "Generating %s..." (nth loading-tidbits n)))
+    (put-string screen 40 18 (nth ["/" "-" "\\" "|"] (mod (swap! loading-index inc) 4)))
     (refresh screen)))
 
 (defn render-game-over
@@ -1139,6 +1183,8 @@
       (render-start state)
     (= (current-state state) :start-inventory)
       (render-start-inventory state)
+    (= (current-state state) :loading)
+      (render-loading state)
     (= (current-state state) :start-text)
       (render-start-text state)
     ;; Is player dead?

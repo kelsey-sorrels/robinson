@@ -34,7 +34,6 @@
 
 (defn start-text [state]
   (let [[n1 n2]            (get-in state [:world :random-numbers])
-        _                  (log/info "Using random numbers" n1 n2)
         modes-of-transport ["boat" "airplane" "train" "blimp" "jetpack" "hovercraft" "bicycle"
                            "sailboat" "steamboat" "barge" "oceanliner" "ferry" "helicopter"
                            "biplane"]
@@ -44,5 +43,4 @@
         text              (format "While traveling by %s, a %s engulfs you.\n\n             You awake on an island.\n\n     One thing is certain - you'll have to escape."
              mode-of-transport
              natural-disaster)]
-    (log/info "start-text" text)
     text))

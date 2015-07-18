@@ -132,7 +132,7 @@
                                                                  ;(log/info "cell place-id" (str (rv/xy->place-id state x y)))
                                                                  ;(log/debug "blocking?" x y cell blocking?)
                                                                  blocking?)))
-        #_#__ (log/info "visible-cells" visible-cells)
+        _ (log/info "visible-cells" visible-cells)
         dwtl             (/ (reduce (fn [acc [x y]] (+ acc (- (dec new-time)
                                                               (get (rw/get-cell state x y) :discovered (- new-time 10000)))))
                                  0 visible-cells)
@@ -2517,6 +2517,7 @@
                            \o          [identity               :open            false]
                            \c          [identity               :close           false]
                            \.          [do-rest                :normal          true]
+                           :numpad5    [do-rest                :normal          true]
                            :left       [move-left              :normal          true]
                            :down       [move-down              :normal          true]
                            :up         [move-up                :normal          true]
@@ -2631,6 +2632,7 @@
                            :down       [harvest-down           :normal          true]
                            :up         [harvest-up             :normal          true]
                            :right      [harvest-right          :normal          true]
+                           :numpad5    [harvest-center         :normal          true]
                            \>          [harvest-center         :normal          true]
                            :escape     [identity               :normal          false]}
                :wield     {:escape     [identity               :normal          false]

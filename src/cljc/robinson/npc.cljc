@@ -244,8 +244,8 @@
                                                     state))
 ;; Rat
 (defmethod mg/do-on-death :rat [npc state] (cond
-                                             (zero? (rr/uniform-int 2))
-                                               ;; spawn an additional 2 rats
+                                             (zero? (rr/uniform-int 4))
+                                               ;; spawn an additional rat
                                                (-> state
                                                  (add-npc (mg/gen-monster :rat)
                                                           (->> (rw/adjacent-xys-ext (get npc :pos))
@@ -255,7 +255,14 @@
                                                                (apply rc/xy->pos)))
                                                  (rc/append-log "The rat swarm intensified."))
                                              (zero? (rr/uniform-int 10))
+                                               ;; spawn an additional 2 rats
                                                (-> state
+                                                 (add-npc (mg/gen-monster :rat)
+                                                          (->> (rw/adjacent-xys-ext (get npc :pos))
+                                                               (remove (fn [[x y]] (rw/collide? state x y {:include-npcs? true
+                                                                                                           :collide-water? false})))
+                                                               rand-nth
+                                                               (apply rc/xy->pos)))
                                                  (add-npc (mg/gen-monster :rat)
                                                           (->> (rw/adjacent-xys-ext (get npc :pos))
                                                                (remove (fn [[x y]] (rw/collide? state x y {:include-npcs? true

@@ -114,14 +114,15 @@
 (def ^:private monsters
   [
   ;;        race            name             name-plural      pos
-  ;;                                                                hp
-  ;;                                                                   energy
-  ;;                                                                     speed size (kg)
-  ;;                                                                                 strength
-  ;;                                                                                     toughness
-  ;;                                                                                      body-parts                                  attacks                       temperament             movement policy                        range-threshold
-  ;;                                                                                                                                                                                                                                  status
-  (Monster. :rat            "rat"            "rats"           nil  5 0 1.1   0.2   5    5 #{:face :head :neck :body :leg :tail}       #{:bite :claw}                :hostile                :follow-player-in-range-or-random       5 #{:hostile})
+  ;;        |               |                |                |    hp
+  ;;        |               |                |                |    | energy
+  ;;        |               |                |                |    | | speed
+  ;;        |               |                |                |    | | |     size (kg)
+  ;;        |               |                |                |    | | |     |     strength
+  ;;        |               |                |                |    | | |     |     |    toughness
+  ;;        |               |                |                |    | | |     |     |    | body-parts                                  attacks                       temperament             movement policy                        range-threshold
+  ;;        |               |                |                |    | | |     |     |    | |                                           |                             |                       |                                       | status
+  (Monster. :rat            "rat"            "rats"           nil  5 0 0.8   0.2   5    5 #{:face :head :neck :body :leg :tail}       #{:bite :claw}                :hostile                :follow-player-in-range-or-random       5 #{:hostile})
   (Monster. :spider         "spider"         "spiders"        nil  8 0 0.9   0.01  7    3 #{:face :leg :abdomen}                      #{:bite-venom}                :retreat-after-attacked :random                                 5 #{:docile})
   (Monster. :scorpion       "scorpion"       "scorpions"      nil  6 0 1.1   0.01  7    3 #{:head :claw :leg :abdomen :tail}          #{:bite :claw :sting-venom}   :hostile-after-attacked :random                                 4 #{:hostile})
   (Monster. :snake          "snake"          "snakes"         nil  3 0 0.8   1     7    8 #{:head :body :tail}                        #{:bite :bite-venom}          :retreat-after-attackd  :random                                 5 #{:hostile})

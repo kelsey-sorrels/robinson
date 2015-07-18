@@ -115,52 +115,72 @@
         :ocean)))
 
 (defn find-starting-pos [seed max-x max-y]
-  (let [angle (rr/uniform-double (* 2 Math/PI))
-        radius (min max-x max-y)
-        [x y]   [(* radius (Math/cos angle))
-                 (* radius (Math/sin angle))]
-        points  (rlos/line-segment [x y] [0 0])
-        samples (take-nth 5 points)
-        n       (rn/create-noise (rr/create-random seed))
-        _ (log/info "find-starting-pos samples" samples)
-        non-water-samples (remove
-          (fn [[x y]]
-            (let [s (sample-island n x y)
-                  adj-types (map (fn [[x y]] (sample-island n x y))
-                                 (rw/adjacent-xys x y))]
-              (log/debug "sample" x y s)
-              (or
-                (contains? #{:ocean :surf} s)
-                (some (partial = :ocean) adj-types)
-                (some (partial = :mountain) adj-types))))
-          samples)
-        [sx sy] (first non-water-samples)]
-    (rc/xy->pos sx sy)))
+  {:pre [(integer? seed)
+         (integer? max-x)
+         (integer? max-y)]}
+  (loop [pos nil]
+    (if (or (nil? (get pos :x))
+            (nil? (get pos :y)))
+      (let [angle (rr/uniform-double (* 2 Math/PI))
+            radius (min max-x max-y)
+            [x y]   [(* radius (Math/cos angle))
+                     (* radius (Math/sin angle))]
+            points  (rlos/line-segment [x y] [0 0])
+            samples (take-nth 5 points)
+            n       (rn/create-noise (rr/create-random seed))
+            _ (log/info "find-starting-pos samples" (str samples))
+            non-water-samples (remove
+              (fn [[x y]]
+                (let [s (sample-island n x y)
+                      adj-types (map (fn [[x y]] (sample-island n x y))
+                                     (rw/adjacent-xys x y))]
+                  (log/info "sample" x y s)
+                  (or
+                    (contains? #{:ocean :surf} s)
+                    (some (partial = :ocean) adj-types)
+                    (some (partial = :mountain) adj-types))))
+              samples)
+            [sx sy] (first non-water-samples)]
+        (recur (rc/xy->pos sx sy)))
+      (do
+        (log/info "found starting position" pos)
+        pos))))
 
 (defn find-lava-terminal-pos [seed starting-pos max-x max-y]
-  {:pre [(rc/has-keys? starting-pos [:x :y])]
-   :post [(rc/has-keys? % [:x :y])]}
-  (let [{x :x y :y}  starting-pos
-        _ (log/info "seed" seed "starting-pos" starting-pos "max-x" max-x "max-y" max-y)
-        player-angle #?(:clj  (Math/atan2 (- x (/ max-x 2)) (- y (/ max-y 2)))
-                        :cljs (.atan2 js/Math (- x (/ max-x 2)) (- y (/ max-y 2))))
-        angle        (- player-angle 0.03)
-        radius       (/ (min max-x max-y) 2)
-        [x y]        [(* radius #?(:clj  (Math/cos angle)
-                                   :cljs (.cos js/Math angle)))
-                      (* radius #?(:clj  (Math/sin angle)
-                                   :cljs (.sin js/Math angle)))]
-        points       (rlos/line-segment [x y] [0 0])
-        samples       points
-        n            (rn/create-noise (rr/create-random seed))
-        non-water-samples (remove
-          (fn [[x y]]
-            (let [s (sample-island n x y)]
-            (or (= s :surf)
-                (= s :ocean))))
-          samples)
-        [sx sy] (first non-water-samples)]
-    (rc/xy->pos sx sy)))
+  {:pre [(integer? seed)
+         (integer? (get starting-pos :x))
+         (integer? (get starting-pos :y))
+         (integer? max-x)
+         (integer? max-y)]
+   :post [(integer? (get % :x))
+          (integer? (get % :y))]}
+  (loop [pos          nil
+         angle-offset 0.0]
+    (if (or (nil? (get pos :x))
+            (nil? (get pos :y)))
+      (let [{x :x y :y}  starting-pos
+            _ (log/info "seed" seed "starting-pos" starting-pos "max-x" max-x "max-y" max-y)
+            player-angle #?(:clj  (Math/atan2 x y)
+                            :cljs (.atan2 js/Math x y))
+            _            (log/info "player-angle" player-angle)
+            angle        (- player-angle 0.03 angle-offset)
+            radius       (min max-x max-y)
+            [x y]        [(* radius #?(:clj  (Math/cos angle)
+                                       :cljs (.cos js/Math angle)))
+                          (* radius #?(:clj  (Math/sin angle)
+                                       :cljs (.sin js/Math angle)))]
+            points       (rlos/line-segment [x y] [0 0])
+            samples       points
+            n            (rn/create-noise (rr/create-random seed))
+            non-water-samples (remove
+              (fn [[x y]]
+                (let [s (sample-island n x y)]
+                (or (= s :surf)
+                    (= s :ocean))))
+              samples)
+            [sx sy] (first non-water-samples)]
+        (recur (rc/xy->pos sx sy) (+ angle-offset 0.3)))
+      pos)))
 
 (defn init-island
   "Create an island block. `x` and `y` denote the coordinates of the upper left cell in the block."

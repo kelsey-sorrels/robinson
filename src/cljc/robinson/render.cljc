@@ -1037,8 +1037,9 @@
 
 
 (defn render-start-text [state]
+  (log/info "render-start-text")
   (let [screen     (state :screen)
-        start-text (sg/start-text)]
+        start-text (sg/start-text state)]
     (clear (state :screen))
     (doall (map-indexed
       (fn [idx line] (put-string screen 12 (+ idx 9) line))

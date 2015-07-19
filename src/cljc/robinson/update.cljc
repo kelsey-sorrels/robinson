@@ -2511,7 +2511,7 @@
                            :else       [select-starting-inventory
                                                                :start-inventory false]}
                :loading   {:advance    [reinit-world           :start-text      false]
-                           :else       [identity               :loading         false]}
+                           :else       [pass-state             :loading         false]}
                :start-text
                           {:else       [(fn [state _]
                                           (do-rest state))     :normal          true]}

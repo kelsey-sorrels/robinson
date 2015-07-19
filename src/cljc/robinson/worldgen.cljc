@@ -119,8 +119,11 @@
          (integer? max-x)
          (integer? max-y)]}
   (loop [pos nil]
-    (if (or (nil? (get pos :x))
-            (nil? (get pos :y)))
+    (if (and (get pos :x)
+             (get pos :y))
+      (do
+        (log/info "found starting position" pos)
+        pos)
       (let [angle (rr/uniform-double (* 2 Math/PI))
             radius (min max-x max-y)
             [x y]   [(* radius (Math/cos angle))
@@ -128,22 +131,23 @@
             points  (rlos/line-segment [x y] [0 0])
             samples (take-nth 2 points)
             n       (rn/create-noise (rr/create-random seed))
-            _ (log/info "find-starting-pos samples" (str samples))
-            non-water-samples (filter
-              (fn [[x y]]
-                (let [s (sample-island n x y)
-                      adj-types (map (fn [[x y]] (sample-island n x y))
-                                     (rw/adjacent-xys x y))]
-                  (log/info "sample" x y s (vec adj-types))
-                  (or
-                    (contains? #{:sand :dirt} s)
-                    (every? (partial contains? #{:sand :dirt :surf}) adj-types))))
-              samples)
-            [sx sy] (first non-water-samples)]
-        (recur (rc/xy->pos sx sy)))
-      (do
-        (log/info "found starting position" pos)
-        pos))))
+            #_#__ (log/info "find-starting-pos samples" (vec samples))]
+        (if (= :ocean (apply sample-island n (first samples)))
+          (let [non-water-samples (filter
+                                    (fn [[x y]]
+                                      (let [s (sample-island n x y)
+                                            adj-types (map (fn [[x y]] (sample-island n x y))
+                                                           (rw/adjacent-xys x y))]
+                                        (log/info "sample" x y s (vec adj-types))
+                                        (or
+                                          (contains? #{:sand :dirt} s)
+                                          (every? (partial contains? #{:sand :dirt :surf}) adj-types))))
+                                    samples)
+                [sx sy] (first non-water-samples)]
+            (if (and sx sy)
+              (recur (rc/xy->pos sx sy))
+              (recur nil)))
+          (recur nil))))))
 
 (defn find-lava-terminal-pos [seed starting-pos max-x max-y]
   {:pre [(integer? seed)

@@ -34,9 +34,8 @@
 
 (defn start-text [state]
   (let [[n1 n2]            (get-in state [:world :random-numbers])
-        modes-of-transport ["boat" "airplane" "train" "blimp" "jetpack" "hovercraft" "bicycle"
-                           "sailboat" "steamboat" "barge" "oceanliner" "ferry" "helicopter"
-                           "biplane"]
+        modes-of-transport ["boat" "carriage" "horseback" "wagon" "stagewagon"
+                           "sailboat" "barge" "ship" "ferry" "foot"]
         mode-of-transport (nth modes-of-transport (mod n1 (count modes-of-transport)))
         natural-disasters ["hurricane" "tornado" "dark storm" "cyclone" "squall"]
         natural-disaster  (nth natural-disasters (mod n2 (count natural-disasters)))

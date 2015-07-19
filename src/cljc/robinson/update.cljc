@@ -156,26 +156,31 @@
     state))
 
 (defn reinit-world
-  "Re-initialize the value of `:world` within `state`. Used when the player
-   dies and a new game is started."
+  "Re-initialize the value of `:world` within `state`. Used when starting a new game
+   from fresh or after the player has died."
   [state]
-  (-> state
-    (assoc :world (loop []
-                    (if-let [w (try
-                                 (rworldgen/init-world (system-time-millis))
-                                 (catch #?@(:clj  (Throwable e)
-                                            :cljs (js/Error e))
-                                   (log/error e)
-                                   nil))]
-                      w
-                      (recur))))
-    (rworldgen/load-unload-places)
-    (add-starting-inventory)
-    (update-visibility)
-    (as-> state
-      (reduce (fn [state _] (rnpc/add-npcs state))
-              state
-              (range 5)))))
+  (loop []
+    (let [state (-> state
+                  (assoc :world (loop []
+                                  (if-let [w (try
+                                               (rworldgen/init-world (system-time-millis))
+                                               (catch #?@(:clj  (Throwable e)
+                                                          :cljs (js/Error e))
+                                                 (log/error e)
+                                                 nil))]
+                                      w
+                                    (recur))))
+                  (rworldgen/load-unload-places))]
+      (if (contains? #{:tree :palm-tree :fruit-tree :bamboo :mountain}
+                     (get-in (rw/player-cellxy state) [0 :type]))
+        (recur)
+        (->  state
+          (add-starting-inventory)
+          (update-visibility)
+          (as-> state
+            (reduce (fn [state _] (rnpc/add-npcs state))
+                    state
+                    (range 5))))))))
 
 (defn select-starting-inventory
   [state keyin]

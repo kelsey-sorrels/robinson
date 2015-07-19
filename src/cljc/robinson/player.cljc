@@ -158,6 +158,9 @@
 (defn player-pos
   "Return the position of the player."
   [state]
+  {:pre  [(get-in state [:world :player :pos])]
+   :post [(integer? (get % :x))
+          (integer? (get % :y))]}
   (get-in state [:world :player :pos]))
 
 (defn player-starting-pos

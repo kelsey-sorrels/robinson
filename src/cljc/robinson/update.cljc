@@ -76,6 +76,10 @@
   (or (is-direction? keyin)
       (contains? #{:up-left :up-right :down-left :down-right} keyin)))
 
+(defn inc-time
+  [state]
+  (update-in state [:world :time] inc))
+
 (defn backspace-name
   [state]
   (update-in state
@@ -145,11 +149,10 @@
     (assoc-in state [:world :player :will-to-live] will-to-live))))
 
 (defn add-starting-inventory
-  [state]
+  [state selected-hotkeys]
   {:pre  [(not (nil? state))]
    :post [(not (nil? %))]}
-  (let [selected-hotkeys   (get-in state [:world :selected-hotkeys])
-        _                  (log/info "selected-hotkeys" selected-hotkeys)
+  (let [_                  (log/info "selected-hotkeys" selected-hotkeys)
         start-inventory    (filter #(contains? (set selected-hotkeys) (get % :hotkey)) (sg/start-inventory))
         _                  (log/info "Adding to starting inventory:" start-inventory)
         state              (rp/add-to-inventory state start-inventory)]
@@ -159,28 +162,29 @@
   "Re-initialize the value of `:world` within `state`. Used when starting a new game
    from fresh or after the player has died."
   [state]
-  (loop []
-    (let [state (-> state
-                  (assoc :world (loop []
-                                  (if-let [w (try
-                                               (rworldgen/init-world (system-time-millis))
-                                               (catch #?@(:clj  (Throwable e)
-                                                          :cljs (js/Error e))
-                                                 (log/error e)
-                                                 nil))]
-                                      w
-                                    (recur))))
-                  (rworldgen/load-unload-places))]
-      (if (contains? #{:tree :palm-tree :fruit-tree :bamboo :mountain}
-                     (get-in (rw/player-cellxy state) [0 :type]))
-        (recur)
-        (->  state
-          (add-starting-inventory)
-          (update-visibility)
-          (as-> state
-            (reduce (fn [state _] (rnpc/add-npcs state))
-                    state
-                    (range 5))))))))
+  (let [selected-hotkeys (get-in state [:world :selected-hotkeys])]
+    (loop []
+      (let [state (-> state
+                    (assoc :world (loop []
+                                    (if-let [w (try
+                                                 (rworldgen/init-world (system-time-millis))
+                                                 (catch #?@(:clj  (Throwable e)
+                                                            :cljs (js/Error e))
+                                                   (log/error e)
+                                                   nil))]
+                                        w
+                                      (recur))))
+                    (rworldgen/load-unload-places))]
+        (if (contains? #{:tree :palm-tree :fruit-tree :bamboo :mountain}
+                       (get-in (rw/player-cellxy state) [0 :type]))
+          (recur)
+          (->  state
+            (add-starting-inventory selected-hotkeys)
+            (update-visibility)
+            (as-> state
+              (reduce (fn [state _] (rnpc/add-npcs state))
+                      state
+                      (range 5)))))))))
 
 (defn select-starting-inventory
   [state keyin]
@@ -598,14 +602,20 @@
       (-> state
         (rp/update-inventory-item :flashlight (fn [item] (assoc item :state :off)))
         (rc/append-log "You turn the flashlight off.")
+        (inc-time)
+        (update-visibility)
         (assoc-in [:world :current-state] :normal))
       :off
       (if (pos? (get item :charge))
         (-> state
           (rp/update-inventory-item :flashlight (fn [item] (assoc item :state :on)))
           (rc/append-log "You turn the flashlight on.")
+          (inc-time)
+          (update-visibility)
           (assoc-in [:world :current-state] :normal))
-        (rc/append-log state "You try turning the flashlight on, but nothing happens.")))))
+        (-> state
+          (inc-time)
+          (rc/append-log state "You try turning the flashlight on, but nothing happens."))))))
 
 (defn assoc-apply-item
   [state item]
@@ -2599,7 +2609,7 @@
                            :else       [apply-item             identity         true]}
                :apply-item-inventory
                           {:escape     [identity               :normal          false]
-                           :else       [apply-item             identity        true]}
+                           :else       [apply-item             identity         true]}
                :apply-item-body
                           {:escape     [identity               :normal          false]
                            \a          [(fn [state]

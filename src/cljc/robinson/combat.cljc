@@ -148,7 +148,7 @@
   :shot-arrow 10
   :sting-venom 8
   :thrown-item 1
-  :knife       5
+  :knife      15
   :saw         3
   :obsidian-knife 3
   :obsidian-axe 4

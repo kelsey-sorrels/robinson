@@ -77,6 +77,10 @@
   [state x y]
   (get-in state [:world :places (xy->place-id state x y)]))
 
+(defn player-place-id
+  [state]
+  (apply xy->place-id state (rp/player-xy state)))
+
 (defn player-place
   [state]
   (apply get-place state (rp/player-xy state)))

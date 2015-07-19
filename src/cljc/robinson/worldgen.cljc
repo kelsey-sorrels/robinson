@@ -562,8 +562,11 @@
         (reduce unload-place state places-to-unload))
       (as-> state
         (reduce (fn [state [id place]]
-          (assoc-in state [:world :places id] place))
-          state (map (fn [id] [id (load-place state id)]) places-to-load))))))
+                  (assoc-in state [:world :places id] place))
+                state
+                (map (fn [id]
+                       [id (load-place state id)])
+                     places-to-load))))))
 
 
 (defn -main [& args]

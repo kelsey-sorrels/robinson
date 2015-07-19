@@ -73,27 +73,36 @@
   [state npc]
   [:world :npcs (index-of (get-in state [:world :npcs]) npc)])
 
+(defn npc-freqs-in-player-place
+  [state]
+  (let [place-id (rv/player-place-id state)]
+    (get-in state [:world :places place-id :spawned-monsters])))
+
 (defn add-npc
   "Add an npc to the specified place and position."
   ([state npc pos]
    {:pre [(some? state)
           (some? npc)
           (rc/position? pos)]}
-   (let [[x y] (rc/pos->xy pos)]
-     (add-npc state npc x y)))
+    (let [[x y] (rc/pos->xy pos)]
+      (add-npc state npc x y)))
   ([state npc x y]
   {:pre [(vector? (get-in state [:world :npcs]))
          (some? npc)
          (integer? x)
          (integer? y)]
    :post [(vector? (get-in % [:world :npcs]))]}
-  (add-npc state npc x y nil))
+    (add-npc state npc x y nil))
   ([state npc x y buy-fn-path]
-  (rc/conj-in state [:world :npcs] (assoc npc :pos         (rc/xy->pos x y)
+    (let [place-id (rv/xy->place-id state x y)]
+      (-> state
+        (update-in [:world :places place-id :spawned-monsters]
+                   (fn [freqs] (update freqs (get npc :race) (fn [n] (inc (or n 0))))))
+        (rc/conj-in [:world :npcs] (assoc npc :pos         (rc/xy->pos x y)
                                               :inventory   (if (contains? npc :inventory)
                                                              (npc :inventory)
-                                                             [])
-                                              :buy-fn-path buy-fn-path))))
+                                                           [])
+                                          :buy-fn-path buy-fn-path))))))
 (defn remove-npc
   "Remove npc from state."
   [state npc]
@@ -210,11 +219,15 @@
 (defn add-npcs-random
   "Randomly add monsters inside the viewport."
   [state]
-  (if (and (< (rr/uniform-int 10) (if (rw/is-night? state) 18 8))
-           (< (count (-> state :world :npcs))
-             60))
-    (add-npcs state)
-    state))
+  (let [num-npcs (reduce + (vals (npc-freqs-in-player-place state)))]
+    (if (and (< (rr/uniform-int 100)
+                (if (rw/is-night? state)
+                   (/ 180 (inc num-npcs))
+                   (/ 80 (inc num-npcs))))
+             (< (count (-> state :world :npcs))
+               60))
+      (add-npcs state)
+      state)))
 
 (defn has-status?
   [npc test-status]

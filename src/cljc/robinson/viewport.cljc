@@ -53,11 +53,15 @@
                      (- v-width (* 2 s)) (- v-height (* 2 s)))))
 (defn xy->place-id
   [state x y]
+  {:pre [(not (nil? state))
+         (integer? x)
+         (integer? y)]
+   :post [(vector? %)]}
   (let [{v-width     :width
          v-height    :height}
         (get-in state [:world :viewport])]
     #_(log/info "xy->place-id")
-    #_(log/info (get-in state [:world :viewport]))
+    #_(log/info "world" (str (dissoc (get state :world) :places)))
     #_(log/info x)
     #_(log/info v-width)
     #_(log/info y)

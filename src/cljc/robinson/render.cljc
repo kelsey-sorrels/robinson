@@ -2,6 +2,7 @@
 (ns robinson.render
   (:require 
             [taoensso.timbre :as log]
+            [rockpick.core :as rpc]
             [robinson.random :as rr]
             [robinson.startgame :as sg]
             [robinson.itemgen :as ig]
@@ -1143,24 +1144,54 @@
           (put-string (state :screen) 10 22 "Play again? [yn]")))
     (refresh (state :screen))))
 
-#?(:clj
-   (defn get-help-contents []
-     (read-string (slurp "data/help")))
-   
-   :cljs
-   (defn get-help-contents []
-     ;TODO: implement
-     []))
+(defn rockpick->render-map
+  [layers]
+  (let [layer (first layers)]
+    (log/info "layer" (vec layer))
+    (reduce concat
+            []
+            (map-indexed (fn [y line]
+                           (log/info "line" (vec line))
+                           (map-indexed (fn [x tile]
+                                          ;(log/info "tile" tile x y)
+                                          {:c (str (get tile :ch))
+                                           :fg [(get-in tile [:fg :r])
+                                                (get-in tile [:fg :g])
+                                                (get-in tile [:fg :b])]
+                                           :bg [(get-in tile [:bg :r])
+                                                (get-in tile [:bg :g])
+                                                (get-in tile [:bg :b])]
+                                           :x  x
+                                           :y  y})
+                                        line))
+                         layer))))
 
-(defn render-help
+(defn path->render-map [file-name]
+  (rockpick->render-map (rpc/read-xp (clojure.java.io/input-stream (format "data/%s" file-name)))))
+
+(defn render-data
+  [state file-name]
+  (let [characters (path->render-map file-name)]
+    (log/info "render-map" (vec characters))
+    (clear (state :screen))
+    (put-chars (state :screen) characters)
+    (refresh (state :screen))))
+
+(defn render-keyboardcontrols-help
   "Render the help screen."
   [state]
-  (let [help-contents (get-help-contents)]
-    (clear (state :screen))
-    (doall (map-indexed (fn [idx line]
-                          (put-string (state :screen) 0 idx line))
-                        help-contents))
-    (refresh (state :screen))))
+  (render-data state "keyboard-controls.xp"))
+
+(defn render-ui-help
+  "Render the help screen."
+  [state]
+  (render-data state "ui.xp"))
+
+(defn render-gameplay-help
+  "Render the help screen."
+  [state]
+  (render-data state "gameplay.xp"))
+
 
 (defn render-full-log
   "Render the log as a full screen."
@@ -1191,8 +1222,12 @@
     (contains? #{:dead :rescued} (current-state state))
       ;; Render game over
       (render-game-over state)
-    (= (get-in state [:world :current-state]) :help)
-      (render-help state)
+    (= (get-in state [:world :current-state]) :help-controls)
+      (render-keyboardcontrols-help state)
+    (= (get-in state [:world :current-state]) :help-ui)
+      (render-ui-help state)
+    (= (get-in state [:world :current-state]) :help-gameplay)
+      (render-gameplay-help state)
     (= (get-in state [:world :current-state]) :log)
       (render-full-log state)
     :else (render-map state)))

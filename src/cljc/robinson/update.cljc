@@ -682,6 +682,10 @@
                 (-> state
                   (rw/assoc-current-state :apply-item-normal)
                   (rc/ui-hint "Pick a direction to use the saw."))
+              (= id :flint-axe)
+                (-> state
+                  (rw/assoc-current-state :apply-item-normal)
+                  (rc/ui-hint "Pick a direction to use the axe."))
               (= id :obsidian-axe)
                 (-> state
                   (rw/assoc-current-state :apply-item-normal)
@@ -948,6 +952,9 @@
                                        state)
       [:stick           \>         ] (-> state
                                        (dig-hole)
+                                       (rw/assoc-current-state :normal))
+      [:flint-axe       trans->dir?] (-> state
+                                       (saw (translate-directions keyin) keyin)
                                        (rw/assoc-current-state :normal))
       [:obsidian-axe    trans->dir?] (-> state
                                        (saw (translate-directions keyin) keyin)
@@ -2557,7 +2564,7 @@
                            \t          [identity               :throw-inventory false]
                            \T          [identity               :talk            true]
                            \m          [identity               :log             false]
-                           \?          [identity               :help            false]
+                           \?          [identity               :help-controls   false]
                            \r          [repeat-commands        identity         false]
                            \0          [(fn [state]
                                           (-> state
@@ -2715,7 +2722,21 @@
                           {:escape     [identity               :normal          false]
                            :else       [magic-inventory        :normal          true]}
                :sleep     {:else       [do-sleep               identity         true]}
-               :help      {:else       [pass-state             :normal          false]}
+               :help-controls
+                          {\n          [identity               :help-ui         false]
+                           \p          [identity               :help-gameplay   false]
+                           :escape     [identity               :normal          false]
+                           :else       [pass-state             identity         false]}
+               :help-ui
+                          {\n          [identity               :help-gameplay   false]
+                           \p          [identity               :help-controls   false]
+                           :escape     [identity               :normal          false]
+                           :else       [pass-state             identity         false]}
+               :help-gameplay
+                          {\n          [identity               :help-controls   false]
+                           \p          [identity               :help-ui         false]
+                           :escape     [identity               :normal          false]
+                           :else       [pass-state             identity         false]}
                :close     {:left       [close-left             :normal          true]
                            :down       [close-down             :normal          true]
                            :up         [close-up               :normal          true]

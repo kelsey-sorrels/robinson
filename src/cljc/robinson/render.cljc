@@ -1144,6 +1144,14 @@
           (put-string (state :screen) 10 22 "Play again? [yn]")))
     (refresh (state :screen))))
 
+(defn cp437->unicode
+  [c]
+  (case (int c)
+      3 \u2665
+    219 \u2588
+    220 \u2584
+    c))
+
 (defn rockpick->render-map
   [layers]
   (let [layer (first layers)]
@@ -1154,7 +1162,7 @@
                            (log/info "line" (vec line))
                            (map-indexed (fn [x tile]
                                           ;(log/info "tile" tile x y)
-                                          {:c (str (get tile :ch))
+                                          {:c (str (cp437->unicode (get tile :ch)))
                                            :fg [(get-in tile [:fg :r])
                                                 (get-in tile [:fg :g])
                                                 (get-in tile [:fg :b])]

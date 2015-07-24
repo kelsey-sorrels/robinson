@@ -96,6 +96,12 @@
   ([rgb d]
   (mapv #(int (limit-color (* % d))) rgb)))
 
+(defn night-tint
+  [[r g b] d]
+  (if (> d 4)
+    [r g b]
+    [(/ r 4) (/ g 3) (/ (max r g b) 2)]))
+
 (defn color->rgb
   [color]
   (get color-to-rgb-map color color))
@@ -703,6 +709,7 @@
         [columns rows] (get-size screen)
         current-time   (get-in state [:world :time])
         [player-x player-y] (player-xy state)
+        d              (rlos/sight-distance state)
         cells          (rv/cellsxy-in-viewport state)
         ;_ (log/info "cells" (str cells))
         characters     (persistent!
@@ -839,7 +846,7 @@
                                                              :else
                                                                out-char)
                                            shaded-out-char (if (= (get cell :discovered) current-time)
-                                                             (update-in shaded-out-char [1] (fn [c] (darken-rgb c (min 1 (/ 2 (max 1 (distance-from-player state (xy->pos wx wy))))))))
+                                                             (update-in shaded-out-char [1] (fn [c] (darken-rgb (night-tint c d) (min 1 (/ 2 (max 1 (distance-from-player state (xy->pos wx wy))))))))
                                                              shaded-out-char)]
                                          (conj! characters {:x vx :y vy :c (get shaded-out-char 0) :fg (get shaded-out-char 1) :bg (get shaded-out-char 2)}))))
                                     (transient [])

@@ -2589,11 +2589,17 @@
                                           (assoc-in state [:world :npcs] []))
                                                                :normal          false]
                           \7           [(fn [state]
-                                          (log/set-level! :debug)
+                                          (let [level (get log/*config* :level)
+                                                new-level (case level
+                                                            :debug :info
+                                                            :info :warn
+                                                            :warn :error
+                                                            :error :debug)]
+                                          (log/set-level! new-level))
                                           state)               :normal          false]
                           \8           [(fn [state]
-                                          (log/set-level! :info)
-                                          state)               :normal          false]
+                                          (update-in state [:world :time] (partial + 100)))
+                                                               :normal          false]
                            :escape     [identity               :quit?           false]}
                :inventory {:escape     [identity               :normal          false]}
                :describe  {:escape     [free-cursor            :normal          false]

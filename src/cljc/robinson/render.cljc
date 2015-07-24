@@ -90,6 +90,10 @@
   (let [avg (bit-shift-right (+ (max r g b) (min r g b)) 1)]
    [avg avg avg]))
 
+(defn color->rgb
+  [color]
+  (get color-to-rgb-map color color))
+
 (defn darken-rgb
   ([rgb]
   (mapv #(int (/ % 10)) rgb))
@@ -102,9 +106,9 @@
     [r g b]
     [(/ r 4) (/ g 3) (/ (max r g b) 2)]))
 
-(defn color->rgb
-  [color]
-  (get color-to-rgb-map color color))
+(defn night-tint-npc
+  [[s fg bg] d]
+   [s (night-tint (color->rgb (or fg :white)) d) (color->rgb (or bg :black))])
 
 (defn move-cursor
   ([^robinson.aterminal.ATerminal screen x y]
@@ -836,7 +840,7 @@
                                                                (update-in out-char [1] (comp rgb->mono darken-rgb))
                                                              (contains? cell :harvestable)
                                                                (let [[chr fg bg] out-char]
-                                                                 [chr bg fg])
+                                                                 [chr bg (night-tint (color->rgb fg) d)])
                                                              (contains? (set (map :id cell-items)) :raft)
                                                                (let [[chr fg bg] out-char]
                                                                  (log/info "raft-cell" out-char cell-items)
@@ -908,46 +912,47 @@
                         (apply put-string screen
                                             vx
                                             vy
-                                            (case (get npc :race)
-                                              :rat             ["r"]
-                                              :spider          ["S"]
-                                              :scorpion        ["\u03C2"] ;;ς
-                                              :snake           ["\u00A7"] ;;§
-                                              :bat             ["B"]
-                                              :boar            ["b" :brown :black]
-                                              :gecko           ["g" :green :black]
-                                              :monkey          ["y" :orange :black]
-                                              :bird            ["a" :red :black]
-                                              :centipede       ["c" :red :black]
-                                              :turtle          ["t" :green :black]
-                                              :red-frog        ["\u03B1" :red :black] ;;α
-                                              :orange-frog     ["\u03B1" :orange :black] ;;α
-                                              :yellow-frog     ["\u03B1" :yellow :black] ;;α
-                                              :green-frog      ["\u03B1" :green :black] ;;α
-                                              :blue-frog       ["\u03B1" :blue :black] ;;α
-                                              :purple-frog     ["\u03B1" :purple :black] ;;α
-                                              :parrot          ["p" :red :black]
-                                              :shark           ["\u039B"] ;;Λ
-                                              :fish            ["f"]
-                                              :octopus         ["#" :orange :black]
-                                              :sea-snake       ["\u00A7"]
-                                              :clam            ["c"]
-                                              :urchin          ["u" :purple :black]
-                                              :squid           ["q" :orange :black]
-                                              :crocodile       ["l" :green :black]
-                                              :mosquito        ["m"]
-                                              :mongoose        ["r" :brown :black]
-                                              :tarantula       ["s" :brown :black]
-                                              :monitor-lizard  ["l" :gray :black]
-                                              :komodo-dragon   ["l" :dark-green :black]
-                                              :cobra           ["\u00A7"] ;;§
-                                              :puffer-fish     ["f" :yellow :black]
-                                              :crab            ["c" :orange :black]
-                                              :hermit-crab     ["c" :yellow :black]
-                                              :electric-eel    ["e" :brown :black]
-                                              :jellyfish       ["j"]
-                                              :human           ["@" (class->rgb (get npc :class)) :black]
-                                              ["@"])))))
+                                            (night-tint-npc
+                                              (case (get npc :race)
+                                                :rat             ["r"]
+                                                :spider          ["S"]
+                                                :scorpion        ["\u03C2"] ;;ς
+                                                :snake           ["\u00A7"] ;;§
+                                                :bat             ["B"]
+                                                :boar            ["b" :brown :black]
+                                                :gecko           ["g" :green :black]
+                                                :monkey          ["y" :orange :black]
+                                                :bird            ["a" :red :black]
+                                                :centipede       ["c" :red :black]
+                                                :turtle          ["t" :green :black]
+                                                :red-frog        ["\u03B1" :red :black] ;;α
+                                                :orange-frog     ["\u03B1" :orange :black] ;;α
+                                                :yellow-frog     ["\u03B1" :yellow :black] ;;α
+                                                :green-frog      ["\u03B1" :green :black] ;;α
+                                                :blue-frog       ["\u03B1" :blue :black] ;;α
+                                                :purple-frog     ["\u03B1" :purple :black] ;;α
+                                                :parrot          ["p" :red :black]
+                                                :shark           ["\u039B"] ;;Λ
+                                                :fish            ["f"]
+                                                :octopus         ["#" :orange :black]
+                                                :sea-snake       ["\u00A7"]
+                                                :clam            ["c"]
+                                                :urchin          ["u" :purple :black]
+                                                :squid           ["q" :orange :black]
+                                                :crocodile       ["l" :green :black]
+                                                :mosquito        ["m"]
+                                                :mongoose        ["r" :brown :black]
+                                                :tarantula       ["s" :brown :black]
+                                                :monitor-lizard  ["l" :gray :black]
+                                                :komodo-dragon   ["l" :dark-green :black]
+                                                :cobra           ["\u00A7"] ;;§
+                                                :puffer-fish     ["f" :yellow :black]
+                                                :crab            ["c" :orange :black]
+                                                :hermit-crab     ["c" :yellow :black]
+                                                :electric-eel    ["e" :brown :black]
+                                                :jellyfish       ["j"]
+                                                :human           ["@" (class->rgb (get npc :class)) :black]
+                                                ["@"]) d)))))
                    place-npcs)))
     (render-hud state)
     (log/info "current-state" (current-state state))

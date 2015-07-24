@@ -2,7 +2,6 @@
 (ns robinson.render
   (:require 
             [taoensso.timbre :as log]
-            [rockpick.core :as rpc]
             [robinson.random :as rr]
             [robinson.startgame :as sg]
             [robinson.itemgen :as ig]
@@ -1174,12 +1173,9 @@
                                         line))
                          layer))))
 
-(defn path->render-map [file-name]
-  (rockpick->render-map (rpc/read-xp (clojure.java.io/input-stream (format "data/%s" file-name)))))
-
 (defn render-data
-  [state file-name]
-  (let [characters (path->render-map file-name)]
+  [state id]
+  (let [characters (rockpick->render-map (get-in state [:data id]))]
     (log/info "render-map" (vec characters))
     (clear (state :screen))
     (put-chars (state :screen) characters)
@@ -1188,17 +1184,17 @@
 (defn render-keyboardcontrols-help
   "Render the help screen."
   [state]
-  (render-data state "keyboard-controls.xp"))
+  (render-data state :keyboard-controls))
 
 (defn render-ui-help
   "Render the help screen."
   [state]
-  (render-data state "ui.xp"))
+  (render-data state :ui))
 
 (defn render-gameplay-help
   "Render the help screen."
   [state]
-  (render-data state "gameplay.xp"))
+  (render-data state :gameplay))
 
 
 (defn render-full-log

@@ -14,6 +14,7 @@
                 [taoensso.timbre :as log]
                 [robinson.swingterminal :as swingterminal]
                 [robinson.macros :as rm]
+                [rockpick.core :as rpc]
                 [clojure.stacktrace :as st]
                 [clojure.core.async :as async :refer [go go-loop]]
                 [clojure.java.io :as io]
@@ -185,10 +186,17 @@
   (let [data  #?(:clj
                  (apply hash-map
                    (mapcat (fn [file]
-                             [(keyword (.getName file))
-                              (->> (.getPath file)
-                                (slurp)
-                                (clojure.edn/read-string))])
+                             (let [file-name (.getName file)
+                                   map-key   (if (re-find #".xp$" file-name)
+                                               (keyword (clojure.string/replace-first file-name #".xp$" ""))
+                                               (keyword file-name))
+                                   map-value (if (re-find #".xp$" file-name)
+                                                (rpc/read-xp (clojure.java.io/input-stream (.getPath file)))
+                                                (->> (.getPath file)
+                                                     (slurp)
+                                                     (clojure.edn/read-string)))]
+                             [map-key
+                              map-value]))
                            (.listFiles (clojure.java.io/file "data"))))
                  :cljs
                  (p/all [(get-resource "data/atmo")
@@ -245,6 +253,7 @@
                                                   (get settings :windows-font)
                                                   (get settings :else-font)
                                                   (get settings :font-size))))]
+    (log/info "Loaded data:" (keys data))
     ;; tick once to render frame
     #?(:clj
        (let [state {:world world :screen terminal :quests {} #_quest-map :dialog {} #_dialog :data data :settings settings}]

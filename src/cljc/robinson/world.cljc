@@ -402,8 +402,10 @@
   ([state x y opts]
     ;; destructure opts into variables with defaults
     (let [{:keys [include-npcs?
+                  collide-player?
                   collide-water?]
            :or {include-npcs? true
+                collide-player? true
                 collide-water? true}} opts
           cell (get-cell state x y)]
       ;(log/debug "collide? " cell x y)
@@ -414,6 +416,9 @@
         ;; water collides?
         (and collide-water?
              (= (cell :type) :water))
+        ;; player collides?
+        (and collide-player?
+             (= [x y] (rp/player-xy state)))
         ;; not a wall or closed door, check for npcs
         (and include-npcs?
              (npc-at-xy state x y)))))

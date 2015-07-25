@@ -1142,7 +1142,8 @@
             (-> state :world :player :inventory)))
           (put-string (state :screen) 10 22 "Play again? [yn]"))
       :rescued
-        (let [rescued-mode   (rr/rand-nth ["boat" "helicopter" "hovercraft" "ocean liner"])
+        (let [rescued-modes  ["boat" "helicopter" "hovercraft" "ocean liner"]
+              rescue-mode    (nth rescue-modes (mod n1 (get-in state [:world :random-numbers 2])))
               days           (int (/ (get-time state) 346))]
           ;; Title
           (put-string (state :screen) 10 1 (format "%s: %s." player-name madlib))

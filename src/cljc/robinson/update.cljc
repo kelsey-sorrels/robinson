@@ -353,19 +353,22 @@
                                  npc))))
       (and (not (rw/collide-in-water? state target-x target-y))
            (rw/player-mounted-on-raft? state))
-        (-> state
-          (rw/dec-cell-item-count :raft)
-          (rw/conj-cell-items target-x target-y (ig/id->item :raft))
-          (assoc-in [:world :player :pos :x] target-x)
-          (assoc-in [:world :player :pos :y] target-y)
+        (as-> state state
+          (rw/dec-cell-item-count state :raft)
+          (rw/conj-cell-items state target-x target-y (ig/id->item :raft))
+          (if (not (rv/xy-in-safe-zone? state target-x target-y))
+            (move-outside-safe-zone state direction)
+            (-> state
+              (assoc-in [:world :player :pos :x] target-x)
+              (assoc-in [:world :player :pos :y] target-y)))
           ;; rafting = more hunger
-          (update-in [:world :player :hunger] (partial + 0.05 ))
-          (as-> state
-             (let [cell  (rw/get-cell state target-x target-y)
-                   items (get cell :items)]
-               (if (seq items)
-                 (rdesc/search state)
-                 state))))
+          (update-in state [:world :player :hunger] (partial + 0.05 ))
+          ;;
+          (let [cell  (rw/get-cell state target-x target-y)
+                items (get cell :items)]
+            (if (seq items)
+              (rdesc/search state)
+              state)))
       ;; Hack down destroyable cells.
       (rw/type->destroyable? (get target-cell :type))
         (destroy-cell state target-x target-y)
@@ -2599,6 +2602,9 @@
                                           state)               :normal          false]
                           \8           [(fn [state]
                                           (update-in state [:world :time] (partial + 100)))
+                                                               :normal          false]
+                          \9           [(fn [state]
+                                          (rp/add-to-inventory state [(ig/id->item :raft)]))
                                                                :normal          false]
                            :escape     [identity               :quit?           false]}
                :inventory {:escape     [identity               :normal          false]}

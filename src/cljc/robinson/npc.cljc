@@ -263,6 +263,7 @@
                                                  (add-npc (mg/gen-monster :rat)
                                                           (->> (rw/adjacent-xys-ext (get npc :pos))
                                                                (remove (fn [[x y]] (rw/collide? state x y {:include-npcs? true
+                                                                                                           :collide-player? true
                                                                                                            :collide-water? false})))
                                                                rand-nth
                                                                (apply rc/xy->pos)))
@@ -273,12 +274,14 @@
                                                  (add-npc (mg/gen-monster :rat)
                                                           (->> (rw/adjacent-xys-ext (get npc :pos))
                                                                (remove (fn [[x y]] (rw/collide? state x y {:include-npcs? true
+                                                                                                           :collide-player? true
                                                                                                            :collide-water? false})))
                                                                rand-nth
                                                                (apply rc/xy->pos)))
                                                  (add-npc (mg/gen-monster :rat)
                                                           (->> (rw/adjacent-xys-ext (get npc :pos))
                                                                (remove (fn [[x y]] (rw/collide? state x y {:include-npcs? true
+                                                                                                           :collide-player? true
                                                                                                            :collide-water? false})))
                                                                rand-nth
                                                                (apply rc/xy->pos)))

@@ -90,15 +90,25 @@
   (let [avg (bit-shift-right (+ (max r g b) (min r g b)) 1)]
    [avg avg avg]))
 
+(defn color->rgb
+  [color]
+  (get color-to-rgb-map color color))
+
 (defn darken-rgb
   ([rgb]
   (mapv #(int (/ % 10)) rgb))
   ([rgb d]
   (mapv #(int (limit-color (* % d))) rgb)))
 
-(defn color->rgb
-  [color]
-  (get color-to-rgb-map color color))
+(defn night-tint
+  [[r g b] d]
+  (if (> d 4)
+    [r g b]
+    [(/ r 4) (/ g 3) (/ (max r g b) 2)]))
+
+(defn night-tint-npc
+  [[s fg bg] d]
+   [s (night-tint (color->rgb (or fg :white)) d) (color->rgb (or bg :black))])
 
 (defn move-cursor
   ([^robinson.aterminal.ATerminal screen x y]
@@ -703,6 +713,7 @@
         [columns rows] (get-size screen)
         current-time   (get-in state [:world :time])
         [player-x player-y] (player-xy state)
+        d              (rlos/sight-distance state)
         cells          (rv/cellsxy-in-viewport state)
         ;_ (log/info "cells" (str cells))
         characters     (persistent!
@@ -829,7 +840,7 @@
                                                                (update-in out-char [1] (comp rgb->mono darken-rgb))
                                                              (contains? cell :harvestable)
                                                                (let [[chr fg bg] out-char]
-                                                                 [chr bg fg])
+                                                                 [chr bg (night-tint (color->rgb fg) d)])
                                                              (contains? (set (map :id cell-items)) :raft)
                                                                (let [[chr fg bg] out-char]
                                                                  (log/info "raft-cell" out-char cell-items)
@@ -839,7 +850,7 @@
                                                              :else
                                                                out-char)
                                            shaded-out-char (if (= (get cell :discovered) current-time)
-                                                             (update-in shaded-out-char [1] (fn [c] (darken-rgb c (min 1 (/ 2 (max 1 (distance-from-player state (xy->pos wx wy))))))))
+                                                             (update-in shaded-out-char [1] (fn [c] (darken-rgb (night-tint c d) (min 1 (/ 2 (max 1 (distance-from-player state (xy->pos wx wy))))))))
                                                              shaded-out-char)]
                                          (conj! characters {:x vx :y vy :c (get shaded-out-char 0) :fg (get shaded-out-char 1) :bg (get shaded-out-char 2)}))))
                                     (transient [])
@@ -901,46 +912,47 @@
                         (apply put-string screen
                                             vx
                                             vy
-                                            (case (get npc :race)
-                                              :rat             ["r"]
-                                              :spider          ["S"]
-                                              :scorpion        ["\u03C2"] ;;ς
-                                              :snake           ["\u00A7"] ;;§
-                                              :bat             ["B"]
-                                              :boar            ["b" :brown :black]
-                                              :gecko           ["g" :green :black]
-                                              :monkey          ["y" :orange :black]
-                                              :bird            ["a" :red :black]
-                                              :centipede       ["c" :red :black]
-                                              :turtle          ["t" :green :black]
-                                              :red-frog        ["\u03B1" :red :black] ;;α
-                                              :orange-frog     ["\u03B1" :orange :black] ;;α
-                                              :yellow-frog     ["\u03B1" :yellow :black] ;;α
-                                              :green-frog      ["\u03B1" :green :black] ;;α
-                                              :blue-frog       ["\u03B1" :blue :black] ;;α
-                                              :purple-frog     ["\u03B1" :purple :black] ;;α
-                                              :parrot          ["p" :red :black]
-                                              :shark           ["\u039B"] ;;Λ
-                                              :fish            ["f"]
-                                              :octopus         ["#" :orange :black]
-                                              :sea-snake       ["\u00A7"]
-                                              :clam            ["c"]
-                                              :urchin          ["u" :purple :black]
-                                              :squid           ["q" :orange :black]
-                                              :crocodile       ["l" :green :black]
-                                              :mosquito        ["m"]
-                                              :mongoose        ["r" :brown :black]
-                                              :tarantula       ["s" :brown :black]
-                                              :monitor-lizard  ["l" :gray :black]
-                                              :komodo-dragon   ["l" :dark-green :black]
-                                              :cobra           ["\u00A7"] ;;§
-                                              :puffer-fish     ["f" :yellow :black]
-                                              :crab            ["c" :orange :black]
-                                              :hermit-crab     ["c" :yellow :black]
-                                              :electric-eel    ["e" :brown :black]
-                                              :jellyfish       ["j"]
-                                              :human           ["@" (class->rgb (get npc :class)) :black]
-                                              ["@"])))))
+                                            (night-tint-npc
+                                              (case (get npc :race)
+                                                :rat             ["r"]
+                                                :spider          ["S"]
+                                                :scorpion        ["\u03C2"] ;;ς
+                                                :snake           ["\u00A7"] ;;§
+                                                :bat             ["B"]
+                                                :boar            ["b" :brown :black]
+                                                :gecko           ["g" :green :black]
+                                                :monkey          ["y" :orange :black]
+                                                :bird            ["a" :red :black]
+                                                :centipede       ["c" :red :black]
+                                                :turtle          ["t" :green :black]
+                                                :red-frog        ["\u03B1" :red :black] ;;α
+                                                :orange-frog     ["\u03B1" :orange :black] ;;α
+                                                :yellow-frog     ["\u03B1" :yellow :black] ;;α
+                                                :green-frog      ["\u03B1" :green :black] ;;α
+                                                :blue-frog       ["\u03B1" :blue :black] ;;α
+                                                :purple-frog     ["\u03B1" :purple :black] ;;α
+                                                :parrot          ["p" :red :black]
+                                                :shark           ["\u039B"] ;;Λ
+                                                :fish            ["f"]
+                                                :octopus         ["#" :orange :black]
+                                                :sea-snake       ["\u00A7"]
+                                                :clam            ["c"]
+                                                :urchin          ["u" :purple :black]
+                                                :squid           ["q" :orange :black]
+                                                :crocodile       ["l" :green :black]
+                                                :mosquito        ["m"]
+                                                :mongoose        ["r" :brown :black]
+                                                :tarantula       ["s" :brown :black]
+                                                :monitor-lizard  ["l" :gray :black]
+                                                :komodo-dragon   ["l" :dark-green :black]
+                                                :cobra           ["\u00A7"] ;;§
+                                                :puffer-fish     ["f" :yellow :black]
+                                                :crab            ["c" :orange :black]
+                                                :hermit-crab     ["c" :yellow :black]
+                                                :electric-eel    ["e" :brown :black]
+                                                :jellyfish       ["j"]
+                                                :human           ["@" (class->rgb (get npc :class)) :black]
+                                                ["@"]) d)))))
                    place-npcs)))
     (render-hud state)
     (log/info "current-state" (current-state state))
@@ -1143,24 +1155,59 @@
           (put-string (state :screen) 10 22 "Play again? [yn]")))
     (refresh (state :screen))))
 
-#?(:clj
-   (defn get-help-contents []
-     (read-string (slurp "data/help")))
-   
-   :cljs
-   (defn get-help-contents []
-     ;TODO: implement
-     []))
+(defn cp437->unicode
+  [c]
+  (case (int c)
+      3 \u2665
+    219 \u2588
+    220 \u2584
+    c))
 
-(defn render-help
+(defn rockpick->render-map
+  [layers]
+  (let [layer (first layers)]
+    (log/info "layer" (vec layer))
+    (reduce concat
+            []
+            (map-indexed (fn [y line]
+                           (log/info "line" (vec line))
+                           (map-indexed (fn [x tile]
+                                          ;(log/info "tile" tile x y)
+                                          {:c (str (cp437->unicode (get tile :ch)))
+                                           :fg [(get-in tile [:fg :r])
+                                                (get-in tile [:fg :g])
+                                                (get-in tile [:fg :b])]
+                                           :bg [(get-in tile [:bg :r])
+                                                (get-in tile [:bg :g])
+                                                (get-in tile [:bg :b])]
+                                           :x  x
+                                           :y  y})
+                                        line))
+                         layer))))
+
+(defn render-data
+  [state id]
+  (let [characters (rockpick->render-map (get-in state [:data id]))]
+    (log/info "render-map" (vec characters))
+    (clear (state :screen))
+    (put-chars (state :screen) characters)
+    (refresh (state :screen))))
+
+(defn render-keyboardcontrols-help
   "Render the help screen."
   [state]
-  (let [help-contents (get-help-contents)]
-    (clear (state :screen))
-    (doall (map-indexed (fn [idx line]
-                          (put-string (state :screen) 0 idx line))
-                        help-contents))
-    (refresh (state :screen))))
+  (render-data state :keyboard-controls))
+
+(defn render-ui-help
+  "Render the help screen."
+  [state]
+  (render-data state :ui))
+
+(defn render-gameplay-help
+  "Render the help screen."
+  [state]
+  (render-data state :gameplay))
+
 
 (defn render-full-log
   "Render the log as a full screen."
@@ -1191,8 +1238,12 @@
     (contains? #{:dead :rescued} (current-state state))
       ;; Render game over
       (render-game-over state)
-    (= (get-in state [:world :current-state]) :help)
-      (render-help state)
+    (= (get-in state [:world :current-state]) :help-controls)
+      (render-keyboardcontrols-help state)
+    (= (get-in state [:world :current-state]) :help-ui)
+      (render-ui-help state)
+    (= (get-in state [:world :current-state]) :help-gameplay)
+      (render-gameplay-help state)
     (= (get-in state [:world :current-state]) :log)
       (render-full-log state)
     :else (render-map state)))

@@ -79,16 +79,19 @@
 
           :plugins
           [[com.cemerick/piggieback "0.1.5-SNAPSHOT"]
-           [lein-cljsbuild "1.0.6"]]}}
+           [lein-cljsbuild "1.0.6"]]}
+    :uberjar {:aot [robinson.update
+                    robinson.render
+                    robinson.swingterminal
+                    robinson.npc
+                    robinson.core]
+              :keep-non-project-classes true
+              :uberjar-exclusions [;#"cljs.*"
+                                   ;#"clojurescript.*"
+                                   #"externs.*"
+                                   #"goog.*"
+                                  ]}}
 
-
-  ;:aot :all
-;[;robinson.common
-        ;robinson.update
-        ;robinson.render
-        ;robinson.swingterminal
-        ;robinson.npc
-   ;     robinson.core]
   :core.typed {:check [robinson.common robinson.crafting robinson.itemgen robinson.mapgen robinson.npc robinson.startgame robinson.update robinson.world
                        robinson.combat robinson.core robinson.describe robinson.endgame robinson.lineofsight robinson.main robinson.monstergen
                        robinson.player robinson.render robinson.swingterminal robinson.viewport robinson.worldgen]}

@@ -54,6 +54,12 @@
   [state & more]
   state)
 
+(defn delete-save-game []
+  ;; delete the save game on player death
+  (doseq [file (filter (fn [file] (re-matches #".*edn" (.getName file))) (file-seq (io/file "save")))]
+    (log/info "Deleting" file)
+    (.delete file)))
+  
 (defn translate-directions
   [keyin]
   (case keyin
@@ -177,7 +183,10 @@
                     (rworldgen/load-unload-places))]
         (if (contains? #{:tree :palm-tree :fruit-tree :bamboo :mountain}
                        (get-in (rw/player-cellxy state) [0 :type]))
-          (recur)
+          (do
+            ;; remove generated placed
+            (delete-save-game)
+            (recur))
           (->  state
             (add-starting-inventory selected-hotkeys)
             (update-visibility)
@@ -1568,60 +1577,64 @@
       (rc/append-log state "Pick a valid recipe." :white))))
 
 
-(defn scroll-log
+(defn scroll-log-up
   [state]
-  (let [t (get-in state [:world :time])]
-    (log/info "scroll-log t" t)
-    (log/info "scroll-log logs-viewed" (get-in state [:world :logs-viewed]))
-    (-> state
-      (update-in [:world :logs-viewed] inc)
-      (as-> state
-        (let [c (count (filter #(= t (get % :time)) (get-in state [:world :log])))
-              logs-viewed (get-in state [:world :logs-viewed])]
-          (if (>= logs-viewed c)
-            (rw/assoc-current-state state :normal)
-            state))))))
+  (let [t        (rw/get-time state)
+        log-idx  (get-in state [:world :log-idx])
+        num-logs (count (filter #(= t (get % :time)) (get-in state [:world :log])))]
+    (update-in state [:world :log-idx] (fn [idx] (min (dec num-logs) (inc log-idx))))))
 
-(defn init-log-scrolling
+(defn scroll-log-down
   [state]
-  (-> state
-    (update-in [:world :log]
-      (fn [logs]
-        (log/info "updating :world :log. logs" logs)
-        (mapcat
-          (fn [logs-with-same-time]
-            (vec
-              (reduce (fn [logs-with-same-time log]
-                        (log/debug "updating logs-with-same-time" logs-with-same-time)
-                        (log/debug "log" log)
-                        (let [last-log (last logs-with-same-time)]
-                          (if (and (< (+ (count (get last-log :text))
-                                      (count (get log :text)))
-                                    70)
-                                (= (get last-log :color)
-                                   (get log :color)))
-                            ;; conj short lines
-                            (vec (conj (vec (butlast logs-with-same-time))
-                                        {:time (get log :time)
-                                         :text (clojure.string/join " " [(get last-log :text)
-                                                                         (get log :text)])
-                                         :color (get log :color)}))
-                            ;; pass long lines through
-                            (vec (conj logs-with-same-time log)))))
-                      []
-                      logs-with-same-time)))
-          (vals (group-by :time logs)))))
-    (as-> state
-      (let [t    (get-in state [:world :time])
-            logs (filter #(= t (get % :time)) (get-in state [:world :log]))
-            logs-viewed (get-in state [:world :logs-viewed] 1)]
-        (log/info "logs" logs)
-        (as-> state state
-          (assoc-in state [:world :logs-viewed] 1)
-          (if (and (> (count logs) 1)
-                   (= logs-viewed 1))
-            (rw/assoc-current-state state :more-log)
-            state))))))
+  (let [t        (rw/get-time state)
+        log-idx  (get-in state [:world :log-idx])]
+    (update-in state [:world :log-idx] (fn [idx] (max 0 (dec log-idx))))))
+
+(defn reducing-join
+  "If coll is empty, it is returned.
+   If coll has one element it is returned.
+   If coll has two elements, the collection [(f (first coll) (second coll))]
+   is returned."
+  [f coll]
+  (if (> (count coll) 1)
+    (reduce (fn [acc v]
+              (concat (butlast acc) (f (last acc) v)))
+            [(first coll)]
+            (rest coll))
+    coll))
+
+(defn coalesce-log-group
+  [logs]
+  (reducing-join (fn [loga logb]
+                   (if (< (+ (-> loga :text count)
+                             (-> logb :text count))
+                          70)
+                     ;; join short lines
+                     [{:time (get loga :time)
+                       :text (clojure.string/join " " [(get loga :text)
+                                                       (get logb :text)])
+                       :color (get loga :color)}]
+                     ;; pass long lines through
+                     [loga logb]))
+                  logs))
+       
+
+;; Logs is a vector with elements of {:text :color :time}
+(defn coalesce-logs
+  [state]
+  (let [now (rw/get-time state)]
+    (-> state
+      (assoc-in [:world :log-idx] 0)
+      (update-in [:world :log]
+        (fn [logs]
+          (log/info "updating :world :log. logs" logs)
+          (vec
+            (mapcat
+              (fn [logs-with-same-time]
+                (if (= (-> logs-with-same-time first :time) now)
+                  (coalesce-log-group logs-with-same-time)
+                   logs-with-same-time))
+              (partition-by (juxt :time :color) logs))))))))
 
 (defn get-hungrier-and-thirstier
   "Increase player's hunger."
@@ -2568,6 +2581,8 @@
                            \T          [identity               :talk            true]
                            \m          [identity               :log             false]
                            \?          [identity               :help-controls   false]
+                           \/          [scroll-log-up          :normal          false]
+                           \*          [scroll-log-down        :normal          false]
                            \r          [repeat-commands        identity         false]
                            \0          [(fn [state]
                                           (-> state
@@ -2753,9 +2768,6 @@
                            :down       [close-down             :normal          true]
                            :up         [close-up               :normal          true]
                            :right      [close-right            :normal          true]}
-               :more-log  {:enter      [scroll-log             identity         false]
-                           :escape     [scroll-log             identity         false]
-                           :space      [scroll-log             identity         false]}
                :log       {:else       [pass-state             :normal          false]}
                :rescued   {\y          [identity               :start-inventory false]
                            \n          [(constantly nil)       :normal          false]}
@@ -2832,8 +2844,6 @@
                           (cond
                             (= current-state :normal)
                               (assoc-in state [:world  :command-seq] [keyin])
-                            (contains? (hash-set current-state new-state) :more-log)
-                              state
                             :else
                               (rc/conj-in state [:world :command-seq] keyin))
                           (assoc-in state [:world :command-seq] command-seq))
@@ -2874,7 +2884,8 @@
                   ;; update visibility
                   (update-visibility)
                   ;; add will-to-live flavor message
-                  (log-will-to-live-flavor wtl))
+                  (log-will-to-live-flavor wtl)
+                  (coalesce-logs))
                 state))
             (update-quests)
             (as-> state
@@ -2913,21 +2924,13 @@
                              (log/info "Done uploading save file")
                              (catch Exception e
                                (log/error "Caught exception while uploading save" e))))))
-                     (doseq [file (filter (fn [file] (re-matches #".*edn" (.getName file))) (file-seq (io/file "save")))]
-                       (log/info "Deleting" file)
-                       (.delete file)))
+                     ;; delete the save game on player death
+                     (delete-save-game))
                   (-> state
                     (update-in [:world :player :status]
                      (fn [status]
                        (disj status :dead)))
                     (rw/assoc-current-state :dead)))
-                state))
-                  ;; delete the save game on player death
-            ;; only try to start log scrolling if the state we were just in was not more-log
-            (as-> state
-              (if (and current-state
-                       (not (contains? #{:dead :more-log} current-state)))
-                (init-log-scrolling state)
                 state))))
       state)))
 

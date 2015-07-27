@@ -956,6 +956,30 @@
                    place-npcs)))
     (render-hud state)
     (log/info "current-state" (current-state state))
+    (if-not (nil? (get-in state [:world :ui-hint]))
+      ;; ui-hint
+      (put-string screen 0 0 (get-in state [:world :ui-hint]) :white :black)
+      ;; draw log
+      (let [current-time    (rw/get-time state)
+            log-idx         (get-in state [:world :log-idx] 0)
+            num-logs        (count (filter #(= current-time (get % :time)) (get-in state [:world :log])))
+            up-arrow-char   \u2191
+            down-arrow-char \u2193
+            msg-above?      (< log-idx (dec num-logs ))
+            msg-below?      (pos? log-idx)
+            message         (nth (reverse (get-in state [:world :log])) log-idx)
+            darken-factor   (inc  (* (/ -1 5) (- current-time (message :time))))
+            log-color       (darken-rgb (color->rgb (get message :color)) darken-factor)]
+        (log/info "num-log-msgs" num-logs)
+        (log/info "message" message)
+        (put-string screen 0 0 (format "%s%s %s" (if msg-above?
+                                                  (str up-arrow-char "-/")
+                                                  "   ")
+                                                (if msg-below?
+                                                  (str down-arrow-char "-*")
+                                                  "   ")
+                                                (message :text))
+                               log-color :black)))
     (case (current-state state)
       :pickup               (render-pick-up state)
       :inventory            (render-inventory state)
@@ -977,29 +1001,6 @@
       :craft-transportation (render-craft-transportation state)
       :wield                (render-wield state)
       nil)
-    (if-not (nil? (get-in state [:world :ui-hint]))
-      (put-string screen 0 0 (get-in state [:world :ui-hint]) :white :black))
-    ;; draw log
-    (when (contains? #{:normal :more-log} (current-state state))
-      (let [logs-viewed (get-in state [:world :logs-viewed])
-            current-time (get-in state [:world :time])
-            cur-state (current-state state)]
-        (log/debug "current-state" cur-state)
-        (if (= cur-state :more-log)
-          (let [logs (vec (filter #(= (get % :time) current-time) (get-in state [:world :log])))
-                _ (log/info "logs-viewed" logs-viewed "current-time" current-time "logs" logs)
-                message (nth logs (dec logs-viewed))]
-            ;(log/debug "message" message)
-            (put-string screen 0 0 (format "%s --More--" (message :text)) (get message :color) :black))
-          (let [message (last (get-in state [:world :log]))]
-            (log/info "message" message)
-            (when (and message
-                       (< (- current-time (message :time)) 5))
-              (let [darken-factor (inc  (* (/ -1 5) (- current-time (message :time))))
-                    log-color (darken-rgb (color->rgb (get message :color)) darken-factor)]
-                (log/info "darken-factor" darken-factor)
-                (log/info "log color" log-color)
-                (put-string screen 0 0 (get message :text) log-color :black)))))))
     (case (current-state state)
       :quit               (render-quit? state)
       :harvest            (render-harvest state)
@@ -1142,12 +1143,12 @@
             (-> state :world :player :inventory)))
           (put-string (state :screen) 10 22 "Play again? [yn]"))
       :rescued
-        (let [rescued-modes  ["boat" "helicopter" "hovercraft" "ocean liner"]
-              rescue-mode    (nth rescue-modes (mod n1 (get-in state [:world :random-numbers 2])))
+        (let [rescue-modes   ["boat" "helicopter" "hovercraft" "ocean liner"]
+              rescue-mode    (nth rescue-modes (mod (get-in state [:world :random-numbers 2]) (count rescue-modes)))
               days           (int (/ (get-time state) 346))]
           ;; Title
           (put-string (state :screen) 10 1 (format "%s: %s." player-name madlib))
-          (put-string (state :screen) 18 2 (format "Rescued by %s after surviving for %d days." rescued-mode days))
+          (put-string (state :screen) 18 2 (format "Rescued by %s after surviving for %d days." rescue-mode days))
           (put-string (state :screen) 10 3 (format "Points: %s." points))
           (put-string (state :screen) 10 4 "Inventory:")
           (doall (map-indexed

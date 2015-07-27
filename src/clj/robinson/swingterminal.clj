@@ -146,7 +146,7 @@
                                            y         (long (- (* (inc row) char-height) (.getDescent font-metrics)))
                                            highlight (= @cursor-xy [col row])
                                            char-img  (glyph-cache this font-metrics highlight char-width char-height c)]
-                                       (.drawImage graphics char-img x (- y char-height) this)))
+                                       (.drawImage graphics char-img x (+ (- y char-height) 5) this)))
                                    (.dispose graphics-2d))))
                                 ;)
           keyListener      (reify KeyListener

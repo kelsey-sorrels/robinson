@@ -90,7 +90,8 @@
       #_(log/info "Rendering world at time" (get-in state [:world :time]))
       (try
         ;(rm/log-time "render" (rrender/render state))
-        (rrender/render state)
+        (let [render-fn (resolve 'robinson.render/render)]
+          (render-fn state))
         #?(:clj
            (catch Throwable e (log/error e))
            :cljs
@@ -130,7 +131,9 @@
     (try
       (log/info "got " (str keyin) " type " (type keyin))
       (rm/log-time "tick"
-        (let [new-state (rm/log-time "update-state" (ru/update-state state keyin))]
+        (let [update-state-fn (resolve 'robinson.update/update-state)
+              _ (log/info "update-state-fn" update-state-fn)
+              new-state       (rm/log-time "update-state" (update-state-fn state keyin))]
           (when new-state
             (do
             (render-state new-state)

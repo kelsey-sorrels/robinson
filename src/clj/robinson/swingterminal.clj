@@ -154,28 +154,40 @@
                                ;(println "keyPressed keyCode" (.getKeyCode e) "escape" KeyEvent/VK_ESCAPE "escape?" (= (.getKeyCode e) KeyEvent/VK_ESCAPE))
                                (let [numpad? (= (.getKeyLocation e) KeyEvent/KEY_LOCATION_NUMPAD)]
                                  (when-let [k (cond
-                                                (= (.getKeyCode e) KeyEvent/VK_ENTER)      :enter
-                                                (= (.getKeyCode e) KeyEvent/VK_ESCAPE)     :escape
-                                                (= (.getKeyCode e) KeyEvent/VK_SPACE)      :space
-                                                (= (.getKeyCode e) KeyEvent/VK_BACK_SPACE) :backspace
+                                                (= (.getKeyCode e) KeyEvent/VK_ENTER)         :enter
+                                                (= (.getKeyCode e) KeyEvent/VK_ESCAPE)        :escape
+                                                (= (.getKeyCode e) KeyEvent/VK_SPACE)         :space
+                                                (= (.getKeyCode e) KeyEvent/VK_BACK_SPACE)    :backspace
+                                                (= (.getKeyCode e) KeyEvent/VK_F1)            :f1
+                                                (= (.getKeyCode e) KeyEvent/VK_F2)            :f2
+                                                (= (.getKeyCode e) KeyEvent/VK_F3)            :f3
+                                                (= (.getKeyCode e) KeyEvent/VK_F4)            :f4
+                                                (= (.getKeyCode e) KeyEvent/VK_F5)            :f5
+                                                (= (.getKeyCode e) KeyEvent/VK_F6)            :f6
+                                                (= (.getKeyCode e) KeyEvent/VK_F7)            :f7
+                                                (= (.getKeyCode e) KeyEvent/VK_F8)            :f8
+                                                (= (.getKeyCode e) KeyEvent/VK_F9)            :f9
+                                                (= (.getKeyCode e) KeyEvent/VK_F10)           :f10
+                                                (= (.getKeyCode e) KeyEvent/VK_F11)           :f11
+                                                (= (.getKeyCode e) KeyEvent/VK_F12)           :f12
                                                 (and numpad?
-                                                     (= (.getKeyCode e) KeyEvent/VK_NUMPAD1))    :numpad1
+                                                     (= (.getKeyCode e) KeyEvent/VK_NUMPAD1)) :numpad1
                                                 (and numpad?
-                                                     (= (.getKeyCode e) KeyEvent/VK_NUMPAD2))    :numpad2
+                                                     (= (.getKeyCode e) KeyEvent/VK_NUMPAD2)) :numpad2
                                                 (and numpad?
-                                                     (= (.getKeyCode e) KeyEvent/VK_NUMPAD3))    :numpad3
+                                                     (= (.getKeyCode e) KeyEvent/VK_NUMPAD3)) :numpad3
                                                 (and numpad?
-                                                     (= (.getKeyCode e) KeyEvent/VK_NUMPAD4))    :numpad4
+                                                     (= (.getKeyCode e) KeyEvent/VK_NUMPAD4)) :numpad4
                                                 (and numpad?
-                                                     (= (.getKeyCode e) KeyEvent/VK_NUMPAD5))    :numpad5
+                                                     (= (.getKeyCode e) KeyEvent/VK_NUMPAD5)) :numpad5
                                                 (and numpad?
-                                                     (= (.getKeyCode e) KeyEvent/VK_NUMPAD6))    :numpad6
+                                                     (= (.getKeyCode e) KeyEvent/VK_NUMPAD6)) :numpad6
                                                 (and numpad?
-                                                     (= (.getKeyCode e) KeyEvent/VK_NUMPAD7))    :numpad7
+                                                     (= (.getKeyCode e) KeyEvent/VK_NUMPAD7)) :numpad7
                                                 (and numpad?
-                                                     (= (.getKeyCode e) KeyEvent/VK_NUMPAD8))    :numpad8
+                                                     (= (.getKeyCode e) KeyEvent/VK_NUMPAD8)) :numpad8
                                                 (and numpad?
-                                                     (= (.getKeyCode e) KeyEvent/VK_NUMPAD9))    :numpad9
+                                                     (= (.getKeyCode e) KeyEvent/VK_NUMPAD9)) :numpad9
                                                 (contains? #{KeyEvent/VK_0
                                                              KeyEvent/VK_1
                                                              KeyEvent/VK_2

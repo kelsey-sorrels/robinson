@@ -21,6 +21,7 @@
                                     magic-up magic-right magic-inventory]]
             [robinson.worldgen :as rworldgen]
             [robinson.lineofsight :as rlos]
+            [robinson.feedback :as rf]
             robinson.macros
             #?@(:clj (
                 [robinson.macros :as rm]
@@ -2621,6 +2622,10 @@
                           \9           [(fn [state]
                                           (rp/add-to-inventory state [(ig/id->item :raft)]))
                                                                :normal          false]
+                         :f12          [(fn [state]
+                                          (rf/send-report state)
+                                          state)
+                                                               :normal          false]
                            :escape     [identity               :quit?           false]}
                :inventory {:escape     [identity               :normal          false]}
                :describe  {:escape     [free-cursor            :normal          false]
@@ -2893,14 +2898,9 @@
                 (do
                   #?(:clj
                      ;; if UPLOADVERSION file is present, upload save/world.edn as json to aaron-santos.com:8888/upload
-                     (when (.exists (io/file "config/.feedbackparticipant"))
-                       (when (not (.exists (io/file "config/.userid")))
-                         (spit "config/.userid" (doto (java.util.UUID/randomUUID)
-                                                      (.toString))))
-                       (let [version (if (.exists (io/file "VERSION"))
-                                       (slurp "VERSION")
-                                       "SNAPSHOT")
-                             userid  (slurp "config/.userid")
+                     (when (get state :feedback-participant)
+                       (let [version (get state :version)
+                             userid  (get state :user-id)
                              url     (format "https://aaron-santos.com/saves/%s" userid)
                              body    (as-> (get state :world) world
                                            (assoc world :version version)

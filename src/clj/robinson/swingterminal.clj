@@ -51,19 +51,19 @@
 
 (defn make-terminal
   ([]
-    (make-terminal 80 24))
-  ([columns rows]
-    (make-terminal columns rows [255 255 255] [0 0 0]))
-  ([columns rows default-fg-color default-bg-color]
-    (make-terminal columns rows default-fg-color default-bg-color nil))
-  ([columns rows default-fg-color default-bg-color on-key-fn]
-    (make-terminal columns rows default-fg-color default-bg-color on-key-fn "Courier New" "Monospaced" 14))
-  ([columns rows [default-fg-color-r default-fg-color-g default-fg-color-b]
-                 [default-bg-color-r default-bg-color-g default-bg-color-b]
-                 on-key-fn
-                 windows-font
-                 else-font
-                 font-size]
+    (make-terminal "" 80 24))
+  ([title columns rows]
+    (make-terminal title columns rows [255 255 255] [0 0 0]))
+  ([title columns rows default-fg-color default-bg-color]
+    (make-terminal title columns rows default-fg-color default-bg-color nil))
+  ([title columns rows default-fg-color default-bg-color on-key-fn]
+    (make-terminal title columns rows default-fg-color default-bg-color on-key-fn "Courier New" "Monospaced" 14))
+  ([title columns rows [default-fg-color-r default-fg-color-g default-fg-color-b]
+                       [default-bg-color-r default-bg-color-g default-bg-color-b]
+                       on-key-fn
+                       windows-font
+                       else-font
+                       font-size]
     (let [is-windows       (>= (.. System (getProperty "os.name" "") (toLowerCase) (indexOf "win")) 0)
           normal-font      (if is-windows
                               (Font. windows-font Font/PLAIN font-size)
@@ -222,7 +222,7 @@
                                        (on-key-fn (char (+ (int \a) -1 (int character))))
                                        (on-key-fn character))))))
           icon            (.getImage (java.awt.Toolkit/getDefaultToolkit) "images/icon.png")
-          frame            (doto (JFrame. "Robinson")
+          frame            (doto (JFrame. title)
                              (.. (getContentPane) (setLayout (BorderLayout.)))
                              (.. (getContentPane) (add terminal-renderer BorderLayout/CENTER))
                              (.addKeyListener keyListener)

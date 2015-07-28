@@ -186,39 +186,50 @@
    * `quests` that are loaded dynamically on startup."
   ([f] (setup nil f))
   ([screen f]
-  (let [data  #?(:clj
-                 (apply hash-map
-                   (mapcat (fn [file]
-                             (let [file-name (.getName file)
-                                   map-key   (if (re-find #".xp$" file-name)
-                                               (keyword (clojure.string/replace-first file-name #".xp$" ""))
-                                               (keyword file-name))
-                                   map-value (if (re-find #".xp$" file-name)
-                                                (rpc/read-xp (clojure.java.io/input-stream (.getPath file)))
-                                                (->> (.getPath file)
-                                                     (slurp)
-                                                     (clojure.edn/read-string)))]
-                             [map-key
-                              map-value]))
-                           (.listFiles (clojure.java.io/file "data"))))
-                 :cljs
-                 (p/all [(get-resource "data/atmo")
-                         (get-resource "data/help")]))
-        _     (when (get data :seed)
-                (rr/set-rnd! (rr/create-random (get data :seed))))
-        world #?(:clj
-                 (if (.exists (clojure.java.io/file "save/world.edn"))
-                   (with-open [o (io/input-stream "save/world.edn")]
-                     (nippy/thaw-from-in! (DataInputStream. o)))
+  (when (.exists (io/file "config/.feedbackparticipant"))
+    (when (not (.exists (io/file "config/.userid")))
+      (spit "config/.userid" (doto (java.util.UUID/randomUUID)
+                                          (.toString)))))
+  (let [data                 #?(:clj
+                                (apply hash-map
+                                  (mapcat (fn [file]
+                                            (let [file-name (.getName file)
+                                                  map-key   (if (re-find #".xp$" file-name)
+                                                              (keyword (clojure.string/replace-first file-name #".xp$" ""))
+                                                              (keyword file-name))
+                                                  map-value (if (re-find #".xp$" file-name)
+                                                               (rpc/read-xp (clojure.java.io/input-stream (.getPath file)))
+                                                               (->> (.getPath file)
+                                                                    (slurp)
+                                                                    (clojure.edn/read-string)))]
+                                            [map-key
+                                             map-value]))
+                                          (.listFiles (clojure.java.io/file "data"))))
+                                :cljs
+                                (p/all [(get-resource "data/atmo")
+                                        (get-resource "data/help")]))
+        feedback-participant (.exists (io/file "config/.feedbackparticipant"))
+        version              (if (.exists (io/file "VERSION"))
+                               (slurp "VERSION")
+                               "SNAPSHOT")
+        user-id              (if (.exists (io/file "config/.userid"))
+                               (slurp "config/.userid")
+                               "unknown")
+        _                    (when (get data :seed)
+                               (rr/set-rnd! (rr/create-random (get data :seed))))
+        world                #?(:clj
+                                (if (.exists (clojure.java.io/file "save/world.edn"))
+                                  (with-open [o (io/input-stream "save/world.edn")]
+                                    (nippy/thaw-from-in! (DataInputStream. o)))
       
-                   {:current-state :start
-                    :time 0})
-                 ;; Read from local storage
-                 :cljs
-                 (if-let [world @world-storage]
-                   world
-                   {:current-state :start
-                    :time 0}))
+                                  {:current-state :start
+                                   :time 0})
+                                ;; Read from local storage
+                                :cljs
+                                (if-let [world @world-storage]
+                                  world
+                                  {:current-state :start
+                                   :time 0}))
         ;; load quests
         ;_ (doall (map #(load-file (.getPath %))
         ;               (filter (fn [file] (.endsWith (.getPath file) ".clj"))
@@ -259,7 +270,15 @@
     (log/info "Loaded data:" (keys data))
     ;; tick once to render frame
     #?(:clj
-       (let [state {:world world :screen terminal :quests {} #_quest-map :dialog {} #_dialog :data data :settings settings}]
+       (let [state {:world world
+                   :screen terminal
+                   :quests {} #_quest-map
+                   :dialog {} #_dialog
+                   :feedback-participant feedback-participant
+                   :version version
+                   :user-id user-id
+                   :data data
+                   :settings settings}]
          (f (tick state \.)))
        :cljs
        (p/then data (fn [[atmo help]]

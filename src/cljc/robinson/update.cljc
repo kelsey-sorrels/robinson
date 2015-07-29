@@ -2586,41 +2586,67 @@
                            \*          [scroll-log-down        :normal          false]
                            \r          [repeat-commands        identity         false]
                            \0          [(fn [state]
-                                          (-> state
-                                          (rc/append-log "log1...........................")
-                                          (rc/append-log "log2...........................")
-                                          (rc/append-log "log3...........................")
-                                          (rc/append-log "log4...........................")
-                                          (rc/append-log "log5...........................")))
+                                          (if (get-in state [:world :dev-mode])
+                                            (-> state
+                                              (rc/append-log "log1...........................")
+                                              (rc/append-log "log2...........................")
+                                              (rc/append-log "log3...........................")
+                                              (rc/append-log "log4...........................")
+                                              (rc/append-log "log5..........................."))
+                                            state))
                                           :normal true]
                           \1           [(fn [state]
-                                          (assoc-in state [:world :log] [])) :normal true]
+                                          (if (get-in state [:world :dev-mode])
+                                            (assoc-in state [:world :log] [])
+                                            state)) :normal true]
                           \2           [(fn [state]
-                                          (assoc-in state [:world :player :hunger] 100))
+                                          (if (get-in state [:world :dev-mode])
+                                            (assoc-in state [:world :player :hunger] 100))
+                                            state)
                                           :normal true]
                           \3           [(fn [state]
-                                          (rp/add-to-inventory state [(ig/gen-item :flint)])) :normal true]
-                          \4           [add-monsters-debug     :normal          false]
+                                          (if (get-in state [:world :dev-mode])
+                                            (rp/add-to-inventory state [(ig/gen-item :flint)])
+                                            state))            :normal          true]
+                          \4           [(fn [state]
+                                          (if (get-in state [:world :dev-mode])
+                                            (add-monsters-debug state)
+                                            state))            :normal          false]
                           \5           [(fn [state]
-                                          (clojure.inspector/inspect-tree (get state :world))
-                                          state)               :normal          false]
+                                          (if (get-in state [:world :dev-mode])
+                                            (do
+                                              (clojure.inspector/inspect-tree (get state :world))
+                                              state)
+                                            state))            :normal          false]
                           \6           [(fn [state]
-                                          (assoc-in state [:world :npcs] []))
+                                          (if (get-in state [:world :dev-mode])
+                                            (assoc-in state [:world :npcs] [])
+                                            state))
                                                                :normal          false]
                           \7           [(fn [state]
-                                          (let [level (get log/*config* :level)
-                                                new-level (case level
-                                                            :debug :info
-                                                            :info :warn
-                                                            :warn :error
-                                                            :error :debug)]
-                                          (log/set-level! new-level))
+                                          (when (get-in state [:world :dev-mode])
+                                            (let [level (get log/*config* :level)
+                                                  new-level (case level
+                                                              :debug :info
+                                                              :info :warn
+                                                              :warn :error
+                                                              :error :debug)]
+                                            (log/set-level! new-level)))
                                           state)               :normal          false]
                           \8           [(fn [state]
-                                          (update-in state [:world :time] (partial + 100)))
+                                          (if (get-in state [:world :dev-mode])
+                                            (update-in state [:world :time] (partial + 100))
+                                            state))
                                                                :normal          false]
                           \9           [(fn [state]
-                                          (rp/add-to-inventory state [(ig/id->item :raft)]))
+                                          (if (get-in state [:world :dev-mode])
+                                            (rp/add-to-inventory state [(ig/id->item :raft)])
+                                            state))
+                                                               :normal          false]
+                         :f9           [(fn [state]
+                                          (-> state
+                                            (rc/append-log "Development mode: on")
+                                            (assoc-in [:world :dev-mode] true)))
                                                                :normal          false]
                          :f12          [(fn [state]
                                           (rf/send-report state)

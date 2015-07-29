@@ -46,9 +46,11 @@
                                                   {:date date
                                                    :version version
                                                    :user-id user-id
+                                                   :description (ss/value description-input)
                                                    :world (if (ss/value upload-input)
                                                             (get state :world)
-                                                            nil)})))
+                                                            nil)})
+                                                (ss/hide! frame)))
   (->
     frame
     ss/pack!

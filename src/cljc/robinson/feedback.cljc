@@ -2,43 +2,55 @@
 (ns robinson.feedback
   (:require [clj-http.client :as client]
             [seesaw.core :as ss]
+            [seesaw.border :as ss-border]
             [seesaw.forms :as ss-forms]
             [clojure.data.json :as json]))
 
-(defn frame-content
-  []
-  (ss-forms/forms-panel
-    "pref,4dlu,80dlu,8dlu,pref,4dlu,80dlu"
-    :column-groups [[1 5]]
-    :items [(ss-forms/separator "General")
-            "Company" (ss-forms/span (ss/text) 5)
-            "Contact" (ss-forms/span (ss/text) 5)
-            (ss-forms/separator "Propeller")
-            "PTI/kW"  (ss/text :columns 10) "Power/kW" (ss/text :columns 10)
-            "R/mm"    (ss/text :columns 10) "D/mm"     (ss/text :columns 10)]
-    :default-dialog-border? true))
+(defn upload-report [data]
+  (client/post "http://aaron-santos.com:3000/reports"
+               {:body (json/write-str
+                        (clojure.walk/postwalk (fn [v] (if (char? v)
+                                                         (str v)
+                                                         v))
+                                               data))
+                :content-type :json}))
 
 (defn send-report [state]
-  (let [
+  (let [date              (str (new java.util.Date))
+        version           (get state :version)
+        user-id           (get state :user-id)
         upload-input      (ss/checkbox :selected? true)
-        description-input (ss/text :columns 80 :rows 25 :multi-line? true :wrap-lines? true)
+        description-input (ss/text :columns 80
+                                   :rows 25
+                                   :multi-line? true
+                                   :wrap-lines? true
+                                   :border (ss-border/line-border :color "#aab"))
         send-button       (ss/button :text "Send")
         cancel-button     (ss/button :text "Cancel")
         content (ss-forms/forms-panel
                   "right:pref,4dlu,pref"
                   :items [
-                    "Date:"          (str (new java.util.Date))
-                    "Version:"       (get state :version) 
-                    "User-id:"       (get state :user-id)   
+                    "Date:"          date
+                    "Version:"       version 
+                    "User-id:"       user-id   
                     "Upload save?"   upload-input                                     
-                    "What happened?" description-input                                 
+                    "What happened?" description-input
                     "" send-button      (ss-forms/next-line)
-                    "" cancel-button])]
+                    "" cancel-button])
+        frame (ss/frame :title "Report an Issue",
+                        :content content
+                        :resizable? false
+                        :on-close :hide)]
+  (ss/listen cancel-button :mouse-clicked (fn [e] (ss/hide! frame)))
+  (ss/listen send-button :mouse-clicked (fn [e] (upload-report
+                                                  {:date date
+                                                   :version version
+                                                   :user-id user-id
+                                                   :world (if (ss/value upload-input)
+                                                            (get state :world)
+                                                            nil)})))
   (->
-    (ss/frame :title "Report an Issue",
-              :content content
-              :resizable? false
-              :on-close :hide)
+    frame
     ss/pack!
     ss/show!)))
 

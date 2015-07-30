@@ -1165,10 +1165,11 @@
 (defn init-cursor
   "Initialize the selection cursor at the player's current location."
   [state]
-  (let [player-pos (get-in state [:world :player :pos])]
-    (-> state
-      (assoc-in [:world :cursor] player-pos)
-      (rc/ui-hint "ijkl to move cursor, enter to select."))))
+  (let [player-xy    (rp/player-xy state)
+        viewport-xy  (rv/viewport-xy state)
+        cursor-pos   (apply rc/xy->pos (rv/-xy player-xy viewport-xy))]
+      ; cursor pos = player pos in screen coordinates
+      (assoc-in state [:world :cursor] cursor-pos)))
 
 (defn harvest
   "Collect non-item resources from adjacent or current cell"
@@ -1278,52 +1279,84 @@
 
 (defn free-cursor
   "Dissassociate the cursor from the world."
-  [state]
+  [state & more]
   (rc/dissoc-in state [:world :cursor]))
+
+(defn bound [min-v v max-v]
+  (min max-v (max min-v v)))
+
+(defn move-cursor
+  [state direction]
+  (let [{cursor-x :x
+         cursor-y :y} (get-in state [:world :cursor])
+        target-x (+ cursor-x (case direction
+                               :left -1
+                               :right 1
+                               :up-left -1
+                               :up-right 1
+                               :down-left -1
+                               :down-right 1
+                               0))
+        target-y (+ cursor-y (case direction
+                               :up  -1
+                               :down 1
+                               :up-left -1
+                               :up-right -1
+                               :down-left 1
+                               :down-right 1
+                               0))
+        cursor-pos (rc/xy->pos (bound 0 target-x (dec (get-in state [:world :viewport :width])))
+                               (bound 0 target-y (dec (get-in state [:world :viewport :height]))))]
+    (assoc-in state [:world :cursor] cursor-pos)))
 
 (defn move-cursor-left
   "Move the cursor pos one space to the left keeping in mind the bounds of the current place."
   [state]
-  (let [cursor-pos (get-in state [:world :cursor])
-        cursor-pos (assoc cursor-pos :x (max 0 (dec (cursor-pos :x))))]
-    (-> state
-      (assoc-in [:world :cursor] cursor-pos)
-      (rc/ui-hint "ijkl to move cursor, enter to select."))))
+  (move-cursor state :left))
 
 (defn move-cursor-right
   "Move the cursor pos one space to the right keeping in mind the bounds of the current place."
   [state]
-  (let [cursor-pos (get-in state [:world :cursor])
-        cursor-pos (assoc cursor-pos :x (min (get-in state [:world :viewport :width]) (inc (cursor-pos :x))))]
-    (-> state
-      (assoc-in [:world :cursor] cursor-pos)
-      (rc/ui-hint "ijkl to move cursor, enter to select."))))
+  (move-cursor state :right))
 
 (defn move-cursor-up
   "Move the cursor pos one space up keeping in mind the bounds of the current place."
   [state]
-  (let [cursor-pos (get-in state [:world :cursor])
-        cursor-pos (assoc cursor-pos :y (max 0 (dec (cursor-pos :y))))]
-    (-> state
-      (assoc-in [:world :cursor] cursor-pos)
-      (rc/ui-hint "ijkl to move cursor, enter to select."))))
+  (move-cursor state :up))
 
 (defn move-cursor-down
   "Move the cursor pos one space down keeping in mind the bounds of the current place."
   [state]
-  (let [cursor-pos (get-in state [:world :cursor])
-        cursor-pos (assoc cursor-pos :y (min (get-in state [:world :viewport :height]) (inc (cursor-pos :y))))]
-    (-> state
-      (assoc-in [:world :cursor] cursor-pos)
-      (rc/ui-hint "ijkl to move cursor, enter to select."))))
+  (move-cursor state :down))
+
+(defn move-cursor-up-left
+  "Move the cursor pos one space to the left keeping in mind the bounds of the current place."
+  [state]
+  (move-cursor state :up-left))
+
+(defn move-cursor-up-right
+  "Move the cursor pos one space to the right keeping in mind the bounds of the current place."
+  [state]
+  (move-cursor state :up-right))
+
+(defn move-cursor-down-left
+  "Move the cursor pos one space up keeping in mind the bounds of the current place."
+  [state]
+  (move-cursor state :down-left))
+
+(defn move-cursor-down-right
+  "Move the cursor pos one space down keeping in mind the bounds of the current place."
+  [state]
+  (move-cursor state :down-right))
 
 (defn describe-at-cursor
   "Add to the log, a message describing the scene at the cell indicated by the
    cursor's position."
   [state]
-  (let [cursor-pos (get-in state [:world :cursor])]
+  (let [cursor-pos (get-in state [:world :cursor])
+        [x y]      (rv/viewport-xy state)]
     (-> state
-      (rc/append-log (rdesc/describe-cell-at-xy state (cursor-pos :x) (cursor-pos :y)))
+      (rc/append-log (rdesc/describe-cell-at-xy state (+ x (cursor-pos :x)) (+ y (cursor-pos :y))))
       (free-cursor))))
 
 (defn start-talking
@@ -2654,13 +2687,16 @@
                                                                :normal          false]
                            :escape     [identity               :quit?           false]}
                :inventory {:escape     [identity               :normal          false]}
-               :describe  {:escape     [free-cursor            :normal          false]
-                           \i          [free-cursor            :describe-inventory false]
+               :describe  {\i          [free-cursor            :describe-inventory false]
                            :left       [move-cursor-left       :describe        false]
                            :down       [move-cursor-down       :describe        false]
                            :up         [move-cursor-up         :describe        false]
                            :right      [move-cursor-right      :describe        false]
-                           :enter      [describe-at-cursor     :normal          false]}
+                           :up-left    [move-cursor-up-left    :describe        false]
+                           :up-right   [move-cursor-up-right   :describe        false]
+                           :down-left  [move-cursor-down-left  :describe        false]
+                           :down-right [move-cursor-down-right :describe        false]
+                           :else       [free-cursor            :normal          false]}
                :quests    {:escape     [identity               :normal          false]}
                :describe-inventory
                           {:escape     [identity               :normal          false]

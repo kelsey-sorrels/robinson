@@ -2,6 +2,7 @@
 (ns robinson.viewport
   (:require
             [taoensso.timbre :as log]
+            [robinson.common :as rc]
             [robinson.player :as rp]
             #?@(:cljs (
                [goog.string :as gstring]
@@ -122,6 +123,11 @@
      [px       (inc py)]
      [(inc px) (inc py)]]))
 
+(defn viewport-xy
+  [state]
+  (let [viewport-pos (get-in state [:world :viewport :pos])]
+    (rc/pos->xy viewport-pos)))
+  
 (defn viewport-xys
   [state]
   (let [{v-width     :width

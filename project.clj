@@ -24,7 +24,7 @@
                  [org.clojure/tools.namespace "0.2.11"]
                  ;[org.clojure/clojurescript "0.0-3030"]
                  [org.clojure/clojurescript "0.0-3269"]
-                 [clj-http "2.0.0"]
+                 [clj-http "1.0.1"]
                  [seesaw "1.4.5"]
                  [cljs-webgl "0.1.5-SNAPSHOT"]
                  [ns-tracker "0.3.0"]
@@ -90,8 +90,8 @@
               :keep-non-project-classes true
               :uberjar-exclusions [;#"cljs.*"
                                    ;#"clojurescript.*"
-                                   #"externs.*"
-                                   #"goog.*"
+                                   ;#"externs.*"
+                                   ;#"goog.*"
                                   ]}}
 
   :core.typed {:check [robinson.common robinson.crafting robinson.itemgen robinson.mapgen robinson.npc robinson.startgame robinson.update robinson.world

@@ -77,17 +77,17 @@
         items (get cell :items)]
     (cond
       (and npc (seq items))
-        (format "there is %s, and %s" (describe-npc npc) (describe-items items))
+        (format "There is %s, and %s" (describe-npc npc) (describe-items items))
       npc
-        (format "there is %s, on %s" (describe-npc npc) (describe-cell-type cell))
+        (format "There is %s, on %s" (describe-npc npc) (describe-cell-type cell))
       (seq items)
-        (format "on the %s, there %s %s" (str (describe-cell-type cell))
+        (format "On the %s, there %s %s" (str (describe-cell-type cell))
                                          (str (if (> (count items) 1)
                                            "are"
                                            "is"))
                                          (str (describe-items items)))
       :else
-        (format "there is %s" (describe-cell-type cell)))))
+        (format "There is %s" (describe-cell-type cell)))))
 
 (defn search
   "Describe the player's cell."

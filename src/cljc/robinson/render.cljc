@@ -21,6 +21,7 @@
                                             player-wounded?
                                             player-poisoned?
                                             player-infected?]]
+            [robinson.describe :as rdesc]
             [robinson.endgame :as rendgame :refer [gen-end-madlib]]
             [robinson.magic :as rm :refer [get-magical-abilities]]
             [robinson.crafting :as rcrafting :refer [get-recipes]]
@@ -241,6 +242,20 @@
         (render-line screen x (+ y i) width (get item :s) (get item :fg) (get item :bg) (get item :style)))
       (render-line screen x (+ y i) width "" :white :white #{}))))
 
+(defn render-text
+  [screen position title text]
+  (let [x        (case position
+                   :left 0
+                   :right 50)
+        y        0
+        width    30
+        height   23
+        lines    (rc/wrap-line 28 text)
+        items    (concat [{:s title :fg :black :bg :white :style #{:underline :bold}}]
+                         (map (fn [line] {:s line :fg :black :bg :white :style #{}})
+                              lines))]
+     (render-list screen x y width height items)))
+
 (defn render-multi-select
   "Render a menu on the right side of the screen. It has a title, and selected items
    can be identitifed by hotkeys. If elements in `items` have a key whose value
@@ -446,6 +461,20 @@
   "Render the pickup item menu if the world state is `:pickup`."
   [state]
   (render-multi-select (state :screen) "Inventory" [] (translate-identified-items state (-> state :world :player :inventory))))
+
+(defn render-describe
+  "Render the describe info pane if the world state is `:describe`."
+  [state]
+  (let [{cursor-x :x
+         cursor-y :y} (get-in state [:world :cursor])
+        [x y]         (rv/viewport-xy state)
+        [w _]         (rv/viewport-wh state)
+        _             (println "cursor-x" cursor-x "w" w)
+        position      (if (< cursor-x (/ w 2))
+                        :right
+                        :left)
+        description   (rdesc/describe-cell-at-xy state (+ x cursor-x) (+ y cursor-y))]
+  (render-text (state :screen) position "Look" description)))
 
 (defn render-apply
   "Render the inventory menu with `Apply` as the title."
@@ -967,7 +996,9 @@
             down-arrow-char \u2193
             msg-above?      (< log-idx (dec num-logs ))
             msg-below?      (pos? log-idx)
-            message         (nth (reverse (get-in state [:world :log])) log-idx)
+            message         (if (zero? num-logs)
+                              {:message "" :time 0 :color :black} 
+                              (nth (reverse (get-in state [:world :log])) log-idx))
             darken-factor   (inc  (* (/ -1 5) (- current-time (message :time))))
             log-color       (darken-rgb (color->rgb (get message :color)) darken-factor)]
         (log/info "num-log-msgs" num-logs)
@@ -983,6 +1014,7 @@
     (case (current-state state)
       :pickup               (render-pick-up state)
       :inventory            (render-inventory state)
+      :describe             (render-describe state)
       :apply                (render-apply state)
       :apply-item-inventory
                             (render-apply-to state)

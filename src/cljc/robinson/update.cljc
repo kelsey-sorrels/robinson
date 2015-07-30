@@ -1856,9 +1856,9 @@
           (rc/dissoc-in [:world :player :poisoned-time]))
         state)
     (update-in state [:world :player :hp] (fn [hp] (if (contains? (get-in state [:world :player :status]) :poisoned)
-                                                     (- hp 0.1)
+                                                     (- hp 0.01)
                                                      (min (get-in state [:world :player :max-hp])
-                                                          (+ hp 0.2)))))))
+                                                          (+ hp 0.02)))))))
 (defn check-paralyzed
   "Set and upset paralyzation player attribute."
   [state]

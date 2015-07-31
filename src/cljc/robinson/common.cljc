@@ -4,12 +4,12 @@
             [robinson.math :as math]
             [taoensso.timbre :as log]
             #?@(:clj (
-               [clojure.core.typed :as t])
+               #_[clojure.core.typed :as t])
                :cljs (
                [goog.string :as gstring]
                 [goog.string.format]))))
 
-#?(:clj
+#_#?(:clj
 (t/ann log-io (t/All [a x y ...]
                 [String [(t/U t/EmptySeqable (t/HSeq (y ... y))) -> x] -> [(t/U t/EmptySeqable (t/HSeq (y ... y))) -> x]])))
 (defn log-io
@@ -23,7 +23,7 @@
        (println (gstring/format "(%s %s)=>%s" msg (str args) (str result))))
     result)))
 
-#?(:clj
+#_#?(:clj
 (t/ann noun->indefinite-article [String -> String]))
 (defn noun->indefinite-article [noun] (if (contains? #{\a \e \i \o \u} (first noun))
                                         "an"
@@ -32,31 +32,31 @@
 (defn has-keys? [m keys]
   (apply = (map count [keys (select-keys m keys)])))
 
-#?(:clj
+#_#?(:clj
 (t/defalias Pos (t/HMap :mandatory {:x Integer :y Integer} :complete? true)))
 
 (defn position?
   [pos]
   (= #{:x :y} (-> pos keys set)))
 
-#?(:clj
+#_#?(:clj
 (t/ann pos->xy [Pos -> (t/I (t/Vec Integer)(t/ExactCount 2))]))
 (defn pos->xy
   [{x :x y :y}]
   [x y])
 
-#?(:clj
+#_#?(:clj
 (t/ann xy->pos [Integer Integer -> Pos]))
 (defn xy->pos
   [x y]
   {:x x :y y})
 
-#?(:clj
+#_#?(:clj
 (t/ann ^:no-check Math/abs (t/IFn [Double -> Double]
                                   [Float -> Float]
                                   [Integer -> Integer]
                                   [Long -> Long])))
-#?(:clj
+#_#?(:clj
 (t/ann chebyshev-distance [Pos Pos -> Long]))
 (defn chebyshev-distance
   "Chebyshev/chessboard distance between 2 points"
@@ -64,7 +64,7 @@
   (max (math/abs (long (- (get p1 :x) (get p2 :x))))
        (math/abs (long (- (get p1 :y) (get p2 :y))))))
 
-#?(:clj
+#_#?(:clj
 (t/ann distance-sq [Pos Pos -> t/AnyInteger]))
 (defn distance-sq
   [p1 p2]
@@ -72,14 +72,14 @@
   (+ (sq (- (:x p1) (:x p2)))
      (sq (- (:y p1) (:y p2))))))
 
-#?(:clj
+#_#?(:clj
 (t/ann distance [Pos Pos -> Double]))
 (defn distance
   "Euclidean distance between 2 points"
   [p1 p2]
   (math/sqrt (double (distance-sq p1 p2))))
 
-#?(:clj
+#_#?(:clj
 (t/ann distance [Pos Pos -> Double])
 (t/ann farther-than? [Pos Pos Number -> Boolean]))
 (defn farther-than?
@@ -92,7 +92,7 @@
     true
     (> (distance-sq (xy->pos x1 y1) (xy->pos x2 y2)) (* l l)))))
   
-#?(:clj
+#_#?(:clj
 (t/ann fill-missing (t/All [x y] [(t/Pred x)
                                    (t/IFn [x y -> x])
                                    (t/Seq y)
@@ -133,7 +133,7 @@
                             (cons (f x y) (if (empty? xs) [] (fill-missing pred f ys xs)))
                             (cons x (if (empty? xs) [] (fill-missing pred f vcoll xs)))))))
 
-#?(:clj
+#_#?(:clj
 (t/ann ^:no-check clojure.core/update-in (t/All [x [y :< (clojure.lang.Associative t/Any t/Any)]]
                                            [y (t/Seqable t/Any) [t/Any -> t/Any] -> y]))
 (t/ann fn-in (t/All [[y :< (clojure.lang.Associative t/Any t/Any)]]
@@ -145,21 +145,21 @@
   [f m ks v]
   (update-in m ks (fn [coll] (f coll v))))
 
-#?(:clj
+#_#?(:clj
 (t/ann concat-in (t/All [[x :< (clojure.lang.Associative t/Any t/Any)]]
                    [x (t/Seqable t/Any) (t/Seqable t/Any) -> x])))
 (defn concat-in
   [m ks v]
   (fn-in concat m ks v))
 
-#?(:clj
+#_#?(:clj
 (t/ann conj-in (t/All [x]
                  (t/IFn [x (clojure.lang.Associative t/Any t/Any) t/Any -> x]))))
 (defn conj-in
   [m ks v]
   (fn-in conj m ks v))
 
-#?(:clj
+#_#?(:clj
 (t/ann map-in (t/All [x]
                 [x (clojure.lang.Associative t/Any t/Any) [t/Any -> t/Any] -> x])))
 (defn map-in
@@ -169,7 +169,7 @@
                         (map f coll)))
          m ks nil))
 
-#?(:clj
+#_#?(:clj
 (t/ann reduce-in (t/All [x]
                    (t/IFn [x (clojure.lang.Associative t/Any t/Any) (t/IFn [t/Any -> t/Any]) -> x]
                           [x (clojure.lang.Associative t/Any t/Any) (t/IFn [t/Any -> t/Any]) t/Any -> x]))))
@@ -181,7 +181,7 @@
   ([m ks f v]
    (update-in m ks (fn [coll] (reduce f v coll)))))
 
-#?(:clj
+#_#?(:clj
 (t/ann filter-in (t/All [x]
                    (t/IFn [x (clojure.lang.Associative t/Any t/Any) (t/IFn [t/Any -> t/Any]) -> x]))))
 (defn filter-in
@@ -190,7 +190,7 @@
                         (vec (filter f coll))
                         (filter f coll))) m ks nil))
 
-#?(:clj
+#_#?(:clj
 (t/ann remove-in (t/All [x]
                    [x (clojure.lang.Associative t/Any t/Any) [t/Any -> t/Any] -> x])))
 (defn remove-in
@@ -199,7 +199,7 @@
                         (vec (remove f coll))
                         (remove f coll))) m ks nil))
 
-#?(:clj
+#_#?(:clj
 (t/ann some-in (t/All [x]
                  (t/IFn [x (clojure.lang.Associative t/Any t/Any) (t/IFn [t/Any -> t/Any]) -> x]))))
 (defn some-in
@@ -208,7 +208,7 @@
                         (vec (some f coll))
                         (some f coll))) m ks nil))
 
-#?(:clj
+#_#?(:clj
 (t/ann update-in-matching (t/All [a b]
                             (t/IFn [a (clojure.lang.Associative t/Any t/Any) (t/IFn [b -> Boolean]) (t/IFn [b -> t/Any]) -> a]))))
 (defn update-in-matching
@@ -253,7 +253,7 @@
     (let [[l1 l2] (split-with (complement e) coll)]
       (concat l1 (rest l2)))))
 
-#?(:clj
+#_#?(:clj
 (t/defalias HasHotkey (t/HMap :mandatory {:hotkey Character}))
 (t/defalias Item (t/HMap :mandatory {:id t/Kw :name String :name-plural String}
                   :optional  {:fuel Number :utility Number :attack t/Kw :hunger Number :thirst Number
@@ -295,7 +295,7 @@
                                :npcs (t/Vec Npc)}))
 (t/defalias State (HMap :mandatory {:world World :screen t/Any})))
 
-#?(:clj
+#_#?(:clj
 (t/ann append-log (t/IFn [State String -> State]
                         [State String t/Kw -> State])))
 (defn append-log
@@ -311,19 +311,19 @@
                                     :time (-> state :world :time)
                                     :color color}]))))))
 
-#?(:clj
+#_#?(:clj
 (t/ann ui-hint (t/IFn [State String -> State])))
 (defn ui-hint
   [state msg]
   (assoc-in state [:world :ui-hint] msg))
 
-#?(:clj
+#_#?(:clj
 (t/ann clear-ui-hint (t/IFn [State String -> State])))
 (defn clear-ui-hint
   [state]
   (ui-hint state nil))
 
-#?(:clj
+#_#?(:clj
 (t/ann wrap-line (t/IFn [Integer String -> (t/Vec String)])))
 (defn wrap-line [size text]
   (loop [left size

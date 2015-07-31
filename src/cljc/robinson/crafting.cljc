@@ -6,7 +6,7 @@
             [robinson.itemgen :as ig]
             [robinson.player :as rp]
             #?@(:clj (
-                [clojure.core.typed :as t])
+                #_[clojure.core.typed :as t])
                 :cljs (
                 [goog.string :as gstring]
                 [goog.string.format]))))
@@ -17,7 +17,7 @@
      :cljs
      (apply gstring/format s args)))
 
-#?(:clj
+#_#?(:clj
 (t/defalias Recipe (t/HMap :mandatory {:name String :hotkey Character :recipe (t/Map t/Kw (t/Vec t/Kw))}))
 
 (t/ann recipes (t/HMap :mandatory {:weapons        (t/Vec Recipe)
@@ -84,7 +84,7 @@
      {:name "raft"               :hotkey \a :recipe {:exhaust [:rope :log :log
                                                                :log :log :log]
                                                          :add [:raft]} :place :drop}]})
-#?(:clj
+#_#?(:clj
 (t/ann has-prerequisites? (t/Fn [State Recipe -> Boolean])))
 (defn has-prerequisites?
   "Return true if the player has the ability to make the recipe."

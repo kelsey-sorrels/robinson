@@ -3,6 +3,7 @@
   :plugins      [[lein-ancient "0.6.7"]
                  [lein-autoreload "0.1.0"]
                  [lein-bikeshed "0.1.8"]
+                 [lein-deps-tree "0.1.2"]
                  [lein-idefiles "0.2.1"]
                  [lein-marginalia "0.8.0"]
                  [lein-kibit "0.0.8"]
@@ -13,24 +14,23 @@
   :dependencies [[org.clojure/clojure "1.7.0"]
                  [org.clojure/core.async "0.1.346.0-17112a-alpha"]
                  [org.clojure/core.match "0.3.0-alpha4"]
-                 [org.clojure/core.memoize "0.5.6"]
-                 [org.clojure/tools.reader "0.8.13"]
-                 [org.clojure/core.typed "0.2.77"]
+                 [org.clojure/core.memoize "0.5.7"]
+                 [org.clojure/tools.reader "0.9.2"]
                  [org.clojure/data.generators "0.1.2"]
-                 [org.clojure/math.combinatorics "0.0.8"]
+                 [org.clojure/math.combinatorics "0.1.1"]
                  [org.clojure/clojure-contrib "1.2.0"]
                  [org.clojars.vishk/algotools "0.1.0"]
-                 [org.clojure/data.json "0.2.5"]
+                 [org.clojure/data.json "0.2.6"]
                  [org.clojure/tools.namespace "0.2.11"]
                  ;[org.clojure/clojurescript "0.0-3030"]
-                 [org.clojure/clojurescript "0.0-3269"]
-                 [clj-http "1.0.1"]
+                 [org.clojure/clojurescript "1.7.10"]
+                 [clj-http "2.0.0"]
                  [seesaw "1.4.5"]
                  [cljs-webgl "0.1.5-SNAPSHOT"]
                  [ns-tracker "0.3.0"]
                  [jamesmacaulay/cljs-promises "0.1.0"]
                  [tailrecursion/cljson "1.0.7"]
-                 [servant "0.1.3"]
+                 [servant "0.1.4"]
                  [rockpick "0.1.0-SNAPSHOT"]
                  [aaron-santos/tinter "0.1.1-SNAPSHOT"]
                  [aaron-santos/clj-tiny-astar "0.1.1-SNAPSHOT"]
@@ -77,7 +77,8 @@
                                             "target/unit-test.js"]}}
   :profiles {
     :dev {:dependencies
-          [#_[org.clojure/clojurescript "0.0-3030"]]
+          [[org.clojure/core.typed "0.3.9"]
+           #_[org.clojure/clojurescript "0.0-3030"]]
 
           :plugins
           [[com.cemerick/piggieback "0.1.5-SNAPSHOT"]
@@ -90,8 +91,9 @@
               :keep-non-project-classes true
               :uberjar-exclusions [;#"cljs.*"
                                    ;#"clojurescript.*"
-                                   ;#"externs.*"
-                                   ;#"goog.*"
+                                   ;#"clojure.core.typed.*"
+                                   #"externs.*"
+                                   #"goog.*"
                                   ]}}
 
   :core.typed {:check [robinson.common robinson.crafting robinson.itemgen robinson.mapgen robinson.npc robinson.startgame robinson.update robinson.world

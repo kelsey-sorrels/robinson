@@ -110,7 +110,7 @@
 
 
 (defn visible-place-ids
-  [state x y]
+  ([state]
   (let [{v-width     :width
          v-height    :height
          {v-x :x v-y :y} :pos}
@@ -122,6 +122,18 @@
      [(inc px) py]
      [px       (inc py)]
      [(inc px) (inc py)]]))
+  ([state x y]
+  (let [{v-width     :width
+         v-height    :height
+         {v-x :x v-y :y} :pos}
+        (get-in state [:world :viewport])
+        ;; upper left place
+        ul-place-id (xy->place-id state (+ v-x x) (+ v-y y))
+        [px py]     ul-place-id]
+    [ul-place-id 
+     [(inc px) py]
+     [px       (inc py)]
+     [(inc px) (inc py)]])))
 
 (defn viewport-xy
   [state]

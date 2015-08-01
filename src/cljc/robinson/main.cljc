@@ -48,10 +48,6 @@
 (log/merge-config!
   {:ns-blacklist ["robinson.render"]})
 
-;(log/set-level! :debug)
-(log/set-level! :info)
-;(log/set-level! :error)
-
 #?@(:cljs (
 (cljs.reader/register-tag-parser! "robinson.monstergen.Monster" mg/map->Monster)
 (cljs.reader/register-tag-parser! "robinson.player.Player" mg/map->Player)
@@ -269,6 +265,8 @@
                                                   (get settings :else-font)
                                                   (get settings :font-size))))]
     (log/info "Loaded data:" (keys data))
+    ;; set log level
+    (log/set-level! (get settings :log-level))
     ;; tick once to render frame
     #?(:clj
        (let [state {:world world

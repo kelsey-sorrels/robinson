@@ -122,7 +122,7 @@
                              (getPreferredSize []
                                (let [graphics      ^Graphics    (proxy-super getGraphics)
                                      font-metrics  ^FontMetrics (.getFontMetrics graphics normal-font)
-                                     screen-width               (* columns (.charWidth font-metrics \space))
+                                     screen-width               (* columns (.charWidth font-metrics \M))
                                      screen-height              (* rows (.getHeight font-metrics))
                                      char-width                 (/ screen-width columns)
                                      char-height                (/ screen-height rows)]
@@ -131,7 +131,7 @@
                                ;(rm/log-time "blit"
                                  (let [graphics-2d ^Graphics2D           (.create graphics)
                                        font-metrics ^FontMetrics         (.getFontMetrics graphics normal-font)
-                                       screen-width                      (* columns (.charWidth font-metrics \space))
+                                       screen-width                      (* columns (.charWidth font-metrics \M))
                                        screen-height                     (* rows (.getHeight font-metrics))
                                        char-width                        (/ screen-width columns)
                                        char-height                       (/ screen-height rows)]

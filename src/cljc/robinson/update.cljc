@@ -2435,6 +2435,10 @@
         ;get-cell-m (memoize (fn [x y] (get-cell state x y)))
         {{v-x :x v-y :y} :pos}
                        (get-in state [:world :viewport])
+        harvestable-counts (atom (reduce-kv (fn [m k v]
+                                              (assoc m k (get v :num-harvestable-cells 0)))
+                                            {}
+                                            (get-in state [:world :places])))
         ;viewport-cells (apply concat
         ;                 (map-indexed (fn [vy line]
         ;                                (map-indexed (fn [vx cell]
@@ -2448,12 +2452,11 @@
         ;                      viewport-cells))]
     (reduce 
       (fn cell-reduction-fn [xy-fns [cell sx sy wx wy]]
-        (let [;cell       (get-cell-m x y)
-              cell-type  (get cell :type)
-              cell-items (get cell :items)
-              hole-types #{:freshwater-hole :saltwater-hole}
-              still-types #{:solar-still}
-              harvest-types #{:gravel :tree :palm-tree :tall-grass}
+        (let [cell-type        (get cell :type)
+              cell-items       (get cell :items)
+              hole-types       #{:freshwater-hole :saltwater-hole}
+              still-types      #{:solar-still}
+              harvest-types    #{:gravel :tree :palm-tree :tall-grass}
               fruit-tree-types #{:fruit-tree}]
           #_(log/info "updating cell" cell "@" x y)
           #_(log/info "viewport" (get-in state [:world :viewport]))
@@ -2469,15 +2472,20 @@
                   (fn increase-still-water [cell] (assoc cell :water (min 20 (+ 0.2 (* (rr/uniform-double 1) 0.1) (get cell :water 0.0)))))])
                 ;; drop harvest items
                 (contains? harvest-types cell-type)
-                (if (= (rr/uniform-int 0 1000) 0)
-                  (conj xy-fns [[wx wy]
-                    (fn drop-harvest-items [cell]
-                      (assoc cell :harvestable true))])
-                  xy-fns)
+                (let [place-id         (rv/xy->place-id state wx wy)
+                      num-harvestable (get @harvestable-counts place-id)]
+                  (if (< (rr/uniform-int 0 10000)
+                         (/ 8 (inc num-harvestable)))
+                    (do
+                      (swap! harvestable-counts (fn [counts] (update counts place-id inc)))
+                      (conj xy-fns [[wx wy]
+                        (fn drop-harvest-items [cell]
+                          (assoc cell :harvestable true))]))
+                    xy-fns))
                 ;; drop fruit
                 (contains? fruit-tree-types cell-type)
                 ;; chance of dropped a fruit
-                (if (= (rr/uniform-int 0 1000) 0)
+                (if (= (rr/uniform-int 0 5000) 0)
                   ;; make the fruit item and find an adjacent free cell to drop it into
                   (let [item    (assoc (ig/id->item (get cell :fruit-type)) :rot-time (+ (rw/get-time state) (rr/uniform-int 10 30)))
                         adj-xys (remove (fn [[x y]] (or (not (rv/xy-in-viewport? state x y))
@@ -2535,7 +2543,12 @@
                 xy-fns)))))
       []
       (vec (rv/cellsxy-in-viewport state)))]
-    (rw/update-cells state xy-fns)))
+    (as-> state state
+      (rw/update-cells state xy-fns)
+      (reduce-kv (fn [state place-id harvest-count]
+                   (assoc-in state [:world :places place-id :num-harvestable-cells] harvest-count))
+                 state
+                 @harvestable-counts))))
 
 (defn update-quests
   "Execute the `pred` function for the current stage of each quest. If 

@@ -550,7 +550,7 @@
    :post [(not (nil? %))]}
   (let [[x y]             (rp/player-xy state)
         loaded-place-ids  (keys (get-in state [:world :places]))
-        visible-place-ids (rv/visible-place-ids state x y)
+        visible-place-ids (rv/visible-place-ids state)
         places-to-load    (clojure.set/difference (set visible-place-ids) (set loaded-place-ids))
         places-to-unload  (clojure.set/difference (set loaded-place-ids) (set visible-place-ids))]
     (log/info "currently loaded places:" loaded-place-ids)

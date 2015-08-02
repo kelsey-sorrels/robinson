@@ -181,12 +181,14 @@
                                                    nil))]
                                         w
                                       (recur))))
-                    (rworldgen/load-unload-places))]
+                    (rworldgen/load-unload-places))
+           cell-type (get-in (rw/player-cellxy state) [0 :type])]
         (if (contains? #{:tree :palm-tree :fruit-tree :bamboo :mountain}
-                       (get-in (rw/player-cellxy state) [0 :type]))
+                       cell-type)
           (do
             ;; remove generated placed
             (delete-save-game)
+            (log/warn "Scrapping world dur to invalid starting cell type" cell-type)
             (recur))
           (->  state
             (add-starting-inventory selected-hotkeys)
@@ -1219,6 +1221,13 @@
                                  (if (or harvestable
                                          (= 0 (rr/uniform-int 1000)))
                                    [(rr/rand-nth [(ig/gen-item :rock) (ig/gen-item :obsidian)])]
+                                   []))
+                               (concat
+                                 (if (or harvestable
+                                         ;; TODO: make large flint stone have a higher chance of dropping away
+                                         ;; from the player's starting-pos.
+                                         (= 0 (rr/uniform-int 10000)))
+                                   [(rr/rand-nth [(ig/gen-item :rock) (ig/gen-item :large-flint)])]
                                    []))
                                (concat
                                  (if (or harvestable

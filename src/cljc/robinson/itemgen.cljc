@@ -125,6 +125,7 @@
    {:id  :rock                    :name  "rock"                       :name-plural "rocks"}
    {:id  :obsidian                :name  "obsidian stone"             :name-plural "obsidian stones"}
    {:id  :flint                   :name  "flint stone"                :name-plural "flint stones"}
+   {:id  :large-flint             :name  "large flint stone"          :name-plural "large flint stones"}
    {:id  :grass                   :name  "grass"                      :name-plural "grass" :fuel 20}
    {:id  :obsidian-blade          :name  "obsidian blade"             :name-plural "obsidian blades"}
    {:id  :flint-blade             :name  "flint blade"                :name-plural "flint blades"}

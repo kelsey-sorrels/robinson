@@ -1,4 +1,4 @@
-{:windows-font "Courier New"
+{:windows-font "Consolas"
  :else-font    "Monospaced"
  :font-size 18
  :log-level :error

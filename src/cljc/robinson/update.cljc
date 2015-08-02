@@ -2336,7 +2336,9 @@
    :post [(not (nil? %))
           (vector? (get-in % [:world :npcs]))]}
   ;; do npc->player attacks if adjacent
-  (let [;; increase all npcs energy by their speed value and have any adjacent npcs attack the player.
+  (let [[{cell-type :type}] (rw/player-cellxy state)
+        slow-player?        (contains? #{:dune :surf} cell-type)
+        ;; increase all npcs energy by their speed value and have any adjacent npcs attack the player.
         state (reduce
                 (fn [state npc]
                   ;; only update npcs that are in the current place and have an :energy value.
@@ -2344,7 +2346,9 @@
                     (let [npc-keys (rnpc/npc->keys state npc)
                           ;; add speed value to energy.
                           ;_ (trace "adding speed to" (select-keys npc [:race :place :pos :speed :energy]))
-                          state (update-in state (conj npc-keys :energy) (partial + (get npc :speed)))]
+;                         ;; if the player is slowed, add twice as much energy to the npcs
+                          state (update-in state (conj npc-keys :energy) (partial + (* (if slow-player? 2 1)
+                                                                                       (get npc :speed))))]
                       ;; adjacent hostile npcs attack player.
                       (if (and (contains? (get npc :status) :hostile)
                                (rw/adjacent-to-player? state (get npc :pos)))

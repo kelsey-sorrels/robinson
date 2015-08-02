@@ -33,6 +33,8 @@
            :water                  "water"
            :surf                   "surf"
            :sand                   "sand"
+           :dune                   "dune"
+           :rocky-shore            "rocky shore"
            :dirt                   "dirt"
            :gravel                 "gravel"
            :tree                   "a tree"

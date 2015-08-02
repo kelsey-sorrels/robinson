@@ -280,6 +280,15 @@
   [state id]
   (first (filter (fn [item] (= id (get item :id))) (player-inventory state))))
 
+(defn inventory-id-freqs
+  [state]
+  (reduce (fn [m item]
+            (assoc m
+                   (get item :id)
+                   (get item :count 1)))
+          {}
+          (get-in state [:world :player :inventory])))
+
 (defn remove-from-inventory
   "Removes item with `id` from player's inventory freeing hotkeys as necessary. Effectively destroys the item."
   [state id]

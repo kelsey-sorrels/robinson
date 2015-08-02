@@ -678,11 +678,12 @@
             recipes)))
   ;; render recipe-info
   (if hotkey
-    (let [matching-recipes (filter (fn [recipe] (= (get recipe :hotkey) hotkey))
-                                   recipes)
-          recipe           (get (first matching-recipes) :recipe)
-          exhaust          (get recipe :exhaust [])
-          have             (get recipe :have-or [])]
+    (let [matching-recipes   (filter (fn [recipe] (= (get recipe :hotkey) hotkey))
+                                     recipes)
+          recipe             (get (first matching-recipes) :recipe)
+          exhaust            (get recipe :exhaust [])
+          have               (get recipe :have-or [])
+          inventory-id-freqs (rp/inventory-id-freqs state)]
       (log/info "exhaust" exhaust "have" have)
       (render-list screen 41 6 29 15
       (concat
@@ -690,7 +691,17 @@
          {:s "Consumes" :fg :black :bg :white :style #{}}]
         (if (empty? exhaust)
           [{:s "N/A" :fg :black :bg :white :style #{}}]
-          (map (fn [id] {:s (id->name id) :fg :black :bg :white :style #{}}) exhaust))
+          (let [idx-ids (mapcat (fn [ids]
+                           (map-indexed vector ids))
+                         (partition-by identity (sort exhaust)))]
+            (println "idx-ids" idx-ids)
+            (reduce (fn [lines [idx id]]
+                      (conj lines
+                            (if (< idx (get inventory-id-freqs id 0))
+                              {:s (id->name id) :fg :black :bg :white :style #{}}
+                              {:s (id->name id) :fg :gray :bg :white :style #{}})))
+                   []
+                   idx-ids)))
         [{:s "" :fg :black :bg :white :style #{}}
          {:s "Required tools" :fg :black :bg :white :style #{}}]
         (if (empty? have)

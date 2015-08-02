@@ -107,6 +107,7 @@
    {:id  :purple-tipped-arrow     :name  "prurple-tipped arrow"       :name-plural "arrows" :attack :spear :fuel 10}
    {:id  :bow                     :name  "bow"                        :name-plural "bow" :fuel 10 :utility 100 :recoverable-item [:rope :stick]}
    {:id  :plant-fiber             :name  "plant fiber"                :name-plural "plant fibers" :fuel 50}
+   {:id  :leaves                  :name  "leaves"                     :name-plural "leaves" :fuel 10}
    {:id  :unhusked-coconut        :name  "unhusked coconut"           :name-plural "husked coconuts"}
    {:id  :coconut                 :name  "coconut"                    :name-plural "coconuts" :thirst 30}
    {:id  :coconut-empty           :name  "coconut (empty)"            :name-plural "coconuts (empty)" :hunger 30}

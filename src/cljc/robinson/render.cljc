@@ -839,7 +839,7 @@
                                                          :short-grass     ["."  :green      :black]
                                                          :tall-grass      ["\"" :dark-green :black]
                                                          :tree            ["T"  :dark-green :black]
-                                                         :bamboo          ["\u2225" :light-green :black] ;; ∥ 
+                                                         :bamboo          ["\u01c1" :light-green :black] ;; ∥ 
                                                          :palisade        ["#" :brown :black]
                                                          :ramada          ["#" :beige :black]
                                                          :tarp-shelter    ["#" :blue  :black]

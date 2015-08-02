@@ -53,7 +53,8 @@ cd -
 echo "Wrote target/robinson-$VERSION.zip"
 
 if [[ $UPLOAD == 1 ]] ; then
-  s3cmd put target/robinson-$VERSION.zip s3://aaron-santos.com.robinson/download/zip/robinson-$VERSION.zip
+  S3_URL=s3://aaron-santos.com.robinson/download/zip/robinson-$VERSION.zip
+  s3cmd put -P target/robinson-$VERSION.zip $S3_URL
 fi
 
 

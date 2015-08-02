@@ -80,6 +80,7 @@
    :dark-blue   [0 63 116]
    :purple      (vec (tinter/hex-str-to-dec "8500D3"))
    :fushia      (vec (tinter/hex-str-to-dec "D30094"))
+   :light-brown (vec (tinter/hex-str-to-dec "D8C474"))
    :beige       (vec (tinter/hex-str-to-dec "C8B464"))})
 
 (defn limit-color
@@ -846,6 +847,8 @@
                                                          :mountain        ["\u2206" :gray :black] ;; ∆
                                                          :sand            ["."  :beige      :black]
                                                          :dirt            ["."  :brown      :black]
+                                                         :dune            ["\u1d16"  :light-brown :black] ;; ᴖ
+                                                         :rocky-shore     ["\u1d16"  :dark-gray  :black] ;; ᴖ
                                                          :gravel          ["."  :gray       :black]
                                                          :short-grass     ["."  :green      :black]
                                                          :tall-grass      ["\"" :dark-green :black]

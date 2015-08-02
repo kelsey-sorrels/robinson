@@ -204,15 +204,27 @@
                                    ;_         (log/info biome t)
                                    cell-type (case biome
                                                :ocean         {:type :water}
-                                               :surf          {:type :surf}
-                                               :sand          (rr/rand-nth [
-                                                                {:type :sand}
-                                                                {:type :sand}
-                                                                {:type :sand}
-                                                                {:type :sand}
-                                                                {:type :sand}
-                                                                {:type :sand}
-                                                                {:type :tall-grass}])
+                                               :surf          (if (< t 0.1)
+                                                                {:type :surf}
+                                                                (rr/rand-nth [
+                                                                  {:type :surf}
+                                                                  {:type :surf}
+                                                                  {:type :surf}
+                                                                  {:type :rocky-shore}]))
+                                               :sand          (if (< t 0.1)
+                                                                (rr/rand-nth [
+                                                                  {:type :sand}
+                                                                  {:type :sand}
+                                                                  {:type :sand}
+                                                                  {:type :sand}
+                                                                  {:type :sand}
+                                                                  {:type :sand}
+                                                                  {:type :tall-grass}])
+                                                                (rr/rand-nth [
+                                                                  {:type :dune}
+                                                                  {:type :sand}
+                                                                  {:type :sand}
+                                                                  {:type :tall-grass}]))
                                                :dirt          (rr/rand-nth [
                                                                 {:type :dirt}
                                                                 {:type :dirt}

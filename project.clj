@@ -40,6 +40,7 @@
                  [alandipert/storage-atom "1.2.4"]
                  [rm-hull/monet "0.2.1"]]
   :main robinson.core
+  :manifest {"SplashScreen-Image" "icon.png"}
   :repl-init robinson.core
   :source-paths
   ["src/clj"
@@ -95,6 +96,7 @@
                                    #"externs.*"
                                    #"goog.*"
                                   ]}}
+  :filespecs [{:type :path :path "images/icon.png"}]
 
   :core.typed {:check [robinson.common robinson.crafting robinson.itemgen robinson.mapgen robinson.npc robinson.startgame robinson.update robinson.world
                        robinson.combat robinson.core robinson.describe robinson.endgame robinson.lineofsight robinson.main robinson.monstergen

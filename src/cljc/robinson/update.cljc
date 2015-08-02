@@ -1226,13 +1226,10 @@
                                  (if (or harvestable
                                          ;; TODO: make large flint stone have a higher chance of dropping away
                                          ;; from the player's starting-pos.
-                                         (= 0 (rr/uniform-int 10000)))
-                                   [(rr/rand-nth [(ig/gen-item :rock) (ig/gen-item :large-flint)])]
-                                   []))
-                               (concat
-                                 (if (or harvestable
                                          (= 0 (rr/uniform-int 1000)))
-                                   [(rr/rand-nth [(ig/gen-item :rock) (ig/gen-item :flint)])]
+                                   [(rr/rand-nth [(ig/gen-item :rock) (if (= 0 (rr/uniform-int 100))
+                                                                        (ig/gen-item :large-flint)
+                                                                        (ig/gen-item :flint))])]
                                    [])))
                           :else [])
                         [])]

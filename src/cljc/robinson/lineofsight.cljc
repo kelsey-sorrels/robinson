@@ -321,7 +321,7 @@
           values (flatten frame)
           item   (rp/inventory-id->item state :flashlight)
           on     (and item (= (get item :state) :on))
-          _      (log/info "sight-distance. flashlight:" item "state:" on)
+          #_#__      (log/info "sight-distance. flashlight:" item "state:" on)
           values (map (fn [v] (if on (max v 100) v)) values)]
     (max 3.5 (+ 2.5 (* 18 (/ (reduce + values) (* 255 (count values)))))))
     5))

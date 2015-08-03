@@ -173,14 +173,7 @@
   "Generate one random monster."
   (log/info "Generating monster at level" level)
   (let [land-monster-ids {
-                          0 [:red-frog
-                             :orange-frog
-                             :yellow-frog
-                             :green-frog
-                             :blue-frog
-                             :purple-frog
-                             :bird
-                             :rat
+                          0 [:bird
                              :rat
                              :rat
                              :gecko]
@@ -194,6 +187,12 @@
                              :centipede]
                           3 [:spider
                              :tarantula
+                             :red-frog
+                             :orange-frog
+                             :yellow-frog
+                             :green-frog
+                             :blue-frog
+                             :purple-frog
                              :rat
                              :gecko
                              :scorpion]
@@ -217,7 +216,7 @@
                              :monkey]}
         water-monster-ids {
                           0 [:clam 
-                             :hermit-crab
+                             :fish
                              :hermit-crab]
                           1 [:jellyfish]
                           2 [:fish]

@@ -12,6 +12,7 @@
             [robinson.itemgen  :as ig]
             [robinson.monstergen :as mg]
             [robinson.startgame :as sg]
+            robinson.devtools
             [clojure.string :refer [lower-case]]
             ;[robinson.dialog :refer []]
             [robinson.npc :as rnpc]
@@ -188,7 +189,7 @@
           (do
             ;; remove generated placed
             (delete-save-game)
-            (log/warn "Scrapping world dur to invalid starting cell type" cell-type)
+            (log/warn "Scrapping world due to invalid starting cell type" cell-type)
             (recur))
           (->  state
             (add-starting-inventory selected-hotkeys)
@@ -2652,9 +2653,11 @@
                                             state))
                                           :normal true]
                           \1           [(fn [state]
-                                          (if (get-in state [:world :dev-mode])
-                                            (assoc-in state [:world :log] [])
-                                            state)) :normal true]
+                                          (log/info "showing world")
+                                          (when (get-in state [:world :dev-mode])
+                                            (robinson.devtools/show-world state))
+                                          state)
+                                                                   :normal false]
                           \2           [(fn [state]
                                           (if (get-in state [:world :dev-mode])
                                             (assoc-in state [:world :player :hunger] 100))

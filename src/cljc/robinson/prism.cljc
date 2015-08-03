@@ -84,19 +84,19 @@
          (fn? xy-or-fn-1))
       (fn [[xi yi]]
         (let [[x0 y0] xy-or-fn-0
-              [x1 y1] (xy-or-fn-1 xi yi)]
+              [x1 y1] (xy-or-fn-1 [xi yi])]
           [(+ x0 x1) (+ y0 y1)]))
     (and (fn? xy-or-fn-0)
          (vector? xy-or-fn-1))
       (fn [[xi yi]]
-        (let [[x0 y0] (xy-or-fn-0 xi yi)
+        (let [[x0 y0] (xy-or-fn-0 [xi yi])
               [x1 y1] xy-or-fn-1]
           [(+ x0 x1) (+ y0 y1)]))
     (and (fn? xy-or-fn-0)
          (fn? xy-or-fn-1))
       (fn [[xi yi]]
-        (let [[x0 y0] (xy-or-fn-0 xi yi)
-              [x1 y1] (xy-or-fn-1 xi yi)]
+        (let [[x0 y0] (xy-or-fn-0 [xi yi])
+              [x1 y1] (xy-or-fn-1 [xi yi])]
           [(+ x0 x1) (+ y0 y1)]))))
 
 (defn v*
@@ -107,7 +107,8 @@
         [(* s x) (* s y)])
     (fn? xy-or-f)
       (fn [[xi yi]]
-        [(* s (xy-or-f xi)) (* s (xy-or-f yi))])))
+        (let [[x1 y1] (xy-or-f [xi yi])]
+          [(* s x1) (* s y1)]))))
 
 (defn v-
   [xy-or-fn-0 xy-or-fn-1]

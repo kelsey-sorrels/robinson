@@ -25,6 +25,7 @@
                  ;[org.clojure/clojurescript "0.0-3030"]
                  [org.clojure/clojurescript "1.7.10"]
                  [clj-http "2.0.0"]
+                 [quil "2.2.6"]
                  [seesaw "1.4.5"]
                  [cljs-webgl "0.1.5-SNAPSHOT"]
                  [ns-tracker "0.3.0"]

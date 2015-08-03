@@ -841,6 +841,9 @@
                                                          :surf            ["~" (if (= (cell :discovered) current-time)
                                                                                  (rand-nth [:white :light-blue :blue-green])
                                                                                  :light-blue) :black]
+                                                         :swamp           ["~" (if (= (cell :discovered) current-time)
+                                                                                 (rand-nth [:white :light-blue :blue-green])
+                                                                                 :light-blue) :black]
                                                          :lava            ["~" (if (= (cell :discovered) current-time)
                                                                                  (rand-nth [:red :orange :yellow])
                                                                                  :light-blue) :black]

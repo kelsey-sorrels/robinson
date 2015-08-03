@@ -147,7 +147,9 @@
     (rand-weighted-nth *rnd* m))
   ([rnd m]
    "Randomly select a value from a map of weights to values."
-   (let [[wm a]     (reduce (fn [[m a] [weight v]]
-                              [(conj m [a v]) (+ weight a)]) [[] 0] m)
-         n          (uniform-double rnd 0 a)]
-     (second (last (remove (fn [[wn _]] (> wn n)) wm))))))
+   (if (= 1 (count m))
+     (-> m first val)
+     (let [[wm a]     (reduce (fn [[m a] [weight v]]
+                                [(conj m [a v]) (+ weight a)]) [[] 0] m)
+           n          (uniform-double rnd 0 a)]
+       (second (last (remove (fn [[wn _]] (> wn n)) wm)))))))

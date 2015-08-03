@@ -16,6 +16,8 @@
             #?@(:clj (
                 [robinson.macros :as rm]
                 [taoensso.nippy :as nippy]
+                [quil.core :as q]
+                quil.applet
                 [clojure.core.async :as async :refer [go go-loop]]
                 [clojure.java.io :as io])
                 :cljs (
@@ -80,6 +82,11 @@
 (defn sample-island
   [n x y]
   (let [c  ((rprism/coerce (rprism/scale 333.0 (rprism/offset (rprism/vnoise n) (rprism/radius)))) x y)
+        c  ((rprism/coerce (rprism/offset (rprism/v+ (rprism/v* 15.0 (rprism/scale 15.0 (rprism/vnoise n)))
+                                                     (rprism/v+ (rprism/v* 75.0 (rprism/scale 75.0 (rprism/vnoise n)))
+                                                                (rprism/v* 150.0 (rprism/scale 150.0 (rprism/vnoise n)))))
+                                          (rprism/scale 333.0 (rprism/radius)))) x y)
+        ;c  ((rprism/coerce (rprism/scale 333.0 (rprism/radius))) x y)
         c1 ((rprism/coerce (rprism/offset [0.5 0.5] (rprism/scale 22 (rprism/snoise n)))) x y)
         c2 ((rprism/coerce (rprism/offset [-110.5 -640.5] (rprism/scale 26 (rprism/snoise n)))) x y)
         cgt #?(:clj  (> (Math/abs c1) (Math/abs c2))
@@ -222,6 +229,9 @@
                                                                   {:type :tall-grass}])
                                                                 (rr/rand-nth [
                                                                   {:type :dune}
+                                                                  {:type :dune}
+                                                                  {:type :sand}
+                                                                  {:type :sand}
                                                                   {:type :sand}
                                                                   {:type :sand}
                                                                   {:type :tall-grass}]))
@@ -247,7 +257,7 @@
                                                                  {:type :mountain})
                                                :swamp         (rr/rand-nth [
                                                                 {:type :dirt}
-                                                                {:type :surf}
+                                                                {:type :swamp}
                                                                 {:type :tree}
                                                                 {:type :tall-grass}
                                                                 {:type :short-grass}])
@@ -325,8 +335,6 @@
 
    A world consists of
 
-   * an intial place id (`:0_0`)
-  
    * places (indexed by place id)
 
    * a player
@@ -580,23 +588,40 @@
                        [id (load-place state id)])
                      places-to-load))))))
 
+(defn biome->color
+  [biome]
+  (case biome
+    :jungle        [0 0 128]
+    :heavy-forest  [10 60 80]
+    :light-forest  [10 80 90]
+    :bamboo-grove  [10 210 10]
+    :meadow        [128 10 10]
+    :rocky         [128 128 128]
+    :swamp         [50 90 110]
+    :dirt          [90 80 20]
+    :sand          [200 200 10]
+    :surf          [50 90 210]
+    :ocean         [20 70 150]
+    [200 0 200]))
 
 (defn -main [& args]
-  (let [n (rn/create-noise)]
-    nil
-    #_(dorun
-      (map (comp (partial apply str) println)
-        (partition 70
-          (rm/log-time "for"
-            (for [y (range 28)
-                  x (range 70)
-                  :let [[s _ _] (vec (map #(.calc ^clisk.IFunction % (double (/ x 70)) (double (/ y 28)) (double 0.0) (double 0.0))
-                                   island-fns))]]
-              (cond
-                (> s 0.9) \^
-                (> s 0.7) \.
-                (> s 0.5) \_
-                :else \~))))))))
-        
+  (let [width   400
+        height  400
+        seed    0
+        n       (rn/create-noise (rr/create-random seed))
+        samples (for [y (range (- height) height 2)
+                      x (range (- width) width 2)]
+                  [(+ x width) (+ y height) 2 2 (biome->color (sample-island n x y))])]
+    (letfn [(draw  [] (doseq [[x y w h c] samples]
+                        (q/fill (apply q/color c))
+                        (q/rect x y w h)))
+            (setup [] (q/frame-rate 1)
+                      (q/background 0 0 0))]
+      (quil.applet/applet
+                   :title "Show World"
+                   :renderer :p2d
+                   :setup setup
+                   :draw draw
+                   :size [(* 2 width) (* 2 height)]))))
 
 

@@ -56,6 +56,8 @@
     state)
   (on-missed-attack [this state]
     state)
+  (on-hit [this state]
+    state)
   (on-death [this state]
     state)
   (on-tick [this state]

@@ -184,7 +184,8 @@
                                       (recur))))
                     (rworldgen/load-unload-places))
            cell-type (get-in (rw/player-cellxy state) [0 :type])]
-        (if (contains? #{:tree :palm-tree :fruit-tree :bamboo :mountain}
+        (log/info "reinit-world player cell type" cell-type)
+        (if (contains? #{:tree :palm-tree :fruit-tree :bamboo :mountain :water}
                        cell-type)
           (do
             ;; remove generated placed
@@ -2657,12 +2658,12 @@
                                           (when (get-in state [:world :dev-mode])
                                             (robinson.devtools/show-world state))
                                           state)
-                                                                   :normal false]
+                                                                       :normal false]
                           \2           [(fn [state]
                                           (if (get-in state [:world :dev-mode])
-                                            (assoc-in state [:world :player :hunger] 100))
-                                            state)
-                                          :normal true]
+                                            (rw/assoc-current-state state :dead)
+                                            state))
+                                                                       identity true]
                           \3           [(fn [state]
                                           (if (get-in state [:world :dev-mode])
                                             (rp/add-to-inventory state [(ig/gen-item :flint)])

@@ -44,6 +44,9 @@ mkdir     target/robinson-$VERSION/save
 rm target/robinson-$VERSION/config/settings.edn
 mv target/robinson-$VERSION/config/production-settings.edn target/robinson-$VERSION/config/settings.edn
 
+# Remove and userid file
+rm target/robinson-$VERSION/config/.userid
+
 # set configuration to upload saves
 touch target/robinson-$VERSION/config/.feedbackparticipant
 

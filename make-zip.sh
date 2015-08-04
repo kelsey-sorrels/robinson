@@ -31,6 +31,8 @@ chmod +x target/robinson-$VERSION/robinson.jar
 
 #copy resources
 echo $VERSION >> target/robinson-$VERSION/VERSION
+cp LICENSE target/robinson-$VERSION/
+cp README.md target/robinson-$VERSION/
 cp -R config target/robinson-$VERSION/
 cp -R data   target/robinson-$VERSION/
 cp -R images target/robinson-$VERSION/

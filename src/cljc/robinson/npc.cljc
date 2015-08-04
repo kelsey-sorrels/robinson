@@ -190,8 +190,9 @@
 (defn monster-level
   [state]
   (let [pos            (rp/player-pos state)
-        starting-pos   (rp/player-starting-pos state)]
-    (max 0 (min 10 (int (/ (rc/distance pos starting-pos) 50))))))
+        starting-pos   (rp/player-starting-pos state)
+        d              (rc/distance pos starting-pos)]
+    (rc/bound 0 (int (+ (rr/uniform-int -2 2) (/ d 25.0))) 10)))
 
 (defn add-npcs
   "Randomly add monsters to the current place's in floor cells."

@@ -233,9 +233,9 @@
 
     (cond
       (contains? #{:water :surf} cell-type)
-      (id->monster (rr/rand-nth (get water-monster-ids (int (* level (/ 9 10))))))
+      (id->monster (rr/rand-nth (get water-monster-ids level)))
       :else
-      (id->monster (rr/rand-nth (get land-monster-ids (int (* level (/ 9 10)))))))))
+      (id->monster (rr/rand-nth (get land-monster-ids level))))))
 
 (defn gen-monster [id]
   (id->monster id))

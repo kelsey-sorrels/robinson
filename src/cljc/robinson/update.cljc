@@ -171,6 +171,8 @@
    from fresh or after the player has died."
   [state]
   (let [selected-hotkeys (get-in state [:world :selected-hotkeys])]
+    ;; remove any previously generated chunks
+    (delete-save-game)
     (loop []
       (let [state (-> state
                     (assoc :world (loop []
@@ -188,8 +190,6 @@
         (if (contains? #{:tree :palm-tree :fruit-tree :bamboo :mountain :water}
                        cell-type)
           (do
-            ;; remove generated placed
-            (delete-save-game)
             (log/warn "Scrapping world due to invalid starting cell type" cell-type)
             (recur))
           (->  state
@@ -1290,9 +1290,6 @@
   [state & more]
   (rc/dissoc-in state [:world :cursor]))
 
-(defn bound [min-v v max-v]
-  (min max-v (max min-v v)))
-
 (defn move-cursor
   [state direction]
   (let [{cursor-x :x
@@ -1313,8 +1310,8 @@
                                :down-left 1
                                :down-right 1
                                0))
-        cursor-pos (rc/xy->pos (bound 0 target-x (dec (get-in state [:world :viewport :width])))
-                               (bound 0 target-y (dec (get-in state [:world :viewport :height]))))]
+        cursor-pos (rc/xy->pos (rc/bound 0 target-x (dec (get-in state [:world :viewport :width])))
+                               (rc/bound 0 target-y (dec (get-in state [:world :viewport :height]))))]
     (assoc-in state [:world :cursor] cursor-pos)))
 
 (defn move-cursor-left
@@ -2643,7 +2640,7 @@
                            \/          [scroll-log-up          :normal          false]
                            \*          [scroll-log-down        :normal          false]
                            \r          [repeat-commands        identity         false]
-                           \0          [(fn [state]
+                           #_#_\0          [(fn [state]
                                           (if (get-in state [:world :dev-mode])
                                             (-> state
                                               (rc/append-log "log1...........................")
@@ -2653,6 +2650,9 @@
                                               (rc/append-log "log5..........................."))
                                             state))
                                           :normal true]
+                          \0           [(fn [state]
+                                          (log/info "monster level" (rnpc/monster-level state))
+                                          state)               :normal false]
                           \1           [(fn [state]
                                           (log/info "showing world")
                                           (when (get-in state [:world :dev-mode])

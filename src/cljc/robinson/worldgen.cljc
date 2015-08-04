@@ -387,8 +387,9 @@
                                         :lava-points lava-points}}
         place-id               (apply rv/xy->place-id min-state (rc/pos->xy starting-pos))
         [sx sy]                (rc/pos->xy starting-pos)
-        [vx vy]                (rv/place-id->anchor-xy min-state (rv/xy->place-id min-state sx sy))
-        place-0                (init-island min-state vx vy width height)
+        [ax ay]                (rv/place-id->anchor-xy min-state (rv/xy->place-id min-state sx sy))
+        [vx vy]                [(int (- sx (/ width 2))) (int (- sy (/ height 2)))]
+        place-0                (init-island min-state ax ay width height)
         fruit-ids              [:red-fruit :orange-fruit :yellow-fruit :green-fruit :blue-fruit :purple-fruit :white-fruit :black-fruit]
         poisoned-fruit         (set (take (/ (count fruit-ids) 2) (rr/rnd-shuffle fruit-ids)))
         skin-identifiable      (set (take (/ (count poisoned-fruit) 2) (rr/rnd-shuffle poisoned-fruit)))

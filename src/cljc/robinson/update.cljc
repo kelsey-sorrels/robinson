@@ -1178,17 +1178,25 @@
 (defn harvest
   "Collect non-item resources from adjacent or current cell"
   [state direction]
-  {:pre  [(contains? #{:left :right :up :down :center} direction)]}
+  {:pre  [(contains? #{:left :right :up :down :up-left :up-right :down-left :down-right :center} direction)]}
   (let [player-x      (-> state :world :player :pos :x)
         player-y      (-> state :world :player :pos :y)
         target-x      (+ player-x (case direction
-                                    :left -1
-                                    :right 1
-                                    0))
-        target-y      (+ player-y (case direction
-                                    :up  -1
-                                    :down 1
-                                    0))
+                               :left -1
+                               :right 1
+                               :up-left -1
+                               :up-right 1
+                               :down-left -1
+                               :down-right 1
+                               0))
+        target-y (+ player-y (case direction
+                               :up  -1
+                               :down 1
+                               :up-left -1
+                               :up-right -1
+                               :down-left 1
+                               :down-right 1
+                               0))
         target-cell   (rw/get-cell state target-x target-y)
         harvestable   (get target-cell :harvestable false)
         harvest-items (if (not= target-cell nil)
@@ -1261,6 +1269,18 @@
 
 (defn harvest-down [state]
   (harvest state :down))
+
+(defn harvest-up-left [state]
+  (harvest state :up-left))
+
+(defn harvest-up-right [state]
+  (harvest state :up-right))
+
+(defn harvest-down-left [state]
+  (harvest state :down-left))
+
+(defn harvest-down-right [state]
+  (harvest state :down-right))
 
 (defn harvest-center [state]
   (harvest state :center))
@@ -2775,6 +2795,10 @@
                            :down       [harvest-down           :normal          true]
                            :up         [harvest-up             :normal          true]
                            :right      [harvest-right          :normal          true]
+                           :up-left    [harvest-up-left        :normal          true]
+                           :up-right   [harvest-up-right       :normal          true]
+                           :down-left  [harvest-down-left      :normal          true]
+                           :down-right [harvest-down-right     :normal          true]
                            :numpad5    [harvest-center         :normal          true]
                            \>          [harvest-center         :normal          true]
                            :escape     [identity               :normal          false]}

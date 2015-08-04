@@ -95,6 +95,8 @@
     (do-on-successful-attack this state))
   (on-missed-attack [this state]
     (do-on-missed-attack this state))
+  (on-hit [this state]
+    (do-on-hit this state))
   (on-death [this state]
     (do-on-death this state))
   (on-tick [this state]

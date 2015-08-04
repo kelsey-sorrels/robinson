@@ -183,6 +183,8 @@
 (defn update-npc
   "Transform the npc with the function f. (f npc)."
   [state npc f]
+  {:pre [(some? state)]
+   :post [(some? %)]}
   (rc/update-in-matching state [:world :npcs] npc f))
 
 (defn monster-level
@@ -244,7 +246,8 @@
 
 ;;;; Special monster abilities
 ;; Hermit crab
-(defmethod mg/do-on-hit :hermit-crab [npc state] (-> state
+(defmethod mg/do-on-hit :hermit-crab [npc state] (assert (some? state))
+                                                 (-> state
                                                    (update-npc npc (fn [npc] (conj-status npc :in-shell)))
                                                    (rc/append-log "The hermit crab retreats into its shell.")))
 (defmethod mg/do-get-toughness :hermit-crab [npc _] (if (has-status? npc :in-shell)

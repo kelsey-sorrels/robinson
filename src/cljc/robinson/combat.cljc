@@ -188,13 +188,14 @@
 
 
 (defmacro log-with-line [v msg]
-  `(do (log/debug
+  `(do (log/info
                ~*file*
                ":"
                ~(:line (meta &form))
                ">"
                ~msg)
        (flush)
+       (assert (some? ~v))
        ~v))
 
 (defn assert-msg
@@ -335,7 +336,9 @@
             (do
               (log/debug (dissoc (get state :world) :places))
               state)
-            (log-with-line state "9"))
+            (log-with-line state "9")
+            (ce/on-hit defender state)
+            (log-with-line state "10"))
         ;; defender dead? (0 or less hp)
         :else
           (if (contains? (set defender-path) :npcs)

@@ -92,6 +92,10 @@
     true
     (> (distance-sq (xy->pos x1 y1) (xy->pos x2 y2)) (* l l)))))
   
+
+(defn bound [min-v v max-v]
+  (min max-v (max min-v v)))
+
 #_#?(:clj
 (t/ann fill-missing (t/All [x y] [(t/Pred x)
                                    (t/IFn [x y -> x])

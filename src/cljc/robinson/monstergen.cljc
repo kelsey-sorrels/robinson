@@ -175,67 +175,80 @@
   "Generate one random monster."
   (log/info "Generating monster at level" level)
   (let [land-monster-ids {
-                          0 [:bird
-                             :rat
-                             :rat
-                             :gecko]
-                          1 [:rat
-                             :rat
-                             :gecko
-                             :mosquito]
-                          2 [:spider
-                             :rat
-                             :gecko
-                             :centipede]
-                          3 [:spider
-                             :tarantula
-                             :red-frog
-                             :orange-frog
-                             :yellow-frog
-                             :green-frog
-                             :blue-frog
-                             :purple-frog
-                             :rat
-                             :gecko
-                             :scorpion]
-                          4 [:cobra
-                             :tarantula
-                             :rat
-                             :snake]
-                          5 [:bat
-                             :cobra
-                             :rat
-                             :turtle]
-                          6 [:monitor-lizard
-                             :rat
-                             :crocodile]
-                          7 [:parrot
-                             :rat
-                             :mongoose]
-                          8 [:komodo-dragon
-                             :rat]
-                          9 [:boar
-                             :monkey]}
+                          0 [1 :bird
+                             2 :rat
+                             1 :gecko]
+                          1 [2 :rat
+                             1 :gecko
+                             1 :mosquito]
+                          2 [3 :spider
+                             1 :rat
+                             1 :gecko
+                             3 :centipede]
+                          3 [9 :spider
+                             2 :tarantula
+                             1 :red-frog
+                             1 :orange-frog
+                             1 :yellow-frog
+                             1 :green-frog
+                             1 :blue-frog
+                             1 :purple-frog
+                             1 :rat
+                             1 :gecko
+                             9 :scorpion]
+                          4 [5 :cobra
+                             1 :tarantula
+                             1 :rat
+                             5 :snake]
+                          5 [5 :bat
+                             1 :cobra
+                             1 :rat
+                             5 :turtle]
+                          6 [5 :monitor-lizard
+                             1 :rat
+                             5 :crocodile]
+                          7 [5 :parrot
+                             1 :rat
+                             5 :mongoose]
+                          8 [5 :komodo-dragon
+                             1 :rat]
+                          9 [5 :boar
+                             3 :monkey]}
         water-monster-ids {
-                          0 [:clam 
-                             :fish
-                             :hermit-crab]
-                          1 [:jellyfish]
-                          2 [:fish]
-                          3 [:crab]
-                          4 [:urchin] 
-                          5 [:sea-snake] 
-                          6 [:puffer-fish]
-                          7 [:electric-eel]
-                          8 [:octopus ]
-                          9 [:squid
-                             :shark]}]
+                          0 [1 :clam 
+                             2 :fish
+                             1 :hermit-crab
+                             1 :jellyfish]
+                          1 [1 :jellyfish
+                             1 :fish
+                             1 :crab]
+                          2 [1 :fish]
+                          3 [1 :crab
+                             1 :urchin]
+                          4 [1 :urchin
+                             1 :fist
+                             1 :crab] 
+                          5 [1 :sea-snake
+                             1 :urchin
+                             1 :crab] 
+                          6 [1 :puffer-fish
+                             1 :urchin
+                             1 :sea-snake]
+                          7 [1 :electric-eel
+                             1 :puffer-fish
+                             1 :sea-snake]
+                          8 [1 :octopus
+                             1 :puffer-fish
+                             1 :electric-eel]
+                          9 [1 :squid
+                             1 :electric-eel
+                             2 :shark]}]
 
     (cond
       (contains? #{:water :surf} cell-type)
-      (id->monster (rr/rand-nth (get water-monster-ids level)))
+      (id->monster (rr/rand-weighted-nth (partition 2 (get water-monster-ids level))))
       :else
-      (id->monster (rr/rand-nth (get land-monster-ids level))))))
+      (id->monster (rr/rand-weighted-nth (partition 2 (get land-monster-ids level)))))))
 
 (defn gen-monster [id]
   (id->monster id))

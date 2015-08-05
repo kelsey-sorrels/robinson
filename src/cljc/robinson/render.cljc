@@ -1163,6 +1163,7 @@
                             (case cur-state
                               :dead 0
                               :rescued 1000)))
+        days-survived  (int (/ (get-time state) 800))
         player-name    (get-in state [:world :player :name])
         madlib         (gen-end-madlib state)]
     (clear (state :screen))
@@ -1184,9 +1185,10 @@
                                  :else                 "mysterious causes"))]
           ;; Title
           (put-string (state :screen) 10 1 (format "%s: %s." player-name madlib))
-          (put-string (state :screen) 18 2 (format "Died from %s." cause-of-death))
-          (put-string (state :screen) 10 3 (format "Points: %s." points))
-          (put-string (state :screen) 10 4 "Inventory:")
+          (put-string (state :screen) 18 2 (format "Survided for %d %s." days-survived (if (> 1 days-survived) "days" "day")))
+          (put-string (state :screen) 18 3 (format "Died from %s." cause-of-death))
+          (put-string (state :screen) 10 4 (format "Points: %s." points))
+          (put-string (state :screen) 10 5 "Inventory:")
           (doall (map-indexed
             (fn [idx item] (put-string (state :screen) 18 (+ idx 5) (item :name)))
             (-> state :world :player :inventory)))

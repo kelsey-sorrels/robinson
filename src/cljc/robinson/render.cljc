@@ -1185,7 +1185,7 @@
                                  :else                 "mysterious causes"))]
           ;; Title
           (put-string (state :screen) 10 1 (format "%s: %s." player-name madlib))
-          (put-string (state :screen) 18 2 (format "Survided for %d %s." days-survived (if (> 1 days-survived) "days" "day")))
+          (put-string (state :screen) 18 2 (format "Survived for %d %s." days-survived (if (> 1 days-survived) "days" "day")))
           (put-string (state :screen) 18 3 (format "Died from %s." cause-of-death))
           (put-string (state :screen) 10 4 (format "Points: %s." points))
           (put-string (state :screen) 10 5 "Inventory:")

@@ -266,19 +266,6 @@
   [id]
   (get (race->monster-map id) :name-plural))
 
-(defn maybe-spawn-additional-npc
-  "Spawns a new npc of the same type of the given npc near the given npc."
-  [state [x y] npc]
-  state)
-
-(defn on-death-fn
-  "Returns a function that takes [state [x y] npc] and returns a new state.
-   To be invoked when the referred to npc dies."
-   [state npc]
-   (match (get npc :race)
-     :rat  maybe-spawn-additional-npc
-     :else (fn [state & more] state)))
-     
 #?(:clj
 (defn -main
   "Generate five random monsters and display them."

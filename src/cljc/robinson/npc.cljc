@@ -211,6 +211,7 @@
                                       w))
                                   xys)
                              xys)]
+    (log/info "monster-level" monster-level)
     (log/info "weighted-xys" weighted-xys)
     (if (seq weighted-xys)
       (let [[x y]  (rr/rand-weighted-nth weighted-xys)
@@ -238,7 +239,7 @@
 
 (defn conj-status
   [npc new-status]
-  (update npc :status (fn [status] (assoc status new-status))))
+  (update npc :status (fn [status] (conj status new-status))))
 
 (defn disj-status
   [npc new-status]

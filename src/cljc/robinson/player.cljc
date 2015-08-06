@@ -170,6 +170,10 @@
   [state]
   (get-in state [:world :player :starting-pos]))
 
+(defn player-distance-from-starting-pos
+  [state]
+  (rc/distance (player-pos state) (player-starting-pos state)))
+
 (defn player-xy
   "Return `[x y]` position of player."
   [state]

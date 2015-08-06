@@ -254,8 +254,6 @@
    :post [(not (nil? %))]}
   (log/info "move-outside-safe-zone")
   (let [[player-cell x y] (rw/player-cellxy state)
-        on-raft           (rw/player-mounted-on-raft? state)
-        ;;[ox oy]           (map read-string (clojure.string/split (name orig-place-id) #"_"))
         target-x          (case direction
                             :left (dec x)
                             :right (inc x)
@@ -372,9 +370,9 @@
           (rw/conj-cell-items state target-x target-y (ig/id->item :raft))
           (if (not (rv/xy-in-safe-zone? state target-x target-y))
             (move-outside-safe-zone state direction)
-            (-> state
-              (assoc-in [:world :player :pos :x] target-x)
-              (assoc-in [:world :player :pos :y] target-y)))
+            state)
+          (assoc-in state [:world :player :pos :x] target-x)
+          (assoc-in state [:world :player :pos :y] target-y)
           ;; rafting = more hunger
           (update-in state [:world :player :hunger] (partial + 0.05 ))
           ;;

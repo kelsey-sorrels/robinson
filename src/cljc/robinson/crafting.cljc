@@ -28,7 +28,7 @@
 (def recipes 
   {:weapons  [
      {:name "flint spear"            :hotkey \a :recipe {:exhaust [:flint-blade :stick :rope] :add [:flint-spear]}}
-     {:name "flint axe"              :hotkey \b :recipe {:exhaust [:flint-blade :stick :rope] :add [:flint-axe]}}
+     {:name "flint axe"              :hotkey \b :recipe {:exhaust [:flint-axe-blade :stick :rope] :add [:flint-axe]}}
      {:name "flint knife"            :hotkey \c :recipe {:exhaust [:flint-blade :stick :rope] :add [:flint-knife]}}
      {:name "obsidian spear"         :hotkey \d :recipe {:exhaust [:obsidian-blade :stick :rope] :add [:obsidian-spear]}}
      {:name "obsidian axe"           :hotkey \e :recipe {:exhaust [:obsidian-blade :stick :rope] :add [:obsidian-axe]}}
@@ -37,36 +37,37 @@
      {:name "arrow"                  :hotkey \h :recipe {:exhaust [:obsidian-blade :stick] :add [:arrow]}}]
    :survival [
      {:name "flint blade"            :hotkey \a :recipe {:exhaust [:rock :flint]                 :add [:flint-blade]}}
-     {:name "obsidian blade"         :hotkey \b :recipe {:exhaust [:rock :obsidian]              :add [:obsidian-blade]}}
-     {:name "rope"                   :hotkey \c :recipe {:exhaust [:plant-fiber]                 :add [:rope]}}
-     {:name "sharpened stick"        :hotkey \d :recipe {:exhaust [:stick]
+     {:name "flint axe blade"        :hotkey \b :recipe {:exhaust [:rock :large-flint]           :add [:flint-axe-blade]}}
+     {:name "obsidian blade"         :hotkey \c :recipe {:exhaust [:rock :obsidian]              :add [:obsidian-blade]}}
+     {:name "rope"                   :hotkey \d :recipe {:exhaust [:plant-fiber]                 :add [:rope]}}
+     {:name "sharpened stick"        :hotkey \e :recipe {:exhaust [:stick]
                                                          :have-or [:obsidian-knife
                                                                    :obsidian-spear
                                                                    :obsidian-axe
                                                                    :knife]
                                                          :add     [:sharpened-stick]}}
-     {:name "bamboo water collector" :hotkey \e :recipe {:exhaust [:rope :bamboo :stick]
+     {:name "bamboo water collector" :hotkey \f :recipe {:exhaust [:rope :bamboo :stick]
                                                          :have-or [:obsidian-knife
                                                                    :obsidian-spear
                                                                    :obsidian-axe
                                                                    :knife]
                                                          :add [:bamboo-water-collector]} :place :cell-type}
-     {:name "solar still"            :hotkey \f :recipe {:exhaust [:rock :tarp :stick :coconut-shell]
+     {:name "solar still"            :hotkey \g :recipe {:exhaust [:rock :tarp :stick :coconut-shell]
                                                          :have-or [:stick]
                                                          :add [:solar-still]} :place :cell-type}
-     {:name "fishing pole"           :hotkey \g :recipe {:exhaust [:fishing-line-and-hook :stick]
+     {:name "fishing pole"           :hotkey \h :recipe {:exhaust [:fishing-line-and-hook :stick]
                                                          :add [:fishing-pole]}
                                                 :place :inventory}
-     {:name "fire plough"            :hotkey \h :recipe {:exhaust [:stick :stick]
+     {:name "fire plough"            :hotkey \i :recipe {:exhaust [:stick :stick]
                                                          :add [:fire-plough]}
                                                 :place :inventory}
-     {:name "hand drill"             :hotkey \i :recipe {:exhaust [:stick :stick]
+     {:name "hand drill"             :hotkey \j :recipe {:exhaust [:stick :stick]
                                                          :add [:hand-drill]}
                                                 :place :inventory}
-     {:name "bow drill"              :hotkey \j :recipe {:exhaust [:stick :stick :stick :rope :rock]
+     {:name "bow drill"              :hotkey \k :recipe {:exhaust [:stick :stick :stick :rope :rock]
                                                          :add [:bow-drill]}
                                                 :place :inventory}
-     {:name "campfire"               :hotkey \k :recipe {:exhaust [:match :stick :log :log :rock :rock :rock]
+     {:name "campfire"               :hotkey \l :recipe {:exhaust [:match :stick :log :log :rock :rock :rock]
                                                          :add [:campfire]}
                                                 :place :cell-type}]
    :shelter [

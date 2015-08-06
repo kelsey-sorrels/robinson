@@ -129,6 +129,7 @@
    {:id  :grass                   :name  "grass"                      :name-plural "grass" :fuel 20}
    {:id  :obsidian-blade          :name  "obsidian blade"             :name-plural "obsidian blades"}
    {:id  :flint-blade             :name  "flint blade"                :name-plural "flint blades"}
+   {:id  :flint-axe-blade         :name  "flint axe blade"            :name-plural "flint axe blades"}
    {:id  :rope                    :name  "rope"                       :name-plural "ropes" :fuel 10}
    {:id  :bamboo                  :name  "bamboo"                     :name-plural "bamboo"}
    {:id  :obsidian-spear          :name  "obsidian spear"             :name-plural "obsidian spears"       :attack :spear :fuel 50 :utility 50 :recoverable-items [:stick :obsidian-blade]}

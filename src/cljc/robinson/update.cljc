@@ -1179,6 +1179,7 @@
   {:pre  [(contains? #{:left :right :up :down :up-left :up-right :down-left :down-right :center} direction)]}
   (let [player-x      (-> state :world :player :pos :x)
         player-y      (-> state :world :player :pos :y)
+        distance      (rp/player-distance-from-starting-pos state)
         target-x      (+ player-x (case direction
                                :left -1
                                :right 1
@@ -1235,7 +1236,7 @@
                                          ;; TODO: make large flint stone have a higher chance of dropping away
                                          ;; from the player's starting-pos.
                                          (= 0 (rr/uniform-int 1000)))
-                                   [(rr/rand-nth [(ig/gen-item :rock) (if (= 0 (rr/uniform-int 100))
+                                   [(rr/rand-nth [(ig/gen-item :rock) (if (< 300 (rr/uniform-double 100 (max 101 distance)))
                                                                         (ig/gen-item :large-flint)
                                                                         (ig/gen-item :flint))])]
                                    [])))

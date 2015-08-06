@@ -18,7 +18,7 @@
                          (set? test-term) (contains? test-term term)
                          :else            (= test-term term)))
         found-match  (every? arg-match? (map vector test-expr expr))]
-    (if found-match
+    #_(if found-match
       (println "Found match" test-expr expr)
       (println "Did not find match" test-expr expr))
     found-match))

@@ -163,11 +163,13 @@
   (let [attacker-speed   (dcp/get-speed attacker state)
         defender-speed   (dcp/get-speed defender state)
         target-value     (/ 1 (inc (rmath/exp (/ (- defender-speed attacker-speed) 4))))]
-    (> (rr/uniform-double 1.0) target-value)))
+    (log/info "hit target value"  target-value)
+    (> (rr/uniform-double 0.2 1.0) target-value)))
 
 (defn calc-dmg
   [state attacker attack defender defender-body-part]
-    (log/info "Attacker" attacker "attacker-type" (type attacker) "Defernder" defender "defender-type" (type defender))
+    #_(log/info "Attacker" attacker "attacker-type" (type attacker) "Defernder" defender "defender-type" (type defender))
+    (log/info "attacker" (:race attacker) "defender" (:race defender))
     ;;Damage = Astr * (Adex / Dsp) * (As / Ds) * (At / Dt)
     (let [attacker-strength  (dcp/get-strength attacker state)
           attacker-dexterity (get attacker :dexterity 0.1)
@@ -176,14 +178,17 @@
           defender-size      (dcp/get-size defender state)
           attack-toughness   (dcp/get-toughness attacker state)
           defender-toughness (dcp/get-toughness defender state)]
-      (log/info "attacker-strength" attacker-strength
-                "attacker-dexterity" attacker-dexterity
-                "defender-speed" defender-speed
-                "attacker-size" attacker-size
-                "defender-size" defender-size
-                "attack-toughness" attack-toughness
-                "defender-toughnes" defender-toughness)
-      (* attacker-strength (/ (+ 15 attacker-dexterity) (+ 15 defender-speed)) (/ (+ 25 attacker-size) (+ 25 defender-size)) (/ attack-toughness defender-toughness))))
+      (log/info "attacker-strength" attacker-strength)
+      (log/info "attacker-dexterity" attacker-dexterity)
+      (log/info "defender-speed" defender-speed)
+      (log/info "attacker-size" attacker-size)
+      (log/info "defender-size" defender-size)
+      (log/info "attack-toughness" attack-toughness)
+      (log/info "defender-toughnes" defender-toughness)
+      (* attacker-strength
+         (/ (+ 5 (rr/uniform-double (* 10 attacker-dexterity))) (+ 15 defender-speed))
+         (/ (+ 125 attacker-size) (+ 125 defender-size))
+         (/ attack-toughness defender-toughness))))
 
 
 
@@ -251,12 +256,15 @@
                                hit   (+ (calc-dmg state attacker attack defender defender-body-part) (if shot-poisoned-arrow 1 0))
                                :else 0)
         is-wound             (> dmg 1.5)]
-    (log/debug "attack" attacker-path "is attacking defender" defender-path)
-    (log/debug "attacker-detail" attacker)
-    (log/debug "defender-detail" defender)
-    (log/debug "attack" attack)
-    (log/debug "hit?" hit)
-    (log/debug "hp" hp)
+    (log/info "attack" attacker-path "is attacking defender" defender-path)
+    #_(log/info "attacker-detail" attacker)
+    #_(log/info "defender-detail" defender)
+    (log/info "attack" attack)
+    (log/info "hit?" hit)
+    (log/info "hp" hp)
+    (log/info "max-hp" (if (= (get defender :race) :human)
+                          (get defender :max-hp)
+                          (get (mg/gen-monster (get defender :race)) :hp)))
     (log/debug "dmg" dmg)
     (try
       (cond
@@ -332,9 +340,6 @@
             (if (and is-wound
                      (contains? (set defender-path) :player))
               (rc/append-log state "You have been wounded." :red)
-              state)
-            (do
-              (log/debug (dissoc (get state :world) :places))
               state)
             (log-with-line state "9")
             (ce/on-hit defender state)

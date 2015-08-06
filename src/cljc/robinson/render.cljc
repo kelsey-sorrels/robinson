@@ -892,7 +892,7 @@
                                                                  (log/info "raft-cell" out-char cell-items)
                                                                  (if (> (count cell-items) 1)
                                                                    [chr fg (color->rgb :brown)]
-                                                                   ["\u2225" (color->rgb :black) (color->rgb :brown)]))
+                                                                   ["\u01c1" (color->rgb :black) (color->rgb :brown)]))
                                                              :else
                                                                out-char)
                                            shaded-out-char (if (= (get cell :discovered) current-time)

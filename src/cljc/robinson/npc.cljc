@@ -246,6 +246,25 @@
   (update npc :status (fn [status] (disj status new-status))))
 
 
+(defn npc-health-status
+  [npc]
+  (let [hp (get npc :hp)
+        max-hp (get (mg/gen-monster (get npc :race)) :hp)
+        pct-hp (float (/ hp max-hp))]
+    (cond
+      (< pct-hp 0.2)
+        :critical
+      (< pct-hp 0.4)
+        :badly-wounded
+      (< pct-hp 0.6)
+        :wounded
+      (< pct-hp 0.8)
+        :injured
+      (< pct-hp 1.0)
+        :bruised
+      :else
+        :fine)))
+
 ;;;; Special monster abilities
 ;; Hermit crab
 (defmethod mg/do-on-hit :hermit-crab [npc state] (assert (some? state))

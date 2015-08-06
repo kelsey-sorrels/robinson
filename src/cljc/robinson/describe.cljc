@@ -55,7 +55,16 @@
 
 (defn describe-npc
   [npc]
-  (clojure.string/join " " [(noun->indefinite-article (get npc :name)) (get npc :name)]))
+  (let [status (case (rnpc/npc-health-status npc)
+                 :critical "critically wounded"
+                 :badly-wounded "badly wounded"
+                 :wounded "wounded"
+                 :injured "injured"
+                 :bruised "bruised"
+                 :fine)]
+    (if (= status :fine)
+      (clojure.string/join " " [(noun->indefinite-article (get npc :name)) (get npc :name)])
+      (clojure.string/join " " [(noun->indefinite-article status) status (get npc :name)])))) 
 
 (defn describe-items
   [items]

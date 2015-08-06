@@ -440,7 +440,7 @@
                     ;size
                     75
                     ;strength
-                    10
+                    5
                     ;toughness
                     5
                     ;hp

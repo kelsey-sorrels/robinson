@@ -69,6 +69,7 @@
    :light-gray  [64 64 64]
    :dark-gray   [192 192 192]
    :red         [190 38 51];(vec (tinter/hex-str-to-dec "D31C00"))
+   :dark-red    [110 18 21];(vec (tinter/hex-str-to-dec "D31C00"))
    :orange      [235 137 49];(vec (tinter/hex-str-to-dec "D36C00"))
    :yellow      [247 226 107];(vec (tinter/hex-str-to-dec "D3B100"))
    :light-green [163 206 39]
@@ -112,6 +113,12 @@
   [[s fg bg] d]
    [s (night-tint (color->rgb (or fg :white)) d) (color->rgb (or bg :black))])
 
+(defn color-bloodied-char
+  [bloodied? char-fg-bg]
+  (if bloodied?
+    (assoc char-fg-bg 1 :dark-red)
+    char-fg-bg))
+
 (defn move-cursor
   ([^robinson.aterminal.ATerminal screen x y]
   (log/info "moving cursor to" x y)
@@ -122,6 +129,8 @@
 (defn fill-put-string-color-style-defaults
   ([string]
     (fill-put-string-color-style-defaults string :white :black #{}))
+  ([string fg]
+    (fill-put-string-color-style-defaults string fg :black #{}))
   ([string fg bg]
     (fill-put-string-color-style-defaults string fg bg #{}))
   ([string fg bg styles]
@@ -750,12 +759,12 @@
    This renders everything - the map, the menus, the log,
    the status bar. Everything."
   [state]
-  (let [screen         (state :screen)
-        [columns rows] (get-size screen)
-        current-time   (get-in state [:world :time])
-        [player-x player-y] (player-xy state)
-        d              (rlos/sight-distance state)
-        cells          (rv/cellsxy-in-viewport state)
+  (let [screen                                      (state :screen)
+        [columns rows]                              (get-size screen)
+        current-time                                (get-in state [:world :time])
+        {{player-x :x player-y :y} :pos :as player} (rp/get-player state)
+        d                                           (rlos/sight-distance state)
+        cells                                       (rv/cellsxy-in-viewport state)
         ;_ (log/info "cells" (str cells))
         characters     (persistent!
                          (reduce (fn [characters [cell vx vy wx wy]]
@@ -772,115 +781,117 @@
                                      (let [cell-items (cell :items)
                                            ;_ (log/info "cell" (str cell) vx vy)
                                            out-char (apply fill-put-string-color-style-defaults
-                                                      (if (and cell-items
-                                                               (seq cell-items)
-                                                               (= (cell :discovered) current-time))
-                                                        (case (or (-> cell-items first :type)
-                                                                  (-> cell-items first :id))
-                                                          :knife           [")"]
-                                                          :obsidian-knife  [")"]
-                                                          :obsidian-axe    [")"]
-                                                          :obsidian-spear  [")"]
-                                                          :flint-knife     [")"]
-                                                          :flint-axe       [")"]
-                                                          :flint-spear     [")"]
-                                                          :sharpened-stick [")"]
-                                                          :plant-fiber     [","]
-                                                          :sword           [")"]
-                                                          :armor           ["["]
-                                                          :shoes           ["!"]
-                                                          :fishing-pole    ["/"]
-                                                          :match           ["/"]
-                                                          :flashlight      [","]
-                                                          :saw             [","]
-                                                          :tarp            [","]
-                                                          :spellbook       ["+"]
-                                                          :scroll          ["?"]
-                                                          :rock            ["*"]
-                                                          :obsidian        ["*"]
-                                                          :coconut         ["*" :brown :black]
-                                                          :unhusked-coconut
-                                                                           ["*" :brown  :black]
-                                                          :empty-coconut   ["*" :brown  :black]
-                                                          :red-fruit       ["*" :red    :black]
-                                                          :orange-fruit    ["*" :orange :black]
-                                                          :yellow-fruit    ["*" :yellow :black]
-                                                          :green-fruit     ["*" :green  :black]
-                                                          :blue-fruit      ["*" :blue   :black]
-                                                          :purple-fruit    ["*" :purple :black]
-                                                          :white-fruit     ["*" :white  :black]
-                                                          :black-fruit     ["*" :gray   :black]
-                                                          :bamboo          ["/" :light-green  :black]
-                                                          :stick           ["/" :brown  :black]
-                                                          :grass           ["/" :green  :black]
-                                                          :rope            ["," :green  :black]
-                                                          :log             ["/" :brown  :black #{:bold}]
-                                                          :bedroll         ["_" :white :black]
-                                                          :$               ["$"  :yellow :black #{:bold}]
-                                                          :amulet          ["\"" :blue   :black #{:bold}]
-                                                          :food            ["%"]
-                                                          :fire-plough     [","]
-                                                          :hand-drill      [","]
-                                                          :bow-drill       [","]
-                                                          ["?"])
-                                                        (case (cell :type)
-                                                         :vertical-wall   ["|"]
-                                                         :horizontal-wall ["-"]
-                                                         :floor           ["."]
-                                                         :open-door       ["-"  :brown  :black #{:bold}]
-                                                         :close-door      ["+"  :brown  :black #{:bold}]
-                                                         :corridor        ["#"] 
-                                                         :down-stairs     [">"] 
-                                                         :up-stairs       ["<"] 
-                                                         :fire            ["\u2240" (if (= (cell :discovered) current-time)
-                                                                                      (rand-nth [:red :orange])
-                                                                                      :red) :black] ;; ≀ 
-                                                         :water           ["\u2248" (if (= (cell :discovered) current-time)
-                                                                                      (rand-nth [:blue :dark-blue])
-                                                                                      :blue) :black] ;; ≈ 
-                                                         :surf            ["~" (if (= (cell :discovered) current-time)
-                                                                                 (rand-nth [:white :light-blue :blue-green])
-                                                                                 :light-blue) :black]
-                                                         :swamp           ["~" (if (= (cell :discovered) current-time)
-                                                                                 (rand-nth [:white :light-blue :blue-green])
-                                                                                 :light-blue) :black]
-                                                         :lava            ["~" (if (= (cell :discovered) current-time)
-                                                                                 (rand-nth [:red :orange :yellow])
-                                                                                 :light-blue) :black]
-                                                         :mountain        ["\u2206" :gray :black] ;; ∆
-                                                         :sand            ["."  :beige      :black]
-                                                         :dirt            ["."  :brown      :black]
-                                                         :dune            ["\u1d16"  :light-brown :black] ;; ᴖ
-                                                         :rocky-shore     ["\u1d16"  :dark-gray  :black] ;; ᴖ
-                                                         :gravel          ["."  :gray       :black]
-                                                         :short-grass     ["."  :green      :black]
-                                                         :tall-grass      ["\"" :dark-green :black]
-                                                         :tree            ["T"  :dark-green :black]
-                                                         :bamboo          ["\u01c1" :light-green :black] ;; ∥ 
-                                                         :palisade        ["#" :brown :black]
-                                                         :ramada          ["#" :beige :black]
-                                                         :tarp-shelter    ["#" :blue  :black]
-                                                         :lean-to         ["#" :light-green :black]
-                                                         :campfire        ["^" :brown :black]
-                                                         :bamboo-water-collector
-                                                                          (if (< 10 (get cell :water 0))
-                                                                            ["O" (rand-nth [:blue :light-blue :dark-blue]) :black]
-                                                                            ["O"])
-                                                         :solar-still
-                                                                          (if (< 10 (get cell :water 0))
-                                                                            ["O" (rand-nth [:blue :light-blue :dark-blue]) :black]
-                                                                            ["O"])
-                                                         :palm-tree       ["7"  :dark-green :black]
-                                                         :fruit-tree      ["\u2648"  :light-green :black] ;; ♈
-                                                         :freshwater-hole (if (< 10 (get cell :water 0))
-                                                                            ["~" (rand-nth [:blue :light-blue :dark-blue]) :black]
-                                                                            ["O"])
-                                                         :saltwater-hole  (if (< 10 (get cell :water 0))
-                                                                            ["~" (rand-nth [:blue :light-blue :dark-blue]) :black]
-                                                                            ["O"])
-                                                         :dry-hole        ["O"]
-                                                         (do (log/info (format "unknown type: %s %s" (str (get cell :type)) (str cell)))
-                                                         ["?"]))))
+                                                      (color-bloodied-char 
+                                                        (< current-time (get cell :bloodied 0))
+                                                        (if (and cell-items
+                                                                 (seq cell-items)
+                                                                 (= (cell :discovered) current-time))
+                                                          (case (or (-> cell-items first :type)
+                                                                    (-> cell-items first :id))
+                                                            :knife           [")"]
+                                                            :obsidian-knife  [")"]
+                                                            :obsidian-axe    [")"]
+                                                            :obsidian-spear  [")"]
+                                                            :flint-knife     [")"]
+                                                            :flint-axe       [")"]
+                                                            :flint-spear     [")"]
+                                                            :sharpened-stick [")"]
+                                                            :plant-fiber     [","]
+                                                            :sword           [")"]
+                                                            :armor           ["["]
+                                                            :shoes           ["!"]
+                                                            :fishing-pole    ["/"]
+                                                            :match           ["/"]
+                                                            :flashlight      [","]
+                                                            :saw             [","]
+                                                            :tarp            [","]
+                                                            :spellbook       ["+"]
+                                                            :scroll          ["?"]
+                                                            :rock            ["*"]
+                                                            :obsidian        ["*"]
+                                                            :coconut         ["*" :brown :black]
+                                                            :unhusked-coconut
+                                                                             ["*" :brown  :black]
+                                                            :empty-coconut   ["*" :brown  :black]
+                                                            :red-fruit       ["*" :red    :black]
+                                                            :orange-fruit    ["*" :orange :black]
+                                                            :yellow-fruit    ["*" :yellow :black]
+                                                            :green-fruit     ["*" :green  :black]
+                                                            :blue-fruit      ["*" :blue   :black]
+                                                            :purple-fruit    ["*" :purple :black]
+                                                            :white-fruit     ["*" :white  :black]
+                                                            :black-fruit     ["*" :gray   :black]
+                                                            :bamboo          ["/" :light-green  :black]
+                                                            :stick           ["/" :brown  :black]
+                                                            :grass           ["/" :green  :black]
+                                                            :rope            ["," :green  :black]
+                                                            :log             ["/" :brown  :black #{:bold}]
+                                                            :bedroll         ["_" :white :black]
+                                                            :$               ["$"  :yellow :black #{:bold}]
+                                                            :amulet          ["\"" :blue   :black #{:bold}]
+                                                            :food            ["%"]
+                                                            :fire-plough     [","]
+                                                            :hand-drill      [","]
+                                                            :bow-drill       [","]
+                                                            ["?"])
+                                                          (case (cell :type)
+                                                           :vertical-wall   ["|"]
+                                                           :horizontal-wall ["-"]
+                                                           :floor           ["."]
+                                                           :open-door       ["-"  :brown  :black #{:bold}]
+                                                           :close-door      ["+"  :brown  :black #{:bold}]
+                                                           :corridor        ["#"] 
+                                                           :down-stairs     [">"] 
+                                                           :up-stairs       ["<"] 
+                                                           :fire            ["\u2240" (if (= (cell :discovered) current-time)
+                                                                                        (rand-nth [:red :orange])
+                                                                                        :red) :black] ;; ≀ 
+                                                           :water           ["\u2248" (if (= (cell :discovered) current-time)
+                                                                                        (rand-nth [:blue :dark-blue])
+                                                                                        :blue) :black] ;; ≈ 
+                                                           :surf            ["~" (if (= (cell :discovered) current-time)
+                                                                                   (rand-nth [:white :light-blue :blue-green])
+                                                                                   :light-blue) :black]
+                                                           :swamp           ["~" (if (= (cell :discovered) current-time)
+                                                                                   (rand-nth [:white :light-blue :blue-green])
+                                                                                   :light-blue) :black]
+                                                           :lava            ["~" (if (= (cell :discovered) current-time)
+                                                                                   (rand-nth [:red :orange :yellow])
+                                                                                   :light-blue) :black]
+                                                           :mountain        ["\u2206" :gray :black] ;; ∆
+                                                           :sand            ["."  :beige      :black]
+                                                           :dirt            ["."  :brown      :black]
+                                                           :dune            ["\u1d16"  :light-brown :black] ;; ᴖ
+                                                           :rocky-shore     ["\u1d16"  :dark-gray  :black] ;; ᴖ
+                                                           :gravel          ["."  :gray       :black]
+                                                           :short-grass     ["."  :green      :black]
+                                                           :tall-grass      ["\"" :dark-green :black]
+                                                           :tree            ["T"  :dark-green :black]
+                                                           :bamboo          ["\u01c1" :light-green :black] ;; ∥ 
+                                                           :palisade        ["#" :brown :black]
+                                                           :ramada          ["#" :beige :black]
+                                                           :tarp-shelter    ["#" :blue  :black]
+                                                           :lean-to         ["#" :light-green :black]
+                                                           :campfire        ["^" :brown :black]
+                                                           :bamboo-water-collector
+                                                                            (if (< 10 (get cell :water 0))
+                                                                              ["O" (rand-nth [:blue :light-blue :dark-blue]) :black]
+                                                                              ["O"])
+                                                           :solar-still
+                                                                            (if (< 10 (get cell :water 0))
+                                                                              ["O" (rand-nth [:blue :light-blue :dark-blue]) :black]
+                                                                              ["O"])
+                                                           :palm-tree       ["7"  :dark-green :black]
+                                                           :fruit-tree      ["\u2648"  :light-green :black] ;; ♈
+                                                           :freshwater-hole (if (< 10 (get cell :water 0))
+                                                                              ["~" (rand-nth [:blue :light-blue :dark-blue]) :black]
+                                                                              ["O"])
+                                                           :saltwater-hole  (if (< 10 (get cell :water 0))
+                                                                              ["~" (rand-nth [:blue :light-blue :dark-blue]) :black]
+                                                                              ["O"])
+                                                           :dry-hole        ["O"]
+                                                           (do (log/info (format "unknown type: %s %s" (str (get cell :type)) (str cell)))
+                                                           ["?"])))))
                                            shaded-out-char (cond
                                                              (not= (cell :discovered) current-time)
                                                                (update-in out-char [1] (comp rgb->mono darken-rgb))
@@ -896,7 +907,12 @@
                                                              :else
                                                                out-char)
                                            shaded-out-char (if (= (get cell :discovered) current-time)
-                                                             (update-in shaded-out-char [1] (fn [c] (darken-rgb (night-tint c d) (min 1 (/ 2 (max 1 (distance-from-player state (xy->pos wx wy))))))))
+                                                             (update-in shaded-out-char
+                                                                        [1]
+                                                                        (fn [c]
+                                                                          (darken-rgb (night-tint c d)
+                                                                                      (min 1 (/ 2 (max 1 (distance-from-player state
+                                                                                                                               (xy->pos wx wy))))))))
                                                              shaded-out-char)]
                                          (conj! characters {:x vx :y vy :c (get shaded-out-char 0) :fg (get shaded-out-char 1) :bg (get shaded-out-char 2)}))))
                                     (transient [])
@@ -913,7 +929,9 @@
       (- (-> state :world :player :pos :y)
          (-> state :world :viewport :pos :y))
       "@"
-      :white
+      (if (< current-time (get player :bloodied 0))
+        :dark-red
+        :white)
       (if (contains? (set (map :id (get (first (player-cellxy state)) :items))) :raft)
         :brown
         :black))
@@ -959,46 +977,48 @@
                                             vx
                                             vy
                                             (night-tint-npc
-                                              (case (get npc :race)
-                                                :rat             ["r"]
-                                                :spider          ["S"]
-                                                :scorpion        ["\u03C2"] ;;ς
-                                                :snake           ["\u00A7"] ;;§
-                                                :bat             ["B"]
-                                                :boar            ["b" :brown :black]
-                                                :gecko           ["g" :green :black]
-                                                :monkey          ["y" :orange :black]
-                                                :bird            ["a" :red :black]
-                                                :centipede       ["c" :red :black]
-                                                :turtle          ["t" :green :black]
-                                                :red-frog        ["\u03B1" :red :black] ;;α
-                                                :orange-frog     ["\u03B1" :orange :black] ;;α
-                                                :yellow-frog     ["\u03B1" :yellow :black] ;;α
-                                                :green-frog      ["\u03B1" :green :black] ;;α
-                                                :blue-frog       ["\u03B1" :blue :black] ;;α
-                                                :purple-frog     ["\u03B1" :purple :black] ;;α
-                                                :parrot          ["p" :red :black]
-                                                :shark           ["\u039B"] ;;Λ
-                                                :fish            ["f"]
-                                                :octopus         ["#" :orange :black]
-                                                :sea-snake       ["\u00A7"]
-                                                :clam            ["c"]
-                                                :urchin          ["u" :purple :black]
-                                                :squid           ["q" :orange :black]
-                                                :crocodile       ["l" :green :black]
-                                                :mosquito        ["m"]
-                                                :mongoose        ["r" :brown :black]
-                                                :tarantula       ["s" :brown :black]
-                                                :monitor-lizard  ["l" :gray :black]
-                                                :komodo-dragon   ["l" :dark-green :black]
-                                                :cobra           ["\u00A7"] ;;§
-                                                :puffer-fish     ["f" :yellow :black]
-                                                :crab            ["c" :orange :black]
-                                                :hermit-crab     ["c" :yellow :black]
-                                                :electric-eel    ["e" :brown :black]
-                                                :jellyfish       ["j"]
-                                                :human           ["@" (class->rgb (get npc :class)) :black]
-                                                ["@"]) d)))))
+                                              (color-bloodied-char 
+                                                (< current-time (get npc :bloodied 0))
+                                                (case (get npc :race)
+                                                  :rat             ["r"]
+                                                  :spider          ["S"]
+                                                  :scorpion        ["\u03C2"] ;;ς
+                                                  :snake           ["\u00A7"] ;;§
+                                                  :bat             ["B"]
+                                                  :boar            ["b" :brown :black]
+                                                  :gecko           ["g" :green :black]
+                                                  :monkey          ["y" :orange :black]
+                                                  :bird            ["a" :red :black]
+                                                  :centipede       ["c" :red :black]
+                                                  :turtle          ["t" :green :black]
+                                                  :red-frog        ["\u03B1" :red :black] ;;α
+                                                  :orange-frog     ["\u03B1" :orange :black] ;;α
+                                                  :yellow-frog     ["\u03B1" :yellow :black] ;;α
+                                                  :green-frog      ["\u03B1" :green :black] ;;α
+                                                  :blue-frog       ["\u03B1" :blue :black] ;;α
+                                                  :purple-frog     ["\u03B1" :purple :black] ;;α
+                                                  :parrot          ["p" :red :black]
+                                                  :shark           ["\u039B"] ;;Λ
+                                                  :fish            ["f"]
+                                                  :octopus         ["#" :orange :black]
+                                                  :sea-snake       ["\u00A7"]
+                                                  :clam            ["c"]
+                                                  :urchin          ["u" :purple :black]
+                                                  :squid           ["q" :orange :black]
+                                                  :crocodile       ["l" :green :black]
+                                                  :mosquito        ["m"]
+                                                  :mongoose        ["r" :brown :black]
+                                                  :tarantula       ["s" :brown :black]
+                                                  :monitor-lizard  ["l" :gray :black]
+                                                  :komodo-dragon   ["l" :dark-green :black]
+                                                  :cobra           ["\u00A7"] ;;§
+                                                  :puffer-fish     ["f" :yellow :black]
+                                                  :crab            ["c" :orange :black]
+                                                  :hermit-crab     ["c" :yellow :black]
+                                                  :electric-eel    ["e" :brown :black]
+                                                  :jellyfish       ["j"]
+                                                  :human           ["@" (class->rgb (get npc :class)) :black]
+                                                  ["@"])) d)))))
                    place-npcs)))
     (render-hud state)
     (log/info "current-state" (current-state state))

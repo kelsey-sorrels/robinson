@@ -1210,7 +1210,7 @@
           (put-string (state :screen) 10 4 (format "Points: %s." points))
           (put-string (state :screen) 10 5 "Inventory:")
           (doall (map-indexed
-            (fn [idx item] (put-string (state :screen) 18 (+ idx 5) (item :name)))
+            (fn [idx item] (put-string (state :screen) 18 (+ idx 6) (item :name)))
             (-> state :world :player :inventory)))
           (put-string (state :screen) 10 22 "Play again? [yn]"))
       :rescued

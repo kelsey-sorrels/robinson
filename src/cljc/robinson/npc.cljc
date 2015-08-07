@@ -281,7 +281,7 @@
                                                     state))
 ;; Rat
 (defmethod mg/do-on-death :rat [npc state] (cond
-                                             (zero? (rr/uniform-int 4))
+                                             (zero? (rr/uniform-int 8))
                                                ;; spawn an additional rat
                                                (-> state
                                                  (add-npc (mg/gen-monster :rat)

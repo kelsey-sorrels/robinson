@@ -33,11 +33,11 @@
      :cljs
      (apply gstring/format s args)))
 
-(defn blood-splatter [state {:keys [x y] :as pos}]
+(defn blood-splatter [state defender-path pos]
   (let [t (rw/get-time state)]
     (-> state
-      (rnpc/update-npc-at-xy x y (fn [npc] (assoc-in npc [:bloodied] (+ 20 t))))
-      (rw/assoc-cells (zipmap (rw/adjacent-xys-ext pos) (repeat {:bloodied (+ 20 t)}))))))
+      (assoc-in (conj defender-path :bloodied) (+ 20 t))
+      (rw/assoc-cells (zipmap (rw/adjacent-xys-ext pos) (repeatedly (fn [] {:bloodied (+ (rr/uniform-int 5 20) t)})))))))
 
 (defn- gen-attack-message
   "Logs an attack message to the global state.
@@ -262,11 +262,7 @@
         dmg                  (cond
                                hit   (+ (calc-dmg state attacker attack defender defender-body-part) (if shot-poisoned-arrow 1 0))
                                :else 0)
-        is-wound             (> dmg 1.5)
-        ;; Add blood splatters with timeout to cells around defender, mark defender as bloodied with timeout.
-        state                (if is-wound
-                               (blood-splatter state (get defender :pos))
-                               state)]
+        is-wound             (> dmg 1.5)]
     (log/info "attack" attacker-path "is attacking defender" defender-path)
     #_(log/info "attacker-detail" attacker)
     #_(log/info "defender-detail" defender)
@@ -286,6 +282,10 @@
             ;; modify defender hp
             (update-in state (conj defender-path :hp)
               (fn [hp] (- hp dmg)))
+            ;; splatter blood
+            (if is-wound
+              (blood-splatter state defender-path (get defender :pos))
+              state)
             (log-with-line state "1")
             ;; attacks use wielded weapons
             (if attack-item

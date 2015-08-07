@@ -1,15 +1,16 @@
 ;; Functions that manipulate state to do what the user commands.
 (ns robinson.combat
   (:require [robinson.common :as rc]
-            [taoensso.timbre :as log]
             [robinson.random :as rr]
             [robinson.world :as rw]
             [robinson.player :as rp]
+            [robinson.npc :as rnpc]
             [robinson.itemgen :as ig]
             [robinson.monstergen :as mg]
             [robinson.math :as rmath]
             [robinson.characterevents :as ce]
             [robinson.dynamiccharacterproperties :as dcp]
+            [taoensso.timbre :as log]
             #?@(:clj (
                 [robinson.macros :as rm]
                 [clojure.stacktrace :refer [print-stack-trace]]
@@ -31,6 +32,12 @@
      (apply clojure.core/format s args)
      :cljs
      (apply gstring/format s args)))
+
+(defn blood-splatter [state {:keys [x y] :as pos}]
+  (let [t (rw/get-time state)]
+    (-> state
+      (rnpc/update-npc-at-xy x y (fn [npc] (assoc-in npc [:bloodied] (+ 20 t))))
+      (rw/assoc-cells (zipmap (rw/adjacent-xys-ext pos) (repeat {:bloodied (+ 20 t)}))))))
 
 (defn- gen-attack-message
   "Logs an attack message to the global state.
@@ -255,7 +262,11 @@
         dmg                  (cond
                                hit   (+ (calc-dmg state attacker attack defender defender-body-part) (if shot-poisoned-arrow 1 0))
                                :else 0)
-        is-wound             (> dmg 1.5)]
+        is-wound             (> dmg 1.5)
+        ;; Add blood splatters with timeout to cells around defender, mark defender as bloodied with timeout.
+        state                (if is-wound
+                               (blood-splatter state (get defender :pos))
+                               state)]
     (log/info "attack" attacker-path "is attacking defender" defender-path)
     #_(log/info "attacker-detail" attacker)
     #_(log/info "defender-detail" defender)

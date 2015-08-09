@@ -36,6 +36,8 @@
             [robinson.aterminal :as rat]
             [tinter.core :as tinter]
             clojure.set
+            [clojure.xml :as xml]
+            [clojure.zip :as zip]
             #?(:clj
                [clojure.pprint :as pprint]
                clojure.string
@@ -72,6 +74,7 @@
    :dark-red    [110 18 21];(vec (tinter/hex-str-to-dec "D31C00"))
    :orange      [235 137 49];(vec (tinter/hex-str-to-dec "D36C00"))
    :yellow      [247 226 107];(vec (tinter/hex-str-to-dec "D3B100"))
+   :highlight   [229 165 8];(vec (tinter/hex-str-to-dec "D3B100"))
    :light-green [163 206 39]
    :green       [68 137 26];(vec (tinter/hex-str-to-dec "81D300"))
    :dark-green  (vec (tinter/hex-str-to-dec "406900"))
@@ -138,6 +141,43 @@
    (let [fg (color->rgb fg)
          bg (color->rgb bg)]
      [string fg bg styles])))
+
+(defn zip-str [s]
+  (zip/xml-zip 
+      (xml/parse (java.io.ByteArrayInputStream. (.getBytes s)))))
+
+(defn str->chars
+  ([s]
+   (str->chars s :white :black))
+  ([s fg bg]
+   (map (fn [c] {:c c :fg fg :bg bg :style #{}})
+        s)))
+
+(defn markup->chars
+  [x y s]
+  (let [z (zip-str (str "<body>" s "</body>"))]
+    (println "s" s)
+    (map-indexed (fn [idx c] (assoc c :c  (str (get c :c))
+                                      :x  (+ x idx)
+                                      :y  y
+                                      :fg (color->rgb (get c :fg))
+                                      :bg (color->rgb (get c :bg))))
+                 (reduce (fn [characters v]
+                           (cond
+                             (string? v)
+                               (concat characters
+                                       (str->chars v))
+                             (map? v)
+                               (concat characters
+                                       (str->chars (-> v :content first)
+                                                   (if (= (get v :tag) :color)
+                                                     (keyword (get-in v [:attrs :fg] :white))
+                                                     :white)
+                                                   (if (= (get v :tag) :color)
+                                                     (keyword (get-in v [:attrs :bg] :black))
+                                                     :black)))))
+                         []
+                         (-> z zip/node :content)))))
 
 (defn put-string
   ([^robinson.aterminal.ATerminal screen x y string]
@@ -1037,17 +1077,17 @@
                               {:message "" :time 0 :color :black} 
                               (nth (reverse (get-in state [:world :log])) log-idx))
             darken-factor   (inc  (* (/ -1 5) (- current-time (message :time))))
-            log-color       (darken-rgb (color->rgb (get message :color)) darken-factor)]
+            log-color       (darken-rgb (color->rgb (get message :color)) darken-factor)
+            characters      (markup->chars 0 0 (format "%s%s %s" (if msg-above?
+                                                                   (str "<color fg=\"highlight\">/</color>-" up-arrow-char)
+                                                                   "   ")
+                                                                 (if msg-below?
+                                                                   (str "<color fg=\"highlight\">*</color>-" down-arrow-char)
+                                                                   "   ")
+                                                                 (or (message :text) "" )))]
         (log/info "num-log-msgs" num-logs)
         (log/info "message" message)
-        (put-string screen 0 0 (format "%s%s %s" (if msg-above?
-                                                  (str up-arrow-char "-/")
-                                                  "   ")
-                                                (if msg-below?
-                                                  (str down-arrow-char "-*")
-                                                  "   ")
-                                                (message :text))
-                               log-color :black)))
+        (put-chars screen characters)))
     (case (current-state state)
       :pickup               (render-pick-up state)
       :inventory            (render-inventory state)
@@ -1101,20 +1141,17 @@
         start-inventory  (sg/start-inventory)]
     (clear (state :screen))
     (put-string screen 20 5 "Choose up to three things to take with you:")
-    (render-list screen 20 7 60 (count start-inventory)
-                                (map (fn [item] 
-                                       (log/info (get item :hotkey) (type (get item :hotkey)) (get item :name))
-                                       {:s (format #?(:clj  "%c%c%s"
-                                                      :cljs "%s%s%s")
-                                                   (get item :hotkey)
-                                                   (if (contains? selected-hotkeys (get item :hotkey))
-                                                     \+
-                                                     \-)
-                                                   (get item :name))
-                                                   :fg :white
-                                                   :bg :black
-                                                   :style #{}})
-                                        start-inventory))
+    (doseq [y         (range (count start-inventory))]
+      (let [item      (nth start-inventory y)
+            hotkey    (get item :hotkey)
+            item-name (get item :name)]
+        (put-chars screen (markup->chars 20 (+ 7 y) (format #?(:clj  "<color fg=\"highlight\">%c</color>%c%s"
+                                                               :cljs "<color fg=\"highlight\">%s</color>%s%s")
+                                                            hotkey
+                                                            (if (contains? selected-hotkeys hotkey)
+                                                              \+
+                                                              \-)
+                                                            item-name)))))
     (refresh screen)))
 
 
@@ -1125,7 +1162,7 @@
     (doall (map-indexed
       (fn [idx line] (put-string screen 12 (+ idx 9) line))
       (clojure.string/split-lines start-text)))
-    (put-string screen 17 19 "Press any key to continue and ? to view help.")
+    (put-chars screen (markup->chars 17 19 "Press <color fg=\"highlight\">any key</color> to continue and <color fg=\"highlight\">?</color> to view help."))
     (refresh screen)))
 
 (def loading-index (atom 0))
@@ -1212,7 +1249,7 @@
           (doall (map-indexed
             (fn [idx item] (put-string (state :screen) 18 (+ idx 6) (item :name)))
             (-> state :world :player :inventory)))
-          (put-string (state :screen) 10 22 "Play again? [yn]"))
+          (put-chars (state :screen) (markup->chars 10 22 "Play again? [<color fg=\"highlight\">y</color>/<color fg=\"highlight\">n</color>]")))
       :rescued
         (let [rescue-modes   ["boat" "helicopter" "hovercraft" "ocean liner"]
               rescue-mode    (nth rescue-modes (mod (get-in state [:world :random-numbers 2]) (count rescue-modes)))

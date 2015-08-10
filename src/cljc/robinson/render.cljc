@@ -150,34 +150,52 @@
   ([s]
    (str->chars s :white :black))
   ([s fg bg]
-   (map (fn [c] {:c c :fg fg :bg bg :style #{}})
+   (str->chars s fg bg #{}))
+  ([s fg bg style]
+   (map (fn [c] {:c c :fg fg :bg bg :style style})
         s)))
 
 (defn markup->chars
-  [x y s]
-  (let [z (zip-str (str "<body>" s "</body>"))]
-    (println "s" s)
-    (map-indexed (fn [idx c] (assoc c :c  (str (get c :c))
-                                      :x  (+ x idx)
-                                      :y  y
-                                      :fg (color->rgb (get c :fg))
-                                      :bg (color->rgb (get c :bg))))
-                 (reduce (fn [characters v]
-                           (cond
-                             (string? v)
-                               (concat characters
-                                       (str->chars v))
-                             (map? v)
-                               (concat characters
-                                       (str->chars (-> v :content first)
-                                                   (if (= (get v :tag) :color)
-                                                     (keyword (get-in v [:attrs :fg] :white))
-                                                     :white)
-                                                   (if (= (get v :tag) :color)
-                                                     (keyword (get-in v [:attrs :bg] :black))
-                                                     :black)))))
-                         []
-                         (-> z zip/node :content)))))
+  ([x y s]
+   (markup->chars x y s :white :black))
+  ([x y s fg bg]
+   (markup->chars x y s fg bg #{}))
+  ([x y s fg bg style]
+   (if (re-find #"^\s*$" s)
+     (map (fn [idx] {:c     " "
+                     :x     (+ x idx)
+                     :y     y
+                     :fg    (color->rgb fg)
+                     :bg    (color->rgb bg)
+                     :style style})
+          (range (count s)))
+     (let [body    (str "<body>" s "</body>")
+           z       (zip-str body)
+           content (-> z zip/node :content)
+           characters
+       (map-indexed (fn [idx c] (assoc c :c     (str (get c :c))
+                                         :x     (+ x idx)
+                                         :y     y
+                                         :fg    (color->rgb (get c :fg))
+                                         :bg    (color->rgb (get c :bg))
+                                         :style style))
+                    (reduce (fn [characters v]
+                              (cond
+                                (string? v)
+                                  (concat characters
+                                          (str->chars v fg bg style))
+                                (map? v)
+                                  (concat characters
+                                          (str->chars (-> v :content first)
+                                                      (if (= (get v :tag) :color)
+                                                        (keyword (get-in v [:attrs :fg] fg))
+                                                        fg)
+                                                      (if (= (get v :tag) :color)
+                                                        (keyword (get-in v [:attrs :bg] bg))
+                                                        bg)))))
+                            []
+                            content))]
+      characters))))
 
 (defn put-string
   ([^robinson.aterminal.ATerminal screen x y string]
@@ -230,6 +248,21 @@
 (defn is-menu-state? [state]
   (contains? #{:inventory :describe-inventory :pickup :drop :eat} (get-in state [:world :current-state])))
 
+(defn markup-length [s]
+ (let [body    (str "<body>" s "</body>")
+       z       (zip-str body)
+       content (-> z zip/node :content)]
+   (reduce (fn [n v]
+             (cond
+               (string? v)
+                 (+ n
+                    (count v))
+               (map? v)
+                 (+ n
+                    (-> v :content first count))))
+           0
+           content)))
+
 (defn center-text [s width]
   (let [n-ws-left (int (/ (- width (count s)) 2))
         n-ws-right (int (+ 0.5 (/ (- width (count s)) 2)))]
@@ -237,6 +270,15 @@
 
 (defn left-justify-text [s width]
   (let [n-ws (- width (count s))]
+   (apply str (concat s (repeat n-ws " ")))))
+
+(defn center-markup [s width]
+  (let [n-ws-left (int (/ (- width (markup-length s)) 2))
+        n-ws-right (int (+ 0.5 (/ (- width (markup-length s)) 2)))]
+   (apply str (concat (repeat n-ws-left " ") s (repeat n-ws-right " ")))))
+
+(defn left-justify-markup [s width]
+  (let [n-ws (- width (markup-length s))]
    (apply str (concat s (repeat n-ws " ")))))
 
 (defn render-line
@@ -248,9 +290,9 @@
         ;; pad to width
         s        (if center
                    ;; center justify
-                   (center-text line width)
+                   (center-markup line width)
                    ;; left justify
-                   (left-justify-text line width))
+                   (left-justify-markup line width))
         [fg bg]  (if invert
                    [bg fg]
                    [fg bg])
@@ -258,7 +300,8 @@
                    #{:underline}
                    #{})]
     #_(log/info "put-string" (format "\"%s\"" line) "width" width)
-    (put-string screen x y s fg bg style)))
+    #_(put-string screen x y s fg bg style)
+    (put-chars screen (markup->chars x y s fg bg style))))
 
 
 (defn render-rect-border
@@ -290,7 +333,7 @@
     (if (< i (count items))
       (let [item (nth items i)]
         (render-line screen x (+ y i) width (get item :s) (get item :fg) (get item :bg) (get item :style)))
-      (render-line screen x (+ y i) width "" :white :white #{}))))
+      (render-line screen x (+ y i) width " " :white :white #{}))))
 
 (defn render-text
   [screen position title text]
@@ -331,8 +374,8 @@
   ([screen title selected-hotkeys items x y width height {:keys [use-applicable center border center-title]
                                                           :or {:use-applicable false :border false :center false :center-title false}}]
    ;; items is list of {:s "string" :fg :black :bg :white}
-   (let [items    (map (fn [item] {:s (format #?(:clj  "%c%c%s%s %s %s"
-                                                 :cljs "%s%s%s%s %s %s")
+   (let [items    (map (fn [item] {:s (format #?(:clj  "<color fg=\"highlight\">%c</color>%c%s%s %s %s"
+                                                 :cljs "<color fg=\"highlight\">%s</color>%s%s%s %s %s")
                                               (or (item :hotkey)
                                                   \ )
                                               (if (contains? selected-hotkeys (item :hotkey))

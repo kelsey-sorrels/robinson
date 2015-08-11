@@ -303,22 +303,51 @@
     #_(put-string screen x y s fg bg style)
     (put-chars screen (markup->chars x y s fg bg style))))
 
+(def single-border
+  {:horizontal   "\u2500"
+   :vertical     "\u2502"
+   :top-left     "\u250C"
+   :top-right    "\u2510"
+   :bottom-left  "\u2514"
+   :bottom-right "\u2518"})
+
+(def double-border
+  {:horizontal   "\u2550"
+   :vertical     "\u2551"
+   :top-left     "\u2554"
+   :top-right    "\u2557"
+   :bottom-left  "\u255A"
+   :bottom-right "\u255D"})
 
 (defn render-rect-border
+  [screen x y width height fg bg characters]
+  (let [{:keys [horizontal
+                vertical
+                top-left
+                top-right
+                bottom-left
+                bottom-right]} characters]
+    ;; render top and bottom
+    (doseq [dx (range (dec width))]
+      (put-string screen (+ x dx 1) y horizontal fg bg #{})
+      (put-string screen (+ x dx 1) (+ y height) horizontal fg bg #{}))
+    ;; render left and right
+    (doseq [dy (range (dec height))]
+      (put-string screen x (+ y dy 1) vertical fg bg #{})
+      (put-string screen (+ x width) (+ y dy 1) vertical fg bg #{}))
+    ;; render tl, tr, bl, br
+    (put-string screen x y top-left fg bg #{})
+    (put-string screen (+ x width) y top-right fg bg #{})
+    (put-string screen x (+ y height) bottom-left fg bg #{})
+    (put-string screen (+ x width) (+ y height) bottom-right fg bg #{})))
+
+(defn render-rect-single-border
   [screen x y width height fg bg]
-  ;; render top and bottom
-  (doseq [dx (range (dec width))]
-    (put-string screen (+ x dx 1) y "\u2500" fg bg #{})
-    (put-string screen (+ x dx 1) (+ y height) "\u2500" fg bg #{}))
-  ;; render left and right
-  (doseq [dy (range (dec height))]
-    (put-string screen x (+ y dy 1) "\u2502" fg bg #{})
-    (put-string screen (+ x width) (+ y dy 1) "\u2502" fg bg #{}))
-  ;; render tl, tr, bl, br
-  (put-string screen x y "\u250C" fg bg #{})
-  (put-string screen (+ x width) y "\u2510" fg bg #{})
-  (put-string screen x (+ y height) "\u2514" fg bg #{})
-  (put-string screen (+ x width) (+ y height) "\u2518" fg bg #{}))
+  (render-rect-border screen x y width height fg bg single-border))
+
+(defn render-rect-double-border
+  [screen x y width height fg bg]
+  (render-rect-border screen x y width height fg bg double-border))
 
 (defn render-vertical-border
   [screen x y height fg bg]
@@ -738,7 +767,7 @@
                                         {:name "Shelter" :hotkey \c}
                                         {:name "Transportation" :hotkey \t}]
                                         30 6 20 5)
-    (render-rect-border screen 29 5 20 5 :black :white)
+    (render-rect-single-border screen 29 5 20 5 :black :white)
     (put-string screen 37 5 "Craft" :black :white)))
 
 (defn render-craft-submenu
@@ -802,7 +831,7 @@
           (map (fn [id] {:s (id->name id) :fg :black :bg :white :style #{}}) have)))))
     (render-list screen 41 6 29 15
         [{:s "Select a recipe" :fg :black :bg :white :style #{}}]))
-  (render-rect-border screen 10 5 60 15 :black :white)
+  (render-rect-single-border screen 10 5 60 15 :black :white)
   (render-vertical-border screen 40 6 15 :black :white)
   (put-string screen 40 20 "\u2534" :black :white)
   (put-string screen 37 5 "Craft" :black :white)))
@@ -831,6 +860,20 @@
   "Render the wield item menu if the world state is `:wield`."
   [state]
   (render-multi-select (state :screen) "Wield" [] (filter can-be-wielded? (-> state :world :player :inventory))))
+
+(defn render-start-text [state]
+  (let [screen     (state :screen)
+        start-text (sg/start-text state)]
+    (render-list screen 16 4 53 6
+      (concat
+        [{:s "" :fg :black :bg :white :style #{}}]
+        (map
+          (fn [line] {:s line :fg :black :bg :white :style #{:center}})
+          (remove empty? (clojure.string/split-lines start-text)))
+        [{:s "" :fg :black :bg :white :style #{}}
+         {:s "     Press <color fg=\"highlight\">any key</color> to continue and <color fg=\"highlight\">?</color> to view help." :fg :black :bg :white :style #{}}]))
+    (render-rect-double-border screen 16 4 53 6 :black :white)))
+
 
 (defn render-harvest
   "Render the harvest prompt if the world state is `:harvest`."
@@ -1152,6 +1195,7 @@
       :craft-shelter        (render-craft-shelter state)
       :craft-transportation (render-craft-transportation state)
       :wield                (render-wield state)
+      :start-text           (render-start-text state)
       nil)
     (case (current-state state)
       :quit               (render-quit? state)
@@ -1195,17 +1239,6 @@
                                                               \+
                                                               \-)
                                                             item-name)))))
-    (refresh screen)))
-
-
-(defn render-start-text [state]
-  (let [screen     (state :screen)
-        start-text (sg/start-text state)]
-    (clear (state :screen))
-    (doall (map-indexed
-      (fn [idx line] (put-string screen 12 (+ idx 9) line))
-      (clojure.string/split-lines start-text)))
-    (put-chars screen (markup->chars 17 19 "Press <color fg=\"highlight\">any key</color> to continue and <color fg=\"highlight\">?</color> to view help."))
     (refresh screen)))
 
 (def loading-index (atom 0))
@@ -1385,8 +1418,8 @@
       (render-start-inventory state)
     (= (current-state state) :loading)
       (render-loading state)
-    (= (current-state state) :start-text)
-      (render-start-text state)
+    ;(= (current-state state) :start-text)
+    ;  (render-start-text state)
     ;; Is player dead?
     (contains? #{:dead :rescued} (current-state state))
       ;; Render game over

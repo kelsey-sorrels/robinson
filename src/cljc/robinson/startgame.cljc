@@ -39,7 +39,7 @@
         mode-of-transport (nth modes-of-transport (mod n1 (count modes-of-transport)))
         natural-disasters ["hurricane" "tornado" "dark storm" "cyclone" "squall"]
         natural-disaster  (nth natural-disasters (mod n2 (count natural-disasters)))
-        text              (format "While traveling by %s, a %s engulfs you.\n\n             You awake on an island.\n\n     One thing is certain - you'll have to escape."
+        text              (format "While traveling by %s, a %s engulfs you.\nYou awake on an island.\nOne thing is certain - you'll have to escape."
              mode-of-transport
              natural-disaster)]
     text))

@@ -74,7 +74,8 @@
    :dark-red    [110 18 21];(vec (tinter/hex-str-to-dec "D31C00"))
    :orange      [235 137 49];(vec (tinter/hex-str-to-dec "D36C00"))
    :yellow      [247 226 107];(vec (tinter/hex-str-to-dec "D3B100"))
-   :highlight   [229 165 8];(vec (tinter/hex-str-to-dec "D3B100"))
+   ;:highlight   [229 165 8];(vec (tinter/hex-str-to-dec "D3B100"))
+   :highlight   [209 155 8];(vec (tinter/hex-str-to-dec "D3B100"))
    :light-green [163 206 39]
    :green       [68 137 26];(vec (tinter/hex-str-to-dec "81D300"))
    :dark-green  (vec (tinter/hex-str-to-dec "406900"))
@@ -362,7 +363,7 @@
     (if (< i (count items))
       (let [item (nth items i)]
         (render-line screen x (+ y i) width (get item :s) (get item :fg) (get item :bg) (get item :style)))
-      (render-line screen x (+ y i) width " " :white :white #{}))))
+      (render-line screen x (+ y i) (dec width) " " :white :white #{}))))
 
 (defn render-text
   [screen position title text]
@@ -874,6 +875,46 @@
          {:s "     Press <color fg=\"highlight\">any key</color> to continue and <color fg=\"highlight\">?</color> to view help." :fg :black :bg :white :style #{}}]))
     (render-rect-double-border screen 16 4 53 6 :black :white)))
 
+(defn render-dead-text [state]
+  (let [screen         (state :screen)
+        hp             (get-in state [:world :player :hp])
+        hunger         (get-in state [:world :player :hunger])
+        max-hunger     (get-in state [:world :player :max-hunger])
+        thirst         (get-in state [:world :player :thirst])
+        max-thirst     (get-in state [:world :player :max-thirst])
+        will-to-live   (get-in state [:world :player :will-to-live])
+        cause-of-death (or
+                         (get-in state [:world :cause-of-death])
+                         (cond
+                           (<= hp 0)             "massive injuries"
+                           (> hunger max-hunger) "literall starving to death"
+                           (> thirst max-thirst) "not drinking enough water"
+                           (<= will-to-live 0)   "just giving up on life"
+                           :else                 "mysterious causes"))]
+    (render-list screen 16 4 53 6
+      (concat
+        [{:s "" :fg :black :bg :white :style #{}}]
+        (map
+          (fn [line] {:s line :fg :black :bg :white :style #{:center}})
+          ["You died."
+           (format "From %s" cause-of-death)
+           ""
+           "Press <color fg=\"highlight\">space</color> to continue."])))
+    (render-rect-double-border screen 16 4 53 6 :black :white)))
+
+(defn render-rescued-text [state]
+  (let [screen      (state :screen)
+        rescue-mode (rendgame/rescue-mode state)]
+    (render-list screen 16 4 53 6
+      (concat
+        [{:s "" :fg :black :bg :white :style #{}}]
+        (map
+          (fn [line] {:s line :fg :black :bg :white :style #{:center}})
+          ["Rescue!"
+           (format "A passing %s spots you.")
+           "Press <color fg=\"highlight\">space</color> to continue."])))
+    (render-rect-double-border screen 16 4 53 6 :black :white)))
+
 
 (defn render-harvest
   "Render the harvest prompt if the world state is `:harvest`."
@@ -1196,6 +1237,8 @@
       :craft-transportation (render-craft-transportation state)
       :wield                (render-wield state)
       :start-text           (render-start-text state)
+      :dead                 (render-dead-text state)
+      :rescued              (render-rescued-text state)
       nil)
     (case (current-state state)
       :quit               (render-quit? state)
@@ -1291,17 +1334,17 @@
   [state]
   (let [cur-state      (current-state state)
         points         (int
-                         (+ (get-in state [:world :player :will-to-live])
-                            (/ 50000 (get-time state))
+                         (* (+ (get-in state [:world :player :will-to-live])
+                               (/ 50000 (get-time state)))
                             (case cur-state
-                              :dead 0
-                              :rescued 1000)))
+                              :game-over-dead 1
+                              :game-over-rescued 2)))
         days-survived  (int (/ (get-time state) 800))
         player-name    (get-in state [:world :player :name])
         madlib         (gen-end-madlib state)]
     (clear (state :screen))
     (case cur-state
-      :dead
+      :game-over-dead
         (let [hp             (get-in state [:world :player :hp])
               hunger         (get-in state [:world :player :hunger])
               max-hunger     (get-in state [:world :player :max-hunger])
@@ -1326,10 +1369,9 @@
             (fn [idx item] (put-string (state :screen) 18 (+ idx 6) (item :name)))
             (-> state :world :player :inventory)))
           (put-chars (state :screen) (markup->chars 10 22 "Play again? [<color fg=\"highlight\">y</color>/<color fg=\"highlight\">n</color>]")))
-      :rescued
-        (let [rescue-modes   ["boat" "helicopter" "hovercraft" "ocean liner"]
-              rescue-mode    (nth rescue-modes (mod (get-in state [:world :random-numbers 2]) (count rescue-modes)))
-              days           (int (/ (get-time state) 346))]
+      :game-over-rescued
+        (let [rescue-mode (rendgame/rescue-mode state)
+              days        (int (/ (get-time state) 346))]
           ;; Title
           (put-string (state :screen) 10 1 (format "%s: %s." player-name madlib))
           (put-string (state :screen) 18 2 (format "Rescued by %s after surviving for %d days." rescue-mode days))
@@ -1421,7 +1463,7 @@
     ;(= (current-state state) :start-text)
     ;  (render-start-text state)
     ;; Is player dead?
-    (contains? #{:dead :rescued} (current-state state))
+    (contains? #{:game-over-dead :game-over-rescued} (current-state state))
       ;; Render game over
       (render-game-over state)
     (= (get-in state [:world :current-state]) :help-controls)

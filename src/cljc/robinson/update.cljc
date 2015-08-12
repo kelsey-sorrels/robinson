@@ -2887,9 +2887,15 @@
                            :up         [close-up               :normal          true]
                            :right      [close-right            :normal          true]}
                :log       {:else       [pass-state             :normal          false]}
-               :rescued   {\y          [identity               :start-inventory false]
+               :rescued   {:space      [pass-state             :game-over-rescued false]
+                           :else       [pass-state             identity         false]}
+               :dead      {:space      [pass-state             :game-over-dead  false]
+                           :else       [pass-state             identity         false]}
+               :game-over-rescued
+                          {\y          [identity               :start-inventory false]
                            \n          [(constantly nil)       :normal          false]}
-               :dead      {\y          [identity               :start-inventory false]
+               :game-over-dead
+                          {\y          [identity               :start-inventory false]
                            \n          [(constantly nil)       :normal          false]}
                :quit?     {\y          [(constantly nil)       :normal          false]
                            :else       [pass-state             :normal          false]}}

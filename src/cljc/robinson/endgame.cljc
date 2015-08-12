@@ -19,6 +19,10 @@
   [coll n]
   (nth coll (mod n (count coll))))
 
+(defn rescue-mode [state]
+  (let [rescue-modes   ["boat" "helicopter" "hovercraft" "ocean liner"]]
+    (nth rescue-modes (mod (get-in state [:world :random-numbers 2]) (count rescue-modes)))))
+
 (defn gen-end-madlib
   [state]
   (let [[_ _ n1 n2 n3] (get-in state [:world :random-numbers])

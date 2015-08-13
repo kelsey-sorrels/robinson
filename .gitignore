@@ -8,7 +8,8 @@ lib
 target
 
 # Vim
-.*.swp .swo
+.*.swp
+.*.swo
 
 # Project runtime files
 save/*

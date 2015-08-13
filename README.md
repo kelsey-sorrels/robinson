@@ -2,8 +2,8 @@
 
 
 Robinson
-<meta property="og:image"
-    content="https://raw.githubusercontent.com/aaron-santos/robinson/master/readme-media/robinson-title.png">Robinson</meta>
+<img property="og:image"
+    src="https://raw.githubusercontent.com/aaron-santos/robinson/master/readme-media/robinson-title.png" alt="Robinson" />
 ===============
 
 A survival rogue-like focused on getting off the damn island or die trying.

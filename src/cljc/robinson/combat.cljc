@@ -379,7 +379,7 @@
                                               :dead)
                           :white))
             ;; defender is player
-            (let [cause-of-death (format "%s %s %s" (rc/noun->indefinite-article (get attacker :name))
+            (let [cause-of-death (format "%s %s's %s." (rc/noun->indefinite-article (get attacker :name))
                                                                                  (get attacker :name)
                                                                                  (name attack))]
               (-> state

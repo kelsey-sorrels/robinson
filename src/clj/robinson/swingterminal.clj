@@ -216,7 +216,7 @@
                                      altDown   (not= (bit-and (.getModifiersEx e) InputEvent/ALT_DOWN_MASK) 0)
                                      ctrlDown  (not= (bit-and (.getModifiersEx e) InputEvent/CTRL_DOWN_MASK) 0)
                                      ignore    #{(char 10) (char 33) (char 27)}]
-                                 (when (and (re-matches #"[ -~]" (str character))
+                                 (when (and (re-matches #"[!-~]" (str character))
                                             (not (re-matches #"[0-9]" (str character))))
                                    (if ctrlDown
                                        (on-key-fn (char (+ (int \a) -1 (int character))))

@@ -2611,9 +2611,12 @@
 (def state-transition-table
   ;;         starting      transition  transition             new              advance
   ;;         state         symbol      fn                     state            time?
-  (let [table {:start     {:enter      [identity               :start-inventory false]
-                           :backspace  [backspace-name         :start           false]
-                           :else       [append-name            :start           false]}
+  (let [table {:start     {:space      [identity               :enter-name      false]
+                           :else       [pass-state             identity         false]}
+               :enter-name
+                          {:enter      [identity               :start-inventory false]
+                           :backspace  [backspace-name         :enter-name      false]
+                           :else       [append-name            :enter-name      false]}
                :start-inventory
                           {:enter      [identity               :loading         false]
                            :else       [select-starting-inventory

@@ -76,6 +76,7 @@
    :yellow      [247 226 107];(vec (tinter/hex-str-to-dec "D3B100"))
    ;:highlight   [229 165 8];(vec (tinter/hex-str-to-dec "D3B100"))
    :highlight   [209 155 8];(vec (tinter/hex-str-to-dec "D3B100"))
+   :background  [6 8 12]
    :light-green [163 206 39]
    :green       [68 137 26];(vec (tinter/hex-str-to-dec "81D300"))
    :dark-green  (vec (tinter/hex-str-to-dec "406900"))
@@ -510,11 +511,20 @@
     ;    (-> state :world :player :max-hp)
     ;    (apply str (interpose " " (-> state :world :player :status)))
 
+(def image-cache (atom {}))
+
+(def get-image
+  (memoize
+    (fn [path]
+      (let [image ^Image (.getImage (ImageIcon. path))]
+        image))))
+        
+
 #?(:clj
 (defn render-img
   "Render an image using block element U+2584."
   [state ^String path x y]
-  (let [image ^Image          (.getImage (ImageIcon. path))
+  (let [image ^Image          (get-image path)
         width                 (.getWidth image)
         height                (.getHeight image)
         buffered-image        (BufferedImage. width height BufferedImage/TYPE_INT_RGB)
@@ -1255,13 +1265,21 @@
     (refresh screen)))
     ;;(log/debug "end-render")))
 
-(defn render-start [state]
+(defn render-enter-name [state]
   (let [screen (state :screen)
         player-name (get-in state [:world :player :name])]
     (clear (state :screen))
     (put-string screen 30 5 "Robinson")
     (put-string screen 20 7 "Name:___________________")
     (put-string screen 25 7 (str player-name "\u2592"))
+    (refresh screen)))
+
+(defn render-start [state]
+  (let [screen (state :screen)
+        player-name (get-in state [:world :player :name])]
+    (clear (state :screen))
+    (render-img state "images/robinson-mainmenu.jpg" 0 0)
+    (put-chars screen (markup->chars 30 20 "<color bg=\"background\">Press </color><color fg=\"highlight\" bg=\"background\">space</color><color bg=\"background\"> to continue</color>"))
     (refresh screen)))
 
 (defn render-start-inventory [state]
@@ -1456,6 +1474,8 @@
   (cond
     (= (current-state state) :start)
       (render-start state)
+    (= (current-state state) :enter-name)
+      (render-enter-name state)
     (= (current-state state) :start-inventory)
       (render-start-inventory state)
     (= (current-state state) :loading)

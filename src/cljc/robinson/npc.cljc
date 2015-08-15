@@ -198,10 +198,11 @@
   "Randomly add monsters to the current place's in floor cells."
   [state]
   (let [level      (monster-level state)
-        r          (rlos/sight-distance state)
+        sd          (rlos/sight-distance state)
+        r          (max 5 sd)
         [player-x
          player-y] (rp/player-xy state)
-        xys        (rlos/perimeter-xys player-x player-y (min 5 (inc r)))
+        xys        (rlos/perimeter-xys player-x player-y r)
         xys        (remove (fn [[x y]] (rw/collide? state x y {:include-npcs? true
                                                                :collide-water? false})) xys)
         weighted-xys (zipmap (map (fn [[x y]]
@@ -212,11 +213,13 @@
                                   xys)
                              xys)]
     (log/info "monster-level" monster-level)
+    (log/info "sd" sd "r" r)
+    (log/info "xys" (vec xys))
     (log/info "weighted-xys" weighted-xys)
     (if (seq weighted-xys)
       (let [[x y]  (rr/rand-weighted-nth weighted-xys)
             monster (mg/gen-random-monster level (get (rw/get-cell state x y) :type))]
-       (log/info "Adding monster" monster "@ [" x y "] r" r)
+       (log/info "Adding monster" monster "@ [" x y "] d" (rc/distance (rc/xy->pos x y) (rc/xy->pos player-x player-y)))
        (add-npc state monster x y))
       state)))
 

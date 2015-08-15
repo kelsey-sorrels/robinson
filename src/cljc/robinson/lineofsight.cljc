@@ -211,7 +211,7 @@
              r->trie)))
 
 (defn perimeter-xys [center-x center-y r]
-  (let [xys  (get r->perimeter-xys r)
+  (let [xys  (get r->perimeter-xys (int r))
         xys  (map (fn [[x y]] [(+ x center-x) (+ y center-y)])
                    xys)]
     xys))

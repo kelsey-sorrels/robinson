@@ -135,22 +135,19 @@
             radius (min max-x max-y)
             [x y]   [(* radius (Math/cos angle))
                      (* radius (Math/sin angle))]
-            points  (rlos/line-segment [x y] [0 0])
-            samples (take-nth 2 points)
+            points  (rlos/line-segment [0 0] [x y])
+            samples points #_(take-nth 2 points)
             n       (rn/create-noise (rr/create-random seed))
-            #_#__ (log/info "find-starting-pos samples" (vec samples))]
-        (if (= :ocean (apply sample-island n (first samples)))
-          (let [non-water-samples (filter
-                                    (fn [[x y]]
+            _ (log/info "find-starting-pos samples" (vec samples))]
+        (if (= :ocean (apply sample-island n (last samples)))
+          (let [spans (partition-by (fn [[x y]]
                                       (let [s (sample-island n x y)
                                             adj-types (map (fn [[x y]] (sample-island n x y))
                                                            (rw/adjacent-xys x y))]
                                         (log/info "sample" x y s (vec adj-types))
-                                        (or
-                                          (contains? #{:sand :dirt} s)
-                                          (every? (partial contains? #{:sand :dirt :surf}) adj-types))))
+                                        (every? (partial contains? #{:surf}) adj-types)))
                                     samples)
-                [sx sy] (first non-water-samples)]
+                [sx sy] (-> spans first last)]
             (if (and sx sy)
               (recur (rc/xy->pos sx sy))
               (recur nil)))

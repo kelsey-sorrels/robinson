@@ -2393,7 +2393,7 @@
               (neg? i))
         ;; no more results to process, stop looping and return state
         (do
-          (log/info "State" (dissoc (get state :world) :player :places))
+          #_(log/info "State" (dissoc (get state :world) :player :places))
           state)
         ;; In parallel, find their next step
         ;; Each element in this list has the form [new-pos new-npc npc] (a list of 3-tuples.

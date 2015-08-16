@@ -113,9 +113,9 @@
 
 (defn uniform-int
  ([] (next-int! *rnd* 0xFFFFFFFF))
- ([hi] {:pre [(pos? hi)]} (next-int! *rnd* hi))
- ([lo hi] {:pre [(<= lo hi)]} (+ lo (next-int! *rnd* (- hi lo))))
- ([rnd lo hi] {:pre [(<= lo hi)]} (+ lo (next-int! rnd (- hi lo)))))
+ ([hi] {:pre [(pos? hi)]} (next-int! *rnd* (int hi)))
+ ([lo hi] {:pre [(<= lo hi)]} (+ (int lo) (next-int! *rnd* (- (int hi) (int lo)))))
+ ([rnd lo hi] {:pre [(<= lo hi)]} (+ (int lo) (next-int! rnd (- (int hi) (int lo))))))
 
 (defn uniform-double
  ([hi] {:pre [(pos? hi)]} (* hi (next-double! *rnd*)))
@@ -146,14 +146,15 @@
   ([m]
     (rand-weighted-nth *rnd* m))
   ([rnd m]
-   "Randomly select a value from a map of weights to values."
+   "Randomly select a value from a list of [weight value]'ss."
    (cond
      (empty? m)
        nil
      (= 1 (count m))
-       (-> m first val)
+       (-> m first second)
      :else
        (let [[wm a]     (reduce (fn [[m a] [weight v]]
-                                  [(conj m [a v]) (+ weight a)]) [[] 0] m)
+                                  [(conj m [a v]) (+ weight a)])
+                                [[] 0] m)
              n          (uniform-double rnd 0 a)]
          (second (last (remove (fn [[wn _]] (> wn n)) wm)))))))

@@ -205,22 +205,29 @@
         xys        (rlos/perimeter-xys player-x player-y r)
         xys        (remove (fn [[x y]] (rw/collide? state x y {:include-npcs? true
                                                                :collide-water? false})) xys)
-        weighted-xys (zipmap (map (fn [[x y]]
-                                    (let [cell       (rw/get-cell state x y)
-                                          discovered (get cell :discovered (- (rw/get-time state) 1000))
-                                          w          (min 1000 (- (rw/get-time state) discovered))]
-                                      w))
-                                  xys)
+        weighted-xys (mapv (fn [[x y]]
+                             (let [cell       (rw/get-cell state x y)
+                                   discovered (get cell :discovered (- (rw/get-time state) 1000))
+                                   w          (min 1000 (- (rw/get-time state) discovered))]
+                               [w [x y]]))
                              xys)]
     (log/info "monster-level" monster-level)
     (log/info "sd" sd "r" r)
     (log/info "xys" (vec xys))
     (log/info "weighted-xys" weighted-xys)
     (if (seq weighted-xys)
-      (let [[x y]  (rr/rand-weighted-nth weighted-xys)
-            monster (mg/gen-random-monster level (get (rw/get-cell state x y) :type))]
-       (log/info "Adding monster" monster "@ [" x y "] d" (rc/distance (rc/xy->pos x y) (rc/xy->pos player-x player-y)))
-       (add-npc state monster x y))
+      (loop [state state
+             weighted-xys (take (rr/uniform-int 1 (max 1 (/ (count weighted-xys) 10))) weighted-xys)
+             [x y] (rr/rand-weighted-nth weighted-xys)]
+        (let [monster (mg/gen-random-monster level (get (rw/get-cell state x y) :type))]
+          (log/info "weighted-xys" weighted-xys)
+          (log/info "Adding monster" monster "@ [" x y "] d" (rc/distance (rc/xy->pos x y) (rc/xy->pos player-x player-y)))
+          (if (= 1 (count weighted-xys))
+            (add-npc state monster x y)
+            (let [weighted-xys (remove (fn [[w v]] (= v [x y])) weighted-xys)]
+              (recur (add-npc state monster x y)
+                     weighted-xys
+                     (rr/rand-weighted-nth weighted-xys))))))
       state)))
 
 (defn add-npcs-random

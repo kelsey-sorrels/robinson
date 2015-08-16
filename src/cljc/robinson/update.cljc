@@ -1685,7 +1685,7 @@
       (assoc-in [:world :log-idx] 0)
       (update-in [:world :log]
         (fn [logs]
-          (log/info "updating :world :log. logs" logs)
+          (log/debug "updating :world :log. logs" logs)
           (vec
             (mapcat
               (fn [logs-with-same-time]
@@ -2063,6 +2063,7 @@
           width                  (get-in state [:world :width])
           height                 (get-in state [:world :height])
           bounds                 [(- width) (- height) width height]
+          _ (log/info "pathfinding bounds" bounds)
           get-type               (memoize (fn [x y] (do
                                                       ;(log/debug "traversable?" x y "type" (get-in place [y x :type]))
                                                       (or (get (rw/get-cell state x y) :type) :unknown))))
@@ -2234,6 +2235,8 @@
                             :corridor
                             :open-door
                             :sand
+                            :rocky-shore
+                            :dune
                             :dirt
                             :gravel
                             :tall-grass

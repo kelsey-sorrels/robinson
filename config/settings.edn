@@ -1,5 +1,5 @@
-{:windows-font "Consolas"
+{:windows-font "DejaVu Sans Mono"
  :else-font    "Monospaced"
  :font-size 18
- :log-level :error
+ :log-level :info
 }

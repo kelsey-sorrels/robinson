@@ -95,8 +95,8 @@
                                ;(println "filling rect" (* col char-width) (* row char-height) char-width char-height bg-color)
                                (doto offscreen-graphics-2d
                                  (.setFont normal-font)
-                                 (.setRenderingHint RenderingHints/KEY_ANTIALIASING RenderingHints/VALUE_ANTIALIAS_ON)
-                                 (.setRenderingHint RenderingHints/KEY_RENDERING RenderingHints/VALUE_RENDER_QUALITY)
+                                 (.setRenderingHint RenderingHints/KEY_TEXT_ANTIALIASING RenderingHints/VALUE_TEXT_ANTIALIAS_GASP)
+                                 ;(.setRenderingHint RenderingHints/KEY_RENDERING RenderingHints/VALUE_RENDER_QUALITY)
                                  (.setColor bg-color)
                                  (.fillRect 0 0 char-width char-height))
                                (when (not= s " ")

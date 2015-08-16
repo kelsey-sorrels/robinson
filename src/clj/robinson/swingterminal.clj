@@ -96,7 +96,6 @@
                                (doto offscreen-graphics-2d
                                  (.setFont normal-font)
                                  (.setRenderingHint RenderingHints/KEY_TEXT_ANTIALIASING RenderingHints/VALUE_TEXT_ANTIALIAS_GASP)
-                                 ;(.setRenderingHint RenderingHints/KEY_RENDERING RenderingHints/VALUE_RENDER_QUALITY)
                                  (.setColor bg-color)
                                  (.fillRect 0 0 char-width char-height))
                                (when (not= s " ")

@@ -138,7 +138,7 @@
             points  (rlos/line-segment [0 0] [x y])
             samples points #_(take-nth 2 points)
             n       (rn/create-noise (rr/create-random seed))
-            _ (log/info "find-starting-pos samples" (vec samples))]
+            #_#__ (log/info "find-starting-pos samples" (vec samples))]
         (if (= :ocean (apply sample-island n (last samples)))
           (let [spans (partition-by (fn [[x y]]
                                       (let [s (sample-island n x y)
@@ -148,7 +148,8 @@
                                         (every? (partial contains? #{:surf}) adj-types)))
                                     samples)
                 [sx sy] (-> spans first last)]
-            (if (and sx sy)
+            (log/info "spans" (vec spans))
+            (if (and sx sy (rc/farther-than? (rc/xy->pos 0 0) (rc/xy->pos sx sy) 20))
               (recur (rc/xy->pos sx sy))
               (recur nil)))
           (recur nil))))))

@@ -1141,12 +1141,10 @@
             (max 0 new-hunger))))
       (as-> state
         (if (contains? (set (map :hotkey (rp/player-inventory state))) keyin)
-          (-> state
-            ;; remove the item from inventory
-            (rp/dec-item-count (get item :id))
-            ;; remove the item from the current-cell
-            (rw/dec-cell-item-count (get item :id)))
-          state)
+          ;; remove the item from inventory
+          (rp/dec-item-count state (get item :id))
+          ;; remove the item from the current-cell
+          (rw/dec-cell-item-count state (get item :id)))
         (if (= (get item :id) :coconut-empty)
           (rp/add-to-inventory state [(ig/gen-item :coconut-shell)])
           state))

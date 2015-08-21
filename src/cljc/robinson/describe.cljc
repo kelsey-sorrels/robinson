@@ -43,6 +43,9 @@
            :tall-grass             "tall grass"
            :short-grass            "short grass"
            :bamboo                 "a bamboo grove"
+           :mountain               "a mountain"
+           :swamp                  "swamp"
+           :lava                   "a lava flow"
            :freshwater-hole        (if (> (get cell :water 0) 10)
                                      "a hole full of water"
                                      "an empty hole")
@@ -87,18 +90,20 @@
         npc  (npc-at-xy state x y)
         items (get cell :items)]
     (cond
+      (not= (get cell :discovered) (rw/get-time state))
+        (format "You can't see that.")
       (and npc (seq items))
-        (format "There is %s, and %s" (describe-npc npc) (describe-items items))
+        (format "There is %s, and %s." (describe-npc npc) (describe-items items))
       npc
-        (format "There is %s, on %s" (describe-npc npc) (describe-cell-type cell))
+        (format "There is %s, on %s." (describe-npc npc) (describe-cell-type cell))
       (seq items)
-        (format "On the %s, there %s %s" (str (describe-cell-type cell))
+        (format "On the %s, there %s %s." (str (describe-cell-type cell))
                                          (str (if (> (count items) 1)
                                            "are"
                                            "is"))
                                          (str (describe-items items)))
       :else
-        (format "There is %s" (describe-cell-type cell)))))
+        (format "There is %s." (describe-cell-type cell)))))
 
 (defn search
   "Describe the player's cell."

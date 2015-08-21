@@ -269,14 +269,12 @@
       (zero? item-count)
         state
       (= 1 item-count)
-        (update-cell state x y (fn [cell] (rc/remove-in cell [:items] #(= id (get % :id)))))
+        (update-cell-items state x y (fn [items] (remove #(= id (get % :id)) items)))
       :else
-        (update-cell state x y (fn [cell] (rc/map-in cell [:items] (fn [item]
-
-      (if (= id (get item :id))
-                                                                       (update-in item [:count] dec)
-
-        item))))))))
+        (update-cell-items state x y (fn [items] (map (fn [item]
+                                                        (if (= id (get item :id))
+                                                          (update item :count dec)
+                                                          item))))))))
 
 (defn adjacent-xys
   ([pos]

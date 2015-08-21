@@ -416,76 +416,9 @@
            :ui-hint nil
            :dialog-log []
            :random-numbers [(rr/uniform-int 100) (rr/uniform-int 100) (rr/uniform-int 100) (rr/uniform-int 100)]
-           :player (rp/Player.
-                    ;id
-                    :player
-                    ;name
-                    "Player"
-                    ;race
-                    :human
-                    ;class
-                    :ranger
-                    ;movement-policy
-                    :entourage
-                    ;in-party?
-                    true
-                    ;inventory
+           :player (rp/gen-player
                     inventory-with-hotkeys
-                    ;dexterity
-                    1
-                    ;speed
-                    1
-                    ;size
-                    75
-                    ;strength
-                    5
-                    ;toughness
-                    5
-                    ;hp
-                    10
-                    ;max-hp
-                    10
-                    ;will-to-live
-                    100
-                    ;max-will-to-live
-                    100
-                    ;money
-                    50
-                    ;xp
-                    0
-                    ;level
-                    0
-                    ;hunger
-                    0
-                    ;max-hunger
-                    100
-                    ;thirst
-                    0
-                    ;max-thirst
-                    100
-                    ;pos
-                    starting-pos
-                    ;starting-pos
-                    starting-pos
-                    ;place
-                    :0_0
-                    ;body-parts
-                    #{:head :neck :face :abdomen :arm :leg :foot}
-                    ;attacks
-                    #{:punch}
-                    ;status
-                    #{}
-                    ;stats
-                    {
-                      :timeline (list)
-                      :num-animals-killed       {}
-                      :num-items-crafted        {}
-                      :num-items-harvested      {}
-                      :num-kills-by-attack-type {}
-                      :num-items-eaten          {}}
-                    ;; map from body-part to {:time <int> :damage <float>}
-                    ;wounds
-                    {})
+                    starting-pos)
            :fruit {
              :poisonous           poisoned-fruit
              :skin-identifiable   skin-identifiable

@@ -344,7 +344,7 @@
                                                               (fn [wounds] (merge-with (fn [w0 w1] {:time (max (get w0 :time) (get w1 :time))
                                                                                                     :dmg  (+   (get w0 :dmg)  (get w1 :dmg))})
                                                                              wounds
-                                                                             {defender-body-part {:time (get-in state [:world :time])
+                                                                             {defender-body-part {:time (rw/get-time state)
                                                                                             :dmg dmg}})))
                                                             defender)))
             (log-with-line state "8")
@@ -392,85 +392,93 @@
       (finally
         (log/info "End of attack"))))))
 
-(defn -main [& more]
-  (let [player {:id :player
-                :race :human
-                :dexterity 1
-                :speed 1
-                :size 75
-                :strength  2
-                :toughness 2
-                :hp 10
-                :max-hp 10
-                :body-parts #{:head :neck :face :abdomen :arm :leg :foot}
-                :attacks #{:punch}}
-        level->land-monster-ids {
-                          0 [:red-frog
-                             :orange-frog
-                             :yellow-frog
-                             :green-frog
-                             :blue-frog
-                             :purple-frog
-                             :bird
-                             :gecko]
-                          1 [:rat
-                             :mosquito]
-                          2 [:spider
-                             :centipede]
-                          3 [:tarantula
-                             :scorpion]
-                          4 [:cobra
-                             :snake]
-                          5 [:bat
-                             :turtle]
-                          6 [:monitor-lizard
-                             :crocodile]
-                          7 [:parrot
-                             :mongoose]
-                          8 [:komodo-dragon]
-                          9 [:boar
-                             :monkey]}
-        level->water-monster-ids {
-                          0 [:clam
-                             :hermit-crab]
-                          1 [:jellyfish]
-                          2 [:fish]
-                          3 [:crab]
-                          4 [:urchin]
-                          5 [:sea-snake]
-                          6 [:puffer-fish]
-                          7 [:electric-eel]
-                          8 [:octopus ]
-                          9 [:squid
-                             :shark]}
-        level->land-monsters  (map (fn [[level ids]] [level (map mg/id->monster ids)]) level->land-monster-ids)
-        level->water-monsters (map (fn [[level ids]] [level (map mg/id->monster ids)]) level->water-monster-ids)
-        land-monsters         (sort-by first (mapcat (fn [[k vals]] (map (fn [v] [k v]) vals)) level->land-monsters))
-        water-monsters        (sort-by first (mapcat (fn [[k vals]] (map (fn [v] [k v]) vals)) level->water-monsters))
-        land-data             (map (fn [[level monster]]
-                                     (let [attacker->defender-dmg (calc-dmg
-                                                 player :knife monster (rand-nth (vec (get monster :body-parts))))
-                                           defender->attacker-dmg (calc-dmg
-                                                 monster (rand-nth (vec (get monster :attacks)))
-                                                 player (rand-nth (vec (get player :body-parts))))
-                                           hits-to-kill-defender (float (/ (get monster :hp) attacker->defender-dmg))
-                                           hits-to-kill-attacker (float (/ (get player :hp) defender->attacker-dmg))
-                                           winner (if (< hits-to-kill-attacker hits-to-kill-defender)
-                                                    "defender" "attacker")]
-                                       {:attacker "player"
-                                        :attack "punch"
-                                        :defender (get monster :name)
-                                        :level level
-                                        :attacker-damage (format "%.2f" attacker->defender-dmg)
-                                        :hits-to-kill-defender (format "%.2f" hits-to-kill-defender)
-                                        :defender-damage (format "%.2f" defender->attacker-dmg)
-                                        :hits-to-kill-attacker (format "%.2f" hits-to-kill-attacker)
-                                        :winner winner
-                                        :difficulty (format "%.2f" (float (/ hits-to-kill-defender hits-to-kill-attacker)))}))
-                                   land-monsters)]
-    #?(:clj
-       (pprint [:attacker :attack :defender :level :attacker-damage :hits-to-kill-defender
-                :defender-damage :hits-to-kill-attacker :winner :difficulty] land-data)
-       :cljs
-       "pprint not implemented")))
+(defn do-combat
+  [attacker defender]
+  (let [state {:current-state :normal
+               :world         {:npcs [defender]
+                               :player attacker}
+                               :time 0}
+        attacker-path [:world :player]
+        defender-path [:world :npcs 0]
+        pass-through  (fn [m & _] m)]
+    (with-redefs [rw/update-cell       pass-through
+                  rw/get-time          (fn [state] 1)
+                  blood-splatter       pass-through
+                  rp/dec-item-utility  pass-through
+                  rc/append-log        pass-through
+                  ce/on-hit            (fn [_ state] state)
+                  ce/on-death          (fn [_ state] state)
+                  rw/update-cell-items pass-through]
+      (loop [state state
+             ticks 1]
+        (let [state-after-combat  (attack state attacker-path defender-path)
+              attacker (get-in state-after-combat attacker-path)
+              defender (get-in state-after-combat defender-path)]
+          (log/info "player" (select-keys attacker [:id :hp :max-hp]))
+          (log/info "defender" (select-keys defender [:race :hp]))
+          (if (nil? defender)
+            [:npc-died ticks (get attacker :hp) (get attacker :max-hp)]
+            (let [state-after-combat (attack state-after-combat defender-path attacker-path)
+                  attacker (get-in state-after-combat attacker-path)
+                  defender (get-in state-after-combat defender-path)]
+              (log/info "player" (select-keys attacker [:id :hp :max-hp]))
+              (log/info "defender" (select-keys defender [:race :hp]))
+              (if (rp/player-dead? state)
+                [:player-died ticks 0 (get attacker :max-hp)]
+                (recur state-after-combat (inc ticks))))))))))
 
+(defn mean-ticks-to-kill [coll]
+  (float (/ (reduce + (map second coll)) (count coll))))
+
+ 
+(defn std-dev-ticks-to-kill [samples]
+  (let [n       (count samples)
+        samples (map second samples)
+        mean    (/ (reduce + samples) n)
+        intermediate (map #(Math/pow (- %1 mean) 2) samples)]
+          (Math/sqrt 
+           (/ (reduce + intermediate) n))))    
+
+(defn mean-health-ratio [samples]
+  (float (/ (reduce + (map (fn [[_ _ hp max-hp :as sample]]
+                             (/ hp max-hp))
+                           samples))
+            (count samples))))
+ 
+(defn std-dev-health-ratio [samples]
+  (let [n       (count samples)
+        samples (map (fn [[_ _ hp max-hp]]
+                       (float (/ hp max-hp)))
+                      samples)
+        mean    (/ (reduce + samples) n)
+        intermediate (map #(Math/pow (- %1 mean) 2) samples)]
+          (Math/sqrt 
+           (/ (reduce + intermediate) n))))    
+
+(defn float->str
+  [f]
+  (format "%3f" f))
+
+(defn -main [& more]
+  (let [player (rp/gen-player [] {:x 0 :y 0})
+        level->land-monster-ids mg/land-monster-ids-by-level
+        level->water-monster-ids mg/water-monster-ids-by-level]
+    (log/set-level! :error)
+    (clojure.pprint/print-table 
+      (map (fn [[level monster-id]]
+             (let [samples (for [i (range 2000)]
+                             (do-combat player (assoc (mg/id->monster monster-id)
+                                                      :pos {:x 1 :y 0}
+                                                      :inventory [])))]
+               {:monster-id            monster-id
+                :dng-level             level
+                :mean-ticks-to-kill    (float->str (mean-ticks-to-kill samples))
+                :std-dev-ticks-to-kill (float->str (std-dev-ticks-to-kill samples))
+                :player-win-ratio      (float->str
+                                         (float
+                                           (/ (count (filter (fn [[reason _ _ _]] (= reason :npc-died))
+                                                       samples))
+                                              (count samples))))
+                :player-mean-health-ratio (float->str (mean-health-ratio samples))
+                :player-std-dev-health-ratio (float->str (std-dev-health-ratio samples))}))
+           (sort-by first (reduce-kv (fn [m k v] (apply conj m (map (fn [v] [k v]) v))) [] level->land-monster-ids))))))

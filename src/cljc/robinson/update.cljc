@@ -2514,7 +2514,7 @@
                 ;; drop fruit
                 (contains? fruit-tree-types cell-type)
                 ;; chance of dropped a fruit
-                (if (= (rr/uniform-int 0 5000) 0)
+                (if (= (rr/uniform-int 0 2000) 0)
                   ;; make the fruit item and find an adjacent free cell to drop it into
                   (let [item    (assoc (ig/id->item (get cell :fruit-type)) :rot-time (+ (rw/get-time state) (rr/uniform-int 10 30)))
                         adj-xys (remove (fn [[x y]] (or (not (rv/xy-in-viewport? state x y))

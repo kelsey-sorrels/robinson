@@ -581,10 +581,10 @@
         cell-items       (or (cell :items) [])
         hotkeys          (-> state :world :remaining-hotkeys)
         selected-hotkeys (-> state :world :selected-hotkeys)
-        items            (fill-missing #(not (contains? % :hotkey))
-                                            #(assoc %1 :hotkey %2)
-                                            hotkeys
-                                            cell-items)]
+        items            (fill-missing (fn missing [item] (not (contains? item :hotkey)))
+                                       (fn apply-hotkey [item hotkey] (assoc item :hotkey hotkey))
+                                       hotkeys
+                                       cell-items)]
   (log/debug "player-x" player-x "player-y" player-y)
   (log/debug "cell" cell)
   (log/debug "cell-items" cell-items)

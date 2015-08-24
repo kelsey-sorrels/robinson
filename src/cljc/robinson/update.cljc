@@ -170,7 +170,8 @@
   "Re-initialize the value of `:world` within `state`. Used when starting a new game
    from fresh or after the player has died."
   [state]
-  (let [selected-hotkeys (get-in state [:world :selected-hotkeys])]
+  (let [selected-hotkeys (get-in state [:world :selected-hotkeys])
+        player-name      (rp/get-player-attribute state :name)]
     ;; remove any previously generated chunks
     (delete-save-game)
     (loop []
@@ -194,6 +195,7 @@
             (recur))
           (->  state
             (add-starting-inventory selected-hotkeys)
+            (rp/assoc-player-attribute :name player-name)
             (update-visibility)
             (as-> state
               (reduce (fn [state _] (rnpc/add-npcs state))
@@ -2670,6 +2672,7 @@
                            \z          [identity               :craft           true]
                            \Z          [identity               :magic           true]
                            \v          [identity               :abilities       false]
+                           \g          [identity               :player-stats    false]
                            \t          [identity               :throw-inventory false]
                            \T          [identity               :talk            true]
                            \m          [identity               :log             false]
@@ -2753,6 +2756,9 @@
                :inventory {:escape     [identity               :normal          false]}
                :abilities {:escape     [identity               :normal          false]
                            :else       [use-ability            identity         true]}
+               :player-stats
+                          {:escape     [identity               :normal          false]
+                           :else       [pass-state             :player-stats    false]}
                :describe  {\i          [free-cursor            :describe-inventory false]
                            :left       [move-cursor-left       :describe        false]
                            :down       [move-cursor-down       :describe        false]

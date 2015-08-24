@@ -615,6 +615,35 @@
     (render-rect-double-border screen 16 3 43 height :black :white)
     (put-string screen 33 3 "Abilities" :black :white)))
 
+(defn render-player-stats
+  "Render the player character stats  menu if the world state is `:player-stats`."
+  [state]
+  (let [screen        (get state :screen)
+        x             18
+        y             5
+        height        9
+        player-name   (rp/get-player-attribute state :name)
+        hp            (int (rp/player-hp state))
+        max-hp        (int (rp/player-max-hp state))
+        level         (inc (rp/player-level state))
+        xp            (or (rp/xp-acc-for-next-level state) -9)
+        xp-next-level (or (rp/xp-for-next-level state) -99)
+        strength      (int (rp/get-player-attribute state :strength))
+        dexterity     (rp/get-player-attribute state :dexterity)
+        toughness     (rp/get-player-attribute state :toughness)]
+  
+    (render-list screen (inc x) (inc y) 43 height
+        [{:s (format "Name:      %s" player-name) :fg :black :bg :white :style #{}}
+         {:s (format "Level:     %d (%d/%d)" level xp xp-next-level) :fg :black :bg :white :style #{}}
+         {:s "" :fg :black :bg :white :style #{}}
+         {:s (format "Strength:  %d" strength ) :fg :black :bg :white :style #{}}
+         {:s (format "Dexterity: %d" dexterity ) :fg :black :bg :white :style #{}}
+         {:s (format "Toughness: %d" toughness ) :fg :black :bg :white :style #{}}
+         {:s "" :fg :black :bg :white :style #{}}
+         {:s "Press <color fg=\"highlight\">Esc</color> to exit." :fg :black :bg :white :style #{}}])
+    (render-rect-double-border screen x y 43 height :black :white)
+    (put-string screen (+ x 16) y "Player Info" :black :white)))
+
 (defn render-describe
   "Render the describe info pane if the world state is `:describe`."
   [state]
@@ -1249,6 +1278,7 @@
       :pickup               (render-pick-up state)
       :inventory            (render-inventory state)
       :abilities            (render-abilities state)
+      :player-stats         (render-player-stats state)
       :describe             (render-describe state)
       :apply                (render-apply state)
       :apply-item-inventory

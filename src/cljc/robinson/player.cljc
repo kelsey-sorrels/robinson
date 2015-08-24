@@ -115,7 +115,7 @@
     ;xp
     0
     ;level
-    0
+    1
     ;hunger
     0
     ;max-hunger
@@ -296,6 +296,50 @@
 (defn player-max-thirst
   [state]
   (get-in state [:world :player :max-thirst]))
+
+
+(defn player-xp
+  [state]
+  (get-in state [:world :player :xp]))
+
+;; total xp for levels 0 - 20
+(def xp
+  [0
+   2000
+   4620
+   8040
+   12489
+   18258
+   25712
+   35309
+   47622
+   63364
+   83419
+   108879
+   141086
+   181879
+   231075
+   313656
+   424067
+   571190
+   766569
+   1025154])
+
+(def xp-to-next-level
+  (mapv - (rest xp) xp))
+
+(defn player-level
+  [state]
+  (let [player-xp (player-xp state)]
+    (count (filter #(< % player-xp) xp))))
+
+(defn xp-for-next-level
+  [state]
+  (get xp-to-next-level (player-level state)))
+
+(defn xp-acc-for-next-level
+  [state]
+  (- (player-xp state) (get xp (dec (player-level state)) 0)))
 
 (defn player-update-hp
   [state f]

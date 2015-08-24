@@ -365,7 +365,7 @@
         x                      0
         y                      0
         inventory              []
-        remaining-hotkeys      (vec (seq "abcdefghijklmnopqrstuvwxyzABCdEFGHIJKLMNOPQRSTUVWQYZ"))
+        remaining-hotkeys      rc/hotkeys
         hotkey-groups          (split-at (count inventory) remaining-hotkeys)
         inventory-with-hotkeys (vec (map #(assoc %1 :hotkey %2) inventory (first hotkey-groups)))
         remaining-hotkeys      (set (clojure.string/join (second hotkey-groups)))

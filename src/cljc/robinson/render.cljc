@@ -621,9 +621,8 @@
   (let [screen        (get state :screen)
         x             18
         y             5
-        height        9
+        height        11
         player-name   (rp/get-player-attribute state :name)
-        hp            (int (rp/player-hp state))
         max-hp        (int (rp/player-max-hp state))
         level         (inc (rp/player-level state))
         xp            (or (rp/xp-acc-for-next-level state) -9)
@@ -635,6 +634,8 @@
     (render-list screen (inc x) (inc y) 43 height
         [{:s (format "Name:      %s" player-name) :fg :black :bg :white :style #{}}
          {:s (format "Level:     %d (%d/%d)" level xp xp-next-level) :fg :black :bg :white :style #{}}
+         {:s "" :fg :black :bg :white :style #{}}
+         {:s (format "Max HP:    %d" max-hp ) :fg :black :bg :white :style #{}}
          {:s "" :fg :black :bg :white :style #{}}
          {:s (format "Strength:  %d" strength ) :fg :black :bg :white :style #{}}
          {:s (format "Dexterity: %d" dexterity ) :fg :black :bg :white :style #{}}

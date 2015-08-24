@@ -595,6 +595,26 @@
   [state]
   (render-multi-select (state :screen) "Inventory" [] (translate-identified-items state (-> state :world :player :inventory))))
 
+(defn render-abilities
+  "Render the player abilities menu if the world state is `:abilities`."
+  [state]
+  (let [screen (get state :screen)
+        abilities (rp/player-abilities state)
+        height (+ 3 (count abilities))]
+    (render-list screen 17 4 43 height
+      (concat
+        (map
+          (fn [ability]
+            {:s (format "<color fg=\"highlight\">%s</color> - %s" (get ability :hotkey) (get ability :name))
+             :fg :black
+             :bg :white
+             :style #{}})
+          abilities)
+        [{:s "" :fg :black :bg :white :style #{}}
+         {:s "Select hotkey or press <color fg=\"highlight\">Esc</color> to exit." :fg :black :bg :white :style #{}}]))
+    (render-rect-double-border screen 16 3 43 height :black :white)
+    (put-string screen 33 3 "Abilities" :black :white)))
+
 (defn render-describe
   "Render the describe info pane if the world state is `:describe`."
   [state]
@@ -1228,6 +1248,7 @@
     (case (current-state state)
       :pickup               (render-pick-up state)
       :inventory            (render-inventory state)
+      :abilities            (render-abilities state)
       :describe             (render-describe state)
       :apply                (render-apply state)
       :apply-item-inventory

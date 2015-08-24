@@ -349,3 +349,7 @@
         (conj lines #?(:clj  (clojure.string/join line)
                        :cljs (gstring/join line)))))))
 
+
+(def hotkeys
+  (vec (seq "abcdefghijklmnopqrstuvwxyzABCdEFGHIJKLMNOPQRSTUVWQYZ")))
+

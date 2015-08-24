@@ -48,7 +48,8 @@
                    attacks
                    status
                    stats
-                   wounds]
+                   wounds
+                   abilities]
   Object
   (toString [this] (str "#Player" (into {} this)))
   ce/CharacterEvents
@@ -145,7 +146,11 @@
       :num-items-eaten          {}}
     ;; map from body-part to {:time <int> :damage <float>}
     ;wounds
-    {}))
+    {}
+    ; abilities
+    [:wtl->hp
+     :wtl->hunger
+     :wtl->thirst]))
 
 (defn get-player
   [state]
@@ -260,6 +265,13 @@
   [actor]
   (first (filter (fn [item] (contains? item :wielded))
                  (get actor :inventory))))
+(defn player-hp
+  [state]
+  (get-in state [:world :player :hp]))
+
+(defn player-wtl
+  [state]
+  (get-in state [:world :player :will-to-live]))
 
 (defn player-hunger
   [state]
@@ -269,21 +281,41 @@
   [state]
   (get-in state [:world :player :thirst]))
 
+(defn player-max-hp
+  [state]
+  (get-in state [:world :player :max-hp]))
+
+(defn player-max-wtl
+  [state]
+  (get-in state [:world :player :max-will-to-live]))
+
 (defn player-max-hunger
   [state]
   (get-in state [:world :player :max-hunger]))
 
+(defn player-max-thirst
+  [state]
+  (get-in state [:world :player :max-thirst]))
+
+(defn player-update-hp
+  [state f]
+  {:post [(<= 0 (player-hp %) (player-max-hp %))]}
+  (update-in state [:world :player :hp] f))
+
+(defn player-update-wtl
+  [state f]
+  {:post [(<= 0 (player-wtl %) (player-max-wtl %))]}
+  (update-in state [:world :player :will-to-live] f))
+
 (defn player-update-hunger
   [state f]
+  {:post [(<= 0 (player-hunger %) (player-max-hunger %))]}
   (update-in state [:world :player :hunger] f))
 
 (defn player-update-thirst
   [state f]
+  {:post [(<= 0 (player-thirst %) (player-max-thirst %))]}
   (update-in state [:world :player :thirst] f))
-
-(defn player-max-thirst
-  [state]
-  (get-in state [:world :player :max-thirst]))
 
 (defn merge-items
   [item1 item2]
@@ -504,4 +536,69 @@
   [state]
   (rc/conj-in state [:world :player :stats :timeline] {:time (get-in state [:world :time])
                                                     :type :player-won}))
+
+;; Player abilities
+(defn ability-id->name
+  [ability-id]
+  (case ability-id
+    :wtl->hp "wtl->hp"
+    :wtl->hunger "wtl->hunger"
+    :wtl->thirst "wtl->thirst"
+    (assert false (format "Could not find ability with id [%s]." (str ability-id)))))
+
+(defn player-abilities
+  [state]
+  (let [abilities (get-in state [:world :player :abilities])]
+    (map (fn [ability-id hotkey] {:id ability-id
+                                  :name (ability-id->name ability-id)
+                                  :hotkey hotkey})
+         abilities
+         rc/hotkeys)))
+
+(defn conj-player-ability
+  [state ability-id]
+  (rc/concat-in state [:world :player :abilities] [ability-id]))
+
+(defn remove-player-ability
+  [state ability-id]
+  (rc/remove-in state [:world :player :abilities] (partial = ability-id)))
+
+(defn hotkey->player-ability
+  [state hotkey-in]
+  (first (filter (fn [{:keys [id name hotkey]}]
+                       (= hotkey hotkey-in))
+                 (player-abilities state))))
+(defn wtl->hp
+  [state]
+  (let [wtl (player-wtl state)
+        cost 30]
+    (if (> wtl cost)
+      (-> state
+        (player-update-wtl (fn [wtl] (- wtl cost)))
+        (player-update-hp (fn [hp] (min (player-max-hp state)
+                                        (+ hp 3))))
+        (rc/append-log "You push yourself past your injuries."))
+      (rc/append-log "You don't have the strength to fight off your injuries."))))
+
+(defn wtl->hunger
+  [state]
+  (let [wtl (player-wtl state)
+        cost 30]
+    (if (> wtl cost)
+      (-> state
+        (player-update-wtl (fn [wtl] (- wtl 30)))
+        (player-update-hunger (fn [hunger] (max 0 (- hunger cost))))
+        (rc/append-log "You push yourself past your hunger."))
+      (rc/append-log "You don't have the strength to fight off your hunger."))))
+
+(defn wtl->thirst
+  [state]
+  (let [wtl (player-wtl state)
+        cost 30]
+    (if (> wtl cost)
+      (-> state
+        (player-update-wtl (fn [wtl] (- wtl cost)))
+        (player-update-thirst (fn [thirst] (max 0 (- thirst cost))))
+        (rc/append-log "You push yourself past your thirst."))
+      (rc/append-log "You don't have the strength to fight off your thirst."))))
 

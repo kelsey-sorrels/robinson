@@ -1646,6 +1646,18 @@
         log-idx  (get-in state [:world :log-idx])]
     (update-in state [:world :log-idx] (fn [idx] (max 0 (dec log-idx))))))
 
+(defn use-ability
+  [state keyin]
+  (if-let [ability (rp/hotkey->player-ability state keyin)]
+    (as-> state state
+      (case (get ability :id)
+        :wtl->hp     (rp/wtl->hp state)
+        :wtl->thirst (rp/wtl->thirst state)
+        :wtl->hunger (rp/wtl->hunger state)
+        (assert false (format "Ability [%s] not found." (str ability))))
+      (rw/assoc-current-state state :normal))
+    state))
+
 (defn reducing-join
   "If coll is empty, it is returned.
    If coll has one element it is returned.
@@ -2657,6 +2669,7 @@
                            \P          [next-party-member      :normal          false]
                            \z          [identity               :craft           true]
                            \Z          [identity               :magic           true]
+                           \v          [identity               :abilities       false]
                            \t          [identity               :throw-inventory false]
                            \T          [identity               :talk            true]
                            \m          [identity               :log             false]
@@ -2738,6 +2751,8 @@
                                                                :normal          false]
                            :escape     [identity               :quit?           false]}
                :inventory {:escape     [identity               :normal          false]}
+               :abilities {:escape     [identity               :normal          false]
+                           :else       [use-ability            identity         true]}
                :describe  {\i          [free-cursor            :describe-inventory false]
                            :left       [move-cursor-left       :describe        false]
                            :down       [move-cursor-down       :describe        false]

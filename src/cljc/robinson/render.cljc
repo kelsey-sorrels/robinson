@@ -624,7 +624,7 @@
         height        11
         player-name   (rp/get-player-attribute state :name)
         max-hp        (int (rp/player-max-hp state))
-        level         (inc (rp/player-level state))
+        level         (rp/player-level state)
         xp            (or (rp/xp-acc-for-next-level state) -9)
         xp-next-level (or (rp/xp-for-next-level state) -99)
         strength      (int (rp/get-player-attribute state :strength))

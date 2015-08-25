@@ -72,6 +72,8 @@
 
 ;; Monster protocol
 (defrecord Monster [race
+                    level
+                    base-xp
                     name 
                     name-plural 
                     pos
@@ -115,52 +117,52 @@
 
 (def ^:private monsters
   [
-  ;;        race            name             name-plural      pos
-  ;;        |               |                |                |    hp
-  ;;        |               |                |                |    | energy
-  ;;        |               |                |                |    | | speed
-  ;;        |               |                |                |    | | |     size (kg)
-  ;;        |               |                |                |    | | |     |     strength
-  ;;        |               |                |                |    | | |     |     |    toughness
-  ;;        |               |                |                |    | | |     |     |    | body-parts                                  attacks                       temperament             movement policy                        range-threshold
-  ;;        |               |                |                |    | | |     |     |    | |                                           |                             |                       |                                       | status
-  (Monster. :rat            "rat"            "rats"           nil  5 0 0.9   0.2   2    5 #{:face :head :neck :body :leg :tail}       #{:bite :claw}                :hostile                :follow-player-in-range-or-random       8 #{:hostile})
-  (Monster. :spider         "spider"         "spiders"        nil 11 0 0.9   0.1   9    4 #{:face :leg :abdomen}                      #{:bite-venom}                :retreat-after-attacked :follow-player-in-range-or-random       5 #{:docile})
-  (Monster. :scorpion       "scorpion"       "scorpions"      nil  9 0 0.3   0.1   7    5 #{:head :claw :leg :abdomen :tail}          #{:bite :claw :sting-venom}   :hostile-after-attacked :follow-player-in-range-or-random       4 #{:hostile})
-  (Monster. :snake          "snake"          "snakes"         nil  3 0 0.8   1     7    8 #{:head :body :tail}                        #{:bite :bite-venom}          :retreat-after-attackd  :follow-player-in-range-or-random       5 #{:hostile})
-  (Monster. :bat            "bat"            "bats"           nil  9 0 1.6   1     5    4 #{:head :body :wing :leg :face}             #{:bite}                      :hostile-after-attacked :follow-player-in-range-or-random       7 #{:hostile})
-  (Monster. :boar           "boar"           "boars"          nil  8 0 1.2  70     6    8 #{:head :body :tail :snout :face :eye :leg} #{:bite :gore}                :hostile                :follow-player-in-range-or-random       7 #{:hostile})
-  (Monster. :gecko          "gecko"          "geckos"         nil  8 0 0.9   0.2   5    5 #{:head :face :body :tail :leg}             #{:bite}                      :hostile-after-sound    :follow-player-in-range-or-random       4 #{:hostile})
-  (Monster. :monkey         "monkey"         "monkies"        nil 12 0 1.2  50     5    3 #{:head :neck :body :tail :leg :face :arm}  #{:bite :punch}               :hostile-after-attacked :follow-player-in-range-or-random      10 #{:hostile})
-  (Monster. :bird           "bird"           "birds"          nil  9 0 2.1   1     6    4 #{:head :body :tail :leg :beak :wing}       #{:bite :claw}                :retreat-after-sound    :random                                 8 #{:docile})
-  (Monster. :centipede      "centipede"      "centipedes"     nil 10 0 0.5   0.1   7    5 #{:head :body :leg}                         #{:bite}                      :hostile-after-attacked :random                                 3 #{:hostile})
-  (Monster. :turtle         "turtle"         "turtles"        nil  4 0 0.5  10     8   20 #{:head :neck :body :leg :face :shell}      #{:bite}                      :retreat-after-attacked :random                                 5 #{:hostile})
-  (Monster. :red-frog       "red frog"       "red frogs"      nil  5 0 1.1   2     5    7 #{:head :body :leg :face}                   #{:claw}                      :hostile-after-attacked :follow-player-in-range-or-random       4 #{:hostile})
-  (Monster. :orange-frog    "orange frog"    "orange frogs"   nil  5 0 1.1   2     5    7 #{:head :body :leg :face}                   #{:claw}                      :hostile-after-attacked :follow-player-in-range-or-random       4 #{:hostile})
-  (Monster. :yellow-frog    "yellow frog"    "yellow frogs"   nil  5 0 1.1   2     5    7 #{:head :body :leg :face}                   #{:claw}                      :hostile-after-attacked :follow-player-in-range-or-random       4 #{:hostile})
-  (Monster. :green-frog     "green frog"     "green frogs"    nil  5 0 1.1   2     5    7 #{:head :body :leg :face}                   #{:claw}                      :hostile-after-attacked :follow-player-in-range-or-random       4 #{:hostile})
-  (Monster. :blue-frog      "blue frog"      "blue frogs"     nil  5 0 1.1   2     5    7 #{:head :body :leg :face}                   #{:claw}                      :hostile-after-attacked :follow-player-in-range-or-random       4 #{:hostile})
-  (Monster. :purple-frog    "purple frog"    "purple frogs"   nil  5 0 1.1   2     5    7 #{:head :body :leg :face}                   #{:claw}                      :hostile-after-attacked :follow-player-in-range-or-random       4 #{:hostile})
-  (Monster. :parrot         "parrot"         "parrots"        nil 15 0 2.1   2     6    9 #{:head :body :leg :face :wing :tail}       #{:claw :bite}                :hostile-during-day     :random                                10 #{:hostile})
-  (Monster. :shark          "shark"          "sharks"         nil 16 0 1.4 800     9   15 #{:head :body :fin :nose :tail}             #{:bite}                      :hostile                :follow-player-in-range-or-random      10 #{:hostile})
-  (Monster. :fish           "fish"           "fish"           nil  9 0 1.0   4     7    8 #{:head :body :fin :tail}                   #{:bite}                      :retreat-after-attacked :random                                 1 #{:hostile})
-  (Monster. :octopus        "octopus"        "octopodes"      nil 14 0 0.8  15     9    9 #{:head :body :tentacle}                    #{:bite :bite-venom :squeeze} :hostile-after-attack   :hide-from-player-in-range-or-random    2 #{:hostile})
-  (Monster. :sea-snake      "sea snake"      "sea snakes"     nil  9 0 1.1   2     4    7 #{:head :body}                              #{:bite :bite-venom}          :hostile-at-night       :follow-player-in-range-or-random       2 #{:hostile})
-  (Monster. :clam           "clam"           "clams"          nil  9 0 0.1   0.2   3   25 #{:shell}                                   #{:clamp}                     :hostile                :constant                               1 #{:hostile})
-  (Monster. :urchin         "urchin"         "urchins"        nil  9 0 0.1   0.1  10   10 #{:body}                                    #{:spike}                     :hostile                :constant                               1 #{:hostile})
-  (Monster. :squid          "squid"          "squids"         nil 14 0 1.5  10     6    4 #{:head :body :tentacle}                    #{:bite :squeeze}             :hostile-after-attacked :hide-from-player-in-range-or-random    2 #{:hostile})
-  (Monster. :crocodile      "crocodile"      "crocodiles"     nil 10 0 0.8 150     5    7 #{:head :body :arm :leg :tail :snout}       #{:bite :claw}                :hostile-after-attacked :follow-player-in-range-or-random       2 #{:hostile})
-  (Monster. :mosquito       "mosquito"       "mosquitoes"     nil  5 0 1.4   0.01  3   11 #{:head :body :leg :wing}                   #{:bite}                      :hostile-after-attacked :follow-player-in-range-or-random       3 #{:hostile})
-  (Monster. :mongoose       "mongoose"       "mongeese"       nil 16 0 1.4   5     6    6 #{:head :body :leg :tail}                   #{:bite :claw}                :hostile-during-day     :follow-player-in-range-or-random       2 #{:hostile})
-  (Monster. :tarantula      "tarantula"      "tarantulas"     nil 12 0 1.4   0.1   9    5 #{:head :body :leg}                         #{:bite}                      :retreat-after-attacked :random                                 2 #{:hostile})
-  (Monster. :monitor-lizard "monitor lizard" "monitor lizards" nil 7 0 1.1  10     7   10 #{:head :body :leg :tail}                   #{:bite :claw}                :hostile-after-sound    :random                                 2 #{:hostile})
-  (Monster. :komodo-dragon  "komodo dragon"  "komodo dragons" nil  8 0 0.8  60    10   10 #{:head :body :leg :tail}                   #{:bite :claw}                :hostile-after-attacked :random                                 2 #{:hostile})
-  (Monster. :cobra          "cobra"          "cobras"         nil  7 0 0.8   6     7    7 #{:head :body :tail}                        #{:bite :bite-venom}          :hostile-after-attacked :random                                 2 #{:hostile})
-  (Monster. :puffer-fish    "puffer fish"    "puffer fish"    nil  9 0 0.7   1     6    7 #{:head :body :tail}                        #{:sting-venom}               :hostile-during-day     :random                                 2 #{:hostile})
-  (Monster. :crab           "crab"           "crabs"          nil 14 0 0.8   2     5    9 #{:head :body}                              #{:claw}                      :hostile-after-sound    :random                                 2 #{:hostile})
-  (Monster. :hermit-crab    "hermit crab"    "hermit crabs"   nil 13 0 0.6   1     7   15 #{:head :shell :leg}                        #{:claw}                      :hostile-during-day     :random                                 1 #{:hostile})
-  (Monster. :electric-eel   "electric eel"   "electric eels"  nil 15 0 0.6  10     5    8 #{:head :body}                              #{:bite}                      :hostile                :follow-player-in-range-or-random       2 #{:hostile})
-  (Monster. :jellyfish      "jellyfish"      "jellyfish"      nil  7 0 0.6   1     4    4 #{:body}                                    #{:sting-venom}               :retreat-after-attacked :random                                 1 #{:hostile})])
+  ;;        race               base-xp             name-plural      pos
+  ;;        |           level  |                   |                |    hp
+  ;;        |               |  |  name             |                |    | energy
+  ;;        |               |  |  |                |                |    | | speed
+  ;;        |               |  |  |                |                |    | | |     size (kg)
+  ;;        |               |  |  |                |                |    | | |     |     strength
+  ;;        |               |  |  |                |                |    | | |     |     |    toughness
+  ;;        |               |  |  |                |                |    | | |     |     |    | body-parts                                  attacks                       temperament             movement policy                        range-threshold
+  ;;        |               |  |  |                |                |    | | |     |     |    | |                                           |                             |                       |                                       | status
+  (Monster. :rat            1  90 "rat"            "rats"           nil  5 0 0.9   0.2   2    5 #{:face :head :neck :body :leg :tail}       #{:bite :claw}                :hostile                :follow-player-in-range-or-random       8 #{:hostile})
+  (Monster. :spider         2 120 "spider"         "spiders"        nil 11 0 0.9   0.1   9    4 #{:face :leg :abdomen}                      #{:bite-venom}                :retreat-after-attacked :follow-player-in-range-or-random       5 #{:docile})
+  (Monster. :scorpion       2 120 "scorpion"       "scorpions"      nil  9 0 0.3   0.1   7    5 #{:head :claw :leg :abdomen :tail}          #{:bite :claw :sting-venom}   :hostile-after-attacked :follow-player-in-range-or-random       4 #{:hostile})
+  (Monster. :snake          2 120 "snake"          "snakes"         nil  3 0 0.8   1     7    8 #{:head :body :tail}                        #{:bite :bite-venom}          :retreat-after-attackd  :follow-player-in-range-or-random       5 #{:hostile})
+  (Monster. :bat            2 120 "bat"            "bats"           nil  9 0 1.6   1     5    4 #{:head :body :wing :leg :face}             #{:bite}                      :hostile-after-attacked :follow-player-in-range-or-random       7 #{:hostile})
+  (Monster. :boar           3 240 "boar"           "boars"          nil  8 0 1.2  70     6    8 #{:head :body :tail :snout :face :eye :leg} #{:bite :gore}                :hostile                :follow-player-in-range-or-random       7 #{:hostile})
+  (Monster. :gecko          3 110 "gecko"          "geckos"         nil  8 0 0.9   0.2   5    5 #{:head :face :body :tail :leg}             #{:bite}                      :hostile-after-sound    :follow-player-in-range-or-random       4 #{:hostile})
+  (Monster. :monkey         4 300 "monkey"         "monkies"        nil 12 0 1.2  50     5    3 #{:head :neck :body :tail :leg :face :arm}  #{:bite :punch}               :hostile-after-attacked :follow-player-in-range-or-random      10 #{:hostile})
+  (Monster. :bird           5 130 "bird"           "birds"          nil  9 0 2.1   1     6    4 #{:head :body :tail :leg :beak :wing}       #{:bite :claw}                :retreat-after-sound    :random                                 8 #{:docile})
+  (Monster. :centipede      6 160 "centipede"      "centipedes"     nil 10 0 0.5   0.1   7    5 #{:head :body :leg}                         #{:bite}                      :hostile-after-attacked :random                                 3 #{:hostile})
+  (Monster. :turtle         6 200 "turtle"         "turtles"        nil  4 0 0.5  10     8   20 #{:head :neck :body :leg :face :shell}      #{:bite}                      :retreat-after-attacked :random                                 5 #{:hostile})
+  (Monster. :red-frog       2  90 "red frog"       "red frogs"      nil  5 0 1.1   2     5    7 #{:head :body :leg :face}                   #{:claw}                      :hostile-after-attacked :follow-player-in-range-or-random       4 #{:hostile})
+  (Monster. :orange-frog    2  90 "orange frog"    "orange frogs"   nil  5 0 1.1   2     5    7 #{:head :body :leg :face}                   #{:claw}                      :hostile-after-attacked :follow-player-in-range-or-random       4 #{:hostile})
+  (Monster. :yellow-frog    2  90 "yellow frog"    "yellow frogs"   nil  5 0 1.1   2     5    7 #{:head :body :leg :face}                   #{:claw}                      :hostile-after-attacked :follow-player-in-range-or-random       4 #{:hostile})
+  (Monster. :green-frog     2  90 "green frog"     "green frogs"    nil  5 0 1.1   2     5    7 #{:head :body :leg :face}                   #{:claw}                      :hostile-after-attacked :follow-player-in-range-or-random       4 #{:hostile})
+  (Monster. :blue-frog      2  90 "blue frog"      "blue frogs"     nil  5 0 1.1   2     5    7 #{:head :body :leg :face}                   #{:claw}                      :hostile-after-attacked :follow-player-in-range-or-random       4 #{:hostile})
+  (Monster. :purple-frog    2  90 "purple frog"    "purple frogs"   nil  5 0 1.1   2     5    7 #{:head :body :leg :face}                   #{:claw}                      :hostile-after-attacked :follow-player-in-range-or-random       4 #{:hostile})
+  (Monster. :parrot         3 120 "parrot"         "parrots"        nil 15 0 2.1   2     6    9 #{:head :body :leg :face :wing :tail}       #{:claw :bite}                :hostile-during-day     :random                                10 #{:hostile})
+  (Monster. :shark          7 400 "shark"          "sharks"         nil 16 0 1.4 800     9   15 #{:head :body :fin :nose :tail}             #{:bite}                      :hostile                :follow-player-in-range-or-random      10 #{:hostile})
+  (Monster. :fish           1  90 "fish"           "fish"           nil  9 0 1.0   4     7    8 #{:head :body :fin :tail}                   #{:bite}                      :retreat-after-attacked :random                                 1 #{:hostile})
+  (Monster. :octopus        4 120 "octopus"        "octopodes"      nil 14 0 0.8  15     9    9 #{:head :body :tentacle}                    #{:bite :bite-venom :squeeze} :hostile-after-attack   :hide-from-player-in-range-or-random    2 #{:hostile})
+  (Monster. :sea-snake      2 120 "sea snake"      "sea snakes"     nil  9 0 1.1   2     4    7 #{:head :body}                              #{:bite :bite-venom}          :hostile-at-night       :follow-player-in-range-or-random       2 #{:hostile})
+  (Monster. :clam           1 200 "clam"           "clams"          nil  9 0 0.1   0.2   3   25 #{:shell}                                   #{:clamp}                     :hostile                :constant                               1 #{:hostile})
+  (Monster. :urchin         2 220 "urchin"         "urchins"        nil  9 0 0.1   0.1  10   10 #{:body}                                    #{:spike}                     :hostile                :constant                               1 #{:hostile})
+  (Monster. :squid          4 330 "squid"          "squids"         nil 14 0 1.5  10     6    4 #{:head :body :tentacle}                    #{:bite :squeeze}             :hostile-after-attacked :hide-from-player-in-range-or-random    2 #{:hostile})
+  (Monster. :crocodile      7 880 "crocodile"      "crocodiles"     nil 10 0 0.8 150     5    7 #{:head :body :arm :leg :tail :snout}       #{:bite :claw}                :hostile-after-attacked :follow-player-in-range-or-random       2 #{:hostile})
+  (Monster. :mosquito       2 180 "mosquito"       "mosquitoes"     nil  5 0 1.4   0.01  3   11 #{:head :body :leg :wing}                   #{:bite}                      :hostile-after-attacked :follow-player-in-range-or-random       3 #{:hostile})
+  (Monster. :mongoose       5 660 "mongoose"       "mongeese"       nil 16 0 1.4   5     6    6 #{:head :body :leg :tail}                   #{:bite :claw}                :hostile-during-day     :follow-player-in-range-or-random       2 #{:hostile})
+  (Monster. :tarantula      2 220 "tarantula"      "tarantulas"     nil 12 0 1.4   0.1   9    5 #{:head :body :leg}                         #{:bite}                      :retreat-after-attacked :random                                 2 #{:hostile})
+  (Monster. :monitor-lizard 5 750 "monitor lizard" "monitor lizards" nil 7 0 1.1  10     7   10 #{:head :body :leg :tail}                   #{:bite :claw}                :hostile-after-sound    :random                                 2 #{:hostile})
+  (Monster. :komodo-dragon  9 990 "komodo dragon"  "komodo dragons" nil  8 0 0.8  60    10   10 #{:head :body :leg :tail}                   #{:bite :claw}                :hostile-after-attacked :random                                 2 #{:hostile})
+  (Monster. :cobra          3 200 "cobra"          "cobras"         nil  7 0 0.8   6     7    7 #{:head :body :tail}                        #{:bite :bite-venom}          :hostile-after-attacked :random                                 2 #{:hostile})
+  (Monster. :puffer-fish    4 245 "puffer fish"    "puffer fish"    nil  9 0 0.7   1     6    7 #{:head :body :tail}                        #{:sting-venom}               :hostile-during-day     :random                                 2 #{:hostile})
+  (Monster. :crab           2 220 "crab"           "crabs"          nil 14 0 0.8   2     5    9 #{:head :body}                              #{:claw}                      :hostile-after-sound    :random                                 2 #{:hostile})
+  (Monster. :hermit-crab    1 230 "hermit crab"    "hermit crabs"   nil 13 0 0.6   1     7   15 #{:head :shell :leg}                        #{:claw}                      :hostile-during-day     :random                                 1 #{:hostile})
+  (Monster. :electric-eel   6 340 "electric eel"   "electric eels"  nil 15 0 0.6  10     5    8 #{:head :body}                              #{:bite}                      :hostile                :follow-player-in-range-or-random       2 #{:hostile})
+  (Monster. :jellyfish      3 190 "jellyfish"      "jellyfish"      nil  7 0 0.6   1     4    4 #{:body}                                    #{:sting-venom}               :retreat-after-attacked :random                                 1 #{:hostile})])
 
 (def ^:private race->monster-map
   (apply hash-map (mapcat (fn [[k v]] [k (first v)])

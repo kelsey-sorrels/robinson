@@ -1766,11 +1766,11 @@
     (let [[cell _ _] (rw/player-cellxy state)
           bedroll?   (contains? (set (map :id (get cell :items []))) :bedroll)]
       (if bedroll?
-        (update-in state [:world :player :will-to-live]
+        (rp/player-update-wtl state
           (fn [will-to-live] (+ 0.05 will-to-live)))
         state))
     (-> state
-      (update-in [:world :player :will-to-live]
+      (rp/player-update-wtl
         (fn [will-to-live]
           (let [dwtl       0.02 ;; you've been on the island. It sucks and you want to get off.
                 ;; if it is night and the player is not within range of a fire, things are extra tough.
@@ -1779,20 +1779,20 @@
                                               (rw/cells-in-range-of-player state 3)))
                              (+ dwtl 0.02)
                              dwtl)
-                hp         (get-in state [:world :player :hp])
-                max-hp     (get-in state [:world :player :max-hp])
+                hp         (rp/player-hp state)
+                max-hp     (rp/player-max-hp state)
                 _          (log/info "hp" hp "max-hp" max-hp)
                 dwtl       (+ dwtl (if (> 0.5 (/ hp max-hp))
                                      1
                                      0))
-                hunger     (get-in state [:world :player :hunger])
-                max-hunger (get-in state [:world :player :max-hunger])
+                hunger     (rp/player-hunger state)
+                max-hunger (rp/player-max-hunger state)
                 _          (log/info "hunger" hunger "max-hunger" max-hunger)
                 dwtl       (+ dwtl (if (> (/ hunger max-hunger) 0.8)
                                      1
                                      0))
-                thirst     (get-in state [:world :player :thirst])
-                max-thirst (get-in state [:world :player :max-thirst])
+                thirst     (rp/player-thirst state)
+                max-thirst (rp/player-max-thirst state)
                 _          (log/info "thirst" thirst "max-thirst" max-thirst)
                 dwtl       (+ dwtl (if (> (/ thirst max-thirst) 0.5)
                                      1
@@ -1816,11 +1816,11 @@
           (- will-to-live dwtl))))
       (update-in [:world :player :status]
                  (fn [status]
-                   (set (if (neg? (get-in state [:world :player :will-to-live]))
+                   (set (if (neg? (rp/player-wtl state))
                           (conj status :dead)
                           status))))
       (as-> state
-        (if (contains? (set (get-in state [:world :player :status])) :dead)
+        (if (rp/player-status-contains? state :dead)
           (rp/update-player-died state :zero-will-to-live)
           state)))))
 
@@ -1885,16 +1885,17 @@
         (-> state
           (rc/conj-in [:world :player :status] :poisoned)
           (rc/append-log "You vomit.")
-          (update-in [:world :player :hunger] (fn [hunger] (min (+ hunger 30)
-                                                                (get-in state [:world :player :max-hunger]))))
-          (update-in [:world :player :thirst] (fn [thirst] (min (+ thirst 30)
-                                                                (get-in state [:world :player :max-thirst]))))
+          (rp/player-update-hunger (fn [hunger] (min (+ hunger 30)
+                                                      (rp/player-max-hunger state))))
+          (rp/player-update-thirst (fn [thirst] (min (+ thirst 30)
+                                                     (rp/player-max-thirst state))))
           (rc/dissoc-in [:world :player :poisoned-time]))
         state)
-    (update-in state [:world :player :hp] (fn [hp] (if (contains? (get-in state [:world :player :status]) :poisoned)
-                                                     (- hp 0.01)
-                                                     (min (get-in state [:world :player :max-hp])
-                                                          (+ hp 0.02)))))))
+    (rp/player-update-hp state (fn [hp]
+                                 (if (rp/player-status-contains? state :poisoned)
+                                   (- hp 0.01)
+                                   (min (rp/player-max-hp state)
+                                        (+ hp 0.02)))))))
 (defn check-paralyzed
   "Set and upset paralyzation player attribute."
   [state]
@@ -1919,13 +1920,13 @@
   [state]
   {:pre [(not (nil? state))]
    :post [(not (nil? %))]}
-  (let [hp                  (get-in state [:world :player :hp])
-        max-hp              (get-in state [:world :player :max-hp])
+  (let [hp                  (rp/player-hp state)
+        max-hp              (rp/player-max-hp state)
         chance-of-infection (inc (/ -1 (inc (/ hp (* max-hp 20)))))] 
     (if (and (not-empty (get-in state [:world :player :wounds]))
              (< (rr/uniform-double 1) chance-of-infection))
       (-> state
-        (update-in [:world :player :status]
+        (rp/update-player-status
           (fn [status]
               (conj status :infected)))
         (rc/append-log "Your wounds have become infected." :green))
@@ -1935,9 +1936,9 @@
   [state]
   {:pre [(not (nil? state))]
    :post [(not (nil? %))]}
-  (update-in state [:world :player :hp]
+  (rp/player-update-hp state
     (fn [hp]
-      (if (contains? (get-in state [:world :player :status]) :infected)
+      (if (rp/player-status-contains? state :infected)
         (- hp 0.2)
         hp))))
 
@@ -1945,7 +1946,7 @@
   [state]
   {:pre [(not (nil? state))]
    :post [(not (nil? %))]}
-  (update-in state [:world :player :hp]
+  (rp/player-update-hp state
     (fn [hp]
       (if (>= (count (filter #(= (get % :type) :fire)
                              (rw/player-adjacent-cells-ext state)))
@@ -1972,16 +1973,16 @@
     (if (and (contains? (get-in state [:world :player :status]) :poisoned)
             (< (rr/uniform-double 1) 0.1))
       (-> state
-        (update-in [:world :player :status]
+        (rp/update-player-status
           (fn [status]
               (disj status :poisoned)))
         (rc/append-log "The poison wore off." :green))
       state)
     ;; chance of infection clearing up
-    (if (and (contains? (get-in state [:world :player :status]) :infected)
+    (if (and (rp/player-status-contains? state :infected)
             (< (rr/uniform-double 1) 0.1))
       (-> state
-        (update-in [:world :player :status]
+        (rp/update-player-status
           (fn [status]
               (disj status :infected)))
         (rc/append-log "The infection has cleared up." :yellow))

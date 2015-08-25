@@ -630,7 +630,7 @@
         (player-update-hp (fn [hp] (min (player-max-hp state)
                                         (+ hp 3))))
         (rc/append-log "You push yourself past your injuries."))
-      (rc/append-log "You don't have the strength to fight off your injuries."))))
+      (rc/append-log state "You don't have the strength to fight off your injuries."))))
 
 (defn wtl->hunger
   [state]
@@ -641,7 +641,7 @@
         (player-update-wtl (fn [wtl] (- wtl 30)))
         (player-update-hunger (fn [hunger] (max 0 (- hunger cost))))
         (rc/append-log "You push yourself past your hunger."))
-      (rc/append-log "You don't have the strength to fight off your hunger."))))
+      (rc/append-log state "You don't have the strength to fight off your hunger."))))
 
 (defn wtl->thirst
   [state]
@@ -652,5 +652,5 @@
         (player-update-wtl (fn [wtl] (- wtl cost)))
         (player-update-thirst (fn [thirst] (max 0 (- thirst cost))))
         (rc/append-log "You push yourself past your thirst."))
-      (rc/append-log "You don't have the strength to fight off your thirst."))))
+      (rc/append-log state "You don't have the strength to fight off your thirst."))))
 

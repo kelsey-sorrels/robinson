@@ -339,15 +339,15 @@
 (defn player-level
   [state]
   (let [player-xp (player-xp state)]
-    (count (filter #(< % player-xp) xp))))
+    (count (filter #(<= % player-xp) xp))))
 
 (defn xp-for-next-level
   [state]
-  (get xp-to-next-level (player-level state)))
+  (get xp-to-next-level (dec (player-level state))))
 
 (defn xp-acc-for-next-level
   [state]
-  (- (player-xp state) (get xp (dec (player-level state)) 0)))
+  (- (player-xp state) (get xp (- (player-level state) 2) 0)))
 
 (defn player-update-hp
   [state f]
@@ -368,6 +368,11 @@
   [state f]
   {:post [(<= 0 (player-thirst %) (player-max-thirst %))]}
   (update-in state [:world :player :thirst] f))
+
+(defn player-update-xp
+  [state f]
+  {:post [(<= 0 (player-xp %))]}
+  (update-in state [:world :player :xp] f))
 
 (defn merge-items
   [item1 item2]
@@ -533,9 +538,12 @@
   [state npc attack]
   (let [max-will-to-live (get-in state [:world :player :max-will-to-live])
         previous-kills   (get-in state [:world :player :stats :animals-killed (get npc :race)] 0)
-        dwill-to-live    (/ 20 (inc previous-kills))]
+        dwill-to-live    (/ 20 (inc previous-kills))
+        xp               (int (* (get npc :base-xp) (+ 1.0 (* 0.1 (- (get npc :level)  (player-level state))))))]
     (-> state
       (player-update-wtl (fn [will-to-live] (min max-will-to-live (+ will-to-live dwill-to-live))))
+      (player-update-xp  (fn [total-xp] (+ total-xp xp)))
+      (rc/append-log (format "You gained %d xp." xp))
       (update-in [:world :player :stats :animals-killed] (fn [animals-killed] (merge-with + animals-killed {(get npc :race) 1})))
       (update-in [:world :player :stats :kills-by-attack-type] (fn [kills-by-attack-type] (merge-with + kills-by-attack-type {attack 1})))
       (rc/conj-in   [:world :player :stats :timeline] {:time  (get-in state [:world :time])

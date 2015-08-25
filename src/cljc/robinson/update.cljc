@@ -148,7 +148,7 @@
         dwtl             (/ (reduce (fn [acc [x y]] (+ acc (- (dec new-time)
                                                               (get (rw/get-cell state x y) :discovered (- new-time 10000)))))
                                  0 visible-cells)
-                            48000)
+                            888000)
         _                (log/info "delta will-to-live" (float dwtl))
         will-to-live     (min (+ will-to-live dwtl)
                               max-will-to-live)]

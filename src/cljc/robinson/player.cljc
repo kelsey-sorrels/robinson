@@ -184,6 +184,14 @@
                  (fn [player]
                    (apply dissoc player k ks))))
 
+(defn player-status
+  [state]
+  (get-player-attribute state :status))
+
+(defn player-status-contains?
+  [state v]
+  (contains? (set (player-status state)) v))
+
 (defn conj-player-status
   [state k & ks]
   (update-player-status state

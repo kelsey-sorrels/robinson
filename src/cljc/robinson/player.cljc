@@ -339,7 +339,7 @@
 (defn player-level
   [state]
   (let [player-xp (player-xp state)]
-    (count (filter #(<= % player-xp) xp))))
+    (count (filter #(>= player-xp %) xp))))
 
 (defn xp-for-next-level
   [state]
@@ -347,7 +347,7 @@
 
 (defn xp-acc-for-next-level
   [state]
-  (- (player-xp state) (get xp (- (player-level state) 2) 0)))
+  (- (player-xp state) (get xp (dec (player-level state)) 0)))
 
 (defn player-update-hp
   [state f]

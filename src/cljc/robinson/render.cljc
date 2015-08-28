@@ -615,6 +615,26 @@
     (render-rect-double-border screen 16 3 43 height :black :white)
     (put-string screen 33 3 "Abilities" :black :white)))
 
+(defn render-ability-choices 
+  "Render the player ability choice menu if the world state is `:gain-level`."
+  [state]
+  (let [screen (get state :screen)
+        abilities (get-in state [:world :ability-choices])
+        height (+ 3 (count abilities))]
+    (render-list screen 17 4 43 height
+      (concat
+        (map
+          (fn [ability]
+            {:s (format "<color fg=\"highlight\">%s</color> - %s" (get ability :hotkey) (get ability :name))
+             :fg :black
+             :bg :white
+             :style #{}})
+          abilities)
+        [{:s "" :fg :black :bg :white :style #{}}
+         {:s "Select hotkey." :fg :black :bg :white :style #{}}]))
+    (render-rect-double-border screen 16 3 43 height :black :white)
+    (put-string screen 29 3 "Choose New Ability" :black :white)))
+
 (defn render-player-stats
   "Render the player character stats  menu if the world state is `:player-stats`."
   [state]
@@ -1280,6 +1300,7 @@
       :inventory            (render-inventory state)
       :abilities            (render-abilities state)
       :player-stats         (render-player-stats state)
+      :gain-level           (render-ability-choices state)
       :describe             (render-describe state)
       :apply                (render-apply state)
       :apply-item-inventory

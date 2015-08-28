@@ -6,6 +6,7 @@
             [taoensso.timbre :as log]
             [robinson.random :as rr]
             clojure.set
+            [clojure.zip :as z]
             #?@(:clj (
                clojure.string)
                :cljs (
@@ -148,9 +149,7 @@
     ;wounds
     {}
     ; abilities
-    [:wtl->hp
-     :wtl->hunger
-     :wtl->thirst]))
+    []))
 
 (defn get-player
   [state]
@@ -183,6 +182,12 @@
   (update-player state
                  (fn [player]
                    (apply dissoc player k ks))))
+
+(defn update-player-attribute
+  [state k f]
+  (update-player state
+                 (fn [player]
+                   (update player k f))))
 
 (defn player-status
   [state]
@@ -338,8 +343,12 @@
 
 (defn player-level
   [state]
+  (get-player-attribute state :level))
+
+(defn player-xp->level
+  [state]
   (let [player-xp (player-xp state)]
-    (count (filter #(>= player-xp %) xp))))
+    (max 1 (count (filter #(>= player-xp %) xp)))))
 
 (defn xp-for-next-level
   [state]
@@ -349,6 +358,10 @@
   [state]
   (- (player-xp state) (get xp (dec (player-level state)) 0)))
 
+(defn inc-player-level
+  [state]
+  (update-in state [:world :player :level] inc))
+
 (defn player-update-hp
   [state f]
   {:post [(<= 0 (player-hp %) (player-max-hp %))]}
@@ -356,7 +369,7 @@
 
 (defn player-update-wtl
   [state f]
-  {:post [(<= 0 (player-wtl %) (player-max-wtl %))]}
+  {:post [(<= (player-wtl %) (player-max-wtl %))]}
   (update-in state [:world :player :will-to-live] f))
 
 (defn player-update-hunger
@@ -596,7 +609,6 @@
   [state]
   (rc/conj-in state [:world :player :stats :timeline] {:time (get-in state [:world :time])
                                                     :type :player-won}))
-
 ;; Player abilities
 (defn ability-id->name
   [ability-id]
@@ -604,6 +616,11 @@
     :wtl->hp "wtl->hp"
     :wtl->hunger "wtl->hunger"
     :wtl->thirst "wtl->thirst"
+    :str+1 "Increase strength (+2%)"
+    :dex+1 "Increase dexterity (+1)"
+    :max-hp+1 "Increase map hp (+1)"
+    :toughness+1 "Increase toughness (+1)"
+    :speed+1 "Increase speed (+5%)"
     (assert false (format "Could not find ability with id [%s]." (str ability-id)))))
 
 (defn player-abilities
@@ -613,6 +630,32 @@
                                   :name (ability-id->name ability-id)
                                   :hotkey hotkey})
          abilities
+         rc/hotkeys)))
+
+;; map of ability-id to set of prerequisite ids
+(def ability-tree
+  {:wtl->hp #{}
+   :wtl->hunger #{}
+   :wtl->thirst #{}
+   :str+1 #{}
+   :dex+1 #{}
+   :max-hp+1 #{}
+   :toughness+1 #{}
+   :speed+1 #{}})
+
+;; TODO: take into account ability prerequisites
+(defn applicable-abilities
+  [state]
+  (let [current-abilities (player-abilities state)]
+    (map (fn [ability-id hotkey] {:id ability-id
+                                  :name (ability-id->name ability-id)
+                                  :hotkey hotkey})
+         (reduce-kv (fn [ids ability-id prereq-ids]
+                      (if (every? (set current-abilities) prereq-ids)
+                        (conj ids ability-id)
+                        ids))
+                   #{}
+                   ability-tree)
          rc/hotkeys)))
 
 (defn conj-player-ability
@@ -628,6 +671,24 @@
   (first (filter (fn [{:keys [id name hotkey]}]
                        (= hotkey hotkey-in))
                  (player-abilities state))))
+
+(defn player-gain-ability
+  [state ability-id]
+  (if(contains? #{:wtl->hp :wtl->thirst :wtl->hunger} ability-id)
+    (conj-player-ability state ability-id)
+    (case ability-id
+      :str+1
+        (update-player-attribute state :strength (partial + 0.02))
+      :dex+1
+        (update-player-attribute state :dexterity inc)
+      :max-hp+1
+        (update-player-attribute state :max-hp inc)
+      :toughness+1
+        (update-player-attribute state :max-hp inc)
+      :speed+1
+        (update-player-attribute state :speed (partial + 0.05))
+      state)))
+   
 (defn wtl->hp
   [state]
   (let [wtl (player-wtl state)

@@ -1772,45 +1772,45 @@
     (-> state
       (rp/player-update-wtl
         (fn [will-to-live]
-          (let [dwtl       0.02 ;; you've been on the island. It sucks and you want to get off.
+          (let [dwtl       0.001 ;; you've been on the island. It sucks and you want to get off.
                 ;; if it is night and the player is not within range of a fire, things are extra tough.
                 dwtl       (if (and (rw/is-night? state)
                                     (not-any? #(= (get % :type) :fire)
                                               (rw/cells-in-range-of-player state 3)))
-                             (+ dwtl 0.02)
+                             (+ dwtl 0.002)
                              dwtl)
                 hp         (rp/player-hp state)
                 max-hp     (rp/player-max-hp state)
                 _          (log/info "hp" hp "max-hp" max-hp)
                 dwtl       (+ dwtl (if (> 0.5 (/ hp max-hp))
-                                     1
+                                     0.1
                                      0))
                 hunger     (rp/player-hunger state)
                 max-hunger (rp/player-max-hunger state)
                 _          (log/info "hunger" hunger "max-hunger" max-hunger)
                 dwtl       (+ dwtl (if (> (/ hunger max-hunger) 0.8)
-                                     1
+                                     0.1
                                      0))
                 thirst     (rp/player-thirst state)
                 max-thirst (rp/player-max-thirst state)
                 _          (log/info "thirst" thirst "max-thirst" max-thirst)
                 dwtl       (+ dwtl (if (> (/ thirst max-thirst) 0.5)
-                                     1
+                                     0.1
                                      0))
                 wounded    (rp/player-wounded? state)
                 _          (log/info "wounded" wounded)
                 dwtl       (+ dwtl (if wounded
-                                     1
+                                     0.21
                                      0))
                 poisoned   (rp/player-poisoned? state)
                 _          (log/info "poisoned" poisoned)
                 dwtl       (+ dwtl (if poisoned
-                                     1
+                                     0.3
                                      0))
                 infected   (rp/player-infected? state)
                 _          (log/info "infected" infected)
                 dwtl       (+ dwtl (if infected
-                                     1
+                                     0.41
                                      0))]
           (log/info "dwtl" dwtl "will-to-live" will-to-live)
           (- will-to-live dwtl))))
@@ -1835,6 +1835,26 @@
         (rc/append-log state (format "You feel %s." (rr/rand-nth ["happy" "happier" "glad" "elated" "great" "good"])))
         (rc/append-log state (format "You feel %s." (rr/rand-nth ["sad" "sadder" "down" "unhappy" "bummed" "bad"]))))
       state)))
+
+(defn maybe-gain-level
+  [state]
+  (if (> (rp/player-xp->level state) (rp/player-level state))
+    (-> state
+      (rp/inc-player-level)
+      (assoc-in [:world :ability-choices] (take 3 (rr/rnd-shuffle (rp/applicable-abilities state))))
+      ;; TODO: pick three random player abilities
+      (rw/assoc-current-state :gain-level))
+    state))
+
+(defn choose-ability
+  [state keyin]
+  (if-let [ability (first (filter (fn [ability] (= keyin (get ability :hotkey)))
+                                  (get-in state [:world :ability-choices])))]
+                                  
+    (-> state
+      (rp/player-gain-ability (get ability :id))
+      (rw/assoc-current-state :normal))
+    state))
 
 (defn fruit-identify-activate
   "Display a message if the fruit being identified is poisonous."
@@ -2691,9 +2711,11 @@
                                               (rc/append-log "log5..........................."))
                                             state))
                                           :normal true]
-                          \0           [(fn [state]
+                          #_#_\0           [(fn [state]
                                           (log/info "monster level" (rnpc/monster-level state))
                                           state)               :normal false]
+                          \0           [(fn [state]
+                                          (rp/player-update-xp state (partial + 100))) :normal false]
                           \1           [(fn [state]
                                           (log/info "showing world")
                                           (when (get-in state [:world :dev-mode])
@@ -2893,6 +2915,9 @@
                           {:escape     [identity               :normal          false]
                            :else       [magic-inventory        :normal          true]}
                :sleep     {:else       [do-sleep               identity         true]}
+               :gain-level
+                          {:escape     [identity               :normal          false]
+                           :else       [choose-ability         identity         false]}
                :help-controls
                           {\n          [identity               :help-ui         false]
                            \p          [identity               :help-gameplay   false]
@@ -3035,6 +3060,8 @@
                   (update-visibility)
                   ;; add will-to-live flavor message
                   (log-will-to-live-flavor wtl)
+                  ;; maybe gain level
+                  (maybe-gain-level)
                   (coalesce-logs))
                 state))
             (update-quests)

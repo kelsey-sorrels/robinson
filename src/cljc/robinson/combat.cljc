@@ -1,4 +1,4 @@
-;; Functions that manipulate state to do what the user commands.
+;; Functions that manipulate state to do what the user commands.)
 (ns robinson.combat
   (:require [robinson.common :as rc]
             [robinson.random :as rr]
@@ -179,7 +179,7 @@
     (log/info "attacker" (:race attacker) "defender" (:race defender))
     ;;Damage = Astr * (Adex / Dsp) * (As / Ds) * (At / Dt)
     (let [attacker-strength  (dcp/get-strength attacker state)
-          attacker-dexterity (get attacker :dexterity 0.1)
+          attacker-dexterity (dcp/get-dexterity attacker state)
           defender-speed     (dcp/get-speed defender state)
           attacker-size      (dcp/get-size attacker state)
           defender-size      (dcp/get-size defender state)

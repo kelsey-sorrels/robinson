@@ -1653,9 +1653,13 @@
   (if-let [ability (rp/hotkey->player-ability state keyin)]
     (as-> state state
       (case (get ability :id)
-        :wtl->hp     (rp/wtl->hp state)
-        :wtl->thirst (rp/wtl->thirst state)
-        :wtl->hunger (rp/wtl->hunger state)
+        :wtl->hp             (rp/wtl->hp state)
+        :wtl->thirst         (rp/wtl->thirst state)
+        :wtl->hunger         (rp/wtl->hunger state)
+        :wtl->strength-buff  (rp/wtl->strength-buff state)
+        :wtl->dexterity-buff (rp/wtl->dexterity-buff state)
+        :wtl->speed-buff     (rp/wtl->speed-buff state)
+        :wtl->toughness-buff (rp/wtl->toughness-buff state)
         (assert false (format "Ability [%s] not found." (str ability))))
       (rw/assoc-current-state state :normal))
     state))
@@ -1887,7 +1891,7 @@
 
 (defmacro if-player-attribute-elapsed
   [state player-key true-expr false-expr]
-  `(if (let [time-value# (rp/get-player-value ~state ~player-key)]
+  `(if (let [time-value# (rp/get-player-attribute ~state ~player-key)]
          (and (some? time-value#)
               (< time-value# (rw/get-time ~state))))
      ~true-expr

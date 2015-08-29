@@ -19,6 +19,55 @@
      :cljs
      (apply gstring/format s args)))
 
+(defn get-player
+  [state]
+  (get-in state [:world :player]))
+
+(defn update-player
+  [state f]
+  (update-in state [:world :player] f))
+
+(defn update-player-status
+  [state f]
+  (update-in state [:world :player :status] f))
+
+(defn get-player-attribute
+  [state k]
+  (get (get-player state) k))
+
+(defn buff-active?
+  [state buff-id]
+  (< (get (get-player-attribute state :buffs) buff-id 0)
+     (get-in state [:world :time])))
+
+(defn player-strength
+  [state]
+  (+ (get-player-attribute state :strength)
+     (if (buff-active? state :strength)
+       0.1
+       0)))
+
+(defn player-dexterity
+  [state]
+  (+ (get-player-attribute state :dexterity)
+     (if (buff-active? state :dexterity)
+       0.1
+       0)))
+
+(defn player-speed
+  [state]
+  (+ (get-player-attribute state :speed)
+     (if (buff-active? state :speed)
+       0.1
+       0)))
+
+(defn player-toughness
+  [state]
+  (+ (get-player-attribute state :toughness)
+     (if (buff-active? state :toughness)
+       0.1
+       0)))
+
 (defrecord Player [id
                    name
                    race
@@ -48,6 +97,7 @@
                    body-parts
                    attacks
                    status
+                   buffs
                    stats
                    wounds
                    abilities]
@@ -68,13 +118,15 @@
   (get-energy [this state]
     (get this :energy))
   (get-speed [this state]
-    (get this :speed))
+    (player-speed state))
   (get-size [this state]
     (get this :size))
   (get-strength [this state]
-    (get this :strength))
+    (player-strength state))
+  (get-dexterity [this state]
+    (player-dexterity state))
   (get-toughness [this state]
-    (get this :toughness)))
+    (player-toughness state)))
 
 (defn gen-player
   [inventory starting-pos]
@@ -137,6 +189,8 @@
     #{:punch}
     ;status
     #{}
+    ; buffs (buff-id->expiration-tim (buff-id->expiration-time)
+    {}
     ;stats
     {
       :timeline (list)
@@ -150,26 +204,6 @@
     {}
     ; abilities
     []))
-
-(defn get-player
-  [state]
-  (get-in state [:world :player]))
-
-(defn get-player-value
-  [state k]
-  (get (get-player state) k))
-
-(defn update-player
-  [state f]
-  (update-in state [:world :player] f))
-
-(defn update-player-status
-  [state f]
-  (update-in state [:world :player :status] f))
-
-(defn get-player-attribute
-  [state k]
-  (get (get-player state) k))
 
 (defn assoc-player-attribute
   [state k v & kvs]
@@ -212,6 +246,22 @@
 (defn some-player-status
   [state pred]
   (some pred (get-in state [:world :player :status])))
+
+(def buff-id->duration
+  {:wtl->strength-buff 20
+   :wtl->dexterity-buff 20
+   :wtl->speed-buff 15
+   :wtl->toughness-buff 20})
+
+(defn start-player-buff 
+  [state buff-id]
+  (update-player-attribute state
+                           :buffs
+                           (fn [buffs]
+                             (assoc buffs
+                                    buff-id
+                                    (+ (get-in state [:world :time])
+                                       (get buff-id->duration buff-id))))))
 
 (defn neg-hp?
   "Return `true` if the player has negative hp."
@@ -309,7 +359,6 @@
 (defn player-max-thirst
   [state]
   (get-in state [:world :player :max-thirst]))
-
 
 (defn player-xp
   [state]
@@ -621,6 +670,10 @@
     :max-hp+1 "Increase map hp (+1)"
     :toughness+1 "Increase toughness (+1)"
     :speed+1 "Increase speed (+5%)"
+    :wtl->strength-buff "Increase strength temporarily"
+    :wtl->dexterity-buff "Increase dexterity temporarily"
+    :wtl->speed-buff "Increase speed temporarility"
+    :wtl->toughness-buff "Increase toughness temporarily"
     (assert false (format "Could not find ability with id [%s]." (str ability-id)))))
 
 (defn player-abilities
@@ -641,7 +694,11 @@
    :dex+1 #{}
    :max-hp+1 #{}
    :toughness+1 #{}
-   :speed+1 #{}})
+   :speed+1 #{}
+   :wtl->strength-buff #{}
+   :wtl->dexterity-buff #{}
+   :wtl->speed-buff #{}
+   :wtl->toughness-buff #{}})
 
 ;; TODO: take into account ability prerequisites
 (defn applicable-abilities
@@ -674,7 +731,14 @@
 
 (defn player-gain-ability
   [state ability-id]
-  (if(contains? #{:wtl->hp :wtl->thirst :wtl->hunger} ability-id)
+  (if(contains? #{:wtl->hp
+                  :wtl->thirst
+                  :wtl->hunger
+                  :wtl->strength-buff
+                  :wtl->dexterity-buff
+                  :wtl->speed-buff
+                  :wtl->toughness-buff}
+                ability-id)
     (conj-player-ability state ability-id)
     (case ability-id
       :str+1
@@ -687,7 +751,7 @@
         (update-player-attribute state :max-hp inc)
       :speed+1
         (update-player-attribute state :speed (partial + 0.05))
-      state)))
+      (assert false (format "Ability [%s] not found" (str ability-id))))))
    
 (defn wtl->hp
   [state]
@@ -722,4 +786,48 @@
         (player-update-thirst (fn [thirst] (max 0 (- thirst cost))))
         (rc/append-log "You push yourself past your thirst."))
       (rc/append-log state "You don't have the strength to fight off your thirst."))))
+
+(defn wtl->strength-buff
+  [state]
+  (let [wtl (player-wtl state)
+        cost 30]
+    (if (> wtl cost)
+      (-> state
+        (player-update-wtl (fn [wtl] (- wtl cost)))
+        (start-player-buff :strength)
+        (rc/append-log "You draw strength from your mental fortitude."))
+      (rc/append-log state "You don't have the mental strength to do it."))))
+
+(defn wtl->dexterity-buff
+  [state]
+  (let [wtl (player-wtl state)
+        cost 30]
+    (if (> wtl cost)
+      (-> state
+        (player-update-wtl (fn [wtl] (- wtl cost)))
+        (start-player-buff :dexterity)
+        (rc/append-log "You concentrate."))
+      (rc/append-log state "You don't have the mental will to concentrate."))))
+
+(defn wtl->speed-buff
+  [state]
+  (let [wtl (player-wtl state)
+        cost 30]
+    (if (> wtl cost)
+      (-> state
+        (player-update-wtl (fn [wtl] (- wtl cost)))
+        (start-player-buff :speed)
+        (rc/append-log "You start sprinting."))
+      (rc/append-log state "You don't have the mental will to run."))))
+
+(defn wtl->toughness-buff
+  [state]
+  (let [wtl (player-wtl state)
+        cost 30]
+    (if (> wtl cost)
+      (-> state
+        (player-update-wtl (fn [wtl] (- wtl cost)))
+        (start-player-buff :speed)
+        (rc/append-log "You feel like you can take on anything"))
+      (rc/append-log state "You don't have the mental will to endure pain."))))
 

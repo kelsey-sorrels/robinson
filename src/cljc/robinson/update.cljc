@@ -2100,22 +2100,28 @@
           get-type               (memoize (fn [x y] (do
                                                       ;(log/debug "traversable?" x y "type" (get-in place [y x :type]))
                                                       (or (get (rw/get-cell state x y) :type) :unknown))))
-          water-traversable?     (fn water-traversable? [[x y]]
-                                   (and (not (rc/farther-than? npc-pos {:x x :y y} threshold))
-                                        (contains? #{:water :surf} (get-type x y))
-                                        #_(every? water-traversable? (rw/adjacent-xys-ext x y))))
-          land-traversable?      (fn [[x y]]
-                                   (and (not (rc/farther-than? npc-pos {:x x :y y} threshold))
-                                        (contains? #{:floor
-                                                     :open-door
-                                                     :corridor
-                                                     :sand
-                                                     :dirt
-                                                     :gravel
-                                                     :tall-grass
-                                                     :short-grass}
-                                                   (get-type x y))))
+          npc-xys                (set (map (fn [npc] (rc/pos->xy (get npc :pos)))
+                                           (rnpc/npcs-in-viewport state)))
       
+          water-traversable?     (fn water-traversable? [[x y]]
+                                   (or (= [x y] npc-pos-vec)
+                                       (and (not (rc/farther-than? npc-pos {:x x :y y} threshold))
+                                            #_(not (contains? (disj npc-xys npc-pos-vec) [x y]))
+                                            (contains? #{:water :surf} (get-type x y))
+                                            #_(every? water-traversable? (rw/adjacent-xys-ext x y)))))
+          land-traversable?      (fn land-traversable? [[x y]]
+                                   (or (= [x y] npc-pos-vec)
+                                       (and (not (rc/farther-than? npc-pos {:x x :y y} threshold))
+                                            #_(not (contains? (disj npc-xys npc-pos-vec) [x y]))
+                                            (contains? #{:floor
+                                                         :open-door
+                                                         :corridor
+                                                         :sand
+                                                         :dirt
+                                                         :gravel
+                                                         :tall-grass
+                                                         :short-grass}
+                                                       (get-type x y)))))
           traversable?           (cond
                                    (and npc-can-move-in-water
                                         npc-can-move-on-land)

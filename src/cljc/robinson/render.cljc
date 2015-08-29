@@ -602,16 +602,21 @@
         abilities (rp/player-abilities state)
         height (+ 3 (count abilities))]
     (render-list screen 17 4 43 height
-      (concat
-        (map
-          (fn [ability]
-            {:s (format "<color fg=\"highlight\">%s</color> - %s" (get ability :hotkey) (get ability :name))
-             :fg :black
-             :bg :white
-             :style #{}})
-          abilities)
-        [{:s "" :fg :black :bg :white :style #{}}
+      (if (seq abilities)
+        (concat
+          (map
+            (fn [ability]
+              {:s (format "<color fg=\"highlight\">%s</color> - %s" (get ability :hotkey) (get ability :name))
+               :fg :black
+               :bg :white
+               :style #{}})
+            abilities)
+          [{:s "" :fg :black :bg :white :style #{}}
+           {:s "Select hotkey or press <color fg=\"highlight\">Esc</color> to exit." :fg :black :bg :white :style #{}}])
+        [{:s "No abilities." :fg :black :bg :white :style #{}}
+         {:s "" :fg :black :bg :white :style #{}}
          {:s "Select hotkey or press <color fg=\"highlight\">Esc</color> to exit." :fg :black :bg :white :style #{}}]))
+        
     (render-rect-double-border screen 16 3 43 height :black :white)
     (put-string screen 33 3 "Abilities" :black :white)))
 

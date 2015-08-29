@@ -600,7 +600,9 @@
   [state]
   (let [screen (get state :screen)
         abilities (rp/player-abilities state)
-        height (+ 3 (count abilities))]
+        height (if (seq abilities)
+                 (+ 3 (count abilities))
+                 4)]  
     (render-list screen 17 4 43 height
       (if (seq abilities)
         (concat
@@ -615,7 +617,7 @@
            {:s "Select hotkey or press <color fg=\"highlight\">Esc</color> to exit." :fg :black :bg :white :style #{}}])
         [{:s "No abilities." :fg :black :bg :white :style #{}}
          {:s "" :fg :black :bg :white :style #{}}
-         {:s "Select hotkey or press <color fg=\"highlight\">Esc</color> to exit." :fg :black :bg :white :style #{}}]))
+         {:s "Press <color fg=\"highlight\">Esc</color> to exit." :fg :black :bg :white :style #{}}]))
         
     (render-rect-double-border screen 16 3 43 height :black :white)
     (put-string screen 33 3 "Abilities" :black :white)))

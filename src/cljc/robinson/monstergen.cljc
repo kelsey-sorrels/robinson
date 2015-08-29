@@ -53,6 +53,7 @@
 (defmulti do-get-speed dispatch-on-npc-race)
 (defmulti do-get-size dispatch-on-npc-race)
 (defmulti do-get-strength dispatch-on-npc-race)
+(defmulti do-get-dexterity dispatch-on-npc-race)
 (defmulti do-get-toughness dispatch-on-npc-race)
 
 ;; default methods for CharacterEvents
@@ -67,6 +68,7 @@
 (defmethod do-get-speed :default [npc _] (get npc :speed))
 (defmethod do-get-size :default [npc _] (get npc :size))
 (defmethod do-get-strength :default [npc _] (get npc :strength))
+(defmethod do-get-dexterity :default [npc _] (get npc :dexterity 1))
 (defmethod do-get-toughness :default [npc _] (get npc :toughness))
 
 
@@ -112,6 +114,8 @@
     (do-get-size this state))
   (get-strength [this state]
     (do-get-strength this state))
+  (get-dexterity [this state]
+    (do-get-dexterity this state))
   (get-toughness [this state]
     (do-get-toughness this state)))
 

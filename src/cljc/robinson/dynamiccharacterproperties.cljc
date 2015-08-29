@@ -6,6 +6,7 @@
   (get-speed [this state])
   (get-size [this state])
   (get-strength [this state])
+  (get-dexterity [this state])
   (get-toughness [this state]))
 
 ;; namespace with only a protocol gets optimized out, causing missing dependencies.

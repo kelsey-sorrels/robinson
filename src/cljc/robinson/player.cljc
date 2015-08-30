@@ -247,11 +247,14 @@
   [state pred]
   (some pred (get-in state [:world :player :status])))
 
-(def buff-id->duration
-  {:wtl->strength-buff 20
-   :wtl->dexterity-buff 20
-   :wtl->speed-buff 15
-   :wtl->toughness-buff 20})
+(defn buff-id->duration
+  [buff-id]
+  (case buff-id
+     :wtl->strength-buff 20
+     :wtl->dexterity-buff 20
+     :wtl->speed-buff 15
+     :wtl->toughness-buff 20
+     (assert false (format "No buff with id %s" buff-id))))
 
 (defn start-player-buff 
   [state buff-id]
@@ -261,7 +264,7 @@
                              (assoc buffs
                                     buff-id
                                     (+ (get-in state [:world :time])
-                                       (get buff-id->duration buff-id))))))
+                                       (buff-id->duration buff-id))))))
 
 (defn neg-hp?
   "Return `true` if the player has negative hp."
@@ -662,6 +665,23 @@
 (defn ability-id->name
   [ability-id]
   (case ability-id
+    :wtl->hp "Healing Flow"
+    :wtl->hunger "Suppress Appetite"
+    :wtl->thirst "Quell Thirst"
+    :str+1 "Strength"
+    :dex+1 "Dexterity"
+    :max-hp+1 "Hardened"
+    :toughness+1 "Tough"
+    :speed+1 "Athletic"
+    :wtl->strength-buff "Heroic Strength"
+    :wtl->dexterity-buff "Superior Dexterity"
+    :wtl->speed-buff "Sprint"
+    :wtl->toughness-buff "Defensive Stance"
+    (assert false (format "Could not find ability with id [%s]." (str ability-id)))))
+
+(defn ability-id->description
+  [ability-id]
+  (case ability-id
     :wtl->hp "wtl->hp"
     :wtl->hunger "wtl->hunger"
     :wtl->thirst "wtl->thirst"
@@ -679,9 +699,10 @@
 (defn player-abilities
   [state]
   (let [abilities (get-in state [:world :player :abilities])]
-    (map (fn [ability-id hotkey] {:id ability-id
-                                  :name (ability-id->name ability-id)
-                                  :hotkey hotkey})
+    (map (fn [ability-id hotkey] {:id          ability-id
+                                  :name        (ability-id->name ability-id)
+                                  :description (ability-id->description ability-id)
+                                  :hotkey      hotkey})
          abilities
          rc/hotkeys)))
 
@@ -700,13 +721,14 @@
    :wtl->speed-buff #{}
    :wtl->toughness-buff #{}})
 
-;; TODO: take into account ability prerequisites
+;; Takes into account ability prerequisites
 (defn applicable-abilities
   [state]
   (let [current-abilities (player-abilities state)]
-    (map (fn [ability-id hotkey] {:id ability-id
-                                  :name (ability-id->name ability-id)
-                                  :hotkey hotkey})
+    (map (fn [ability-id hotkey] {:id          ability-id
+                                  :name        (ability-id->name ability-id)
+                                  :description (ability-id->description ability-id)
+                                  :hotkey      hotkey})
          (reduce-kv (fn [ids ability-id prereq-ids]
                       (if (every? (set current-abilities) prereq-ids)
                         (conj ids ability-id)
@@ -794,7 +816,7 @@
     (if (> wtl cost)
       (-> state
         (player-update-wtl (fn [wtl] (- wtl cost)))
-        (start-player-buff :strength)
+        (start-player-buff :wtl->strength-buff)
         (rc/append-log "You draw strength from your mental fortitude."))
       (rc/append-log state "You don't have the mental strength to do it."))))
 
@@ -805,7 +827,7 @@
     (if (> wtl cost)
       (-> state
         (player-update-wtl (fn [wtl] (- wtl cost)))
-        (start-player-buff :dexterity)
+        (start-player-buff :wtl->dexterity-buff)
         (rc/append-log "You concentrate."))
       (rc/append-log state "You don't have the mental will to concentrate."))))
 
@@ -816,7 +838,7 @@
     (if (> wtl cost)
       (-> state
         (player-update-wtl (fn [wtl] (- wtl cost)))
-        (start-player-buff :speed)
+        (start-player-buff :wtl->speed-buff)
         (rc/append-log "You start sprinting."))
       (rc/append-log state "You don't have the mental will to run."))))
 
@@ -827,7 +849,7 @@
     (if (> wtl cost)
       (-> state
         (player-update-wtl (fn [wtl] (- wtl cost)))
-        (start-player-buff :speed)
+        (start-player-buff :wtl->toughness-buff)
         (rc/append-log "You feel like you can take on anything"))
       (rc/append-log state "You don't have the mental will to endure pain."))))
 

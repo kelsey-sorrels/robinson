@@ -601,17 +601,19 @@
   (let [screen (get state :screen)
         abilities (rp/player-abilities state)
         height (if (seq abilities)
-                 (+ 3 (count abilities))
+                 (+ 3 (* 3 (count abilities)))
                  4)]  
     (render-list screen 17 4 43 height
       (if (seq abilities)
         (concat
-          (map
+          (mapcat
             (fn [ability]
-              {:s (format "<color fg=\"highlight\">%s</color> - %s" (get ability :hotkey) (get ability :name))
-               :fg :black
-               :bg :white
-               :style #{}})
+              [{:s (format "<color fg=\"highlight\">%s</color> - %s" (get ability :hotkey) (get ability :name))
+                :fg :black
+                :bg :white
+                :style #{}}
+               {:s (format "    %s" (get ability :description)) :fg :black :bg :white :style #{}}
+               {:s "" :fg :black :bg :white :style #{}}])
             abilities)
           [{:s "" :fg :black :bg :white :style #{}}
            {:s "Select hotkey or press <color fg=\"highlight\">Esc</color> to exit." :fg :black :bg :white :style #{}}])
@@ -627,15 +629,17 @@
   [state]
   (let [screen (get state :screen)
         abilities (get-in state [:world :ability-choices])
-        height (+ 3 (count abilities))]
+        height (+ 3 (* 3 (count abilities)))]
     (render-list screen 17 4 43 height
       (concat
-        (map
+        (mapcat
           (fn [ability]
-            {:s (format "<color fg=\"highlight\">%s</color> - %s" (get ability :hotkey) (get ability :name))
-             :fg :black
-             :bg :white
-             :style #{}})
+            [{:s (format "<color fg=\"highlight\">%s</color> - %s" (get ability :hotkey) (get ability :name))
+              :fg :black
+              :bg :white
+              :style #{}}
+             {:s (format "    %s" (get ability :description)) :fg :black :bg :white :style #{}}
+             {:s "" :fg :black :bg :white :style #{}}])
           abilities)
         [{:s "" :fg :black :bg :white :style #{}}
          {:s "Select hotkey." :fg :black :bg :white :style #{}}]))

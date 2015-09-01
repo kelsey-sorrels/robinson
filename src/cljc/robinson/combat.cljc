@@ -396,8 +396,8 @@
   [attacker defender]
   (let [state {:current-state :normal
                :world         {:npcs [defender]
-                               :player attacker}
-                               :time 0}
+                               :player attacker
+                               :time 0}}
         attacker-path [:world :player]
         defender-path [:world :npcs 0]
         pass-through  (fn [m & _] m)]

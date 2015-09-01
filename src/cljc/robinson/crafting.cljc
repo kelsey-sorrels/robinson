@@ -27,64 +27,64 @@
                                    :transportation (t/Vec Recipe)})))
 (def recipes 
   {:weapons  [
-     {:name "flint spear"            :hotkey \a :recipe {:exhaust [:flint-blade :stick :rope] :add [:flint-spear]}}
-     {:name "flint axe"              :hotkey \b :recipe {:exhaust [:flint-axe-blade :stick :rope] :add [:flint-axe]}}
-     {:name "flint knife"            :hotkey \c :recipe {:exhaust [:flint-blade :stick :rope] :add [:flint-knife]}}
-     {:name "obsidian spear"         :hotkey \d :recipe {:exhaust [:obsidian-blade :stick :rope] :add [:obsidian-spear]}}
-     {:name "obsidian axe"           :hotkey \e :recipe {:exhaust [:obsidian-blade :stick :rope] :add [:obsidian-axe]}}
-     {:name "obsidian knife"         :hotkey \f :recipe {:exhaust [:obsidian-blade :stick :rope] :add [:obsidian-knife]}}
-     {:name "bow"                    :hotkey \g :recipe {:exhaust [:stick :rope] :add [:bow]}}
-     {:name "arrow"                  :hotkey \h :recipe {:exhaust [:obsidian-blade :stick] :add [:arrow]}}]
+     {:name "flint spear"            :hotkey \a :hunger 10 :thirst 20 :recipe {:exhaust [:flint-blade :stick :rope] :add [:flint-spear]}}
+     {:name "flint axe"              :hotkey \b :hunger 10 :thirst 20 :recipe {:exhaust [:flint-axe-blade :stick :rope] :add [:flint-axe]}}
+     {:name "flint knife"            :hotkey \c :hunger 10 :thirst 20 :recipe {:exhaust [:flint-blade :stick :rope] :add [:flint-knife]}}
+     {:name "obsidian spear"         :hotkey \d :hunger 10 :thirst 20 :recipe {:exhaust [:obsidian-blade :stick :rope] :add [:obsidian-spear]}}
+     {:name "obsidian axe"           :hotkey \e :hunger 10 :thirst 20 :recipe {:exhaust [:obsidian-blade :stick :rope] :add [:obsidian-axe]}}
+     {:name "obsidian knife"         :hotkey \f :hunger 10 :thirst 20 :recipe {:exhaust [:obsidian-blade :stick :rope] :add [:obsidian-knife]}}
+     {:name "bow"                    :hotkey \g :hunger 10 :thirst 20 :recipe {:exhaust [:stick :rope] :add [:bow]}}
+     {:name "arrow"                  :hotkey \h :hunger 10 :thirst 20 :recipe {:exhaust [:obsidian-blade :stick] :add [:arrow]}}]
    :survival [
-     {:name "flint blade"            :hotkey \a :recipe {:exhaust [:rock :flint]                 :add [:flint-blade]}}
-     {:name "flint axe blade"        :hotkey \b :recipe {:exhaust [:rock :large-flint]           :add [:flint-axe-blade]}}
-     {:name "obsidian blade"         :hotkey \c :recipe {:exhaust [:rock :obsidian]              :add [:obsidian-blade]}}
-     {:name "rope"                   :hotkey \d :recipe {:exhaust [:plant-fiber]                 :add [:rope]}}
-     {:name "sharpened stick"        :hotkey \e :recipe {:exhaust [:stick]
-                                                         :have-or [:obsidian-knife
-                                                                   :obsidian-spear
-                                                                   :obsidian-axe
-                                                                   :knife]
-                                                         :add     [:sharpened-stick]}}
-     {:name "bamboo water collector" :hotkey \f :recipe {:exhaust [:rope :bamboo :stick]
-                                                         :have-or [:obsidian-knife
-                                                                   :obsidian-spear
-                                                                   :obsidian-axe
-                                                                   :knife]
-                                                         :add [:bamboo-water-collector]} :place :cell-type}
-     {:name "solar still"            :hotkey \g :recipe {:exhaust [:rock :tarp :stick :coconut-shell]
-                                                         :have-or [:stick]
-                                                         :add [:solar-still]} :place :cell-type}
-     {:name "fishing pole"           :hotkey \h :recipe {:exhaust [:fishing-line-and-hook :stick]
-                                                         :add [:fishing-pole]}
-                                                :place :inventory}
-     {:name "fire plough"            :hotkey \i :recipe {:exhaust [:stick :stick]
-                                                         :add [:fire-plough]}
-                                                :place :inventory}
-     {:name "hand drill"             :hotkey \j :recipe {:exhaust [:stick :stick]
-                                                         :add [:hand-drill]}
-                                                :place :inventory}
-     {:name "bow drill"              :hotkey \k :recipe {:exhaust [:stick :stick :stick :rope :rock]
-                                                         :add [:bow-drill]}
-                                                :place :inventory}
-     {:name "campfire"               :hotkey \l :recipe {:exhaust [:match :stick :log :log :rock :rock :rock]
-                                                         :add [:campfire]}
-                                                :place :cell-type}]
+     {:name "flint blade"            :hotkey \a :hunger 10 :thirst 20 :recipe {:exhaust [:rock :flint]                 :add [:flint-blade]}}
+     {:name "flint axe blade"        :hotkey \b :hunger 10 :thirst 20 :recipe {:exhaust [:rock :large-flint]           :add [:flint-axe-blade]}}
+     {:name "obsidian blade"         :hotkey \c :hunger 10 :thirst 20 :recipe {:exhaust [:rock :obsidian]              :add [:obsidian-blade]}}
+     {:name "rope"                   :hotkey \d :hunger 10 :thirst 20 :recipe {:exhaust [:plant-fiber]                 :add [:rope]}}
+     {:name "sharpened stick"        :hotkey \e :hunger 10 :thirst 20 :recipe {:exhaust [:stick]
+                                                                               :have-or [:obsidian-knife
+                                                                                         :obsidian-spear
+                                                                                         :obsidian-axe
+                                                                                         :knife]
+                                                                               :add     [:sharpened-stick]}}
+     {:name "bamboo water collector" :hotkey \f :hunger 10 :thirst 20 :recipe {:exhaust [:rope :bamboo :stick]
+                                                                               :have-or [:obsidian-knife
+                                                                                         :obsidian-spear
+                                                                                         :obsidian-axe
+                                                                                         :knife]
+                                                                               :add [:bamboo-water-collector]} :place :cell-type}
+     {:name "solar still"            :hotkey \g :hunger 10 :thirst 20 :recipe {:exhaust [:rock :tarp :stick :coconut-shell]
+                                                                               :have-or [:stick]
+                                                                               :add [:solar-still]} :place :cell-type}
+     {:name "fishing pole"           :hotkey \h :hunger 10 :thirst 20 :recipe {:exhaust [:fishing-line-and-hook :stick]
+                                                                               :add [:fishing-pole]}
+                                                                      :place :inventory}
+     {:name "fire plough"            :hotkey \i :hunger 10 :thirst 20 :recipe {:exhaust [:stick :stick]
+                                                                               :add [:fire-plough]}
+                                                                      :place :inventory}
+     {:name "hand drill"             :hotkey \j :hunger 10 :thirst 20 :recipe {:exhaust [:stick :stick]
+                                                                               :add [:hand-drill]}
+                                                                      :place :inventory}
+     {:name "bow drill"              :hotkey \k :hunger 10 :thirst 20 :recipe {:exhaust [:stick :stick :stick :rope :rock]
+                                                                               :add [:bow-drill]}
+                                                                      :place :inventory}
+     {:name "campfire"               :hotkey \l :hunger 10 :thirst 20 :recipe {:exhaust [:match :stick :log :log :rock :rock :rock]
+                                                                               :add [:campfire]}
+                                                                      :place :cell-type}]
    :shelter [
-     {:name "palisade"               :hotkey \a :recipe {:exhaust [:rope :sharpened-stick]       :add [:palisade]} :place :inventory}
-     {:name "ramada"                 :hotkey \b :recipe {:exhaust [:rope :leaves :stick
-                                                                   :stick :stick :stick :stick]  :add [:ramada]}  :place :cell-type}
-     {:name "tarp shelter"           :hotkey \c :recipe {:exhaust [:rope :tarp :stick
-                                                                   :stick :stick :stick]         :add [:tarp-shelter]}  :place :cell-type}
-     {:name "lean-to"                :hotkey \d :recipe {:exhaust [:leaves :stick :stick
-                                                                   :stick :stick :stick]         :add [:lean-to]}  :place :cell-type}]
+     {:name "palisade"               :hotkey \a :hunger 10 :thirst 20 :recipe {:exhaust [:rope :sharpened-stick]       :add [:palisade]} :place :inventory}
+     {:name "ramada"                 :hotkey \b :hunger 10 :thirst 20 :recipe {:exhaust [:rope :leaves :stick
+                                                                                         :stick :stick :stick :stick]  :add [:ramada]}  :place :cell-type}
+     {:name "tarp shelter"           :hotkey \c :hunger 10 :thirst 20 :recipe {:exhaust [:rope :tarp :stick
+                                                                                         :stick :stick :stick]         :add [:tarp-shelter]}  :place :cell-type}
+     {:name "lean-to"                :hotkey \d :hunger 10 :thirst 20 :recipe {:exhaust [:leaves :stick :stick
+                                                                                         :stick :stick :stick]         :add [:lean-to]}  :place :cell-type}]
    :traps [
-     {:name "snare"                  :hotkey \a :recipe {:exhaust [:rope :stick]                 :add [:snare]}}
-     {:name "deadfall trap"          :hotkey \b :recipe {:exhaust [:rope :stick :rock]           :add [:deadfall-trap]}}]
+     {:name "snare"                  :hotkey \a :hunger 10 :thirst 20 :recipe {:exhaust [:rope :stick]                 :add [:snare]}}
+     {:name "deadfall trap"          :hotkey \b :hunger 10 :thirst 20 :recipe {:exhaust [:rope :stick :rock]           :add [:deadfall-trap]}}]
    :transportation [
-     {:name "raft"               :hotkey \a :recipe {:exhaust [:rope :log :log
-                                                               :log :log :log]
-                                                         :add [:raft]} :place :drop}]})
+     {:name "raft"                   :hotkey \a :hunger 10 :thirst 20 :recipe {:exhaust [:rope :log :log
+                                                                                         :log :log :log]
+                                                                                   :add [:raft]} :place :drop}]})
 #_#?(:clj
 (t/ann has-prerequisites? (t/Fn [State Recipe -> Boolean])))
 (defn has-prerequisites?
@@ -161,6 +161,8 @@
   (let [exhaust      (get-in recipe [:recipe :exhaust])
         add          (get-in recipe [:recipe :add])
         have-or      (get-in recipe [:recipe :have-or])
+        hunger       (get recipe :hunger)
+        thirst       (get recipe :thirst)
         wielded-item (rp/wielded-item (rp/player-inventory state))
         have-applicable-ids (clojure.set/intersection (set have-or)
                                                        (set (map :id (rp/player-inventory state))))
@@ -178,6 +180,10 @@
                         state)
                       (add-by-ids state add (get recipe :place :inventory))
                       (exhaust-by-ids state exhaust)
+                      (rp/player-update-hunger (fn [current-hunger] (min (+ hunger current-hunger)
+                                                                         (rp/player-max-hunger state))))
+                      (rp/player-update-thirst (fn [current-thirst] (min (+ hunger current-thirst)
+                                                                         (rp/player-max-thirst state))))
                       (reduce rp/update-crafted state (map (fn [id] {:id id}) add)))]
           state)
         (rc/ui-hint state (format "You have multiple items that can be used to make this. Wield one of them")))

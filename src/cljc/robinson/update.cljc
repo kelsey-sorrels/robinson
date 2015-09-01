@@ -569,6 +569,32 @@
           new-state)
         state)))
 
+(defn pick-up-all
+  [state]
+    (let [[player-cell x y]  (rw/player-cellxy state)
+          items              (vec (get player-cell :items))
+          remaining-hotkeys  (-> state :world :remaining-hotkeys)
+          selected-items     (map #(assoc %1 :hotkey %2)
+                                  items
+                                  (rc/fill-missing not
+                                                  (fn [_ hotkey] hotkey)
+                                                  remaining-hotkeys
+                                                  (map :hotkey items)))
+          remaining-hotkeys  (vec (remove #(some (partial = %) (map :hotkey selected-items)) remaining-hotkeys))]
+      (log/debug "selected-items" selected-items)
+      (if (seq selected-items)
+        (let [new-state (-> state
+                          (rc/append-log "You pick up:")
+                          ;; dup the item into inventory with hotkey
+                          (rp/add-to-inventory selected-items)
+                          ;; remove the item from cell
+                          (rw/assoc-current-cell-items [])
+                          ;;;; hotkey is no longer available
+                          (assoc-in [:world :remaining-hotkeys]
+                              remaining-hotkeys))]
+          new-state)
+        state)))
+
 (defn drop-item
   "Drop the item from the player's inventory whose hotkey matches `keyin`.
    Put the item in the player's current cell."
@@ -1011,6 +1037,28 @@
       [:*              :*         ] (-> state
                                       (rc/ui-hint "You're not sure how to apply it to that.")
                                       (rw/assoc-current-state :normal)))))
+
+(defn action-select
+  [state]
+  (let [actions (as-> [] actions
+                  (if (-> (rw/player-cellxy state) first :items count pos?)
+                    (conj actions {:state-id :pickup
+                                   :name "Pickup"})
+                    actions))]
+    (assoc-in state
+              [:world :action-select]
+              (map (fn [action hotkey]
+                     (assoc action :hotkey hotkey))
+                   actions
+                   rc/hotkeys))))
+
+(defn do-selected-action
+  [state keyin]
+  (if-let [action (first (filter (fn [{:keys [state-id hotkey]}]
+                                   (= hotkey keyin))
+                                 (get-in state [:world :action-select])))]
+    (rw/assoc-current-state state (get action :state-id))
+    state))
 
 (defn quaff-only-adjacent-cell
   "Drink all adjacent cells."
@@ -2689,6 +2737,7 @@
                            :up-right   [move-up-right          :normal          true]
                            :down-left  [move-down-left         :normal          true]
                            :down-right [move-down-right        :normal          true]
+                           :space      [action-select          :action-select   false]
                            \q          [quaff-select           identity         false]
                            \w          [identity               :wield           false]
                            \x          [identity               :harvest         false]
@@ -2786,6 +2835,9 @@
                                           state)
                                                                :normal          false]
                            :escape     [identity               :quit?           false]}
+               :action-select
+                          {:escape     [identity               :normal          false]
+                           :else       [do-selected-action     identity         false]}
                :inventory {:escape     [identity               :normal          false]}
                :abilities {:escape     [identity               :normal          false]
                            :else       [use-ability            identity         true]}
@@ -2824,6 +2876,7 @@
                                         (apply-item state \b))
                                                                :normal          true]}
                :pickup    {:escape     [identity               :normal          false]
+                           :space      [pick-up-all            :normal          true]
                            :else       [toggle-hotkey          :pickup          false]
                            :enter      [pick-up                :normal          true]}
                :eat       {:escape     [identity               :normal          false]

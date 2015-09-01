@@ -575,7 +575,8 @@
 (defn render-pick-up
   "Render the pickup item menu if the world state is `:pickup`."
   [state]
-  (let [player-x         (-> state :world :player :pos :x)
+  (let [screen           (state :screen)
+        player-x         (-> state :world :player :pos :x)
         player-y         (-> state :world :player :pos :y)
         cell             (get-cell state player-x player-y)
         cell-items       (or (cell :items) [])
@@ -588,7 +589,8 @@
   (log/debug "player-x" player-x "player-y" player-y)
   (log/debug "cell" cell)
   (log/debug "cell-items" cell-items)
-  (render-multi-select (state :screen) "Pick up" selected-hotkeys (translate-identified-items state items))))
+  (render-multi-select screen "Pick up" selected-hotkeys (translate-identified-items state items))
+  (put-chars screen (markup->chars 41 20 "<color fg=\"highlight\">space</color>-All" :black :white #{}))))
 
 (defn render-inventory
   "Render the pickup item menu if the world state is `:pickup`."
@@ -645,6 +647,35 @@
          {:s "Select hotkey." :fg :black :bg :white :style #{}}]))
     (render-rect-double-border screen 16 3 43 height :black :white)
     (put-string screen 29 3 "Choose New Ability" :black :white)))
+
+(defn render-action-choices
+  "Render the player action choices menu if the world state is `:action-select`."
+  [state]
+  (let [screen (get state :screen)
+        abilities (get-in state [:world :action-select])
+        height (if (seq abilities)
+                 (+ 3 (* 3 (count abilities)))
+                 4)]  
+    (render-list screen 17 4 43 height
+      (if (seq abilities)
+        (concat
+          (mapcat
+            (fn [ability]
+              [{:s (format "<color fg=\"highlight\">%s</color> - %s" (get ability :hotkey) (get ability :name))
+                :fg :black
+                :bg :white
+                :style #{}}
+               {:s "" :fg :black :bg :white :style #{}}])
+            abilities)
+          [{:s "" :fg :black :bg :white :style #{}}
+           {:s "Select hotkey or press <color fg=\"highlight\">Esc</color> to exit." :fg :black :bg :white :style #{}}])
+        [{:s "Nothing to do." :fg :black :bg :white :style #{}}
+         {:s "" :fg :black :bg :white :style #{}}
+         {:s "Press <color fg=\"highlight\">Esc</color> to exit." :fg :black :bg :white :style #{}}]))
+        
+    (render-rect-double-border screen 16 3 43 height :black :white)
+    (put-string screen 30 3 "Choose Action" :black :white)))
+
 
 (defn render-player-stats
   "Render the player character stats  menu if the world state is `:player-stats`."
@@ -1312,6 +1343,7 @@
       :abilities            (render-abilities state)
       :player-stats         (render-player-stats state)
       :gain-level           (render-ability-choices state)
+      :action-select        (render-action-choices state)
       :describe             (render-describe state)
       :apply                (render-apply state)
       :apply-item-inventory

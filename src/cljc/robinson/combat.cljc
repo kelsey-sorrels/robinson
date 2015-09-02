@@ -141,7 +141,7 @@
      (log/debug "attack message" msg)
      msg))
 
-(defn attack-toughness
+(defn attack->toughness
   [attack]
   (case attack
   :bite        5
@@ -183,7 +183,7 @@
           defender-speed     (dcp/get-speed defender state)
           attacker-size      (dcp/get-size attacker state)
           defender-size      (dcp/get-size defender state)
-          attack-toughness   (dcp/get-toughness attacker state)
+          attack-toughness   (attack->toughness attack)
           defender-toughness (dcp/get-toughness defender state)]
       (log/info "attacker-strength" attacker-strength)
       (log/info "attacker-dexterity" attacker-dexterity)
@@ -192,6 +192,12 @@
       (log/info "defender-size" defender-size)
       (log/info "attack-toughness" attack-toughness)
       (log/info "defender-toughnes" defender-toughness)
+      (assert attacker-strength)
+      (assert attacker-dexterity)
+      (assert defender-speed)
+      (assert defender-size)
+      (assert attack-toughness  (str "attack" attack))
+      (assert defender-toughness)
       (* attacker-strength
          (/ (+ 5 (rr/uniform-double (* 10 attacker-dexterity))) (+ 15 defender-speed))
          (/ (+ 125 attacker-size) (+ 125 defender-size))
@@ -398,6 +404,8 @@
                :world         {:npcs [defender]
                                :player attacker
                                :time 0}}
+        knife  (assoc (ig/gen-item :knife) :wielded true)
+        #_#_state         (rp/add-to-inventory state [knife])
         attacker-path [:world :player]
         defender-path [:world :npcs 0]
         pass-through  (fn [m & _] m)]

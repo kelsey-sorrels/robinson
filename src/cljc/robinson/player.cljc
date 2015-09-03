@@ -601,14 +601,8 @@
 
 (defn update-npc-attacked
   [state npc attack]
-  (let [max-will-to-live (get-in state [:world :player :max-will-to-live])
-        previous-kills   (get-in state [:world :player :stats :num-animals-attacked (get npc :race)] 0)
-        dwill-to-live    (/ 20 (inc previous-kills))
-        xp               (int (* (get npc :base-xp) (+ 1.0 (* 0.1 (- (get npc :level)  (player-level state))))))]
+  (let [previous-attacked (get-in state [:world :player :stats :num-animals-attacked (get npc :race)] 0)]
     (-> state
-      (player-update-wtl (fn [will-to-live] (min max-will-to-live (+ will-to-live dwill-to-live))))
-      (player-update-xp  (fn [total-xp] (+ total-xp xp)))
-      (rc/append-log (format "You gained %d xp." xp))
       (update-in [:world :player :stats :num-animals-attacked] (fn [animals-attacked] (merge-with + animals-attacked {(get npc :race) 1})))
       (update-in [:world :player :stats :attacks-by-type] (fn [attacks-by-type] (merge-with + attacks-by-type {attack 1})))
       (rc/conj-in   [:world :player :stats :timeline] {:time  (get-in state [:world :time])

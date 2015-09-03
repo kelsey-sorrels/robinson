@@ -26,7 +26,8 @@
 (defn gen-end-madlib
   [state]
   (let [[_ _ n1 n2 n3] (get-in state [:world :random-numbers])
-        death-msg-type (rnd-nth [:num-animals-killed
+        death-msg-type (rnd-nth [:num-animals-attacked
+                                 :num-animals-killed
                                  :num-items-crafted
                                  :num-items-harvested
                                  :num-kills-by-attack-type
@@ -34,6 +35,18 @@
                                 n1)
         _ (log/info "stats" (get-in state [:world :player :stats]))
         death-text     (case death-msg-type
+                         :num-animals-attacked
+                           (let [max-stat (reduce (fn [acc [id n]]
+                                                    (cond
+                                                      (nil? acc) [id n]
+                                                      (> (last acc) n) acc
+                                                      :else [id n]))
+                                                  nil (get-in state [:world :player :stats :num-animals-attacked]))]
+                             (if (nil? max-stat)
+                               "A pacifist"
+                               (let [[monster-id n] max-stat]
+                                 (format (rnd-nth ["Threat to %s" "The nightmare of %s"] n2)
+                                         (mg/id->name-plural monster-id)))))
                          :num-animals-killed
                            (let [max-stat (reduce (fn [acc [id n]]
                                                     (cond

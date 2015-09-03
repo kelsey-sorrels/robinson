@@ -360,7 +360,10 @@
               state)
             (log-with-line state "9")
             (ce/on-hit defender state)
-            (log-with-line state "10"))
+            (log-with-line state "10")
+            (if (contains? (set attacker-path) :player)
+              (rp/update-npc-attacked state defender attack)
+              state))
         ;; defender dead? (0 or less hp)
         :else
           (if (contains? (set defender-path) :npcs)

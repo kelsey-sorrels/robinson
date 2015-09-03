@@ -55,7 +55,7 @@
                                                       :else [id n]))
                                                   nil (get-in state [:world :player :stats :num-animals-killed]))]
                              (if (nil? max-stat)
-                               "A pacifist"
+                               "Who didn't kill anything"
                                (let [[monster-id n] max-stat]
                                  (format (rnd-nth ["Slayer of %s" "Defeater of %s" "Eliminator of %s" "Dominator of %" "The nightmare of %s"] n2)
                                          (mg/id->name-plural monster-id)))))

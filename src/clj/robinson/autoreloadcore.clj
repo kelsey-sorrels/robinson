@@ -5,7 +5,10 @@
             [robinson.world :as rw]
             [robinson.aterminal :as aterminal]
             [clojure.core.async :as async :refer [go go-loop]]
+            [clojure.tools.nrepl.server :as nreplserver]
             [taoensso.timbre :as log]))
+
+(defonce server (nreplserver/start-server :port 7888))
 
 (defn check-namespace-changes [track]
  (try

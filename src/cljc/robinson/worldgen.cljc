@@ -541,18 +541,52 @@
 (defn -main [& args]
   (let [width   400
         height  400
-        seed    0
+        seed    1
         n       (rn/create-noise (rr/create-random seed))
         samples (for [y (range (- height) height 2)
                       x (range (- width) width 2)]
-                  [(+ x width) (+ y height) 2 2 (biome->color (sample-island n x y))])]
-    (letfn [(draw  [] (doseq [[x y w h c] samples]
-                        (q/fill (apply q/color c))
+                  [(+ x width) (+ y height) 2 2 (sample-island n x y)])]
+    #_(letfn [(draw  [] (doseq [[x y w h b] samples]
+                        (q/fill (apply q/color (biome->color
+                                                 (case b
+                                                   :ocean :ocean
+                                                   :surf :ocean
+                                                   :sand))))
                         (q/rect x y w h)))
             (setup [] (q/frame-rate 1)
+                      (q/no-stroke)
                       (q/background 0 0 0))]
       (quil.applet/applet
-                   :title "Show World"
+                   :title "Ocean/Sand"
+                   :renderer :p2d
+                   :setup setup
+                   :draw draw
+                   :size [(* 2 width) (* 2 height)]))
+    (letfn [(draw  [] (doseq [[x y w h b] samples]
+                        (q/fill (apply q/color (biome->color
+                                                 (case b
+                                                   :ocean :ocean
+                                                   :sand :sand
+                                                   :surf :surf
+                                                   :dirt))))
+                        (q/rect x y w h)))
+            (setup [] (q/frame-rate 1)
+                      (q/no-stroke)
+                      (q/background 0 0 0))]
+      (quil.applet/applet
+                   :title "Ocean/Surf/Sand/Interior"
+                   :renderer :p2d
+                   :setup setup
+                   :draw draw
+                   :size [(* 2 width) (* 2 height)]))
+    #_(letfn [(draw  [] (doseq [[x y w h b] samples]
+                        (q/fill (apply q/color (biome->color b)))
+                        (q/rect x y w h)))
+            (setup [] (q/frame-rate 1)
+                      (q/no-stroke)
+                      (q/background 0 0 0))]
+      (quil.applet/applet
+                   :title "Ocean/Surf/Sand/Interior"
                    :renderer :p2d
                    :setup setup
                    :draw draw

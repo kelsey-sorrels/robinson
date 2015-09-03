@@ -15,6 +15,7 @@
                  [org.clojure/core.async "0.1.346.0-17112a-alpha"]
                  [org.clojure/core.match "0.3.0-alpha4"]
                  [org.clojure/core.memoize "0.5.7"]
+                 [org.clojure/tools.nrepl "0.2.10"]
                  [org.clojure/tools.reader "0.9.2"]
                  [org.clojure/data.generators "0.1.2"]
                  [org.clojure/math.combinatorics "0.1.1"]

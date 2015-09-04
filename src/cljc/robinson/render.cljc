@@ -1315,25 +1315,31 @@
       ;; ui-hint
       (put-string screen 0 0 (get-in state [:world :ui-hint]) :white :black)
       ;; draw log
-      (let [current-time    (rw/get-time state)
-            log-idx         (get-in state [:world :log-idx] 0)
-            num-logs        (count (filter #(= current-time (get % :time)) (get-in state [:world :log])))
-            up-arrow-char   \u2191
-            down-arrow-char \u2193
-            msg-above?      (< log-idx (dec num-logs ))
-            msg-below?      (pos? log-idx)
-            message         (if (zero? num-logs)
-                              {:message "" :time 0 :color :black} 
-                              (nth (reverse (get-in state [:world :log])) log-idx))
-            darken-factor   (inc  (* (/ -1 5) (- current-time (message :time))))
-            log-color       (darken-rgb (color->rgb (get message :color)) darken-factor)
-            characters      (markup->chars 0 0 (format "%s%s %s" (if msg-above?
-                                                                   (str "<color fg=\"highlight\">/</color>-" up-arrow-char)
-                                                                   "   ")
-                                                                 (if msg-below?
-                                                                   (str "<color fg=\"highlight\">*</color>-" down-arrow-char)
-                                                                   "   ")
-                                                                 (or (message :text) "" )))]
+      (let [current-time     (rw/get-time state)
+            log-idx          (get-in state [:world :log-idx] 0)
+            num-logs         (count (filter #(= current-time (get % :time)) (get-in state [:world :log])))
+            up-arrow-char    \u2191
+            down-arrow-char  \u2193
+            msg-above?       (< log-idx (dec num-logs))
+            msg-below?       (pos? log-idx)
+            up-arrow-color   (when msg-above?
+                               (get (nth (reverse (get-in state [:world :log])) (inc log-idx)) :color))
+            down-arrow-color (when msg-below?
+                               (get (nth (reverse (get-in state [:world :log])) (dec log-idx)) :color))
+            message          (if (zero? num-logs)
+                               {:message "" :time 0 :color :black} 
+                               (nth (reverse (get-in state [:world :log])) log-idx))
+            darken-factor    (inc  (* (/ -1 5) (- current-time (message :time))))
+            log-color        (darken-rgb (color->rgb (get message :color)) darken-factor)
+            characters       (markup->chars 0 0 (format "%s%s %s" (if msg-above?
+                                                                    (str "<color fg=\"highlight\">/</color>-<color fg=\"" (name up-arrow-color) "\">" up-arrow-char "</color>")
+                                                                    "   ")
+                                                                  (if msg-below?
+                                                                    (str "<color fg=\"highlight\">*</color>-<color fg=\"" (name down-arrow-color) "\">" down-arrow-char "</color>")
+                                                                    "   ")
+                                                                  (if (get message :text)
+                                                                    (str "<color fg=\"" (name (get message :color)) "\">" (get message :text) "</color>")
+                                                                    "")))]
         (log/info "num-log-msgs" num-logs)
         (log/info "message" message)
         (put-chars screen characters)))

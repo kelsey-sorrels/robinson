@@ -187,6 +187,13 @@
                :flint-knife}
              (get item :id)))
 
+(defn can-be-wielded-for-ranged-combat?
+  [item]
+  (contains? #{:bow
+               :flint
+               :rock}
+             (get item :id)))
+
 (defn is-drinkable?
   [item]
   (get item :drinkable false))

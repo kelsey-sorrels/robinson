@@ -26,6 +26,7 @@
             [robinson.magic :as rm :refer [get-magical-abilities]]
             [robinson.crafting :as rcrafting :refer [get-recipes]]
             [robinson.itemgen :refer [can-be-wielded?
+                                      can-be-wielded-for-ranged-combat?
                                       id->name]]
             [robinson.lineofsight :as rlos :refer [visible?
                                                    cell-blocking?]]
@@ -419,9 +420,13 @@
                                               (if (contains? item :utility)
                                                 (format "(%d%%)" (int (get item :utility)))
                                                 "")
-                                              (if (contains? item :wielded)
-                                                "(wielded)"
-                                                ""))
+                                              (cond
+                                                (contains? item :wielded)
+                                                  "(wielded)"
+                                                (contains? item :wielded-ranged)
+                                                  "(wielded ranged)"
+                                                :else
+                                                  ""))
                                    :fg (if (or (not use-applicable)
                                                (get item :applicable))
                                          :black
@@ -984,6 +989,11 @@
   [state]
   (render-multi-select (state :screen) "Wield" [] (filter can-be-wielded? (-> state :world :player :inventory))))
 
+(defn render-wield-ranged
+  "Render the wield ranged  item menu if the world state is `:wield-ranged`."
+  [state]
+  (render-multi-select (state :screen) "Wield Ranged" [] (filter can-be-wielded-for-ranged-combat? (-> state :world :player :inventory))))
+
 (defn render-start-text [state]
   (let [screen     (state :screen)
         start-text (sg/start-text state)]
@@ -1368,6 +1378,7 @@
       :craft-shelter        (render-craft-shelter state)
       :craft-transportation (render-craft-transportation state)
       :wield                (render-wield state)
+      :wield-ranged         (render-wield-ranged state)
       :start-text           (render-start-text state)
       :dead                 (render-dead-text state)
       :rescued              (render-rescued-text state)

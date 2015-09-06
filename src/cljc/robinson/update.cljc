@@ -1352,6 +1352,26 @@
         new-state)
         state)))
 
+(defn wield-ranged
+  "Wield the ranged weapon item from the player's inventory whose hotkey matches `keyin`."
+  [state keyin]
+  (let [items (-> state :world :player :inventory)
+        inventory-hotkeys (map #(% :hotkey) items)
+        item-index (.indexOf inventory-hotkeys keyin)]
+    (if (and (>= item-index 0) (< item-index (count items)))
+      (let [selected-item (nth items item-index)
+            new-state (-> state
+              (rc/append-log (format "You wield the %s." (lower-case (get selected-item :name))))
+              ;; remove :wielded-ranged from all items
+              (update-in [:world :player :inventory]
+                (fn [items] (mapv (fn [item] (dissoc item :wielded-ranged)) items)))
+              (update-in [:world :player :inventory]
+                (fn [items] (mapv (fn [item] (if (= item selected-item)
+                                               (assoc item :wielded-ranged true)
+                                               item)) items))))]
+        new-state)
+        state)))
+
 (defn free-cursor
   "Dissassociate the cursor from the world."
   [state & more]
@@ -2740,6 +2760,7 @@
                            :space      [action-select          :action-select   false]
                            \q          [quaff-select           identity         false]
                            \w          [identity               :wield           false]
+                           \W          [identity               :wield-ranged    false]
                            \x          [identity               :harvest         false]
                            \a          [identity               :apply           false]
                            \;          [init-cursor            :describe        false]
@@ -2915,6 +2936,9 @@
                            :escape     [identity               :normal          false]}
                :wield     {:escape     [identity               :normal          false]
                            :else       [wield                  :normal          true]}
+               :wield-ranged
+                          {:escape     [identity               :normal          false]
+                           :else       [wield-ranged           :normal          true]}
                :talking   {:escape     [stop-talking           :normal          false]
                            :else       [talk                   identity         true]}
                :shopping  {\a          [identity               :buy             true]

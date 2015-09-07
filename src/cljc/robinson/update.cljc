@@ -1374,22 +1374,54 @@
 
 (defn init-select-ranged-target
   [state]
-  ;; check if the player has a ranged wielded weapon
-  (if (some (fn [item] (get item :wielded-ranged)) (rp/player-inventory state))
-    ;; save some values so we don't have to recalc them each time
-    (let [npcs-in-range    (rnpc/visible-npcs state)
-          npcs-by-distance (sort-by (fn [npc]
-                                      (rp/player-distance-from-pos state (get npc :pos)))
-                                    npcs-in-range)]
-     ;; any npcs in range?
-     (if (seq npcs-by-distance)
-       (-> state
-         (assoc-in [:world :target-ranged-pos-coll] (map :pos npcs-by-distance))
-         (assoc-in [:world :target-ranged-index] 0)
-         (rw/assoc-current-state :select-ranged-target)
-         (rc/ui-hint "<color fg=\"highlight\">Tab</color>/<color fg=\"highlight\">n</color>-next target. <color fg=\"highlight\">p</color>-previous target"))
-       (rc/ui-hint state "No targets in range")))
-    (rc/ui-hint state "Must wield ranged weapon first (W)")))
+  (let [ranged-weapon-item  (first (filter (fn [item] (get item :wielded-ranged))
+                                           (rp/player-inventory state)))]
+    ;; check if the player has a ranged wielded weapon
+    (if ranged-weapon-item
+      
+      (if (or (not (ig/requires-reload? ranged-weapon-item))
+              (get ranged-weapon-item :loaded))
+        ;; save some values so we don't have to recalc them each time
+        (let [npcs-in-range    (rnpc/visible-npcs state)
+              npcs-by-distance (sort-by (fn [npc]
+                                          (rp/player-distance-from-pos state (get npc :pos)))
+                                        npcs-in-range)]
+          ;; any npcs in range?
+          (if (seq npcs-by-distance)
+            (-> state
+              (assoc-in [:world :target-ranged-pos-coll] (map :pos npcs-by-distance))
+              (assoc-in [:world :target-ranged-index] 0)
+              (rw/assoc-current-state :select-ranged-target)
+              (rc/ui-hint "<color fg=\"highlight\">Tab</color>/<color fg=\"highlight\">n</color>-next target. <color fg=\"highlight\">p</color>-previous target"))
+            (rc/ui-hint state "No targets in range")))
+          (rc/ui-hint state "Must reload (<color fg=\"hightlight\">r</color>) weapon first.")))
+        (rc/ui-hint state "Must wield ranged weapon first (<color fg=\"highlight\">W</color>)")))
+
+(defn reload-ranged-weapon
+  [state]
+  (let [ranged-weapon-item  (first (filter (fn [item] (get item :wielded-ranged))
+                                           (rp/player-inventory state)))]
+    ;; player is weilding ranged weapon?
+    (if ranged-weapon-item
+      ;; ranged weapon is not already loaded?
+      (if (not (get ranged-weapon-item :loaded))
+        ;; the weapon requires reloading?
+        (if (ig/requires-reload? ranged-weapon-item)
+          ;; the player has ammo for the weapon?
+          (if (pos? (rp/inventory-id->count state (ig/item->ranged-combat-ammunition-item-id ranged-weapon-item)))
+            (-> state
+              ;; set weapon as :loaded
+              (rp/update-inventory-item state
+                (get ranged-weapon-item :id)
+                (fn [item] (assoc item :loaded true)))
+              ;; dec ranged weapon ammunition
+              (rp/dec-item-count (ig/item->ranged-combat-ammunition-item-id ranged-weapon-item))
+              ;; successful reloading takes a turn
+              (inc-time))
+            (rc/ui-hint state "You do not have the required ammunition."))
+          (rc/ui-hint state "You do not need to reload this weapon."))
+        (rc/ui-hint state "The weapon is already loaded."))
+      (rc/ui-hint state "Must weild ranged weapon first (<color fg=\"highlight\">W</color>)."))))
 
 (defn select-next-ranged-target
   [state]
@@ -1416,9 +1448,12 @@
     (log/info "target-ranged-pos-coll" (get-in state [:world :target-ranged-pos-coll]))
     (log/info "npc" npc)
     (log/info "ranged-weapon-item" ranged-weapon-item)
-    (-> state
-      ;; dec ranged weapon ammunition
-      (rp/dec-item-count (ig/item->ranged-combat-ammunition-item-id ranged-weapon-item))
+    (as-> state state
+      ;; the weapon does not require reloading?
+      (if-not (ig/requires-reload? ranged-weapon-item)
+        ;; dec ranged weapon ammunition
+        (rp/dec-item-count (ig/item->ranged-combat-ammunition-item-id ranged-weapon-item))
+        state)
       ;; do combat
       (rcombat/attack [:world :player] (rnpc/npc->keys state npc) ranged-weapon-item))))
       
@@ -2815,12 +2850,13 @@
                            \W          [identity               :wield-ranged    false]
                            \f          [init-select-ranged-target
                                                                identity         false]
+                           \r          [reload-ranged-weapon   :normal          false]
                            \x          [identity               :harvest         false]
                            \a          [identity               :apply           false]
                            \;          [init-cursor            :describe        false]
-                           \R          [identity               :sleep           false]
+                           \S          [identity               :sleep           false]
                            \s          [rdesc/search           :normal          true]
-                           \S          [rdesc/extended-search  :normal          true]
+                           ;\S          [rdesc/extended-search  :normal          true]
                            \Q          [identity               :quests          false]
                            \M          [toggle-mount           :normal          false]
                            \P          [next-party-member      :normal          false]
@@ -2834,7 +2870,7 @@
                            \?          [identity               :help-controls   false]
                            \/          [scroll-log-up          :normal          false]
                            \*          [scroll-log-down        :normal          false]
-                           \r          [repeat-commands        identity         false]
+                           \R          [repeat-commands        identity         false]
                            #_#_\0          [(fn [state]
                                           (if (get-in state [:world :dev-mode])
                                             (-> state

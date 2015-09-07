@@ -528,6 +528,10 @@
           {}
           (get-in state [:world :player :inventory])))
 
+(defn inventory-id->count
+  [state id]
+  (get (inventory-id-freqs state) id 0))
+
 (defn remove-from-inventory
   "Removes item with `id` from player's inventory freeing hotkeys as necessary. Effectively destroys the item."
   [state id]

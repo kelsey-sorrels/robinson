@@ -323,6 +323,11 @@
   [state]
   (rc/pos->xy (player-pos state)))
 
+(defn player-distance-from-pos
+  "Return distance between player and `[x y]`."
+  [state pos]
+  (rc/distance pos (player-pos state)))
+
 (defn player-inventory
   [state]
   (get-in state [:world :player :inventory]))

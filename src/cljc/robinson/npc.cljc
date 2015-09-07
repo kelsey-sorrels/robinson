@@ -58,6 +58,16 @@
               (rv/xy-in-viewport? state x y)))
           (get-in state [:world :npcs])))
 
+(defn visible-npcs
+  [state]
+  (let [t (rw/get-time state)]
+    (filter (fn [npc]
+              (let [[x y] (rc/pos->xy (get npc :pos))]
+                (= (get (rw/get-cell state x y) :discovered)
+                   t)))
+            (get-in state [:world :npcs]))))
+                       
+
 (defn npc-by-id
   "The npc with the :id id. Nil if not found."
   [state id]
@@ -171,6 +181,11 @@
   "A seq of npcs with which the player is talking."
   [state]
   (filter (fn [npc] (contains? npc :talking)) (get-in state [:world :npcs])))
+
+(defn npc-at-pos
+  [state pos]
+  (first (filter (fn [npc] (= (get npc :pos) pos))
+                 (get-in state [:world :npcs]))))
 
 (defn update-npc-at-xy
   "Transform the npc at `[x y]` with the function f. (f npc)."

@@ -108,7 +108,6 @@
   [[x1 y1] [x2 y2]]
   [(- x1 x2) (- y1 y2)])
 
-
 (defn visible-place-ids
   ([state]
   (let [{v-width     :width
@@ -140,6 +139,10 @@
   (let [viewport-pos (get-in state [:world :viewport :pos])]
     (rc/pos->xy viewport-pos)))
   
+(defn world-xy->screen-xy
+  [state xy]
+  (-xy xy (viewport-xy state)))
+
 (defn viewport-xys
   [state]
   (let [{v-width     :width

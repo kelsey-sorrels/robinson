@@ -119,6 +119,10 @@
   [[s fg bg] d]
    [s (night-tint (color->rgb (or fg :white)) d) (color->rgb (or bg :black))])
 
+(defn target-tint-npc
+  [[s fg bg] targeted?]
+   [s fg (if targeted? (color->rgb :green) bg)])
+
 (defn color-bloodied-char
   [bloodied? char-fg-bg]
   (if bloodied?
@@ -1253,6 +1257,19 @@
                                         "\\"
                                         :white :black)
       nil)
+    ;; draw ranged-attack line
+    (when (= (current-state state) :select-ranged-target)
+      (let [target-ranged-index (get-in state [:world :target-ranged-index])
+            target-ranged-pos-coll (get-in state [:world :target-ranged-pos-coll])
+            target-pos             (nth target-ranged-pos-coll target-ranged-index)
+            [target-x target-y] (rc/pos->xy target-pos)]
+        (log/debug "target-ranged-index" target-ranged-index)
+        (log/debug "target-ranged-pos-coll" (get-in state [:world :target-ranged-pos-coll]))
+        (log/debug "target-pos" target-pos)
+        (log/debug "target-x" target-x "target-y" target-y)
+        (doseq [xy (rlos/line-segment-fast-without-endpoints [player-x player-y] [target-x target-y])]
+          (let [[sx sy] (rv/world-xy->screen-xy state xy)]
+            (put-string screen sx sy "\u25CF" :green :black)))))
       
     ;; draw npcs
     (let [place-npcs (npcs-in-viewport state)
@@ -1260,10 +1277,15 @@
           pos (-> state :world :player :pos)
           get-cell (memoize (fn [x y] (get-cell state x y)))]
       (doall (map (fn [npc]
-                    (let [x       (-> npc :pos :x)
-                          y       (-> npc :pos :y)
-                          vx      (- x (-> state :world :viewport :pos :x))
-                          vy      (- y (-> state :world :viewport :pos :y))
+                    (let [x         (-> npc :pos :x)
+                          y         (-> npc :pos :y)
+                          vx        (- x (-> state :world :viewport :pos :x))
+                          vy        (- y (-> state :world :viewport :pos :y))
+                          targeted? (when (= (current-state state) :select-ranged-target)
+                                      (let [target-ranged-index (get-in state [:world :target-ranged-index])
+                                            target-ranged-pos-coll (get-in state [:world :target-ranged-pos-coll])
+                                            target-pos             (nth target-ranged-pos-coll target-ranged-index)]
+                                        (= target-pos (get npc :pos))))
                           t       (rw/get-time state)
                           visible (and (not (farther-than?
                                               pos
@@ -1275,49 +1297,50 @@
                         (apply put-string screen
                                             vx
                                             vy
-                                            (night-tint-npc
-                                              (color-bloodied-char 
-                                                (< current-time (get npc :bloodied 0))
-                                                (case (get npc :race)
-                                                  :rat             ["r"]
-                                                  :spider          ["S"]
-                                                  :scorpion        ["\u03C2"] ;;ς
-                                                  :snake           ["\u00A7"] ;;§
-                                                  :bat             ["B"]
-                                                  :boar            ["b" :brown :black]
-                                                  :gecko           ["g" :green :black]
-                                                  :monkey          ["y" :orange :black]
-                                                  :bird            ["a" :red :black]
-                                                  :centipede       ["c" :red :black]
-                                                  :turtle          ["t" :green :black]
-                                                  :red-frog        ["\u03B1" :red :black] ;;α
-                                                  :orange-frog     ["\u03B1" :orange :black] ;;α
-                                                  :yellow-frog     ["\u03B1" :yellow :black] ;;α
-                                                  :green-frog      ["\u03B1" :green :black] ;;α
-                                                  :blue-frog       ["\u03B1" :blue :black] ;;α
-                                                  :purple-frog     ["\u03B1" :purple :black] ;;α
-                                                  :parrot          ["p" :red :black]
-                                                  :shark           ["\u039B"] ;;Λ
-                                                  :fish            ["f"]
-                                                  :octopus         ["#" :orange :black]
-                                                  :sea-snake       ["\u00A7"]
-                                                  :clam            ["c"]
-                                                  :urchin          ["u" :purple :black]
-                                                  :squid           ["q" :orange :black]
-                                                  :crocodile       ["l" :green :black]
-                                                  :mosquito        ["m"]
-                                                  :mongoose        ["r" :brown :black]
-                                                  :tarantula       ["s" :brown :black]
-                                                  :monitor-lizard  ["l" :gray :black]
-                                                  :komodo-dragon   ["l" :dark-green :black]
-                                                  :cobra           ["\u00A7"] ;;§
-                                                  :puffer-fish     ["f" :yellow :black]
-                                                  :crab            ["c" :orange :black]
-                                                  :hermit-crab     ["c" :yellow :black]
-                                                  :electric-eel    ["e" :brown :black]
-                                                  :jellyfish       ["j"]
-                                                  :human           ["@" (class->rgb (get npc :class)) :black]
-                                                  ["@"])) d)))))
+                                            (target-tint-npc
+                                              (night-tint-npc
+                                                (color-bloodied-char 
+                                                  (< current-time (get npc :bloodied 0))
+                                                  (case (get npc :race)
+                                                    :rat             ["r"]
+                                                    :spider          ["S"]
+                                                    :scorpion        ["\u03C2"] ;;ς
+                                                    :snake           ["\u00A7"] ;;§
+                                                    :bat             ["B"]
+                                                    :boar            ["b" :brown :black]
+                                                    :gecko           ["g" :green :black]
+                                                    :monkey          ["y" :orange :black]
+                                                    :bird            ["a" :red :black]
+                                                    :centipede       ["c" :red :black]
+                                                    :turtle          ["t" :green :black]
+                                                    :red-frog        ["\u03B1" :red :black] ;;α
+                                                    :orange-frog     ["\u03B1" :orange :black] ;;α
+                                                    :yellow-frog     ["\u03B1" :yellow :black] ;;α
+                                                    :green-frog      ["\u03B1" :green :black] ;;α
+                                                    :blue-frog       ["\u03B1" :blue :black] ;;α
+                                                    :purple-frog     ["\u03B1" :purple :black] ;;α
+                                                    :parrot          ["p" :red :black]
+                                                    :shark           ["\u039B"] ;;Λ
+                                                    :fish            ["f"]
+                                                    :octopus         ["#" :orange :black]
+                                                    :sea-snake       ["\u00A7"]
+                                                    :clam            ["c"]
+                                                    :urchin          ["u" :purple :black]
+                                                    :squid           ["q" :orange :black]
+                                                    :crocodile       ["l" :green :black]
+                                                    :mosquito        ["m"]
+                                                    :mongoose        ["r" :brown :black]
+                                                    :tarantula       ["s" :brown :black]
+                                                    :monitor-lizard  ["l" :gray :black]
+                                                    :komodo-dragon   ["l" :dark-green :black]
+                                                    :cobra           ["\u00A7"] ;;§
+                                                    :puffer-fish     ["f" :yellow :black]
+                                                    :crab            ["c" :orange :black]
+                                                    :hermit-crab     ["c" :yellow :black]
+                                                    :electric-eel    ["e" :brown :black]
+                                                    :jellyfish       ["j"]
+                                                    :human           ["@" (class->rgb (get npc :class)) :black]
+                                                    ["@"])) d) targeted?)))))
                    place-npcs)))
     (render-hud state)
     (log/info "current-state" (current-state state))

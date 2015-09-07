@@ -610,7 +610,7 @@
             new-state (-> state
               (rc/append-log (format "You let the %s fall to the ground" (lower-case (get item :name))))
               ;; dup the item into cell
-              (rw/conj-cell-items x y (dissoc item :wielded))
+              (rw/conj-cell-items x y (dissoc item :wielded :wielded-ranged))
               ;; remove the item from inventory
               (assoc-in [:world :player :inventory]
                (vec (concat (subvec items 0 item-index)
@@ -1387,9 +1387,9 @@
          (assoc-in [:world :target-ranged-pos-coll] (map :pos npcs-by-distance))
          (assoc-in [:world :target-ranged-index] 0)
          (rw/assoc-current-state :select-ranged-target)
-         (rc/ui-hint "Tab/n-target next. p-target previous"))
-       (rc/ui-hint "No targets in range")))
-    (rc/ui-hint "Must wield ranged weapon first (W)")))
+         (rc/ui-hint "<color fg=\"highlight\">Tab</color>/<color fg=\"highlight\">n</color>-next target. <color fg=\"highlight\">p</color>-previous target"))
+       (rc/ui-hint state "No targets in range")))
+    (rc/ui-hint state "Must wield ranged weapon first (W)")))
 
 (defn select-next-ranged-target
   [state]
@@ -1417,7 +1417,9 @@
     (log/info "npc" npc)
     (log/info "ranged-weapon-item" ranged-weapon-item)
     (-> state
-      ;; TODO: dec ranged weapon ammunition
+      ;; dec ranged weapon ammunition
+      (rp/dec-item-count (ig/item->ranged-combat-ammunition-item-id ranged-weapon-item))
+      ;; do combat
       (rcombat/attack [:world :player] (rnpc/npc->keys state npc) ranged-weapon-item))))
       
                                                              

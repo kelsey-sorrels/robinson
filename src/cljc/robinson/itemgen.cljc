@@ -201,6 +201,11 @@
     :flint :flint
     :rock :rock))
 
+(defn requires-reload?
+  [item]
+  (contains? #{:bow}
+             (get item :id)))
+
 (defn is-drinkable?
   [item]
   (get item :drinkable false))

@@ -1372,6 +1372,56 @@
         new-state)
         state)))
 
+(defn init-select-ranged-target
+  [state]
+  ;; check if the player has a ranged wielded weapon
+  (if (some (fn [item] (get item :wielded-ranged)) (rp/player-inventory state))
+    ;; save some values so we don't have to recalc them each time
+    (let [npcs-in-range    (rnpc/visible-npcs state)
+          npcs-by-distance (sort-by (fn [npc]
+                                      (rp/player-distance-from-pos state (get npc :pos)))
+                                    npcs-in-range)]
+     ;; any npcs in range?
+     (if (seq npcs-by-distance)
+       (-> state
+         (assoc-in [:world :target-ranged-pos-coll] (map :pos npcs-by-distance))
+         (assoc-in [:world :target-ranged-index] 0)
+         (rw/assoc-current-state :select-ranged-target)
+         (rc/ui-hint "Tab/n-target next. p-target previous"))
+       (rc/ui-hint "No targets in range")))
+    (rc/ui-hint "Must wield ranged weapon first (W)")))
+
+(defn select-next-ranged-target
+  [state]
+  (update-in state
+             [:world :target-ranged-index]
+             (fn [idx] (mod (inc idx)
+                            (count (get-in state [:world :target-ranged-pos-coll]))))))
+
+(defn select-previous-ranged-target
+  [state]
+  (update-in state
+             [:world :target-ranged-index]
+             (fn [idx] (mod (dec idx)
+                            (count (get-in state [:world :target-ranged-pos-coll]))))))
+
+(defn fire-wielded-ranged-weapon
+  [state]
+  (let [target-ranged-index (get-in state [:world :target-ranged-index])
+        target-pos          (nth (get-in state [:world :target-ranged-pos-coll]) target-ranged-index)
+        npc                 (rnpc/npc-at-pos state target-pos)
+        ranged-weapon-item  (first (filter (fn [item] (get item :wielded-ranged))
+                                                (rp/player-inventory state)))]
+    (log/info "target-ranged-index" target-ranged-index)
+    (log/info "target-ranged-pos-coll" (get-in state [:world :target-ranged-pos-coll]))
+    (log/info "npc" npc)
+    (log/info "ranged-weapon-item" ranged-weapon-item)
+    (-> state
+      ;; TODO: dec ranged weapon ammunition
+      (rcombat/attack [:world :player] (rnpc/npc->keys state npc) ranged-weapon-item))))
+      
+                                                             
+
 (defn free-cursor
   "Dissassociate the cursor from the world."
   [state & more]
@@ -2761,6 +2811,8 @@
                            \q          [quaff-select           identity         false]
                            \w          [identity               :wield           false]
                            \W          [identity               :wield-ranged    false]
+                           \f          [init-select-ranged-target
+                                                               identity         false]
                            \x          [identity               :harvest         false]
                            \a          [identity               :apply           false]
                            \;          [init-cursor            :describe        false]
@@ -2939,6 +2991,14 @@
                :wield-ranged
                           {:escape     [identity               :normal          false]
                            :else       [wield-ranged           :normal          true]}
+               :select-ranged-target
+                          {:escape     [identity               :normal          false]
+                           \n          [select-next-ranged-target
+                                                               identity         false]
+                           \p          [select-previous-ranged-target
+                                                               identity         false]
+                           \f          [fire-wielded-ranged-weapon
+                                                               :normal          true]}
                :talking   {:escape     [stop-talking           :normal          false]
                            :else       [talk                   identity         true]}
                :shopping  {\a          [identity               :buy             true]

@@ -27,6 +27,10 @@
   [attack]
   (contains? #{:spear :axe :knife} attack))
 
+(defn ranged-weapon?
+  [attack]
+  (contains? #{:flint :rock :bow} attack))
+
 (defn format [s & args]
   #?(:clj
      (apply clojure.core/format s args)
@@ -44,100 +48,133 @@
    `attack` is one of :bite :claws :punch.
    `damage-type` is one of :miss :hit :dead"
   [attacker defender attack defender-body-part damage-type]
-  (let [attacker-race      (get attacker :race)
-        defender-race      (get defender :race)
-        attacker-name      (get attacker :name)
-        defender-name      (get defender :name)
-        rand-punch-verb    (fn [] (rr/rand-nth ["wack" "punch" "hit" "pummel" "batter"
-                                             "pound" "beat" "strike" "slug"]))
-        rand-axe-verb      (fn [] (rr/rand-nth ["hit" "strike" "slash" "tear into" "cleave" "cut"]))
+  (let [attacker-race        (get attacker :race)
+        defender-race        (get defender :race)
+        attacker-name        (get attacker :name)
+        defender-name        (get defender :name)
+        rand-punch-verb      (fn [] (rr/rand-nth ["wack" "punch" "hit" "pummel" "batter"
+                                                  "pound" "beat" "strike" "slug"]))
+        rand-axe-verb        (fn [] (rr/rand-nth ["hit" "strike" "slash" "tear into" "cleave" "cut"]))
+        rand-ranged-hit-verb (fn [] (rr/rand-nth ["hit" "strike"]))
         _                  (log/debug "gen-attack-messsage first-vec-match" attacker-race defender-race attack defender-body-part damage-type)
         msg (rm/first-vec-match [attacker-race defender-race attack defender-body-part damage-type]
-              [:human :*       :punch        :*        :miss] (format "You punch the %s but miss." defender-name)
-              [:human :*       :punch        :*        :hit]  (rr/rand-nth [(format "You %s the %s %s %s the %s."
-                                                                             (rand-punch-verb)
-                                                                             defender-name
-                                                                             (rr/rand-nth ["solidly" "swiftly" "repeatedly"
-                                                                                        "perfectly" "competently"])
-                                                                             (rr/rand-nth ["on" "in" "across"])
-                                                                             (name defender-body-part))
-                                                                           (format "You %s the %s %s the %s."
-                                                                             (rand-punch-verb)
-                                                                             defender-name
-                                                                             (rr/rand-nth ["on" "in" "across"])
-                                                                             (name defender-body-part))
-                                                                           (format "You %s the %s."
-                                                                             (rand-punch-verb)
-                                                                             defender-name)])
-              [:human :*       :punch        :head     :dead] (format "You %s the %s in the head. Brains fly everywhere and it dies." (rand-punch-verb) defender-name)
-              [:human :*       :punch        :neck     :dead] (format "You %s the %s in the neck snapping it and it dies." (rand-punch-verb) defender-name)
-              [:human :*       :punch        :body     :dead] (format "You %s the %s in the body damaging internal organs. It dies." (rand-punch-verb) defender-name)
-              [:human :*       :punch        :leg      :dead] (format "You %s the %s in the leg severing it and it dies." (rand-punch-verb) defender-name)
-              [:human :*       :punch        :face     :dead] (format "You %s the %s in the face. Peices of face fly everywhere and it dies." (rand-punch-verb) defender-name)
-              [:human :*       :punch        :abdomen  :dead] (format "You %s the %s in the abdomen. Internal organs fly everywhere and it dies." (rand-punch-verb) defender-name)
-              [:human :*       :punch        :claw     :dead] (format "You %s the %s in the claw and it dies." (rand-punch-verb) defender-name)
-              [:human :*       :punch        :tail     :dead] (format "You %s the %s in the tail causing massive injuries and it dies." (rand-punch-verb) defender-name)
-              [:human :*       :punch        :wing     :dead] (format "You %s the %s in the wing ripping it clean off and it dies." (rand-punch-verb) defender-name)
-              [:human :*       :punch        :eye      :dead] (format "You %s the %s in the eye exploding it upon impact and it dies." (rand-punch-verb) defender-name)
-              [:human :*       :punch        :snout    :dead] (format "You %s the %s in the snount crushing it and it dies." (rand-punch-verb) defender-name)
-              [:human :*       :punch        :arm      :dead] (format "You %s the %s in the arm crushing bones and it dies." (rand-punch-verb) defender-name)
-              [:human :*       :punch        :beak     :dead] (format "You %s the %s in the beak ripping it from its face and it dies." (rand-punch-verb) defender-name)
-              [:human :*       :punch        :shell    :dead] (format "You %s the %s in the shell ripping to peices and it dies." (rand-punch-verb) defender-name)
-              [:human :*       :punch        :tentacle :dead] (format "You %s the %s in the tentacle shredding it and it dies." (rand-punch-verb) defender-name)
-              [:human :*       :punch        :*        :dead] (format "You %s the %s causing massive injuries and it dies." (rand-punch-verb) defender-name)
-              [:human :*       sharp-weapon? :*        :miss] (format "You swing at the %s but miss." defender-name)
-              [:human :*       sharp-weapon? :*        :hit]  (rr/rand-nth [(format "You %s the %s %s %s the %s."
-                                                                      (rand-axe-verb)
+              [:human :*       :punch         :*        :miss] (format "You punch the %s but miss." defender-name)
+              [:human :*       :punch         :*        :hit]  (rr/rand-nth [(format "You %s the %s %s %s the %s."
+                                                                              (rand-punch-verb)
+                                                                              defender-name
+                                                                              (rr/rand-nth ["solidly" "swiftly" "repeatedly"
+                                                                                         "perfectly" "competently"])
+                                                                              (rr/rand-nth ["on" "in" "across"])
+                                                                              (name defender-body-part))
+                                                                            (format "You %s the %s %s the %s."
+                                                                              (rand-punch-verb)
+                                                                              defender-name
+                                                                              (rr/rand-nth ["on" "in" "across"])
+                                                                              (name defender-body-part))
+                                                                            (format "You %s the %s."
+                                                                              (rand-punch-verb)
+                                                                              defender-name)])
+              [:human :*       :punch         :head     :dead] (format "You %s the %s in the head. Brains fly everywhere and it dies." (rand-punch-verb) defender-name)
+              [:human :*       :punch         :neck     :dead] (format "You %s the %s in the neck snapping it and it dies." (rand-punch-verb) defender-name)
+              [:human :*       :punch         :body     :dead] (format "You %s the %s in the body damaging internal organs. It dies." (rand-punch-verb) defender-name)
+              [:human :*       :punch         :leg      :dead] (format "You %s the %s in the leg severing it and it dies." (rand-punch-verb) defender-name)
+              [:human :*       :punch         :face     :dead] (format "You %s the %s in the face. Peices of face fly everywhere and it dies." (rand-punch-verb) defender-name)
+              [:human :*       :punch         :abdomen  :dead] (format "You %s the %s in the abdomen. Internal organs fly everywhere and it dies." (rand-punch-verb) defender-name)
+              [:human :*       :punch         :claw     :dead] (format "You %s the %s in the claw and it dies." (rand-punch-verb) defender-name)
+              [:human :*       :punch         :tail     :dead] (format "You %s the %s in the tail causing massive injuries and it dies." (rand-punch-verb) defender-name)
+              [:human :*       :punch         :wing     :dead] (format "You %s the %s in the wing ripping it clean off and it dies." (rand-punch-verb) defender-name)
+              [:human :*       :punch         :eye      :dead] (format "You %s the %s in the eye exploding it upon impact and it dies." (rand-punch-verb) defender-name)
+              [:human :*       :punch         :snout    :dead] (format "You %s the %s in the snount crushing it and it dies." (rand-punch-verb) defender-name)
+              [:human :*       :punch         :arm      :dead] (format "You %s the %s in the arm crushing bones and it dies." (rand-punch-verb) defender-name)
+              [:human :*       :punch         :beak     :dead] (format "You %s the %s in the beak ripping it from its face and it dies." (rand-punch-verb) defender-name)
+              [:human :*       :punch         :shell    :dead] (format "You %s the %s in the shell ripping to peices and it dies." (rand-punch-verb) defender-name)
+              [:human :*       :punch         :tentacle :dead] (format "You %s the %s in the tentacle shredding it and it dies." (rand-punch-verb) defender-name)
+              [:human :*       :punch         :*        :dead] (format "You %s the %s causing massive injuries and it dies." (rand-punch-verb) defender-name)
+              [:human :*       sharp-weapon?  :*        :miss] (format "You swing at the %s but miss." defender-name)
+              [:human :*       sharp-weapon?  :*        :hit]  (rr/rand-nth [(format "You %s the %s %s %s the %s."
+                                                                       (rand-axe-verb)
+                                                                       defender-name
+                                                                       (rr/rand-nth ["solidly" "swiftly"
+                                                                                  "perfectly" "competently"])
+                                                                       (rr/rand-nth ["on" "in" "across"])
+                                                                       (name defender-body-part))
+                                                                     (format "You %s the %s %s the %s."
+                                                                       (rand-axe-verb)
+                                                                       defender-name
+                                                                       (rr/rand-nth ["on" "in" "across"])
+                                                                       (name defender-body-part))
+                                                                     (format "You %s the %s."
+                                                                       (rand-axe-verb)
+                                                                       defender-name)])
+              [:human :*       sharp-weapon?  :head     :dead] (format "You %s the %s in the head. Brains fly everywhere and it dies." (rand-axe-verb) defender-name)
+              [:human :*       sharp-weapon?  :neck     :dead] (format "You %s the %s in the neck snapping it and it dies." (rand-axe-verb) defender-name)
+              [:human :*       sharp-weapon?  :body     :dead] (format "You %s the %s in the body damaging internal organs. It dies." (rand-axe-verb) defender-name)
+              [:human :*       sharp-weapon?  :leg      :dead] (format "You %s the %s in the leg severing it and it dies." (rand-axe-verb) defender-name)
+              [:human :*       sharp-weapon?  :face     :dead] (format "You %s the %s in the face. Peices of face fly everywhere and it dies." (rand-axe-verb) defender-name)
+              [:human :*       sharp-weapon?  :abdomen  :dead] (format "You %s the %s in the abdomen. Internal organs fly everywhere and it dies." (rand-axe-verb) defender-name)
+              [:human :*       sharp-weapon?  :claw     :dead] (format "You %s the %s in the claw and it dies." (rand-axe-verb) defender-name)
+              [:human :*       sharp-weapon?  :tail     :dead] (format "You %s the %s in the tail causing massive injuries and it dies." (rand-axe-verb) defender-name)
+              [:human :*       sharp-weapon?  :wing     :dead] (format "You %s the %s in the wing ripping it clean off and it dies." (rand-axe-verb) defender-name)
+              [:human :*       sharp-weapon?  :eye      :dead] (format "You %s the %s in the eye exploding it upon impact and it dies." (rand-axe-verb) defender-name)
+              [:human :*       sharp-weapon?  :snout    :dead] (format "You %s the %s in the snount crushing it and it dies." (rand-axe-verb) defender-name)
+              [:human :*       sharp-weapon?  :arm      :dead] (format "You %s the %s in the arm crushing bones it and it dies." (rand-axe-verb) defender-name)
+              [:human :*       sharp-weapon?  :beak     :dead] (format "You %s the %s in the beak ripping it from its face and it dies." (rand-axe-verb) defender-name)
+              [:human :*       sharp-weapon?  :shell    :dead] (format "You %s the %s in the shell ripping to peices and it dies." (rand-axe-verb) defender-name)
+              [:human :*       sharp-weapon?  :tentacle :dead] (format "You %s the %s in the tentacle shredding it and it dies." (rand-axe-verb) defender-name)
+              [:human :*       sharp-weapon?  :*        :dead] (format "You %s the %s causing massive injuries and it dies." (rand-axe-verb) defender-name)
+              [:human :*       ranged-weapon? :*        :miss] (format "You aim for the %s but miss." defender-name)
+              [:human :*       ranged-weapon? :*        :hit]  (rr/rand-nth [(format "You %s the %s %s %s the %s."
+                                                                      (rand-ranged-hit-verb)
                                                                       defender-name
                                                                       (rr/rand-nth ["solidly" "swiftly"
                                                                                  "perfectly" "competently"])
                                                                       (rr/rand-nth ["on" "in" "across"])
                                                                       (name defender-body-part))
                                                                     (format "You %s the %s %s the %s."
-                                                                      (rand-axe-verb)
+                                                                      (rand-ranged-hit-verb)
                                                                       defender-name
                                                                       (rr/rand-nth ["on" "in" "across"])
                                                                       (name defender-body-part))
                                                                     (format "You %s the %s."
-                                                                      (rand-axe-verb)
+                                                                      (rand-ranged-hit-verb)
                                                                       defender-name)])
-              [:human :*       sharp-weapon? :head     :dead] (format "You %s the %s in the head. Brains fly everywhere and it dies." (rand-axe-verb) defender-name)
-              [:human :*       sharp-weapon? :neck     :dead] (format "You %s the %s in the neck snapping it and it dies." (rand-axe-verb) defender-name)
-              [:human :*       sharp-weapon? :body     :dead] (format "You %s the %s in the body damaging internal organs. It dies." (rand-axe-verb) defender-name)
-              [:human :*       sharp-weapon? :leg      :dead] (format "You %s the %s in the leg severing it and it dies." (rand-axe-verb) defender-name)
-              [:human :*       sharp-weapon? :face     :dead] (format "You %s the %s in the face. Peices of face fly everywhere and it dies." (rand-axe-verb) defender-name)
-              [:human :*       sharp-weapon? :abdomen  :dead] (format "You %s the %s in the abdomen. Internal organs fly everywhere and it dies." (rand-axe-verb) defender-name)
-              [:human :*       sharp-weapon? :claw     :dead] (format "You %s the %s in the claw and it dies." (rand-axe-verb) defender-name)
-              [:human :*       sharp-weapon? :tail     :dead] (format "You %s the %s in the tail causing massive injuries and it dies." (rand-axe-verb) defender-name)
-              [:human :*       sharp-weapon? :wing     :dead] (format "You %s the %s in the wing ripping it clean off and it dies." (rand-axe-verb) defender-name)
-              [:human :*       sharp-weapon? :eye      :dead] (format "You %s the %s in the eye exploding it upon impact and it dies." (rand-axe-verb) defender-name)
-              [:human :*       sharp-weapon? :snout    :dead] (format "You %s the %s in the snount crushing it and it dies." (rand-axe-verb) defender-name)
-              [:human :*       sharp-weapon? :arm      :dead] (format "You %s the %s in the arm crushing bones it and it dies." (rand-axe-verb) defender-name)
-              [:human :*       sharp-weapon? :beak     :dead] (format "You %s the %s in the beak ripping it from its face and it dies." (rand-axe-verb) defender-name)
-              [:human :*       sharp-weapon? :shell    :dead] (format "You %s the %s in the shell ripping to peices and it dies." (rand-axe-verb) defender-name)
-              [:human :*       sharp-weapon? :tentacle :dead] (format "You %s the %s in the tentacle shredding it and it dies." (rand-axe-verb) defender-name)
-              [:human :*       sharp-weapon? :*        :dead] (format "You %s the %s causing massive injuries and it dies." (rand-axe-verb) defender-name)
-              [:*     :human   :bite         :*        :miss] (format "The %s lunges at you its mouth but misses." attacker-name)
-              [:*     :human   :bite-venom   :*        :miss] (format "The %s snaps at you its mouth but misses." attacker-name)
-              [:*     :human   :claw         :*        :miss] (format "The %s claws at you and narrowly misses." attacker-name)
-              [:*     :human   :punch        :*        :miss] (format "The %s punches you but misses." attacker-name)
-              [:*     :human   :gore         :*        :miss] (format "The %s lunges at you with it's tusks." attacker-name)
-              [:*     :human   :sting        :*        :miss] (format "The %s tries to sting you but misses." attacker-name)
-              [:*     :human   :sting-venom  :*        :miss] (format "The %s tries to sting you but misses." attacker-name)
-              [:*     :human   :squeeze      :*        :miss] (format "The %s starts to constrict around you but fumbles." attacker-name)
-              [:*     :human   :clamp        :*        :miss] (format "The %s tries to clamp onto you but isn't fast enough." attacker-name)
-              [:*     :human   :spike        :*        :miss] (format "You almost get poked by the %s's spikes." attacker-name)
-              [:*     :human   :bite         :*        :hit]  (format "The %s sinks its teeth into your flesh." attacker-name)
-              [:*     :human   :bite-venom   :*        :hit]  (format "The %s buries its teeth into your body and starts pumping poison into you." attacker-name)
-              [:*     :human   :claw         :*        :hit]  (format "The %s claws into your flesh." attacker-name)
-              [:*     :human   :punch        :*        :hit]  (format "The %s punches you." attacker-name)
-              [:*     :human   :gore         :*        :hit]  (format "The %s gores into your body with it's tusks.`" attacker-name)
-              [:*     :human   :sting        :*        :hit]  (format "The %s jabs you with its stinger." attacker-name)
-              [:*     :human   :sting-venom  :*        :hit]  (format "The %s stings you, pumping you full of poison." attacker-name)
-              [:*     :human   :squeeze      :*        :hit]  (format "The %s squeezes you leaving you gasping for breath." attacker-name)
-              [:*     :human   :clamp        :*        :hit]  (format "The %s clamps down on your flesh crushing it." attacker-name)
-              [:*     :human   :spike        :*        :hit]  (format "The %s's spikes drive into your body." attacker-name)
-              [:*     :*       :*            :*        :*  ]  (format "The %s hits you." attacker-name))]
+              [:human :*       ranged-weapon? :head     :dead] (format "You %s the %s in the head. Brains fly everywhere and it dies." (rand-ranged-hit-verb) defender-name)
+              [:human :*       ranged-weapon? :neck     :dead] (format "You %s the %s in the neck snapping it and it dies." (rand-ranged-hit-verb) defender-name)
+              [:human :*       ranged-weapon? :body     :dead] (format "You %s the %s in the body damaging internal organs. It dies." (rand-ranged-hit-verb) defender-name)
+              [:human :*       ranged-weapon? :leg      :dead] (format "You %s the %s in the leg severing it and it dies." (rand-ranged-hit-verb) defender-name)
+              [:human :*       ranged-weapon? :face     :dead] (format "You %s the %s in the face. Peices of face fly everywhere and it dies." (rand-ranged-hit-verb) defender-name)
+              [:human :*       ranged-weapon? :abdomen  :dead] (format "You %s the %s in the abdomen. Internal organs fly everywhere and it dies." (rand-ranged-hit-verb) defender-name)
+              [:human :*       ranged-weapon? :claw     :dead] (format "You %s the %s in the claw and it dies." (rand-ranged-hit-verb) defender-name)
+              [:human :*       ranged-weapon? :tail     :dead] (format "You %s the %s in the tail causing massive injuries and it dies." (rand-ranged-hit-verb) defender-name)
+              [:human :*       ranged-weapon? :wing     :dead] (format "You %s the %s in the wing ripping it clean off and it dies." (rand-ranged-hit-verb) defender-name)
+              [:human :*       ranged-weapon? :eye      :dead] (format "You %s the %s in the eye exploding it upon impact and it dies." (rand-ranged-hit-verb) defender-name)
+              [:human :*       ranged-weapon? :snout    :dead] (format "You %s the %s in the snount crushing it and it dies." (rand-ranged-hit-verb) defender-name)
+              [:human :*       ranged-weapon? :arm      :dead] (format "You %s the %s in the arm crushing bones it and it dies." (rand-ranged-hit-verb) defender-name)
+              [:human :*       ranged-weapon? :beak     :dead] (format "You %s the %s in the beak ripping it from its face and it dies." (rand-ranged-hit-verb) defender-name)
+              [:human :*       ranged-weapon? :shell    :dead] (format "You %s the %s in the shell ripping to peices and it dies." (rand-ranged-hit-verb) defender-name)
+              [:human :*       ranged-weapon? :tentacle :dead] (format "You %s the %s in the tentacle shredding it and it dies." (rand-ranged-hit-verb) defender-name)
+              [:human :*       ranged-weapon? :*        :dead] (format "You %s the %s causing massive injuries and it dies." (rand-ranged-hit-verb) defender-name)
+              [:*     :human   :bite          :*        :miss] (format "The %s lunges at you its mouth but misses." attacker-name)
+              [:*     :human   :bite-venom    :*        :miss] (format "The %s snaps at you its mouth but misses." attacker-name)
+              [:*     :human   :claw          :*        :miss] (format "The %s claws at you and narrowly misses." attacker-name)
+              [:*     :human   :punch         :*        :miss] (format "The %s punches you but misses." attacker-name)
+              [:*     :human   :gore          :*        :miss] (format "The %s lunges at you with it's tusks." attacker-name)
+              [:*     :human   :sting         :*        :miss] (format "The %s tries to sting you but misses." attacker-name)
+              [:*     :human   :sting-venom   :*        :miss] (format "The %s tries to sting you but misses." attacker-name)
+              [:*     :human   :squeeze       :*        :miss] (format "The %s starts to constrict around you but fumbles." attacker-name)
+              [:*     :human   :clamp         :*        :miss] (format "The %s tries to clamp onto you but isn't fast enough." attacker-name)
+              [:*     :human   :spike         :*        :miss] (format "You almost get poked by the %s's spikes." attacker-name)
+              [:*     :human   :bite          :*        :hit]  (format "The %s sinks its teeth into your flesh." attacker-name)
+              [:*     :human   :bite-venom    :*        :hit]  (format "The %s buries its teeth into your body and starts pumping poison into you." attacker-name)
+              [:*     :human   :claw          :*        :hit]  (format "The %s claws into your flesh." attacker-name)
+              [:*     :human   :punch         :*        :hit]  (format "The %s punches you." attacker-name)
+              [:*     :human   :gore          :*        :hit]  (format "The %s gores into your body with it's tusks.`" attacker-name)
+              [:*     :human   :sting         :*        :hit]  (format "The %s jabs you with its stinger." attacker-name)
+              [:*     :human   :sting-venom   :*        :hit]  (format "The %s stings you, pumping you full of poison." attacker-name)
+              [:*     :human   :squeeze       :*        :hit]  (format "The %s squeezes you leaving you gasping for breath." attacker-name)
+              [:*     :human   :clamp         :*        :hit]  (format "The %s clamps down on your flesh crushing it." attacker-name)
+              [:*     :human   :spike         :*        :hit]  (format "The %s's spikes drive into your body." attacker-name)
+              [:*     :*       :*             :*        :*  ]  (format "The %s hits you." attacker-name))]
      (log/debug "attack message" msg)
      msg))
 
@@ -161,49 +198,82 @@
   :obsidian-axe 4
   :obsidian-spear 3
   :sharpened-stick 2
+  :flint 1.5
+  :rock 1
   #?(:clj
      (throw (Exception. (format "No value specified for %s" (name attack))))
      :cljs
      (throw (js/Error. (format "No value specified for %s" (name attack)))))))
 
-(defn is-hit? [state attacker defender]
+(defmulti is-hit? (fn [state attacker defender attack-type] attack-type))
+
+(defmethod is-hit? :melee
+  [state attacker defender attack-type]
   (let [attacker-speed   (dcp/get-speed attacker state)
         defender-speed   (dcp/get-speed defender state)
         target-value     (/ 1 (inc (rmath/exp (/ (- defender-speed attacker-speed) 4))))]
     (log/info "hit target value"  target-value)
     (> (rr/uniform-double 0.2 1.0) target-value)))
 
-(defn calc-dmg
-  [state attacker attack defender defender-body-part]
-    #_(log/info "Attacker" attacker "attacker-type" (type attacker) "Defernder" defender "defender-type" (type defender))
-    (log/info "attacker" (:race attacker) "defender" (:race defender))
-    ;;Damage = Astr * (Adex / Dsp) * (As / Ds) * (At / Dt)
-    (let [attacker-strength  (dcp/get-strength attacker state)
-          attacker-dexterity (dcp/get-dexterity attacker state)
-          defender-speed     (dcp/get-speed defender state)
-          attacker-size      (dcp/get-size attacker state)
-          defender-size      (dcp/get-size defender state)
-          attack-toughness   (attack->toughness attack)
-          defender-toughness (dcp/get-toughness defender state)]
-      (log/info "attacker-strength" attacker-strength)
-      (log/info "attacker-dexterity" attacker-dexterity)
-      (log/info "defender-speed" defender-speed)
-      (log/info "attacker-size" attacker-size)
-      (log/info "defender-size" defender-size)
-      (log/info "attack-toughness" attack-toughness)
-      (log/info "defender-toughnes" defender-toughness)
-      (assert attacker-strength)
-      (assert attacker-dexterity)
-      (assert defender-speed)
-      (assert defender-size)
-      (assert attack-toughness  (str "attack" attack))
-      (assert defender-toughness)
-      (* attacker-strength
-         (/ (+ 5 (rr/uniform-double (* 10 attacker-dexterity))) (+ 15 defender-speed))
-         (/ (+ 125 attacker-size) (+ 125 defender-size))
-         (/ attack-toughness defender-toughness))))
+(defmethod is-hit? :ranged
+  [state attacker defender attack-type]
+  (let [attacker-speed   (dcp/get-speed attacker state)
+        defender-speed   (dcp/get-speed defender state)
+        target-value     (/ 1 (inc (rmath/exp (/ (- defender-speed attacker-speed) 4))))]
+    (log/info "hit target value"  target-value)
+    (> (rr/uniform-double 0.2 1.0) target-value)))
 
+(defmethod is-hit? :thrown-item
+  [state attacker defender attack-type]
+  (let [attacker-speed   (dcp/get-speed attacker state)
+        defender-speed   (dcp/get-speed defender state)
+        target-value     (/ 1 (inc (rmath/exp (/ (- defender-speed attacker-speed) 4))))]
+    (log/info "hit target value"  target-value)
+    (> (rr/uniform-double 0.2 1.0) target-value)))
 
+(defmulti calc-dmg (fn [state attacker attack attack-type defender defender-body-part] attack-type))
+
+(defmethod calc-dmg :melee
+  [state attacker attack attack-type defender defender-body-part]
+  #_(log/info "Attacker" attacker "attacker-type" (type attacker) "Defernder" defender "defender-type" (type defender))
+  (log/info "attacker" (:race attacker) "defender" (:race defender))
+  ;;Damage = Astr * (Adex / Dsp) * (As / Ds) * (At / Dt)
+  (let [attacker-strength  (dcp/get-strength attacker state)
+        attacker-dexterity (dcp/get-dexterity attacker state)
+        defender-speed     (dcp/get-speed defender state)
+        attacker-size      (dcp/get-size attacker state)
+        defender-size      (dcp/get-size defender state)
+        attack-toughness   (attack->toughness attack)
+        defender-toughness (dcp/get-toughness defender state)]
+    (* attacker-strength
+       (/ (+ 5 (rr/uniform-double (* 10 attacker-dexterity))) (+ 15 defender-speed))
+       (/ (+ 125 attacker-size) (+ 125 defender-size))
+       (/ attack-toughness defender-toughness))))
+
+(defn calc-dmg-ranged-or-thrown
+  [state attacker attack attack-type defender defender-body-part]
+  #_(log/info "Attacker" attacker "attacker-type" (type attacker) "Defernder" defender "defender-type" (type defender))
+  (log/info "attacker" (:race attacker) "defender" (:race defender))
+  ;;Damage = Astr * (Adex / Dsp) * (As / Ds) * (At / Dt)
+  (let [attacker-strength  (dcp/get-strength attacker state)
+        attacker-dexterity (dcp/get-dexterity attacker state)
+        defender-speed     (dcp/get-speed defender state)
+        attacker-size      (dcp/get-size attacker state)
+        defender-size      (dcp/get-size defender state)
+        attack-toughness   (attack->toughness (get attack :id))
+        defender-toughness (dcp/get-toughness defender state)]
+    (* attacker-dexterity
+       (/ (+ 5 (rr/uniform-double (* 10 attacker-dexterity))) (+ 15 defender-speed))
+       (/ (+ 125 attacker-size attacker-strength) (+ 125 defender-size))
+       (/ attack-toughness defender-toughness))))
+
+(defmethod calc-dmg :ranged
+  [& more]
+  (apply calc-dmg-ranged-or-thrown more))
+
+(defmethod calc-dmg :thown
+  [& more]
+  (apply calc-dmg-ranged-or-thrown more))
 
 (defmacro log-with-line [v msg]
   `(do (log/info
@@ -246,27 +316,26 @@
         ;; 
         attacker             (get-in state attacker-path)
         attack-item          (rp/wielded-item attacker)
-        bow-wielded          (= :bow
-                                (let [item-id (get (or attack-item {}) :id)]
-                                  (or item-id :non-bow)))
-        thrown-item          (when-not (keyword? attack)
+        attack-type          (cond
+                               (keyword attack)
+                                 :melee
+                               (get attack :wielded-ranged)
+                                 :ranged
+                               :else
+                                 :thrown-item)
+        ranged-weapon        (when (= attack-type :ranged)
+                               attack)
+        thrown-item          (when (= attack-type :thrown-item)
                                attack)
         shot-poisoned-arrow  (when thrown-item
                                (ig/arrow-poison-tipped? state thrown-item))
-        attack               (cond
-                               (keyword? attack)
-                               attack
-                               (and bow-wielded (= :arrow (get thrown-item :id)))
-                               :shot-arrow
-                               :else
-                               :thrown-item)
         
         defender-body-part   (rr/rand-nth (vec (get defender :body-parts)))
         {x :x y :y}          (get defender :pos)
         hp                   (get defender :hp)
-        hit                  (is-hit? state attacker defender)
+        hit                  (is-hit? state attacker defender attack-type)
         dmg                  (cond
-                               hit   (+ (calc-dmg state attacker attack defender defender-body-part) (if shot-poisoned-arrow 1 0))
+                               hit   (+ (calc-dmg state attacker attack attack-type defender defender-body-part) (if shot-poisoned-arrow 1 0))
                                :else 0)
         is-wound             (> dmg 1.5)]
     (log/info "attack" attacker-path "is attacking defender" defender-path)
@@ -319,7 +388,11 @@
             (log-with-line state "5")
             (let [msg (gen-attack-message attacker
                                           defender
-                                          attack
+                                          (case attack-type
+                                            :melee attack
+                                            :ranged (get ranged-weapon :id)
+                                            :thrown-item (get thrown-item :id)
+                                            (assert false (format "Unknown attack type %s" (name attack-type))))
                                           defender-body-part
                                           (if hit
                                             :hit

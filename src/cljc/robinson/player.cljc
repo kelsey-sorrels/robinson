@@ -523,7 +523,8 @@
   (reduce (fn [m item]
             (assoc m
                    (get item :id)
-                   (get item :count 1)))
+                   (+ (get m (get item :id) 0)
+                      (get item :count 1))))
           {}
           (get-in state [:world :player :inventory])))
 

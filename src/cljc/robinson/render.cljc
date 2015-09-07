@@ -1346,7 +1346,7 @@
     (log/info "current-state" (current-state state))
     (if-not (nil? (get-in state [:world :ui-hint]))
       ;; ui-hint
-      (put-string screen 0 0 (get-in state [:world :ui-hint]) :white :black)
+      (put-chars screen (markup->chars 0 0 (get-in state [:world :ui-hint])))
       ;; draw log
       (let [current-time     (rw/get-time state)
             log-idx          (get-in state [:world :log-idx] 0)

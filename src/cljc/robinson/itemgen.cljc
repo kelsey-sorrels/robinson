@@ -194,6 +194,13 @@
                :rock}
              (get item :id)))
 
+(defn item->ranged-combat-ammunition-item-id
+  [item]
+  (case (get item :id)
+    :bow :arrow
+    :flint :flint
+    :rock :rock))
+
 (defn is-drinkable?
   [item]
   (get item :drinkable false))

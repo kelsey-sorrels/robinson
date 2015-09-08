@@ -271,7 +271,7 @@
   [& more]
   (apply calc-dmg-ranged-or-thrown more))
 
-(defmethod calc-dmg :thown
+(defmethod calc-dmg :thown-item
   [& more]
   (apply calc-dmg-ranged-or-thrown more))
 

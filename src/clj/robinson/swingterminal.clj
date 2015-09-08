@@ -157,6 +157,7 @@
                                                 (= (.getKeyCode e) KeyEvent/VK_ESCAPE)        :escape
                                                 (= (.getKeyCode e) KeyEvent/VK_SPACE)         :space
                                                 (= (.getKeyCode e) KeyEvent/VK_BACK_SPACE)    :backspace
+                                                (= (.getKeyCode e) KeyEvent/VK_TAB)           :tab
                                                 (= (.getKeyCode e) KeyEvent/VK_F1)            :f1
                                                 (= (.getKeyCode e) KeyEvent/VK_F2)            :f2
                                                 (= (.getKeyCode e) KeyEvent/VK_F3)            :f3

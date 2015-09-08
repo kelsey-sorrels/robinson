@@ -1376,9 +1376,9 @@
   [state]
   (let [ranged-weapon-item  (first (filter (fn [item] (get item :wielded-ranged))
                                            (rp/player-inventory state)))]
+    (log/info "ranged-weapon-item" ranged-weapon-item)
     ;; check if the player has a ranged wielded weapon
     (if ranged-weapon-item
-      
       (if (or (not (ig/requires-reload? ranged-weapon-item))
               (get ranged-weapon-item :loaded))
         ;; save some values so we don't have to recalc them each time
@@ -1394,8 +1394,8 @@
               (rw/assoc-current-state :select-ranged-target)
               (rc/ui-hint "<color fg=\"highlight\">Tab</color>/<color fg=\"highlight\">n</color>-next target. <color fg=\"highlight\">p</color>-previous target"))
             (rc/ui-hint state "No targets in range")))
-          (rc/ui-hint state "Must reload (<color fg=\"hightlight\">r</color>) weapon first.")))
-        (rc/ui-hint state "Must wield ranged weapon first (<color fg=\"highlight\">W</color>)")))
+          (rc/ui-hint state "Must reload (<color fg=\"hightlight\">r</color>) weapon first."))
+        (rc/ui-hint state "Must wield ranged weapon first (<color fg=\"highlight\">W</color>)"))))
 
 (defn reload-ranged-weapon
   [state]
@@ -1452,10 +1452,10 @@
       ;; the weapon does not require reloading?
       (if-not (ig/requires-reload? ranged-weapon-item)
         ;; dec ranged weapon ammunition
-        (rp/dec-item-count (ig/item->ranged-combat-ammunition-item-id ranged-weapon-item))
+        (rp/dec-item-count state (ig/item->ranged-combat-ammunition-item-id ranged-weapon-item))
         state)
       ;; do combat
-      (rcombat/attack [:world :player] (rnpc/npc->keys state npc) ranged-weapon-item))))
+      (rcombat/attack state [:world :player] (rnpc/npc->keys state npc) ranged-weapon-item))))
       
                                                              
 
@@ -3031,6 +3031,8 @@
                            :else       [wield-ranged           :normal          true]}
                :select-ranged-target
                           {:escape     [identity               :normal          false]
+                           :tab        [select-next-ranged-target
+                                                               identity         false]
                            \n          [select-next-ranged-target
                                                                identity         false]
                            \p          [select-previous-ranged-target

@@ -1737,7 +1737,8 @@
           (rp/dec-item-count state (get item :id)))
       :else
         ;; didn't hit anything, drop into cell at max-distance
-        (let [[x y] (nth (rw/direction->xys state direction) throw-distance)]
+        (let [xys   (rw/direction->xys state direction)
+              [x y] (nth xys (min throw-distance (dec (count xys))))]
           (-> state
             (rw/conj-cell-items x y item)
             (rp/dec-item-count (get item :id)))))))

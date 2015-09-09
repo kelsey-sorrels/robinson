@@ -90,7 +90,7 @@
         npc  (npc-at-xy state x y)
         items (get cell :items)]
     (cond
-      (not= (get cell :discovered) (rw/get-time state))
+      (not= (get cell :discovered) (dec (rw/get-time state)))
         (format "You can't see that.")
       (and npc (seq items))
         (format "There is %s, and %s." (describe-npc npc) (describe-items items))
@@ -108,8 +108,10 @@
 (defn search
   "Describe the player's cell."
   [state]
-  (let [xy (player-xy state)]
-    (append-log state (format "Here %s." (apply describe-cell-at-xy state xy)))))
+  (let [xy (player-xy state)
+        description (apply describe-cell-at-xy state xy)]
+    (append-log state (format "Here %s%s" (clojure.string/lower-case (first description))
+                                           (apply str (rest description))))))
 
 (defn extended-search
   "Search the Moore neighborhood for hidden things and make them visible. Describe interesting items in the log."

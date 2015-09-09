@@ -1170,7 +1170,7 @@
   "Sleep."
   [state keyin]
   (let [d (rlos/sight-distance state)]
-    (if (> d 2)
+    (if (> d 4)
       (rw/assoc-current-state state :normal)
       (do-rest state))))
 

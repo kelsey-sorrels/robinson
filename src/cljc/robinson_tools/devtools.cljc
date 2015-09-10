@@ -1,5 +1,5 @@
 ;; Functions for developing and debugging
-(ns robinson.devtools
+(ns robinson-tools.devtools
   (:require [robinson.common :as rc]
             [robinson.player :as rp]
             [robinson.worldgen :as rwg]

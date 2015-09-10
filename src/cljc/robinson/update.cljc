@@ -12,7 +12,6 @@
             [robinson.itemgen  :as ig]
             [robinson.monstergen :as mg]
             [robinson.startgame :as sg]
-            robinson.devtools
             [clojure.string :refer [lower-case]]
             ;[robinson.dialog :refer []]
             [robinson.npc :as rnpc]
@@ -2890,7 +2889,9 @@
                           \1           [(fn [state]
                                           (log/info "showing world")
                                           (when (get-in state [:world :dev-mode])
-                                            (robinson.devtools/show-world state))
+                                            (require 'robinson-tools.devtools)
+                                            (when-let [show-world (resolve 'robinson-tools.devtools/show-world)]
+                                              (show-world state)))
                                           state)
                                                                        :normal false]
                           \2           [(fn [state]

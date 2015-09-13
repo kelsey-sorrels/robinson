@@ -1,5 +1,5 @@
 {:windows-font "DejaVu Sans Mono"
- :else-font    "Monospaced"
+ :else-font    "fonts/Boxy.ttf"
  :font-size 18
  :log-level :info
 }

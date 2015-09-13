@@ -4,7 +4,8 @@
             robinson.aterminal)
   (:require [robinson.macros :as rm]
             [taoensso.timbre :as timbre]
-            [clojure.core.async :as async :refer [go go-loop]])
+            [clojure.core.async :as async :refer [go go-loop]]
+            clojure.java.io)
   (:import  
             java.util.concurrent.LinkedBlockingQueue
             java.awt.Color
@@ -39,6 +40,16 @@
   []
   (not (nil? (re-find #"[Mm]ac" (System/getProperty "os.name")))))
 
+
+(defn make-font
+  [name-or-path style size]
+  (let [font-file (clojure.java.io/as-file name-or-path)]
+    (if (.exists font-file)
+      ;; Load font from file
+      (.deriveFont (Font/createFont Font/TRUETYPE_FONT font-file) (int style) (float size))
+      ;; Load font from font registry
+      (Font. name-or-path style size))))
+
 ;; Normally this would be a record, but until http://dev.clojure.org/jira/browse/CLJ-1224 is fixed
 ;; it is not performant to memoize records because hashCode values are not cached and are recalculated
 ;; each time.
@@ -66,11 +77,11 @@
                        font-size]
     (let [is-windows       (>= (.. System (getProperty "os.name" "") (toLowerCase) (indexOf "win")) 0)
           normal-font      (if is-windows
-                              (Font. windows-font Font/PLAIN font-size)
-                              (Font. else-font Font/PLAIN font-size))
+                              (make-font windows-font Font/PLAIN font-size)
+                              (make-font else-font Font/PLAIN font-size))
           bold-font        (if is-windows
-                              (Font. windows-font Font/BOLD font-size)
-                              (Font. else-font  Font/BOLD font-size))
+                              (make-font windows-font Font/BOLD font-size)
+                              (make-font else-font  Font/BOLD font-size))
           _                (info "Using font" (.getFontName normal-font))
           default-fg-color (Color. (long default-fg-color-r) (long default-fg-color-g) (long default-fg-color-b))
           default-bg-color (Color. (long default-bg-color-g) (long default-bg-color-g) (long default-bg-color-b))

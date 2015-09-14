@@ -565,4 +565,14 @@
                                               (count samples))))
                 :player-mean-health-ratio (float->str (mean-health-ratio samples))
                 :player-std-dev-health-ratio (float->str (std-dev-health-ratio samples))}))
-           (sort-by first (reduce-kv (fn [m k v] (apply conj m (map (fn [v] [k v]) v))) [] level->land-monster-ids))))))
+           ;; only simulate first [level monster-id] found
+           ;; eg a [1 :rat] will be simulated but a subsequent [3 :rat] would be skipped.
+           (reduce (fn [coll [level monster-id]]
+                     (if (contains? (set (map second coll)) monster-id)
+                       coll
+                       (conj coll [level monster-id])))
+                   []
+                   ;; order monsters by level ascending
+                   (sort-by first
+                            ;; get list of [level monster-id]
+                            (reduce-kv (fn [m k v] (apply conj m (map (fn [v] [k v]) v))) [] level->land-monster-ids)))))))

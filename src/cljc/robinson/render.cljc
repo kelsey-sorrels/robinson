@@ -204,6 +204,10 @@
                             content))]
       characters))))
 
+(defn markup->length
+  [s]
+  (count (markup->chars 0 0 s)))
+
 (defn put-string
   ([^robinson.aterminal.ATerminal screen x y string]
      (put-string screen x y string :white :black #{}))
@@ -281,7 +285,7 @@
 
 (defn center-markup [s width]
   (let [n-ws-left (int (/ (- width (markup-length s)) 2))
-        n-ws-right (int (+ 0.5 (/ (- width (markup-length s)) 2)))]
+        n-ws-right (int (+ 1.6 (/ (- width (markup-length s)) 2)))]
    (apply str (concat (repeat n-ws-left " ") s (repeat n-ws-right " ")))))
 
 (defn left-justify-markup [s width]
@@ -1000,16 +1004,17 @@
 
 (defn render-start-text [state]
   (let [screen     (state :screen)
-        start-text (sg/start-text state)]
-    (render-list screen 16 4 53 6
+        start-text (sg/start-text state)
+        width      (reduce max (map markup->length (clojure.string/split-lines start-text)))]
+    (render-list screen 16 4 width 6
       (concat
         [{:s "" :fg :black :bg :white :style #{}}]
         (map
           (fn [line] {:s line :fg :black :bg :white :style #{:center}})
           (remove empty? (clojure.string/split-lines start-text)))
         [{:s "" :fg :black :bg :white :style #{}}
-         {:s "     Press <color fg=\"highlight\">any key</color> to continue and <color fg=\"highlight\">?</color> to view help." :fg :black :bg :white :style #{}}]))
-    (render-rect-double-border screen 16 4 53 6 :black :white)))
+         {:s "  Press <color fg=\"highlight\">any key</color> to continue and <color fg=\"highlight\">?</color> to view help." :fg :black :bg :white :style #{}}]))
+    (render-rect-double-border screen 15 4 (inc width) 6 :black :white)))
 
 (defn render-dead-text [state]
   (let [screen         (state :screen)
@@ -1027,7 +1032,7 @@
                            (> thirst max-thirst) "not drinking enough water"
                            (<= will-to-live 0)   "just giving up on life"
                            :else                 "mysterious causes"))]
-    (render-list screen 16 4 53 6
+    (render-list screen 16 4 55 6
       (concat
         [{:s "" :fg :black :bg :white :style #{}}]
         (map

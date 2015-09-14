@@ -1047,7 +1047,7 @@
         (map
           (fn [line] {:s line :fg :black :bg :white :style #{:center}})
           ["Rescue!"
-           (format "A passing %s spots you.")
+           (format "A passing %s spots you." rescue-mode)
            "Press <color fg=\"highlight\">space</color> to continue."])))
     (render-rect-double-border screen 16 4 53 6 :black :white)))
 

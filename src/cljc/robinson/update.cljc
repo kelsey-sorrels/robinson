@@ -1921,67 +1921,73 @@
 (defn decrease-will-to-live
   "Decrease the player's will-to-live depending on circumstances."
   [state]
-  (if (= (rw/current-state state) :sleep)
-    (let [[cell _ _] (rw/player-cellxy state)
-          bedroll?   (contains? (set (map :id (get cell :items []))) :bedroll)]
+  (let [[cell _ _] (rw/player-cellxy state)
+        bedroll?   (contains? (set (map :id (get cell :items []))) :bedroll)
+        in-water?  (contains? #{:ocean :surf} (get cell :type))]
+    (if (= (rw/current-state state) :sleep)
       (if bedroll?
         (rp/player-update-wtl state
           (fn [will-to-live] (+ 0.05 will-to-live)))
-        state))
-    (-> state
-      (rp/player-update-wtl
-        (fn [will-to-live]
-          (let [dwtl       0.001 ;; you've been on the island. It sucks and you want to get off.
-                ;; if it is night and the player is not within range of a fire, things are extra tough.
-                dwtl       (if (and (rw/is-night? state)
-                                    (not-any? #(= (get % :type) :fire)
-                                              (rw/cells-in-range-of-player state 3)))
-                             (+ dwtl 0.002)
-                             dwtl)
-                hp         (rp/player-hp state)
-                max-hp     (rp/player-max-hp state)
-                _          (log/info "hp" hp "max-hp" max-hp)
-                dwtl       (+ dwtl (if (> 0.5 (/ hp max-hp))
-                                     0.1
-                                     0))
-                hunger     (rp/player-hunger state)
-                max-hunger (rp/player-max-hunger state)
-                _          (log/info "hunger" hunger "max-hunger" max-hunger)
-                dwtl       (+ dwtl (if (> (/ hunger max-hunger) 0.8)
-                                     0.1
-                                     0))
-                thirst     (rp/player-thirst state)
-                max-thirst (rp/player-max-thirst state)
-                _          (log/info "thirst" thirst "max-thirst" max-thirst)
-                dwtl       (+ dwtl (if (> (/ thirst max-thirst) 0.5)
-                                     0.1
-                                     0))
-                wounded    (rp/player-wounded? state)
-                _          (log/info "wounded" wounded)
-                dwtl       (+ dwtl (if wounded
-                                     0.21
-                                     0))
-                poisoned   (rp/player-poisoned? state)
-                _          (log/info "poisoned" poisoned)
-                dwtl       (+ dwtl (if poisoned
-                                     0.3
-                                     0))
-                infected   (rp/player-infected? state)
-                _          (log/info "infected" infected)
-                dwtl       (+ dwtl (if infected
-                                     0.41
-                                     0))]
-          (log/info "dwtl" dwtl "will-to-live" will-to-live)
-          (- will-to-live dwtl))))
-      (update-in [:world :player :status]
-                 (fn [status]
-                   (set (if (neg? (rp/player-wtl state))
-                          (conj status :dead)
-                          status))))
-      (as-> state
-        (if (rp/player-status-contains? state :dead)
-          (rp/update-player-died state :zero-will-to-live)
-          state)))))
+        state)
+      (-> state
+        (rp/player-update-wtl
+          (fn [will-to-live]
+            (let [dwtl       0.001 ;; you've been on the island. It sucks and you want to get off.
+                  ;; if it is night and the player is not within range of a fire, things are extra tough.
+                  dwtl       (if (and (rw/is-night? state)
+                                      (not-any? #(= (get % :type) :fire)
+                                                (rw/cells-in-range-of-player state 3)))
+                               (+ dwtl 0.002)
+                               dwtl)
+                  ;; in water, cold and wet - less will to live.
+                  dwtl       (+ dwtl
+                                (if in-water?
+                                  0.1
+                                  0))
+                  hp         (rp/player-hp state)
+                  max-hp     (rp/player-max-hp state)
+                  _          (log/info "hp" hp "max-hp" max-hp)
+                  dwtl       (+ dwtl (if (> 0.5 (/ hp max-hp))
+                                       0.1
+                                       0))
+                  hunger     (rp/player-hunger state)
+                  max-hunger (rp/player-max-hunger state)
+                  _          (log/info "hunger" hunger "max-hunger" max-hunger)
+                  dwtl       (+ dwtl (if (> (/ hunger max-hunger) 0.8)
+                                       0.1
+                                       0))
+                  thirst     (rp/player-thirst state)
+                  max-thirst (rp/player-max-thirst state)
+                  _          (log/info "thirst" thirst "max-thirst" max-thirst)
+                  dwtl       (+ dwtl (if (> (/ thirst max-thirst) 0.5)
+                                       0.1
+                                       0))
+                  wounded    (rp/player-wounded? state)
+                  _          (log/info "wounded" wounded)
+                  dwtl       (+ dwtl (if wounded
+                                       0.21
+                                       0))
+                  poisoned   (rp/player-poisoned? state)
+                  _          (log/info "poisoned" poisoned)
+                  dwtl       (+ dwtl (if poisoned
+                                       0.3
+                                       0))
+                  infected   (rp/player-infected? state)
+                  _          (log/info "infected" infected)
+                  dwtl       (+ dwtl (if infected
+                                       0.41
+                                       0))]
+            (log/info "dwtl" dwtl "will-to-live" will-to-live)
+            (- will-to-live dwtl))))
+        (update-in [:world :player :status]
+                   (fn [status]
+                     (set (if (neg? (rp/player-wtl state))
+                            (conj status :dead)
+                            status))))
+        (as-> state
+          (if (rp/player-status-contains? state :dead)
+            (rp/update-player-died state :zero-will-to-live)
+            state))))))
 
 (defn log-will-to-live-flavor
   "Log a flavor message when will-to-live increases or decreases by a lot."

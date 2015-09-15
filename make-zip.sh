@@ -35,6 +35,7 @@ cp LICENSE target/robinson-$VERSION/
 cp README.md target/robinson-$VERSION/
 cp -R config target/robinson-$VERSION/
 cp -R data   target/robinson-$VERSION/
+cp -R fonts  target/robinson-$VERSION/
 cp -R images target/robinson-$VERSION/
 cp -R quests target/robinson-$VERSION/
 mkdir     target/robinson-$VERSION/log

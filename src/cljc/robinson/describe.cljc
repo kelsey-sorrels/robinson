@@ -90,7 +90,7 @@
         npc  (npc-at-xy state x y)
         items (get cell :items)]
     (cond
-      (not= (get cell :discovered) (dec (rw/get-time state)))
+      (not= (get cell :discovered) (rw/get-time state))
         (format "You can't see that.")
       (and npc (seq items))
         (format "There is %s, and %s." (describe-npc npc) (describe-items items))

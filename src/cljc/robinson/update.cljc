@@ -1280,12 +1280,14 @@
                                    []))
                                (concat
                                  (if (or harvestable
-                                         ;; TODO: make large flint stone have a higher chance of dropping away
+                                         ;; Make large flint stone have a higher chance of dropping away
                                          ;; from the player's starting-pos.
                                          (= 0 (rr/uniform-int 1000)))
-                                   [(rr/rand-nth [(ig/gen-item :rock) (if (< 300 (rr/uniform-double 100 (max 101 distance)))
-                                                                        (ig/gen-item :large-flint)
-                                                                        (ig/gen-item :flint))])]
+                                   (concat
+                                     (repeat (rr/uniform-int 4 6) (ig/gen-item :rock))
+                                     [(rr/rand-nth [(ig/gen-item :rock) (if (< 300 (rr/uniform-double 100 (max 101 distance)))
+                                                                          (ig/gen-item :large-flint)
+                                                                          (ig/gen-item :flint))])])
                                    [])))
                           :else [])
                         [])]

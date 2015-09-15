@@ -109,7 +109,7 @@
   "Describe the player's cell."
   [state]
   (let [xy (player-xy state)
-        description (apply describe-cell-at-xy state xy)]
+        description (apply describe-cell-at-xy (update-in state [:world :time] dec) xy)]
     (append-log state (format "Here %s%s" (clojure.string/lower-case (first description))
                                            (apply str (rest description))))))
 

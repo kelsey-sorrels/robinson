@@ -442,6 +442,11 @@
           (if (contains? (set defender-path) :npcs)
             ;; defender is npc
             (-> state
+              ;; attacks use wielded weapons
+              (as-> state
+                (if attack-item
+                  (rp/dec-item-utility state (get attack-item :hotkey))
+                  state))
               ;; update stats and will-to-live
               (rp/update-npc-killed defender attack)
               ;; trigger on-death script for defender

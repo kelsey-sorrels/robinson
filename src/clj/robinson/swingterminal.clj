@@ -68,13 +68,14 @@
   ([title columns rows default-fg-color default-bg-color]
     (make-terminal title columns rows default-fg-color default-bg-color nil))
   ([title columns rows default-fg-color default-bg-color on-key-fn]
-    (make-terminal title columns rows default-fg-color default-bg-color on-key-fn "Courier New" "Monospaced" 14))
+    (make-terminal title columns rows default-fg-color default-bg-color on-key-fn "Courier New" "Monospaced" 14 true))
   ([title columns rows [default-fg-color-r default-fg-color-g default-fg-color-b]
                        [default-bg-color-r default-bg-color-g default-bg-color-b]
                        on-key-fn
                        windows-font
                        else-font
-                       font-size]
+                       font-size
+                       antialias]
     (let [is-windows       (>= (.. System (getProperty "os.name" "") (toLowerCase) (indexOf "win")) 0)
           normal-font      (if is-windows
                               (make-font windows-font Font/PLAIN font-size)
@@ -106,7 +107,9 @@
                                ;(println "filling rect" (* col char-width) (* row char-height) char-width char-height bg-color)
                                (doto offscreen-graphics-2d
                                  (.setFont normal-font)
-                                 (.setRenderingHint RenderingHints/KEY_TEXT_ANTIALIASING RenderingHints/VALUE_TEXT_ANTIALIAS_GASP)
+                                 (.setRenderingHint RenderingHints/KEY_TEXT_ANTIALIASING (if antialias
+                                                                                           RenderingHints/VALUE_TEXT_ANTIALIAS_GASP
+                                                                                           RenderingHints/VALUE_TEXT_ANTIALIAS_OFF))
                                  (.setColor bg-color)
                                  (.fillRect 0 0 char-width char-height))
                                (when (not= s " ")

@@ -285,7 +285,7 @@
 
 (defn center-markup [s width]
   (let [n-ws-left (int (/ (- width (markup-length s)) 2))
-        n-ws-right (int (+ 1.6 (/ (- width (markup-length s)) 2)))]
+        n-ws-right (int (+ 0.5 (/ (- width (markup-length s)) 2)))]
    (apply str (concat (repeat n-ws-left " ") s (repeat n-ws-right " ")))))
 
 (defn left-justify-markup [s width]
@@ -1024,15 +1024,17 @@
         thirst         (get-in state [:world :player :thirst])
         max-thirst     (get-in state [:world :player :max-thirst])
         will-to-live   (get-in state [:world :player :will-to-live])
-        cause-of-death (or
-                         (get-in state [:world :cause-of-death])
-                         (cond
-                           (<= hp 0)             "massive injuries"
-                           (> hunger max-hunger) "literall starving to death"
-                           (> thirst max-thirst) "not drinking enough water"
-                           (<= will-to-live 0)   "just giving up on life"
-                           :else                 "mysterious causes"))]
-    (render-list screen 16 4 55 6
+        cause-of-death (format "From %s"
+                               (or
+                                 (get-in state [:world :cause-of-death])
+                                 (cond
+                                   (<= hp 0)             "massive injuries"
+                                   (> hunger max-hunger) "literall starving to death"
+                                   (> thirst max-thirst) "not drinking enough water"
+                                   (<= will-to-live 0)   "just giving up on life"
+                                   :else                 "mysterious causes")))
+        width          (max 25 (markup->length cause-of-death))]
+    (render-list screen 27 4 width 6
       (concat
         [{:s "" :fg :black :bg :white :style #{}}]
         (map
@@ -1041,7 +1043,7 @@
            (format "From %s" cause-of-death)
            ""
            "Press <color fg=\"highlight\">space</color> to continue."])))
-    (render-rect-double-border screen 16 4 53 6 :black :white)))
+    (render-rect-double-border screen 26 4 width 6 :black :white)))
 
 (defn render-rescued-text [state]
   (let [screen      (state :screen)

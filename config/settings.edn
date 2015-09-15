@@ -1,5 +1,15 @@
-{:windows-font "DejaVu Sans Mono"
- :else-font    "fonts/Boxy.ttf"
- :font-size 18
+;; Settings
+{
+ ;; Use DejaVu Sans Mono font
+ :windows-font "fonts/dejavu-fonts-ttf-2.35/ttf/DejaVuSansMono.ttf"
+ :else-font    "fonts/dejavu-fonts-ttf-2.35/ttf/DejaVuSansMono.ttf"
+ :font-size    18
+ :antialias    true
+
+ ;; Uncomment following lines to use Boxy font
+ ;; :windows-font "fonts/Boxy/Boxy.ttf"
+ ;; :else-font    "fonts/Boxy/Boxy.ttf"
+ ;; :font-size    24
+ ;; :antialias    false
  :log-level :info
 }

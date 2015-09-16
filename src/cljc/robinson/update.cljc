@@ -1939,7 +1939,7 @@
                   dwtl       (if (and (rw/is-night? state)
                                       (not-any? #(= (get % :type) :fire)
                                                 (rw/cells-in-range-of-player state 3)))
-                               (+ dwtl 0.002)
+                               (+ dwtl 0.5)
                                dwtl)
                   ;; in water, cold and wet - less will to live.
                   dwtl       (+ dwtl

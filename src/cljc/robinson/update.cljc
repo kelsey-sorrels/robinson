@@ -1880,8 +1880,8 @@
           (update-in [:world :player :hunger] (partial + 0.01))
           (update-in [:world :player :thirst] (partial + 0.05)))
         (-> state
-          (update-in [:world :player :hunger] (partial + 0.05 (* 0.02 (count (rp/player-inventory state)))))
-          (update-in [:world :player :thirst] (partial + 0.1))))
+          (update-in [:world :player :hunger] (partial + 0.06 (* 0.02 (count (rp/player-inventory state)))))
+          (update-in [:world :player :thirst] (partial + 0.15))))
       (if (> (rp/player-hunger state) (rp/player-max-hunger state))
         (do
           (log/info "Player died from hunger")

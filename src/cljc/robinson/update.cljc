@@ -96,15 +96,23 @@
 
 (defn append-name
   [state key-in]
-  (update-in state
-             [:world :player :name]
-             (fn [player-name]
-               (if (and (< (count player-name) 20)
-                        (or (<= (int \A) (int key-in) (int \Z))
-                        (<= (int \a) (int key-in) (int \z))
-                        (contains? #{\-} key-in)))
-                  (str player-name key-in)
-                  player-name))))
+  (let [key-in (cond
+                 (= :space key-in)
+                   \ 
+                 (char? key-in)
+                   key-in
+                 :else nil)]
+    (if key-in
+      (update-in state
+                 [:world :player :name]
+                 (fn [player-name]
+                   (if (and (< (count player-name) 20)
+                            (or (<= (int \A) (int key-in) (int \Z))
+                            (<= (int \a) (int key-in) (int \z))
+                            (contains? #{\- \ } key-in)))
+                      (str player-name key-in)
+                      player-name)))
+      state)))
 
 (defn toggle-hotkey
   "Toggle mark `keyin` as a selected hotkey, or not if it already is."

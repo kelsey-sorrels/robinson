@@ -3144,7 +3144,7 @@
                            \n          [(constantly nil)       :normal          false]}
                :game-over-dead
                           {\y          [identity               :start-inventory false]
-                           \n          [(constantly nil)       :normal          false]}
+                           \n          [identity               :start           false]}
                :quit?     {\y          [(constantly nil)       :normal          false]
                            :else       [pass-state             :normal          false]}}
         expander-fn (fn [table] table)]

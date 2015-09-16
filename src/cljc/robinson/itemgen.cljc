@@ -16,7 +16,7 @@
    :name-plural #?(:clj  (format "%s corpses" (name (get npc :race)))
                    :cljs (gstring/format "%s corpses" (name (get npc :race))))
    ;; food=log((size+1)/10000)+15
-   :hunger      (+ (Math/log10 (/ (inc (get npc :size)) 10000)) 15)})
+   :hunger      (+ (Math/log10 (/ (inc (get npc :size)) 1000)) 15)})
 
 (defn is-corpse-id? [id] (re-matches #"-corpse$" (name id)))
 

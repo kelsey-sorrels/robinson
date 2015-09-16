@@ -1520,9 +1520,11 @@
                             (case cur-state
                               :game-over-dead 1
                               :game-over-rescued 2)))
-        days-survived  (int (/ (get-time state) 800))
-        player-name    (get-in state [:world :player :name])
-        madlib         (gen-end-madlib state)]
+        turns-survived  (get-time state)
+        turns-per-day   (count (get-in state [:data :atmo]))
+        days-survived   (int (/ turns-survived turns-per-day))
+        player-name     (get-in state [:world :player :name])
+        madlib          (gen-end-madlib state)]
     (clear (state :screen))
     (case cur-state
       :game-over-dead
@@ -1542,7 +1544,7 @@
                                  :else                 "mysterious causes"))]
           ;; Title
           (put-string (state :screen) 10 1 (format "%s: %s." player-name madlib))
-          (put-string (state :screen) 18 2 (format "Survived for %d %s." days-survived (if (> 1 days-survived) "days" "day")))
+          (put-string (state :screen) 18 2 (format "Survived for %d %s. (%d turns)" days-survived (if (> 1 days-survived) "days" "day") turns-survived))
           (put-string (state :screen) 18 3 (format "Died from %s." cause-of-death))
           (put-string (state :screen) 10 4 (format "Points: %s." points))
           (put-string (state :screen) 10 5 "Inventory:")
@@ -1551,11 +1553,10 @@
             (-> state :world :player :inventory)))
           (put-chars (state :screen) (markup->chars 10 22 "Play again? [<color fg=\"highlight\">y</color>/<color fg=\"highlight\">n</color>]")))
       :game-over-rescued
-        (let [rescue-mode (rendgame/rescue-mode state)
-              days        (int (/ (get-time state) 346))]
+        (let [rescue-mode (rendgame/rescue-mode state)]
           ;; Title
           (put-string (state :screen) 10 1 (format "%s: %s." player-name madlib))
-          (put-string (state :screen) 18 2 (format "Rescued by %s after surviving for %d days." rescue-mode days))
+          (put-string (state :screen) 18 2 (format "Rescued by %s after surviving for %d days." rescue-mode days-survived))
           (put-string (state :screen) 10 3 (format "Points: %s." points))
           (put-string (state :screen) 10 4 "Inventory:")
           (doall (map-indexed

@@ -456,7 +456,7 @@
               ;; maybe add corpse
               (rw/update-cell-items x y
                 (fn [items]
-                  (if (> (rr/next-float! rr/*rnd*) 0.2)
+                  (if (> (rr/next-float! rr/*rnd*) 0.8)
                     (conj items (ig/gen-corpse defender))
                     items)))
               (rc/append-log (gen-attack-message attacker

@@ -1216,7 +1216,8 @@
                                                                    ["\u01c1" (color->rgb :black) (color->rgb :brown)]))
                                                              :else
                                                                out-char)
-                                           shaded-out-char (if (= (get cell :discovered) current-time)
+                                           shaded-out-char (if (and (= (get cell :discovered) current-time)
+                                                                    (not (contains? #{:fire :lava} (get cell :type))))
                                                              (update-in shaded-out-char
                                                                         [1]
                                                                         (fn [c]

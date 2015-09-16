@@ -265,7 +265,7 @@
     (* attacker-dexterity
        (/ (+ 5 (rr/uniform-double (* 10 attacker-dexterity))) (+ 15 defender-speed))
        (/ (+ 125 attacker-size attacker-strength) (+ 125 defender-size))
-       (/ attack-toughness defender-toughness))))
+       (/ (inc attack-toughness) defender-toughness))))
 
 (defmethod calc-dmg :ranged
   [& more]

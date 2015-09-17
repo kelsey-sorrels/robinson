@@ -1024,15 +1024,15 @@
         thirst         (get-in state [:world :player :thirst])
         max-thirst     (get-in state [:world :player :max-thirst])
         will-to-live   (get-in state [:world :player :will-to-live])
-        cause-of-death (format "From %s"
-                               (or
-                                 (get-in state [:world :cause-of-death])
-                                 (cond
-                                   (<= hp 0)             "massive injuries"
-                                   (> hunger max-hunger) "literall starving to death"
-                                   (> thirst max-thirst) "not drinking enough water"
-                                   (<= will-to-live 0)   "just giving up on life"
-                                   :else                 "mysterious causes")))
+        cause-of-death (or
+                         (get-in state [:world :cause-of-death])
+                         (format "From %s"
+                           (cond
+                             (<= hp 0)             "massive injuries"
+                             (> hunger max-hunger) "literall starving to death"
+                             (> thirst max-thirst) "not drinking enough water"
+                             (<= will-to-live 0)   "just giving up on life"
+                             :else                 "mysterious causes")))
         width          (max 25 (markup->length cause-of-death))]
     (render-list screen 27 4 width 6
       (concat
@@ -1517,7 +1517,10 @@
   (let [cur-state      (current-state state)
         points         (int
                          (* (+ (get-in state [:world :player :will-to-live])
-                               (/ 50000 (get-time state)))
+                               (rp/player-xp state)
+                               (get-time state)
+                               (reduce-kv #(+ %1 %3) 0 (get-in state [:world :player :stats :num-items-harvested]))
+                               (reduce-kv #(+ %1 %3) 0 (get-in state [:world :player :stats :num-items-crafted])))
                             (case cur-state
                               :game-over-dead 1
                               :game-over-rescued 2)))

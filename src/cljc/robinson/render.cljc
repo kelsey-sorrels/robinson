@@ -1547,13 +1547,13 @@
                                  (<= will-to-live 0)   "just giving up on life"
                                  :else                 "mysterious causes"))]
           ;; Title
-          (put-string (state :screen) 10 1 (format "%s: %s." player-name madlib))
-          (put-string (state :screen) 18 2 (format "Survived for %d %s. (%d turns)" days-survived (if (> 1 days-survived) "days" "day") turns-survived))
-          (put-string (state :screen) 18 3 (format "Died from %s." cause-of-death))
-          (put-string (state :screen) 10 4 (format "Points: %s." points))
-          (put-string (state :screen) 10 5 "Inventory:")
+          (put-string (state :screen) 10 1 (format "%s: %s" player-name madlib))
+          (put-string (state :screen) 10 3 (format "Survived for %d %s. (%d turns)" days-survived (if (> 1 days-survived) "days" "day") turns-survived))
+          (put-string (state :screen) 10 4 (format "Died from %s" cause-of-death))
+          (put-string (state :screen) 10 6 (format "Points: %s." points))
+          (put-string (state :screen) 10 8 "Inventory:")
           (doall (map-indexed
-            (fn [idx item] (put-string (state :screen) 18 (+ idx 6) (item :name)))
+            (fn [idx item] (put-string (state :screen) 20 (+ idx 8) (item :name)))
             (-> state :world :player :inventory)))
           (put-chars (state :screen) (markup->chars 10 22 "Play again? [<color fg=\"highlight\">y</color>/<color fg=\"highlight\">n</color>]")))
       :game-over-rescued

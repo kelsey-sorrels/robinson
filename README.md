@@ -13,11 +13,10 @@ To run
 lein run
 ```
 
-![alt tag](https://raw.github.com/aaron-santos/robinson/master/readme-media/video-0-o.gif)
+![alt tag](https://raw.github.com/aaron-santos/robinson/master/readme-media/screenshot-2.png)
 
 To make redistributable
 
 ```
-lein uberjar
-./make-zip.sh
+./make-zip.sh -l
 ```

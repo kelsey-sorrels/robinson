@@ -2,17 +2,18 @@
 
 LEINUBERJAR=0
 UPLOAD=0
-while getopts "lu" opt;
+# keep track of the build version
+VERSION=`date +'%Y.%m.%d-%H.%M.%S'`'-'`git rev-parse --short HEAD`
+
+while getopts "luv:" opt;
 do
     echo "Got opt $opt"
     case "$opt" in
     l) LEINUBERJAR=1;;
     u) UPLOAD=1;;
+    v) VERSION=$OPTARG'-'`git rev-parse --short HEAD`;;
     esac
 done
-
-# keep track of the build version
-VERSION=`date +'%Y.%m.%d-%H.%M.%S'`'-'`git rev-parse --short HEAD`
 
 #clean
 rm target/robinson-*.zip

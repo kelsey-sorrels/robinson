@@ -66,7 +66,8 @@
 ;; It's easier to use names than numbers.
 (def color-to-rgb-map
   {:brown       [139 69 19]
-   :black       [0 0 0]
+   ;;:black       [0 0 0]
+   :black       [6 6 11]
    :white       [255 255 255]
    :gray        [128 128 128]
    :light-gray  [64 64 64]

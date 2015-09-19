@@ -255,7 +255,7 @@
         terminal  (or screen
                       #?(:clj
                          (swingterminal/make-terminal (format "Robinson - %s@%s" user-id version)
-                                                      80 24 [255 255 255] [0 0 0] nil
+                                                      80 24 [255 255 255] [5 5 8] nil
                                                       (get settings :windows-font)
                                                       (get settings :else-font)
                                                       (get settings :font-size)

@@ -1271,32 +1271,30 @@
                                       (= 0 (rr/uniform-int 1000)))
                                 [(rr/rand-nth [(ig/gen-item :unhusked-coconut) (ig/gen-item :plant-fiber)])]
                                 []))
-                          (and (= (get target-cell :type) :tall-grass)
-                               (= direction :center))
+                          (= (get target-cell :type) :tall-grass)
                             (concat
                               (if (or harvestable
                                       (= 0 (rr/uniform-int 1000)))
                                 [(rr/rand-nth [(ig/gen-item :grass) (ig/gen-item :plant-fiber)])]
                                 []))
-                          (and (= (get target-cell :type) :gravel)
-                               (= direction :center))
-                             (if (get target-cell :near-lava)
-                               (concat
-                                 (if (or harvestable
-                                         (= 0 (rr/uniform-int 1000)))
-                                   [(rr/rand-nth [(ig/gen-item :rock) (ig/gen-item :obsidian)])]
-                                   []))
-                               (concat
-                                 (if (or harvestable
-                                         ;; Make large flint stone have a higher chance of dropping away
-                                         ;; from the player's starting-pos.
-                                         (= 0 (rr/uniform-int 1000)))
-                                   (concat
-                                     (repeat (rr/uniform-int 4 6) (ig/gen-item :rock))
-                                     [(rr/rand-nth [(ig/gen-item :rock) (if (< 300 (rr/uniform-double 100 (max 101 distance)))
-                                                                          (ig/gen-item :large-flint)
-                                                                          (ig/gen-item :flint))])])
-                                   [])))
+                          (= (get target-cell :type) :gravel)
+                            (if (get target-cell :near-lava)
+                              (concat
+                                (if (or harvestable
+                                        (= 0 (rr/uniform-int 1000)))
+                                  [(rr/rand-nth [(ig/gen-item :rock) (ig/gen-item :obsidian)])]
+                                  []))
+                              (concat
+                                (if (or harvestable
+                                        ;; Make large flint stone have a higher chance of dropping away
+                                        ;; from the player's starting-pos.
+                                        (= 0 (rr/uniform-int 1000)))
+                                  (concat
+                                    (repeat (rr/uniform-int 4 6) (ig/gen-item :rock))
+                                    [(rr/rand-nth [(ig/gen-item :rock) (if (< 300 (rr/uniform-double 100 (max 101 distance)))
+                                                                         (ig/gen-item :large-flint)
+                                                                         (ig/gen-item :flint))])])
+                                  [])))
                           :else [])
                         [])]
     (log/info "harvested" harvest-items)

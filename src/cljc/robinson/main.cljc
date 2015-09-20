@@ -178,6 +178,8 @@
    extention) as the key and the contents as the value.
 
    * a `:settings` the contents of `/config/settings.edn`.
+   
+   * a `:fonts` a sequence of the contents of files in /config/fonts/*.edn
 
    * `quests` that are loaded dynamically on startup."
   ([f] (setup nil f))
@@ -250,21 +252,34 @@
                     :cljs
                     {:windows-font "Courier New"
                      :else-font    "Monospaced"
-                     :font-size 18})
-
+                     :size         18})
+        fonts       (apply hash-map
+                      (mapcat (fn [file]
+                                (let [file-name (.getName file)
+                                      map-key   (if (re-find #".edn$" file-name)
+                                                  (keyword (clojure.string/replace-first file-name #".edn$" ""))
+                                                  (keyword file-name))
+                                      map-value (->> (.getPath file)
+                                                  (slurp)
+                                                  (clojure.edn/read-string))]
+                                [map-key
+                                 map-value]))
+                              (.listFiles (clojure.java.io/file "config/fonts"))))
+        font      (get fonts (get settings :font))
+        _         (log/info "Using font settings" font)
         terminal  (or screen
                       #?(:clj
                          (swingterminal/make-terminal (format "Robinson - %s@%s" user-id version)
                                                       80 24 [255 255 255] [5 5 8] nil
-                                                      (get settings :windows-font)
-                                                      (get settings :else-font)
-                                                      (get settings :font-size)
-                                                      (get settings :antialias))
+                                                      (get font :windows-font)
+                                                      (get font :else-font)
+                                                      (get font :font-size)
+                                                      (get font :antialias))
                          :cljs
                          (webglterminal/make-terminal 80 24 [255 255 255] [0 0 0] nil
-                                                  (get settings :windows-font)
-                                                  (get settings :else-font)
-                                                  (get settings :font-size))))]
+                                                  (get font :windows-font)
+                                                  (get font :else-font)
+                                                  (get font :font-size))))]
     (log/info "Loaded data:" (keys data))
     ;; set log level
     (log/set-level! (get settings :log-level))
@@ -278,7 +293,8 @@
                    :version version
                    :user-id user-id
                    :data data
-                   :settings settings}]
+                   :settings settings
+                   :fonts fonts}]
          (f (tick state \.)))
        :cljs
        (p/then data (fn [[atmo help]]

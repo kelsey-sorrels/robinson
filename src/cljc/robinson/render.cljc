@@ -1444,7 +1444,26 @@
         player-name (get-in state [:world :player :name])]
     (clear (state :screen))
     (render-img state "images/robinson-mainmenu.jpg" 0 0)
-    (put-chars screen (markup->chars 30 20 "<color bg=\"background\">Press </color><color fg=\"highlight\" bg=\"background\">space</color><color bg=\"background\"> to continue</color>"))
+    (put-chars screen (markup->chars 30 20 "<color bg=\"background\">Press </color><color fg=\"highlight\" bg=\"background\">space</color><color bg=\"background\"> to play</color>"))
+    (put-chars screen (markup->chars 30 22 "<color fg=\"highlight\" bg=\"background\">c</color><color bg=\"background\">-configure </color>"))
+    (refresh screen)))
+
+(defn render-configure [state]
+  (let [screen (state :screen)]
+    (clear (state :screen))
+    (put-string screen 34 5 "Configure")
+    (put-chars screen (markup->chars 34 7 "<color fg=\"highlight\" bg=\"background\">f</color><color bg=\"background\">-font </color>"))
+    (refresh screen)))
+
+(defn render-configure-font [state]
+  (let [screen (state :screen)
+        font   (get-in state [:fonts (get-in state [:settings :font])])]
+    (clear (state :screen))
+    (put-string screen 31 5 "Configure Font")
+    (put-string screen 31 7 (format "Font: %s" (get font :name)))
+    (put-chars screen (markup->chars 31 12 "<color fg=\"highlight\" bg=\"background\">n</color><color bg=\"background\">-next font </color>"))
+    (put-chars screen (markup->chars 31 13 "<color fg=\"highlight\" bg=\"background\">p</color><color bg=\"background\">-previous font </color>"))
+    (put-chars screen (markup->chars 31 14 "<color fg=\"highlight\" bg=\"background\">s</color><color bg=\"background\">-save and apply</color>"))
     (refresh screen)))
 
 (defn render-start-inventory [state]
@@ -1643,6 +1662,10 @@
   (cond
     (= (current-state state) :start)
       (render-start state)
+    (= (current-state state) :configure)
+      (render-configure state)
+    (= (current-state state) :configure-font)
+      (render-configure-font state)
     (= (current-state state) :enter-name)
       (render-enter-name state)
     (= (current-state state) :start-inventory)

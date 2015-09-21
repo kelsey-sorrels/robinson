@@ -5,6 +5,7 @@
             [robinson.random :as rr]
             [robinson.world :as rw]
             [robinson.viewport :as rv]
+            [robinson.aterminal :as rat]
             [robinson.describe :as rdesc]
             [robinson.dialog :as rdiag]
             [robinson.player :as rp]
@@ -42,7 +43,9 @@
                 clojure.walk
                 cljs.reader
                 [taoensso.timbre :as log :include-macros true]
-                [goog.string.format]))))
+                [goog.string.format])))
+  #?(:clj
+      (:import robinson.aterminal.ATerminal)))
 
 
 (defn format [s & args]
@@ -86,6 +89,40 @@
 (defn inc-time
   [state]
   (update-in state [:world :time] inc))
+
+(defn next-font
+  [state]
+  (let [fonts (sort-by :name (get state :fonts))
+        current-font (get-in state [:settings :font])
+        remaining-fonts (rest (second (split-with (fn [[k v]] (not= k current-font))
+                                                  fonts)))]
+   (assoc-in state [:settings :font] (if (seq remaining-fonts)
+                                       (ffirst remaining-fonts)
+                                       (ffirst fonts)))))
+
+(defn previous-font
+  [state]
+  (let [fonts (sort-by :name (get state :fonts))
+        current-font (get-in state [:settings :font])
+        previous-fonts (first (split-with (fn [[k v]] (not= k current-font))
+                                         fonts))]
+   (assoc-in state [:settings :font] (if (seq previous-fonts)
+                                       (-> previous-fonts last first)
+                                       (-> fonts last first)))))
+(defn save-and-apply-font
+  [state]
+  (let [fonts (sort-by :name (get state :fonts))
+        current-font (get-in state [:settings :font])
+        font         (get-in state [:fonts current-font])
+        screen ^robinson.aterminal.ATerminal (get state :screen)]
+
+    ;; send new settings to screen
+    (rat/apply-font screen
+                     (get font :windows-font)
+                     (get font :else-font)
+                     (get font :font-size)
+                     (get font :antialias))
+      state))
 
 (defn backspace-name
   [state]
@@ -2827,6 +2864,17 @@
   ;;         starting      transition  transition             new              advance
   ;;         state         symbol      fn                     state            time?
   (let [table {:start     {:space      [identity               :enter-name      false]
+                           \c          [identity               :configure       false]
+                           :else       [pass-state             identity         false]}
+               :configure
+                          {\f          [identity               :configure-font  false]
+                           :escape     [identity               :start           false]
+                           :else       [pass-state             identity         false]}
+               :configure-font
+                          {\n          [next-font              :configure-font  false]
+                           \p          [previous-font          :configure-font  false]
+                           \s          [save-and-apply-font    :configure-font  false]
+                           :escape     [identity               :configure       false]
                            :else       [pass-state             identity         false]}
                :enter-name
                           {:enter      [identity               :start-inventory false]

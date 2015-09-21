@@ -1,8 +1,8 @@
 ;; Settings
 {
- :name "Boxy 24"
+ :name "Boxy 16"
  :windows-font "fonts/Boxy/Boxy.ttf"
  :else-font    "fonts/Boxy/Boxy.ttf"
- :font-size    24
+ :font-size    16
  :antialias    false
 }

@@ -253,7 +253,7 @@
                     {:windows-font "Courier New"
                      :else-font    "Monospaced"
                      :size         18})
-        fonts       (apply hash-map
+        fonts       (apply sorted-map
                       (mapcat (fn [file]
                                 (let [file-name (.getName file)
                                       map-key   (if (re-find #".edn$" file-name)

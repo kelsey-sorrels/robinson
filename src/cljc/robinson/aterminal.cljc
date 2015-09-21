@@ -8,6 +8,7 @@
               [this x y string fg bg style])
   (put-chars [this characters])
   (get-key-chan [this])
+  (apply-font [this windows-font else-font size antialias])
   (set-cursor [this xy])
   (refresh [this])
   (clear [this]))

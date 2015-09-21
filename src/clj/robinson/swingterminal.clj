@@ -77,13 +77,14 @@
                        font-size
                        antialias]
     (let [is-windows       (>= (.. System (getProperty "os.name" "") (toLowerCase) (indexOf "win")) 0)
-          normal-font      (if is-windows
-                              (make-font windows-font Font/PLAIN font-size)
-                              (make-font else-font Font/PLAIN font-size))
-          bold-font        (if is-windows
-                              (make-font windows-font Font/BOLD font-size)
-                              (make-font else-font  Font/BOLD font-size))
-          _                (info "Using font" (.getFontName normal-font))
+          normal-font      (atom (if is-windows
+                                   (make-font windows-font Font/PLAIN font-size)
+                                   (make-font else-font Font/PLAIN font-size)))
+          bold-font        (atom (if is-windows
+                                   (make-font windows-font Font/BOLD font-size)
+                                   (make-font else-font  Font/BOLD font-size)))
+          _                (info "Using font" (.getFontName @normal-font))
+          antialias        (atom antialias)
           default-fg-color (Color. (long default-fg-color-r) (long default-fg-color-g) (long default-fg-color-b))
           default-bg-color (Color. (long default-bg-color-g) (long default-bg-color-g) (long default-bg-color-b))
           character-map-cleared (vec (repeat rows (vec (repeat columns (make-terminal-character \space default-fg-color default-bg-color #{})))))
@@ -106,8 +107,8 @@
                                    style                             (get c :style)]
                                ;(println "filling rect" (* col char-width) (* row char-height) char-width char-height bg-color)
                                (doto offscreen-graphics-2d
-                                 (.setFont normal-font)
-                                 (.setRenderingHint RenderingHints/KEY_TEXT_ANTIALIASING (if antialias
+                                 (.setFont @normal-font)
+                                 (.setRenderingHint RenderingHints/KEY_TEXT_ANTIALIASING (if @antialias
                                                                                            RenderingHints/VALUE_TEXT_ANTIALIAS_GASP
                                                                                            RenderingHints/VALUE_TEXT_ANTIALIAS_OFF))
                                  (.setColor bg-color)
@@ -134,7 +135,7 @@
           terminal-renderer (proxy [JComponent] []
                              (getPreferredSize []
                                (let [graphics      ^Graphics    (proxy-super getGraphics)
-                                     font-metrics  ^FontMetrics (.getFontMetrics graphics normal-font)
+                                     font-metrics  ^FontMetrics (.getFontMetrics graphics @normal-font)
                                      screen-width               (* columns (.charWidth font-metrics \M))
                                      screen-height              (* rows (.getHeight font-metrics))
                                      char-width                 (/ screen-width columns)
@@ -143,7 +144,7 @@
                              (paintComponent [^Graphics graphics]
                                ;(rm/log-time "blit"
                                  (let [graphics-2d ^Graphics2D           (.create graphics)
-                                       font-metrics ^FontMetrics         (.getFontMetrics graphics normal-font)
+                                       font-metrics ^FontMetrics         (.getFontMetrics graphics @normal-font)
                                        screen-width                      (* columns (.charWidth font-metrics \M))
                                        screen-height                     (* rows (.getHeight font-metrics))
                                        char-width                        (/ screen-width columns)
@@ -301,6 +302,16 @@
                       (group-by :y characters)))))
         (get-key-chan [this]
           key-chan)
+        (apply-font [this windows-font else-font size smooth]
+          (reset! normal-font
+                  (if is-windows
+                    (make-font windows-font Font/PLAIN size)
+                    (make-font else-font Font/PLAIN size)))
+          (reset! antialias smooth)
+          (doto frame
+            .doLayout
+            .pack)
+          nil)
         (set-cursor [this xy]
           (reset! cursor-xy xy))
         (refresh [this]

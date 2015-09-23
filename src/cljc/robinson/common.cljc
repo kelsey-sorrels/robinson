@@ -3,6 +3,7 @@
   (:require 
             [robinson.math :as math]
             [taoensso.timbre :as log]
+            [alandipert.enduro :as enduro]
             #?@(:clj (
                #_[clojure.core.typed :as t])
                :cljs (
@@ -352,4 +353,13 @@
 
 (def hotkeys
   (vec (seq "abcdefghijklmnopqrstuvwxyzABCdEFGHIJKLMNOPQRSTUVWQYZ")))
+
+(defn get-settings
+  [state]
+  (-> state :settings deref))
+
+(defn reset-settings!
+  [state new-settings]
+  (let [settings (get state :settings)]
+    (enduro/reset! settings new-settings)))
 

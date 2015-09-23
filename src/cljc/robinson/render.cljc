@@ -1457,7 +1457,7 @@
 
 (defn render-configure-font [state]
   (let [screen (state :screen)
-        font   (get-in state [:fonts (get-in state [:settings :font])])]
+        font   (get-in state [:fonts (get state :new-font (get (rc/get-settings state) :font))])]
     (clear (state :screen))
     (put-string screen 31 5 "Configure Font")
     (put-string screen 31 7 (format "Font: %s" (get font :name)))

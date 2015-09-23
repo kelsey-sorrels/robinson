@@ -92,37 +92,41 @@
 
 (defn next-font
   [state]
-  (let [fonts (sort-by :name (get state :fonts))
-        current-font (get-in state [:settings :font])
+  (let [fonts           (sort-by :name (get state :fonts))
+        current-font    (get state :new-font (get (rc/get-settings state) :font))
         remaining-fonts (rest (second (split-with (fn [[k v]] (not= k current-font))
                                                   fonts)))]
-   (assoc-in state [:settings :font] (if (seq remaining-fonts)
-                                       (ffirst remaining-fonts)
-                                       (ffirst fonts)))))
+   (assoc state :new-font (if (seq remaining-fonts)
+                            (ffirst remaining-fonts)
+                            (ffirst fonts)))))
 
 (defn previous-font
   [state]
-  (let [fonts (sort-by :name (get state :fonts))
-        current-font (get-in state [:settings :font])
+  (let [fonts          (sort-by :name (get state :fonts))
+        current-font   (get state :new-font (get (rc/get-settings state) :font))
         previous-fonts (first (split-with (fn [[k v]] (not= k current-font))
                                          fonts))]
-   (assoc-in state [:settings :font] (if (seq previous-fonts)
-                                       (-> previous-fonts last first)
-                                       (-> fonts last first)))))
+   (assoc state :new-font (if (seq previous-fonts)
+                            (-> previous-fonts last first)
+                            (-> fonts last first)))))
+
 (defn save-and-apply-font
   [state]
-  (let [fonts (sort-by :name (get state :fonts))
-        current-font (get-in state [:settings :font])
+  (let [fonts        (sort-by :name (get state :fonts))
+        current-font (get state :new-font (get (rc/get-settings state) :font))
         font         (get-in state [:fonts current-font])
         screen ^robinson.aterminal.ATerminal (get state :screen)]
-
-    ;; send new settings to screen
-    (rat/apply-font screen
-                     (get font :windows-font)
-                     (get font :else-font)
-                     (get font :font-size)
-                     (get font :antialias))
-      state))
+    (when-not (= current-font (get (rc/get-settings state) :font))
+      ;; send new settings to screen
+      (rat/apply-font screen
+                       (get font :windows-font)
+                       (get font :else-font)
+                       (get font :font-size)
+                       (get font :antialias))
+      ;; persist
+      (rc/reset-settings! state (assoc (rc/get-settings state) :font current-font)))
+    ;; cleanup temp new-font value
+    (dissoc state :new-font)))
 
 (defn backspace-name
   [state]

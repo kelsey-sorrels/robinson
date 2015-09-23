@@ -19,6 +19,7 @@
                 [clojure.core.async :as async :refer [go go-loop]]
                 [clojure.java.io :as io]
                 clojure.edn
+                [alandipert.enduro :as enduro]
                 [taoensso.nippy :as nippy]
                 [clojure.pprint :refer :all])
                 :cljs (
@@ -177,7 +178,7 @@
    * a `:data` the contents of the `/data` folder with the filename (excluding
    extention) as the key and the contents as the value.
 
-   * a `:settings` the contents of `/config/settings.edn`.
+   * a `:settings` an atom containing the contents of `/config/settings.edn`.
    
    * a `:fonts` a sequence of the contents of files in /config/fonts/*.edn
 
@@ -293,7 +294,7 @@
                    :version version
                    :user-id user-id
                    :data data
-                   :settings settings
+                   :settings (enduro/file-atom {} "config/settings.edn")
                    :fonts fonts}]
          (f (tick state \.)))
        :cljs

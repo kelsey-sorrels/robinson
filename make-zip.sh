@@ -46,6 +46,10 @@ mkdir     target/robinson-$VERSION/save
 rm target/robinson-$VERSION/config/settings.edn
 mv target/robinson-$VERSION/config/production-settings.edn target/robinson-$VERSION/config/settings.edn
 
+# Move over fresh(empty) scores file
+rm target/robinson-$VERSION/scores/scores.edn
+mv target/robinson-$VERSION/scores/production-scores.edn target/robinson-$VERSION/scores/scores.edn
+
 # Remove and userid file
 rm target/robinson-$VERSION/config/.userid
 

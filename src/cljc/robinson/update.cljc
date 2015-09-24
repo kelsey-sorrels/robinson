@@ -3,6 +3,7 @@
   (:require 
             [robinson.common :as rc]
             [robinson.random :as rr]
+            [robinson.scores :as rs]
             [robinson.world :as rw]
             [robinson.viewport :as rv]
             [robinson.aterminal :as rat]
@@ -2306,6 +2307,11 @@
        (log/debug "npcs" (with-out-str (clojure.pprint/pprint (-> state :world :npcs)))))
     state))
 
+(defn save-score
+  [state]
+  (rs/persist-state-score! state)
+  state)
+
 (defn
   move-to-target
   "Move `npc` one space closer to the target position if there is a path
@@ -3280,9 +3286,9 @@
                            :up         [close-up               :normal          true]
                            :right      [close-right            :normal          true]}
                :log       {:else       [pass-state             :normal          false]}
-               :rescued   {:space      [pass-state             :game-over-rescued false]
+               :rescued   {:space      [save-score             :game-over-rescued false]
                            :else       [pass-state             identity         false]}
-               :dead      {:space      [pass-state             :game-over-dead  false]
+               :dead      {:space      [save-score             :game-over-dead  false]
                            :else       [pass-state             identity         false]}
                :game-over-rescued
                           {\y          [identity               :start-inventory false]

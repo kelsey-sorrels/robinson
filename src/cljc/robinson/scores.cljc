@@ -1,8 +1,24 @@
 ;; Utility functions for reading and persisting scores
 (ns robinson.common
   (:require 
+            [robinson.world :as rw]
+            [robinson.player :as rp]
+            [robinson.endgame :as rendgame]
             [taoensso.timbre :as log]
             [alandipert.enduro :as enduro]))
+
+(defn state->points
+  [state]
+  (let [cur-state (current-state state)
+    (int
+      (* (+ (get-in state [:world :player :will-to-live])
+            (rp/player-xp state)
+            (get-time state)
+            (reduce-kv #(+ %1 %3) 0 (get-in state [:world :player :stats :num-items-harvested]))
+            (reduce-kv #(+ %1 %3) 0 (get-in state [:world :player :stats :num-items-crafted])))
+         (case cur-state
+           :game-over-dead 1
+           :game-over-rescued 2)))))
 
 (defn get-scores
   [state]
@@ -19,7 +35,11 @@
 
 (defn state->score
   [state]
-  {})
+  {:date        (java.util.Date.)
+   :time        (rw/get-time state)
+   :score       (state->points state)
+   :end-message (rendgame/gen-end-madlib state)
+   :player-name (rp/get-player-attribute state :name)})
 
 (defn persist-state-score!
   [state]

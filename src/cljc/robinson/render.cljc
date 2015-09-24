@@ -3,6 +3,7 @@
   (:require 
             [taoensso.timbre :as log]
             [robinson.random :as rr]
+            [robinson.scores :as rs]
             [robinson.startgame :as sg]
             [robinson.itemgen :as ig]
             [robinson.common :as rc :refer [farther-than?
@@ -1535,15 +1536,7 @@
   "Render the game over screen."
   [state]
   (let [cur-state      (current-state state)
-        points         (int
-                         (* (+ (get-in state [:world :player :will-to-live])
-                               (rp/player-xp state)
-                               (get-time state)
-                               (reduce-kv #(+ %1 %3) 0 (get-in state [:world :player :stats :num-items-harvested]))
-                               (reduce-kv #(+ %1 %3) 0 (get-in state [:world :player :stats :num-items-crafted])))
-                            (case cur-state
-                              :game-over-dead 1
-                              :game-over-rescued 2)))
+        points         (rs/state->points state)
         turns-survived  (get-time state)
         turns-per-day   (count (get-in state [:data :atmo]))
         days-survived   (int (/ turns-survived turns-per-day))

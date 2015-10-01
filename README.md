@@ -22,6 +22,8 @@ To make redistributable (zip)
 ```
 
 To run a redistributable (zip):
+
 1. Unzip
+
 2. (Double)-click on robinson.jar
 

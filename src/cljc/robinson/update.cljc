@@ -2723,6 +2723,8 @@
                                               (assoc m k (get v :num-harvestable-cells 0)))
                                             {}
                                             (get-in state [:world :places])))
+        world-time     (rw/get-time state)
+        fruit-rotted?  (atom false)
         ;viewport-cells (apply concat
         ;                 (map-indexed (fn [vy line]
         ;                                (map-indexed (fn [vx cell]
@@ -2771,7 +2773,7 @@
                 ;; chance of dropped a fruit
                 (if (= (rr/uniform-int 0 300) 0)
                   ;; make the fruit item and find an adjacent free cell to drop it into
-                  (let [item    (assoc (ig/id->item (get cell :fruit-type)) :rot-time (+ (rw/get-time state) (rr/uniform-int 25 35)))
+                  (let [item    (assoc (ig/id->item (get cell :fruit-type)) :rot-time (+ world-time (rr/uniform-int 25 35)))
                         adj-xys (remove (fn [[x y]] (or (not (rv/xy-in-viewport? state x y))
                                                          (rw/type->collide?
                                                            (get (rw/get-cell state x y) :type))))
@@ -2816,18 +2818,26 @@
             ;; rot fruit
             ;; TODO: only rot fruit if it is in the set of visible cells.
             (as-> xy-fns
-              (if (some (fn [item] (< (get item :rot-time (rw/get-time state)) (rw/get-time state)))
+              (if (some (fn [item] (< (get item :rot-time world-time) world-time))
                                         cell-items)
-                (conj xy-fns [[wx wy]
-                              (fn rot-cell-fruit [cell]
-                                (update-in cell [:items] (fn [items]
-                                  (remove (fn [item] (< (get item :rot-time (rw/get-time state))
-                                                        (rw/get-time state)))
-                                           items))))])
+                (do
+                  ;; display a message when fruit rots in the players view. Since update-cells
+                  ;; is called before update-visiblity, we'll decrement the time by one.
+                  (when (= (get cell :discovered) (dec world-time))
+                    (reset! fruit-rotted? true))
+                  (conj xy-fns [[wx wy]
+                                (fn rot-cell-fruit [cell]
+                                  (update-in cell [:items] (fn [items]
+                                    (remove (fn [item] (< (get item :rot-time world-time)
+                                                          world-time))
+                                             items))))]))
                 xy-fns)))))
       []
       (vec (rv/cellsxy-in-viewport state)))]
     (as-> state state
+      (if @fruit-rotted?
+        (rc/append-log state "The fruit rots away.")
+        state)
       (rw/update-cells state xy-fns)
       (reduce-kv (fn [state place-id harvest-count]
                    (assoc-in state [:world :places place-id :num-harvestable-cells] harvest-count))

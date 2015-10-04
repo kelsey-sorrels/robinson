@@ -86,9 +86,18 @@
   (or (is-direction? keyin)
       (contains? #{:up-left :up-right :down-left :down-right} keyin)))
 
+;; Indicate that the player action advanced time (this will include getting hungrier/thirstier, updating visibility, monsters attacking, updating cells, etc.
 (defn inc-time
   [state]
-  (update-in state [:world :time] inc))
+  (assoc-in state [:world :inc-time] true))
+
+(defn inc-time?
+  [state]
+  (get-in state [:world :inc-time] false))
+
+(defn clear-inc-time
+  [state]
+  (rc/dissoc-in state [:world :inc-time]))
 
 (defn next-font
   [state]
@@ -383,7 +392,9 @@
     (log/info "not mounted-on-raft?" (not (rw/player-mounted-on-raft? state)))
     (cond
       (rp/player-paralyzed? state)
-        (rc/append-log "You can not move (paralyzed).")
+        (-> state
+          (rc/append-log "You can not move (paralyzed).")
+          inc-time)
       (and (not (rw/collide? state target-x target-y {:include-npcs? false}))
            (not (rw/player-mounted-on-raft? state)))
         (as-> state state
@@ -400,12 +411,14 @@
                     items (get cell :items)]
                 (if (seq items)
                   (rdesc/search state)
-                  state)))))
+                  state))))
+          (inc-time state))
       (= (get (rw/npc-at-xy state target-x target-y) :in-party?) true)
         (-> state
           (assoc-in [:world :player :pos :x] target-x)
           (assoc-in [:world :player :pos :y] target-y)
-          (pick-up-gold)
+          pick-up-gold
+          inc-time
           (rc/map-in [:world :npcs]
                      (fn [npc] (if (and (= (-> npc :pos :x) target-x)
                                         (= (-> npc :pos :y) target-y))
@@ -423,6 +436,7 @@
             state)
           (assoc-in state [:world :player :pos :x] target-x)
           (assoc-in state [:world :player :pos :y] target-y)
+          (inc-time state)
           ;; rafting = more hunger
           (update-in state [:world :player :hunger] (partial + 0.05 ))
           ;;
@@ -433,11 +447,12 @@
               state)))
       ;; Hack down destroyable cells.
       (rw/type->destroyable? (get target-cell :type))
-        (destroy-cell state target-x target-y)
+        (-> state
+          (destroy-cell target-x target-y)
+          inc-time)
       ;; collided with a wall or door, nothing to be done.
       :else
         state)))
-  
 
 (defn move-left
   "moves the player one space to the left provided he/she is able."
@@ -694,6 +709,7 @@
         (rp/update-inventory-item :flashlight (fn [item] (assoc item :state :off)))
         (rc/append-log "You turn the flashlight off.")
         (inc-time)
+        ;TODO: remove?
         (update-visibility)
         (assoc-in [:world :current-state] :normal))
       :off
@@ -702,9 +718,11 @@
           (rp/update-inventory-item :flashlight (fn [item] (assoc item :state :on)))
           (rc/append-log "You turn the flashlight on.")
           (inc-time)
+          ;TODO: remove?
           (update-visibility)
           (assoc-in [:world :current-state] :normal))
         (-> state
+          ;TODO: remove?
           (inc-time)
           (rc/append-log state "You try turning the flashlight on, but nothing happens."))))))
 
@@ -2912,14 +2930,14 @@
                            \c          [identity               :close           false]
                            \.          [do-rest                :normal          true]
                            :numpad5    [do-rest                :normal          true]
-                           :left       [move-left              :normal          true]
-                           :down       [move-down              :normal          true]
-                           :up         [move-up                :normal          true]
-                           :right      [move-right             :normal          true]
-                           :up-left    [move-up-left           :normal          true]
-                           :up-right   [move-up-right          :normal          true]
-                           :down-left  [move-down-left         :normal          true]
-                           :down-right [move-down-right        :normal          true]
+                           :left       [move-left              :normal          false]
+                           :down       [move-down              :normal          false]
+                           :up         [move-up                :normal          false]
+                           :right      [move-right             :normal          false]
+                           :up-left    [move-up-left           :normal          false]
+                           :up-right   [move-up-right          :normal          false]
+                           :down-left  [move-down-left         :normal          false]
+                           :down-right [move-down-right        :normal          false]
                            :space      [action-select          :action-select   false]
                            \q          [quaff-select           identity         false]
                            \w          [identity               :wield           false]
@@ -3256,6 +3274,15 @@
     ;(log/debug "current-state" current-state)
     (if (or (contains? table keyin) (contains? table :else))
       (let [[transition-fn new-state advance-time] (if (contains? table keyin) (get table keyin) (get table :else))
+            ;; some states conditionally advance time by calling (advance-time state)
+            ;; check to see if this has occurred if advance-time was not set in the state transition entry
+            advance-time (if-not advance-time
+                           (inc-time? state)
+                           advance-time)
+            ;; clear inc-time flag if set
+            state        (if (inc-time? state)
+                           (clear-inc-time state)
+                           state)
             ;; if the table contains keyin, then pass through transition-fn assuming arity-1 [state]
             ;; else the transition-fn takes [state keyin]. Bind keying so that it becomes arity-1 [state]
             _ (log/debug "current-state" (get-in state [:world :current-state]))

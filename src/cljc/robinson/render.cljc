@@ -1102,14 +1102,14 @@
         will-to-live   (get-in state [:world :player :will-to-live])
         cause-of-death (or
                          (get-in state [:world :cause-of-death])
-                         (format "From %s"
+                         (format "%s"
                            (cond
                              (<= hp 0)             "massive injuries"
-                             (> hunger max-hunger) "literall starving to death"
+                             (> hunger max-hunger) "literally starving to death"
                              (> thirst max-thirst) "not drinking enough water"
                              (<= will-to-live 0)   "just giving up on life"
                              :else                 "mysterious causes")))
-        width          (max 25 (markup->length cause-of-death))]
+        width          (max 25 (+ 7 (markup->length cause-of-death)))]
     (render-list screen 27 4 width 6
       (concat
         [{:s "" :fg :black :bg :white :style #{}}]

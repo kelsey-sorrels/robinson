@@ -285,13 +285,21 @@
    (apply str (concat s (repeat n-ws " ")))))
 
 (defn center-markup [s width]
-  (let [n-ws-left (int (/ (- width (markup-length s)) 2))
-        n-ws-right (int (+ 0.5 (/ (- width (markup-length s)) 2)))]
-   (apply str (concat (repeat n-ws-left " ") s (repeat n-ws-right " ")))))
+  (try
+    (let [n-ws-left (int (/ (- width (markup-length s)) 2))
+          n-ws-right (int (+ 0.5 (/ (- width (markup-length s)) 2)))]
+      (apply str (concat (repeat n-ws-left " ") s (repeat n-ws-right " "))))
+    (catch Exception e
+      (log/error "Error in markup" s e)
+      "")))
 
 (defn left-justify-markup [s width]
-  (let [n-ws (- width (markup-length s))]
-   (apply str (concat s (repeat n-ws " ")))))
+  (try
+    (let [n-ws (- width (markup-length s))]
+      (apply str (concat s (repeat n-ws " "))))
+    (catch Exception e
+      (println "Error in markup" s e)
+      "")))
 
 (defn render-line
   [screen x y width line fg bg {:keys [underline center invert]
@@ -376,6 +384,72 @@
         (render-line screen x (+ y i) width (get item :s) (get item :fg) (get item :bg) (get item :style)))
       (render-line screen x (+ y i) (dec width) " " :white :white #{}))))
 
+(defn wrap-chars [x y width height characters fg bg style]
+  (let [words  (take-nth 2 (partition-by (fn [ch] (= " " (get ch :c))) characters))
+        ox        x
+        oy        y
+        line      (atom y)
+        nchars (atom 0)]
+    (loop [characters []
+           words      words]
+      (if-not (seq words)
+        ;; no more words, pad to width and height, and return characters
+        (do
+          (println "characters" (count characters) "area" (* width height))
+          (concat characters
+                  (for [idx    (range (dec (count characters)) (* width height))
+                        :let [x (mod idx width)
+                              y (int (/ (- idx x) width))]]
+                    {:c " "
+                     :x (+ x ox)
+                     :y (+ y oy)
+                     :fg (color->rgb fg)
+                     :bg (color->rgb bg)})))
+        (let [[word & words] words
+                             ;; would putting this word exceed the width?
+              characters     (if (> (+ @nchars (count word) 1) width)
+                               ;; break to next line
+                               ;; pad spaces up to width
+                               ;; deref y into y-val otherwise the for evaluation will be done
+                               ;; lazily and after the swap! has occurred.
+                               (let [y-val      @line
+                                     nchars-val @nchars
+                                     characters (vec (concat characters
+                                                        (for [x (range (+ x nchars-val -1)
+                                                                       (+ x width))]
+                                                          (do
+                                                          (println "padding @" x y-val)
+                                                          {:c " "
+                                                           :x x
+                                                           :y y-val
+                                                           :fg (color->rgb fg)
+                                                           :bg (color->rgb bg)}))))]
+                                 (println "line-break padding from" (+ x nchars-val -1) "to" (+ x width))
+                                 (swap! line inc)
+                                 (reset! nchars 0)
+                                 characters)
+                               characters)
+              ;; reposition the characters in the word
+              word           (map-indexed
+                               (fn [idx ch]
+                                 (assoc ch
+                                        :x (+ idx @nchars x)
+                                        :y @line))
+                               word)
+              characters     (concat characters
+                                     word
+                                     [{:c " "
+                                       :x (+ @nchars (count word) x)
+                                       :y @line
+                                       :fg (color->rgb fg)
+                                       :bg (color->rgb bg)
+                                       :style style}])
+             ;; update counters
+             _               (swap! nchars (partial + (count word) 1))]
+          (println (format "word %s" (mapv (fn [ch] (select-keys ch #{:c :x :y})) word)))
+          (recur characters
+                 words))))))
+           
 (defn render-text
   [screen position title text]
   (let [x        (case position
@@ -385,10 +459,11 @@
         width    30
         height   23
         lines    (rc/wrap-line 28 text)
-        items    (concat [{:s title :fg :black :bg :white :style #{:underline :bold}}]
-                         (map (fn [line] {:s line :fg :black :bg :white :style #{}})
-                              lines))]
-     (render-list screen x y width height items)))
+        characters (markup->chars x (inc y) text :black :white #{})
+        characters (wrap-chars x (inc y) width height characters :black :white #{})]
+     (put-chars screen (wrap-chars x y  width 1 (markup->chars x y title :black :white #{}) :black :white #{}))
+     (put-chars screen characters)))
+     ;;(render-list screen x y width height items)))
 
 (defn render-multi-select
   "Render a menu on the right side of the screen. It has a title, and selected items

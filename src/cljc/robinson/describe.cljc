@@ -86,24 +86,38 @@
                                 (frequencies (map :id items)))))
 (defn describe-cell-at-xy
   [state x y]
-  (let [cell (get-cell state x y)
-        npc  (npc-at-xy state x y)
-        items (get cell :items)]
+  (let [cell        (get-cell state x y)
+        npc         (npc-at-xy state x y)
+        items       (get cell :items)
+        harvest-msg (if (get cell :harvestable false)
+                      " You can harvest(<color fg=\"highlight\" bg=\"white\">x</color>) from this place."
+                      "")]
+
     (cond
       (not= (get cell :discovered) (rw/get-time state))
         (format "You can't see that.")
       (and npc (seq items))
-        (format "There is %s, and %s." (describe-npc npc) (describe-items items))
+        (format "There is %s, and %s.%s"
+                (describe-npc npc)
+                (describe-items items)
+                harvest-msg)
       npc
-        (format "There is %s, on %s." (describe-npc npc) (describe-cell-type cell))
+        (format "There is %s, on %s.%s"
+                (describe-npc npc)
+                (describe-cell-type cell)
+                harvest-msg)
       (seq items)
-        (format "On the %s, there %s %s." (str (describe-cell-type cell))
-                                         (str (if (> (count items) 1)
-                                           "are"
-                                           "is"))
-                                         (str (describe-items items)))
+        (format "On the %s, there %s %s.%s"
+                (str (describe-cell-type cell))
+                (str (if (> (count items) 1)
+                  "are"
+                  "is"))
+                (str (describe-items items))
+                harvest-msg)
       :else
-        (format "There is %s." (describe-cell-type cell)))))
+        (format "There is %s.%s"
+                (describe-cell-type cell)
+                harvest-msg))))
 
 (defn search
   "Describe the player's cell."

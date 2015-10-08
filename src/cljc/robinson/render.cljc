@@ -1650,7 +1650,7 @@
           (doall (map-indexed
             (fn [idx item] (put-string (state :screen) 20 (+ idx 8) (item :name)))
             (-> state :world :player :inventory)))
-          (put-chars (state :screen) (markup->chars 10 22 "Play again? [<color fg=\"highlight\">y</color>/<color fg=\"highlight\">n</color>]")))
+          (put-chars (state :screen) (markup->chars 10 22 "Play again? [<color fg=\"highlight\">y</color>/<color fg=\"highlight\">n</color>] <color fg=\"highlight\">space</color>-share and compare with other players")))
       :game-over-rescued
         (let [rescue-mode (rendgame/rescue-mode state)]
           ;; Title
@@ -1662,6 +1662,25 @@
             (fn [idx item] (put-string (state :screen) 18 (+ idx 5) (item :name)))
             (-> state :world :player :inventory)))
           (put-string (state :screen) 10 22 "Play again? [yn]")))
+    (refresh (state :screen))))
+
+(defn render-share-score
+  [state]
+  (let [score      (get state :last-score)
+        top-scores (get state :top-scores)]
+    (clear (state :screen))
+    ;; Title
+    (put-string (state :screen) 30 1 "Top scores")
+    (doseq [[idx score] (map-indexed vector (take 10 (concat top-scores (repeat nil))))]
+      (if score
+        (let [player-name    (get score "player-name" "?name?")
+              points         (get score "points" 0)
+              days-survived  (get score :days-survived 0 )
+              turns-survived (get score :turns-survived 0 )]
+          ;;(put-string (state :screen) 30 (+ idx 3) (format "%d. %s survived for %d %s. (%d points)" (inc idx) player-name days-survived (if (> 1 days-survived) "days" "day") points)))
+          (put-string (state :screen) 30 (+ idx 3) (format "%d. %-16s (%d points)" (inc idx) player-name points)))
+        (put-string (state :screen) 30 (+ idx 3) "...")))
+    (put-chars (state :screen) (markup->chars 30 22 "Play again? [<color fg=\"highlight\">y</color>/<color fg=\"highlight\">n</color>]"))
     (refresh (state :screen))))
 
 (defn cp437->unicode
@@ -1753,6 +1772,8 @@
     (contains? #{:game-over-dead :game-over-rescued} (current-state state))
       ;; Render game over
       (render-game-over state)
+    (= (get-in state [:world :current-state]) :share-score)
+      (render-share-score state)
     (= (get-in state [:world :current-state]) :help-controls)
       (render-keyboardcontrols-help state)
     (= (get-in state [:world :current-state]) :help-ui)

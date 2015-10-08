@@ -57,7 +57,7 @@
                              (if (nil? max-stat)
                                "Who didn't kill anything"
                                (let [[monster-id n] max-stat]
-                                 (format (rnd-nth ["Slayer of %s" "Defeater of %s" "Eliminator of %s" "Dominator of %" "The nightmare of %s"] n2)
+                                 (format (rnd-nth ["Slayer of %s" "Defeater of %s" "Eliminator of %s" "Dominator of %s" "The nightmare of %s"] n2)
                                          (mg/id->name-plural monster-id)))))
                          :num-items-crafted
                            (let [max-stat (reduce (fn [acc [id n]]

@@ -7,7 +7,7 @@ Robinson
 A survival rogue-like focused on getting off the damn island or die trying.
 
 
-To run
+To run from source
 
 ```
 lein run
@@ -15,8 +15,15 @@ lein run
 
 ![alt tag](https://raw.github.com/aaron-santos/robinson/master/readme-media/screenshot-2.png)
 
-To make redistributable
+To make redistributable (zip)
 
 ```
 ./make-zip.sh -l
 ```
+
+To run a redistributable (zip):
+
+1. Unzip
+
+2. (Double)-click on robinson.jar
+

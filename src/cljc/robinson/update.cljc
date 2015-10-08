@@ -2886,6 +2886,58 @@
                     state)))))
             state (-> state :quests vals)))
 
+(defn share-score-and-get-scores
+  [state]
+  ;; upload save/world.edn as json to aaron-santos.com:8888/upload
+  (let [version (get state :version)
+        userid  (get state :user-id)
+        url     (format "https://aaron-santos.com/saves/%s" userid)
+        ; TODO: use score namespace/function
+        cur-state      (rw/current-state state)
+        points         (int
+                         (* (+ (get-in state [:world :player :will-to-live])
+                               (rp/player-xp state)
+                               (rw/get-time state)
+                               (reduce-kv #(+ %1 %3) 0 (get-in state [:world :player :stats :num-items-harvested]))
+                               (reduce-kv #(+ %1 %3) 0 (get-in state [:world :player :stats :num-items-crafted])))
+                            (case cur-state
+                              :game-over-dead 1
+                              :game-over-rescued 2)))
+        turns-survived  (rw/get-time state)
+        turns-per-day   (count (get-in state [:data :atmo]))
+        days-survived   (int (/ turns-survived turns-per-day))
+        
+        world   (assoc (get state :world)
+                       :days-survived days-survived
+                       :turns-survived turns-survived
+                       :points points
+                       :version version)
+        body    (as-> world world
+                      (clojure.walk/postwalk (fn [v] (if #?(:clj
+                                                            (char? v)
+                                                            :cljs
+                                                            (string? v))
+                                                       (str v)
+                                                       v))
+                                              world)
+                      (json/write-str world))]
+    (log/info "Uploading save file version" version "userid" userid "to" url)
+    (try
+      (log/info "Starting upload")
+      (System/setProperty "https.protocols" "TLSv1.2")
+      (http/post url
+        {:insecure? true
+         :body body
+         :content-type :json})
+      (log/info "Done uploading save file")
+      (log/info "Downloading top scores")
+      (let [response (http/get "https://aaron-santos.com/scores")]
+        (log/info "Got response" response)
+        (assoc state :top-scores (json/read-str (get response :body))))
+      (catch Exception e
+        (log/error "Caught exception while swapping scores" e)
+        state))))
+
 ;; A finite state machine definition for the game state. 
 ;; For each starting state, define a transition symbol, a function
 ;; to call `(transitionfn state)` to use as the new state, and a
@@ -3227,8 +3279,15 @@
                            :else       [pass-state             identity         false]}
                :game-over-rescued
                           {\y          [identity               :start-inventory false]
-                           \n          [(constantly nil)       :normal          false]}
+                           \n          [(constantly nil)       :normal          false]
+                           :space      [share-score-and-get-scores
+                                                               :share-score     false]}
                :game-over-dead
+                          {\y          [identity               :start-inventory false]
+                           \n          [identity               :start           false]
+                           :space      [share-score-and-get-scores
+                                                               :share-score     false]}
+               :share-score
                           {\y          [identity               :start-inventory false]
                            \n          [identity               :start           false]}
                :quit?     {\y          [(constantly nil)       :normal          false]
@@ -3361,33 +3420,6 @@
               (if (contains? (-> state :world :player :status) :dead)
                 (do
                   #?(:clj
-                     ;; if UPLOADVERSION file is present, upload save/world.edn as json to aaron-santos.com:8888/upload
-                     (when (get state :feedback-participant)
-                       (let [version (get state :version)
-                             userid  (get state :user-id)
-                             url     (format "https://aaron-santos.com/saves/%s" userid)
-                             body    (as-> (get state :world) world
-                                           (assoc world :version version)
-                                           (clojure.walk/postwalk (fn [v] (if #?(:clj
-                                                                                 (char? v)
-                                                                                 :cljs
-                                                                                 (string? v))
-                                                                            (str v)
-                                                                            v))
-                                                                   world)
-                                           (json/write-str world))]
-                         (log/info "Uploading save file version" version "userid" userid "to" url)
-                         (async/thread 
-                           (try
-                             (log/info "Starting upload")
-                             (System/setProperty "https.protocols" "TLSv1.2")
-                             (http/post url
-                               {:insecure? true
-                                :body body
-                                :content-type :json})
-                             (log/info "Done uploading save file")
-                             (catch Exception e
-                               (log/error "Caught exception while uploading save" e))))))
                      ;; delete the save game on player death
                      (delete-save-game))
                   (-> state

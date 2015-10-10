@@ -1664,22 +1664,58 @@
           (put-string (state :screen) 10 22 "Play again? [yn]")))
     (refresh (state :screen))))
 
+(defn render-histogram
+  [state x y title histogram]
+  ;; render x-axis
+  (doseq [i (range 8)]
+    (put-chars (state :screen) [{:c (get single-border :horizontal) :x (+ x i 1) :y (+ y 9) :fg (color->rgb :white) :bg (color->rgb :black) :style #{}}]))
+  ;; render y-axis
+  (doseq [i (range 8)]
+    (put-chars (state :screen) [{:c (get single-border :vertical)  :x x :y (+ y i 1) :fg (color->rgb :white) :bg (color->rgb :black) :style #{}}]))
+  (put-chars (state :screen) [{:c (get single-border :bottom-left)  :x x :y (+ y 9) :fg (color->rgb :white) :bg (color->rgb :black) :style #{}}])
+  ;; print title
+  (put-chars (state :screen) (markup->chars x y title))
+  ;; print bars
+  (let [max-count (reduce (fn [m data](max m (get data "count"))) 0 (get histogram "data"))]
+    (println "data" histogram)
+    (println "max-count" max-count)
+    ;; for each bar
+    (doseq [data (get histogram "data")
+            :let [x (+ x 1 (/ (get data "group") (get histogram "group-size")))]]
+      ;; for each step in the bar
+      (let [from (int (- (+ y 8) (* 8 (/ (get data "count") max-count))))
+            to   (+ y 8)]
+        (println "from" from "to" to "x" x)
+      (doseq [y (range from to)]
+        (put-chars (state :screen) [{:c "*" :x x :y (inc y) :fg (color->rgb :white) :bg (color->rgb :black) :style #{}}]))))))
+
 (defn render-share-score
   [state]
   (let [score      (get state :last-score)
         top-scores (get state :top-scores)]
     (clear (state :screen))
     ;; Title
-    (put-string (state :screen) 30 1 "Top scores")
+    (put-string (state :screen) 10 1 "Top scores")
+    ;; highscore list
     (doseq [[idx score] (map-indexed vector (take 10 (concat top-scores (repeat nil))))]
       (if score
         (let [player-name    (get score "player-name" "?name?")
               points         (get score "points" 0)
               days-survived  (get score :days-survived 0 )
               turns-survived (get score :turns-survived 0 )]
-          ;;(put-string (state :screen) 30 (+ idx 3) (format "%d. %s survived for %d %s. (%d points)" (inc idx) player-name days-survived (if (> 1 days-survived) "days" "day") points)))
-          (put-string (state :screen) 30 (+ idx 3) (format "%d. %-16s (%d points)" (inc idx) player-name points)))
-        (put-string (state :screen) 30 (+ idx 3) "...")))
+          ;;(put-string (state :screen) 30 (+ idx 3) (format "%d. %s survived for %d %s. (%d points)"
+;;                                                                                       (inc idx)
+;;                                                                                       player-name days-survived
+;;                                                                                       (if (> 1 days-survived)
+;;                                                                                         "days"
+;;                                                                                          "day")
+;;                                                                                      points)))
+          (put-string (state :screen) 1 (+ idx 3) (format "%d. %-16s (%d points)" (inc idx) player-name points)))
+        (put-string (state :screen) 1 (+ idx 3) "...")))
+    ;; Performance
+    (put-string (state :screen) 50 1 "Performance")
+    (render-histogram state 45 3 "Points" (get state :point-data))
+    (render-histogram state 65 3 "Turns" (get state :time-data))
     (put-chars (state :screen) (markup->chars 30 22 "Play again? [<color fg=\"highlight\">y</color>/<color fg=\"highlight\">n</color>]"))
     (refresh (state :screen))))
 

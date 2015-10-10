@@ -1,4 +1,4 @@
-;; Functions for manipulating player state
+1;; Functions for manipulating player state
 (ns robinson.endgame
   (:require [robinson.common :as rc]
             [taoensso.timbre :as log]
@@ -33,7 +33,7 @@
                                  :num-kills-by-attack-type
                                  :num-items-eaten]
                                 n1)
-        _ (log/info "stats" (get-in state [:world :player :stats]))
+        #_#__ (log/info "stats" (get-in state [:world :player :stats]))
         death-text     (case death-msg-type
                          :num-animals-attacked
                            (let [max-stat (reduce (fn [acc [id n]]

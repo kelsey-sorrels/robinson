@@ -2931,9 +2931,16 @@
          :content-type :json})
       (log/info "Done uploading save file")
       (log/info "Downloading top scores")
-      (let [response (http/get "https://aaron-santos.com/scores")]
-        (log/info "Got response" response)
-        (assoc state :top-scores (json/read-str (get response :body))))
+      (let [response (http/get "https://aaron-santos.com/scores")
+            _ (log/info "Got response" response)
+            body (json/read-str (get response :body))
+            top-scores (get body "scores")
+            point-data (get body "points")
+            time-data  (get body "time")]
+        
+        (assoc state :top-scores top-scores
+                     :point-data point-data
+                     :time-data  time-data))
       (catch Exception e
         (log/error "Caught exception while swapping scores" e)
         state))))

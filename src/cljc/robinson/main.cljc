@@ -295,6 +295,7 @@
                    :user-id user-id
                    :data data
                    :settings (enduro/file-atom {} "config/settings.edn")
+                   :scores   (enduro/file-atom [] "scores/scores.edn")
                    :fonts fonts}]
          (f (tick state \.)))
        :cljs

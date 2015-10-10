@@ -6,6 +6,7 @@
             [robinson.random :as rr]
             [robinson.noise :as rn]
             [robinson.world :as rw]
+            [robinson.worldgen :as rwg]
             #?@(:clj (
                 [quil.core :as q]
                 quil.applet))))
@@ -50,7 +51,7 @@
                    :setup setup
                    :draw draw
                    :size [(* 2 width) (* 2 height)]))
-    (letfn [(draw  [] (doseq [[x y w h b] samples]
+    #_(letfn [(draw  [] (doseq [[x y w h b] samples]
                         (q/fill (apply q/color (biome->color
                                                  (case b
                                                    :ocean :ocean
@@ -67,14 +68,14 @@
                    :setup setup
                    :draw draw
                    :size [(* 2 width) (* 2 height)]))
-    #_(letfn [(draw  [] (doseq [[x y w h b] samples]
+    (letfn [(draw  [] (doseq [[x y w h b] samples]
                         (q/fill (apply q/color (biome->color b)))
                         (q/rect x y w h)))
             (setup [] (q/frame-rate 1)
                       (q/no-stroke)
                       (q/background 0 0 0))]
       (quil.applet/applet
-                   :title "Ocean/Surf/Sand/Interior"
+                   :title "Ocean/Surf/Sand/Interior/Biomes"
                    :renderer :p2d
                    :setup setup
                    :draw draw

@@ -1657,30 +1657,46 @@
           (put-string (state :screen) 10 22 "Play again? [yn]")))
     (refresh (state :screen))))
 
+(defn cp437->unicode
+  [c]
+  (case (int c)
+      3 \u2665
+    219 \u2588
+    220 \u2584
+    c))
+
 (defn render-histogram
-  [state x y title histogram]
+  [state x y title value histogram]
   ;; render x-axis
   (doseq [i (range 8)]
-    (put-chars (state :screen) [{:c (get single-border :horizontal) :x (+ x i 1) :y (+ y 9) :fg (color->rgb :white) :bg (color->rgb :black) :style #{}}]))
+    (put-chars (state :screen) [{:c (get single-border :horizontal) :x (+ x i 1) :y (+ y 8) :fg (color->rgb :white) :bg (color->rgb :black) :style #{}}]))
+  ;; put caret
+  (put-chars (state :screen) [{:c "^"  :x (+ x (int (/ value (get histogram "group-size"))) 1) :y (+ y 8) :fg (color->rgb :highlight) :bg (color->rgb :black) :style #{}}])
   ;; render y-axis
-  (doseq [i (range 8)]
+  (doseq [i (range 7)]
     (put-chars (state :screen) [{:c (get single-border :vertical)  :x x :y (+ y i 1) :fg (color->rgb :white) :bg (color->rgb :black) :style #{}}]))
-  (put-chars (state :screen) [{:c (get single-border :bottom-left)  :x x :y (+ y 9) :fg (color->rgb :white) :bg (color->rgb :black) :style #{}}])
+  (put-chars (state :screen) [{:c (get single-border :bottom-left)  :x x :y (+ y 8) :fg (color->rgb :white) :bg (color->rgb :black) :style #{}}])
   ;; print title
   (put-chars (state :screen) (markup->chars x y title))
   ;; print bars
   (let [max-count (reduce (fn [m data](max m (get data "count"))) 0 (get histogram "data"))]
-    (println "data" histogram)
-    (println "max-count" max-count)
+    (log/debug "data" histogram)
+    (log/debug "max-count" max-count)
     ;; for each bar
     (doseq [data (get histogram "data")
-            :let [x (+ x 1 (/ (get data "group") (get histogram "group-size")))]]
+            :let [group (get data "group")
+                  group-size (get histogram "group-size")
+                  x (+ x 1 (/ group group-size))
+                  fg (color->rgb
+                       (if (< group (inc value) (+ group group-size 1))
+                         :highlight
+                         :dark-gray))]]
       ;; for each step in the bar
-      (let [from (int (- (+ y 8) (* 8 (/ (get data "count") max-count))))
-            to   (+ y 8)]
-        (println "from" from "to" to "x" x)
+      (let [from (int (- (+ y 7) (* 7 (/ (get data "count") max-count))))
+            to   (+ y 7)]
+        (log/debug "from" from "to" to "x" x)
       (doseq [y (range from to)]
-        (put-chars (state :screen) [{:c "*" :x x :y (inc y) :fg (color->rgb :white) :bg (color->rgb :black) :style #{}}]))))))
+        (put-chars (state :screen) [{:c (-> 219 cp437->unicode str)#_"*" :x x :y (inc y) :fg fg :bg (color->rgb :black) :style #{}}]))))))
 
 (defn render-share-score
   [state]
@@ -1703,22 +1719,21 @@
 ;;                                                                                         "days"
 ;;                                                                                          "day")
 ;;                                                                                      points)))
-          (put-string (state :screen) 1 (+ idx 3) (format "%d. %-16s (%d points)" (inc idx) player-name points)))
+          (put-string (state :screen) 1 (+ idx 3) (format "%d. %-16s (%d points)" (inc idx) player-name points) (if (and (= player-name (get-in state [:world :player :name]))
+                                                                                                                         (= points (get state :points)))
+                                                                                                                  :highlight
+                                                                                                                  :white)
+                                                                                                                :black))
         (put-string (state :screen) 1 (+ idx 3) "...")))
     ;; Performance
     (put-string (state :screen) 50 1 "Performance")
-    (render-histogram state 45 3 "Points" (get state :point-data))
-    (render-histogram state 65 3 "Turns" (get state :time-data))
-    (put-chars (state :screen) (markup->chars 30 22 "Play again? [<color fg=\"highlight\">y</color>/<color fg=\"highlight\">n</color>]"))
+    (render-histogram state 45 3  "Points"        (get-in state [:world :points] 1) (get state :point-data))
+    (render-histogram state 61 3  "Turns"         (rw/get-time state)             (get state :time-data))
+    (render-histogram state 45 13 "Kills"         (reduce + 0 (map second (get-in state [:world :player :stats :num-animals-killed]))) (get state :kills-data))
+    (render-histogram state 61 13 "Items Crafted" (reduce + 0 (map second (get-in state [:world :player :stats :num-items-crafted]))) (get state :crafted-data))
+    (put-chars (state :screen) (markup->chars 45 22 "Your performance - <color fg=\"highlight\">^</color>"))
+    (put-chars (state :screen) (markup->chars 7 22 "Play again? [<color fg=\"highlight\">y</color>/<color fg=\"highlight\">n</color>]"))
     (refresh (state :screen))))
-
-(defn cp437->unicode
-  [c]
-  (case (int c)
-      3 \u2665
-    219 \u2588
-    220 \u2584
-    c))
 
 (defn rockpick->render-map
   [layers]

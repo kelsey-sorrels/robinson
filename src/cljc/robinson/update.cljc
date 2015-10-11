@@ -2942,11 +2942,18 @@
             body (json/read-str (get response :body))
             top-scores (get body "scores")
             point-data (get body "points")
-            time-data  (get body "time")]
+            time-data      (get body "time")
+            kills-data     (get body "kills")
+            harvested-data (get body "items-harvested")
+            crafted-data   (get body "items-crafted")]
         
-        (assoc state :top-scores top-scores
-                     :point-data point-data
-                     :time-data  time-data))
+        (assoc state :top-scores     top-scores
+                     :points         points
+                     :point-data     point-data
+                     :time-data      time-data
+                     :kills-data     kills-data
+                     :harvested-data harvested-data
+                     :crafted-data   crafted-data))
       (catch Exception e
         (log/error "Caught exception while swapping scores" e)
         state))))

@@ -1,5 +1,5 @@
 ;; Utility functions for reading and persisting scores
-(ns robinson.common
+(ns robinson.scores
   (:require 
             [robinson.world :as rw]
             [robinson.player :as rp]
@@ -9,20 +9,22 @@
 
 (defn state->points
   [state]
-  (let [cur-state (current-state state)
+  (let [cur-state (rw/current-state state)]
     (int
       (* (+ (get-in state [:world :player :will-to-live])
             (rp/player-xp state)
-            (get-time state)
+            (rw/get-time state)
             (reduce-kv #(+ %1 %3) 0 (get-in state [:world :player :stats :num-items-harvested]))
             (reduce-kv #(+ %1 %3) 0 (get-in state [:world :player :stats :num-items-crafted])))
          (case cur-state
+           :dead 1
+           :rescued 2
            :game-over-dead 1
            :game-over-rescued 2)))))
 
 (defn get-scores
   [state]
-  (-> state :scores deref))
+  (or (-> state :scores deref) []))
 
 (defn reset-scores!
   [state new-scores]

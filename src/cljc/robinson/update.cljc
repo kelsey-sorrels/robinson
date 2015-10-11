@@ -2938,16 +2938,18 @@
             harvested-data (get body "items-harvested")
             crafted-data   (get body "items-crafted")]
         
-        (assoc state :top-scores     top-scores
-                     :points         points
-                     :point-data     point-data
-                     :time-data      time-data
-                     :kills-data     kills-data
-                     :harvested-data harvested-data
-                     :crafted-data   crafted-data))
+        (-> state
+          (assoc :top-scores     top-scores
+                 :points         points
+                 :point-data     point-data
+                 :time-data      time-data
+                 :kills-data     kills-data
+                 :harvested-data harvested-data
+                 :crafted-data   crafted-data)
+          (rw/assoc-current-state :share-score)))
       (catch Exception e
         (log/error "Caught exception while swapping scores" e)
-        state))))
+        (rw/assoc-current-state state :connection-failed)))))
 
 ;; A finite state machine definition for the game state. 
 ;; For each starting state, define a transition symbol, a function
@@ -3298,8 +3300,11 @@
                            :space      [identity               :connecting      false]}
                :connecting
                           {:advance    [share-score-and-get-scores
-                                                               :share-score      false]
+                                                               identity          false]
                            :else       [pass-state             :connecting       false]}
+               :connection-failed
+                          {\y          [identity               :start-inventory false]
+                           \n          [(constantly nil)       :normal          false]}
                :share-score
                           {\y          [identity               :start-inventory false]
                            \n          [identity               :start           false]}

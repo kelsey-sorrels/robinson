@@ -2310,7 +2310,7 @@
 (defn save-score
   [state]
   (rs/persist-state-score! state)
-  state)
+  (assoc state :points (rs/state->points state)))
 
 (defn
   move-to-target
@@ -2898,17 +2898,8 @@
   (let [version (get state :version)
         userid  (get state :user-id)
         url     (format "https://aaron-santos.com/saves/%s" userid)
-        ; TODO: use score namespace/function
         cur-state      (rw/current-state state)
-        points         (int
-                         (* (+ (get-in state [:world :player :will-to-live])
-                               (rp/player-xp state)
-                               (rw/get-time state)
-                               (reduce-kv #(+ %1 %3) 0 (get-in state [:world :player :stats :num-items-harvested]))
-                               (reduce-kv #(+ %1 %3) 0 (get-in state [:world :player :stats :num-items-crafted])))
-                            (case cur-state
-                              :game-over-dead 1
-                              :game-over-rescued 2)))
+        points         (get state :points)
         turns-survived  (rw/get-time state)
         turns-per-day   (count (get-in state [:data :atmo]))
         days-survived   (int (/ turns-survived turns-per-day))
@@ -3300,13 +3291,15 @@
                :game-over-rescued
                           {\y          [identity               :start-inventory false]
                            \n          [(constantly nil)       :normal          false]
-                           :space      [share-score-and-get-scores
-                                                               :share-score     false]}
+                           :space      [identity               :connecting     false]}
                :game-over-dead
                           {\y          [identity               :start-inventory false]
                            \n          [identity               :start           false]
-                           :space      [share-score-and-get-scores
-                                                               :share-score     false]}
+                           :space      [identity               :connecting      false]}
+               :connecting
+                          {:advance    [share-score-and-get-scores
+                                                               :share-score      false]
+                           :else       [pass-state             :connecting       false]}
                :share-score
                           {\y          [identity               :start-inventory false]
                            \n          [identity               :start           false]}

@@ -59,7 +59,7 @@
                                   (let [keyin (cond
                                                 (= (rw/current-state state) :sleep)
                                                   \.
-                                                (= (rw/current-state state) :loading)
+                                                (contains? #{:loading :connecting} (rw/current-state state))
                                                   :advance
                                                 :else
                                                 (let [key-chan (aterminal/get-key-chan (state :screen))]

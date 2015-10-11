@@ -1607,6 +1607,13 @@
     (put-string screen 40 18 (nth ["/" "-" "\\" "|"] (mod (swap! loading-index inc) 4)))
     (refresh screen)))
 
+(defn render-connection-failed [state]
+  (let [screen     (state :screen)]
+    (clear screen)
+    (put-string screen 30 12 "Connection failed")
+          (put-chars (state :screen) (markup->chars 30 22 "Play again? [<color fg=\"highlight\">y</color>/<color fg=\"highlight\">n</color>]"))
+    (refresh screen)))
+
 (def connecting-index (atom 0))
 (defn render-connecting [state]
   (let [screen     (state :screen)]
@@ -1821,6 +1828,8 @@
       (render-loading state)
     (= (current-state state) :connecting)
       (render-connecting state)
+    (= (current-state state) :connection-failed)
+      (render-connection-failed state)
     ;(= (current-state state) :start-text)
     ;  (render-start-text state)
     ;; Is player dead?

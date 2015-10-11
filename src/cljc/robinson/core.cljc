@@ -59,7 +59,7 @@
                                       (do
                                         (log/info "State = sleep, Auto-pressing .")
                                         \.)
-                                      (= (rw/current-state state) :loading)
+                                      (contains? #{:loading :connecting} (rw/current-state state))
                                         :advance
                                       :else
                                         (let [key-chan (aterminal/get-key-chan (state :screen))]

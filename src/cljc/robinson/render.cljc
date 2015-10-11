@@ -1607,6 +1607,13 @@
     (put-string screen 40 18 (nth ["/" "-" "\\" "|"] (mod (swap! loading-index inc) 4)))
     (refresh screen)))
 
+(def connecting-index (atom 0))
+(defn render-connecting [state]
+  (let [screen     (state :screen)]
+    (clear screen)
+    (put-string screen 30 12 (format "Connecting%s" (apply str (repeat (mod (swap! connecting-index inc) 4) "."))))
+    (refresh screen)))
+
 (defn render-game-over
   "Render the game over screen."
   [state]
@@ -1667,11 +1674,12 @@
 
 (defn render-histogram
   [state x y title value histogram]
+  (let [group-size (get histogram "group-size")]
   ;; render x-axis
   (doseq [i (range 8)]
     (put-chars (state :screen) [{:c (get single-border :horizontal) :x (+ x i 1) :y (+ y 8) :fg (color->rgb :white) :bg (color->rgb :black) :style #{}}]))
   ;; put caret
-  (put-chars (state :screen) [{:c "^"  :x (+ x (int (/ value (get histogram "group-size"))) 1) :y (+ y 8) :fg (color->rgb :highlight) :bg (color->rgb :black) :style #{}}])
+  (put-chars (state :screen) [{:c "^"  :x (+ x (int (/ value group-size)) 1) :y (+ y 8) :fg (color->rgb :highlight) :bg (color->rgb :black) :style #{}}])
   ;; render y-axis
   (doseq [i (range 7)]
     (put-chars (state :screen) [{:c (get single-border :vertical)  :x x :y (+ y i 1) :fg (color->rgb :white) :bg (color->rgb :black) :style #{}}]))
@@ -1682,10 +1690,11 @@
   (let [max-count (reduce (fn [m data](max m (get data "count"))) 0 (get histogram "data"))]
     (log/debug "data" histogram)
     (log/debug "max-count" max-count)
+    (log/debug "group-size" group-size)
     ;; for each bar
     (doseq [data (get histogram "data")
+            :when (get data "group")
             :let [group (get data "group")
-                  group-size (get histogram "group-size")
                   x (+ x 1 (/ group group-size))
                   fg (color->rgb
                        (if (< group (inc value) (+ group group-size 1))
@@ -1696,7 +1705,7 @@
             to   (+ y 7)]
         (log/debug "from" from "to" to "x" x)
       (doseq [y (range from to)]
-        (put-chars (state :screen) [{:c (-> 219 cp437->unicode str)#_"*" :x x :y (inc y) :fg fg :bg (color->rgb :black) :style #{}}]))))))
+        (put-chars (state :screen) [{:c (-> 219 cp437->unicode str)#_"*" :x x :y (inc y) :fg fg :bg (color->rgb :black) :style #{}}])))))))
 
 (defn render-share-score
   [state]
@@ -1719,7 +1728,7 @@
 ;;                                                                                         "days"
 ;;                                                                                          "day")
 ;;                                                                                      points)))
-          (put-string (state :screen) 1 (+ idx 3) (format "%d. %-16s (%d points)" (inc idx) player-name points) (if (and (= player-name (get-in state [:world :player :name]))
+          (put-string (state :screen) 1 (+ idx 3) (format "%d. %-20s (%d points)" (inc idx) player-name points) (if (and (= player-name (get-in state [:world :player :name]))
                                                                                                                          (= points (get state :points)))
                                                                                                                   :highlight
                                                                                                                   :white)
@@ -1727,10 +1736,10 @@
         (put-string (state :screen) 1 (+ idx 3) "...")))
     ;; Performance
     (put-string (state :screen) 50 1 "Performance")
-    (render-histogram state 45 3  "Points"        (get-in state [:world :points] 1) (get state :point-data))
-    (render-histogram state 61 3  "Turns"         (rw/get-time state)             (get state :time-data))
+    (render-histogram state 45 3  "Points"        (get state :points)                                                                  (get state :point-data))
+    (render-histogram state 61 3  "Turns"         (rw/get-time state)                                                                  (get state :time-data))
     (render-histogram state 45 13 "Kills"         (reduce + 0 (map second (get-in state [:world :player :stats :num-animals-killed]))) (get state :kills-data))
-    (render-histogram state 61 13 "Items Crafted" (reduce + 0 (map second (get-in state [:world :player :stats :num-items-crafted]))) (get state :crafted-data))
+    (render-histogram state 61 13 "Items Crafted" (reduce + 0 (map second (get-in state [:world :player :stats :num-items-crafted])))  (get state :crafted-data))
     (put-chars (state :screen) (markup->chars 45 22 "Your performance - <color fg=\"highlight\">^</color>"))
     (put-chars (state :screen) (markup->chars 7 22 "Play again? [<color fg=\"highlight\">y</color>/<color fg=\"highlight\">n</color>]"))
     (refresh (state :screen))))
@@ -1810,6 +1819,8 @@
       (render-start-inventory state)
     (= (current-state state) :loading)
       (render-loading state)
+    (= (current-state state) :connecting)
+      (render-connecting state)
     ;(= (current-state state) :start-text)
     ;  (render-start-text state)
     ;; Is player dead?

@@ -203,7 +203,8 @@
                                                                     (clojure.edn/read-string)))]
                                             [map-key
                                              map-value]))
-                                          (.listFiles (clojure.java.io/file "data"))))
+                                          (filter #(not (.isDirectory %))
+                                                  (.listFiles (clojure.java.io/file "data")))))
                                 :cljs
                                 (p/all [(get-resource "data/atmo")
                                         (get-resource "data/help")]))
@@ -217,12 +218,18 @@
         _                    (when (get data :seed)
                                (rr/set-rnd! (rr/create-random (get data :seed))))
         world                #?(:clj
-                                (if (.exists (clojure.java.io/file "save/world.edn"))
-                                  (with-open [o (io/input-stream "save/world.edn")]
-                                    (nippy/thaw-from-in! (DataInputStream. o)))
+                                (update
+                                  (if (.exists (clojure.java.io/file "save/world.edn"))
+                                    (with-open [o (io/input-stream "save/world.edn")]
+                                      (nippy/thaw-from-in! (DataInputStream. o)))
       
-                                  {:current-state :start
-                                   :time 0})
+                                    {:current-state :start
+                                     :time 0})
+                                  :current-state
+                                  (fn [cur-state]
+                                    (if (= cur-state :share-score)
+                                      :start
+                                      cur-state)))
                                 ;; Read from local storage
                                 :cljs
                                 (if-let [world @world-storage]

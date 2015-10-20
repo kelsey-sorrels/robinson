@@ -54,21 +54,31 @@
 (defn lookup-tile [k]
   (get @tiles k))
 
-(def wooden-wall (make-tile \#  35 :wooden-wall))
-(def deck        (make-tile \.  46 :deck))
-(def close-door  (make-tile \+  43 :close-door))
-(def up-stairs   (make-tile \<  60 :up-stairs))
-(def down-stairs (make-tile \>  62 :down-stairs))
-(def tackle      (make-tile \º 167 :tackle))
-(def grate       (make-tile \╬ 206 :grate))
-(def table       (make-tile \╤ 209 :table))
-(def chair       (make-tile \╥ 210 :chair))
-(def mast        (make-tile \╨ 208 :mast))
-(def beam        (make-tile \═ 205 :beam))
-(def ships-wheel (make-tile \Φ 232 :ships-wheel))
-(def ladder      (make-tile \≡ 240 :ladder))
-(def porthole    (make-tile \° 248 :porthole))
-(def chest       (make-tile \■ 254 :chest))
+(def bulkhead     (make-tile \◘   8 :bulkhead))
+(def wheel        (make-tile \○   9 :wheel))
+(def bulkhead2    (make-tile \◙  10 :bulkhead2))
+(def wooden-wall  (make-tile \#  35 :wooden-wall))
+(def hammock-v    (make-tile \)  41 :hammock-v))
+(def hammock-h    (make-tile \-  45 :hammock-h))
+(def deck         (make-tile \.  46 :deck))
+(def close-door   (make-tile \+  43 :close-door))
+(def up-stairs    (make-tile \<  60 :up-stairs))
+(def down-stairs  (make-tile \>  62 :down-stairs))
+(def tackle       (make-tile \º 167 :tackle))
+(def cannon       (make-tile \║ 186 :canon))
+(def cannon-truck (make-tile \─ 196 :canon-truck))
+(def grate        (make-tile \╬ 206 :grate))
+(def breach       (make-tile \╨ 208 :breach))
+(def table        (make-tile \╤ 209 :table))
+(def chair        (make-tile \╥ 210 :chair))
+(def mast         (make-tile \╨ 208 :mast))
+(def beam         (make-tile \═ 205 :beam))
+(def locker       (make-tile \▌ 221 :locker))
+(def locker2      (make-tile \▐ 222 :locker2))
+(def ships-wheel  (make-tile \Φ 232 :ships-wheel))
+(def ladder       (make-tile \≡ 240 :ladder))
+(def porthole     (make-tile \° 248 :porthole))
+(def chest        (make-tile \■ 254 :chest))
 
 (defn ship->cells
   [ship]
@@ -76,18 +86,22 @@
          (map (fn [{ch :ch :as tile}]
                 (if (contains? #{nil \space} ch)
                   nil
-                  {:type (-> ch
-                           int
-                           lookup-tile
-                           :type)}))
+                  (let [cell-type (-> ch
+                                    int
+                                    lookup-tile
+                                    :type)]
+                    (if (and (contains? #{:table :chair :chest} cell-type)
+                              (< 0.5 (rand)))
+                        {:type :deck}
+                        {:type cell-type}))))
               line))
         ship))
 
 (defn random-place
   "Create a grid of random rooms with corridors connecting them and doors
    where corridors connect to rooms."
-  [width height]
-  (let [ship (make-ship 0)
+  [width height level]
+  (let [ship (make-ship level)
         cells (ship->cells ship)]
     {:place cells}))
 ;        upstairs     (conj [(first room-centers)] {:type :up-stairs})
@@ -118,6 +132,7 @@
 (defn -main
   "Generate a random grid and print it out."
   [& args]
-  (println "generating...")
-  (doall (map println (place-to-ascii (get (random-place 80 25) :place)))))
+  (let [level (or (read-string (first args)) 0)]
+    (println (format "generating level %d..." level))
+    (doall (map println (place-to-ascii (get (random-place 80 25 level) :place))))))
 

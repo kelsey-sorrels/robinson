@@ -103,7 +103,7 @@
   [width height level]
   (let [ship (make-ship level)
         cells (ship->cells ship)]
-    {:place cells}))
+    {:cells cells}))
 ;        upstairs     (conj [(first room-centers)] {:type :up-stairs})
 ;        downstairs   (conj [(last room-centers)] {:type :down-stairs})]
 ;    {:place (apply merge-with-canvas (canvas width height)
@@ -128,6 +128,23 @@
                           (clojure.string/join chs)))
                       place)]
     contents))
+
+(defn merge-cell
+  [cell ship-cell x y]
+  (or ship-cell cell))
+
+(defn merge-cells
+  [cells]
+  (let [ship-place (random-place 80 25 0)]
+    (mapv (fn [line ship-line y]
+            (mapv (fn [cell ship-cell x]
+                   (merge-cell cell ship-cell x y))
+                  line
+                  ship-line
+                  (range)))
+          cells
+          (get ship-place :cells)
+          (range))))
 
 (defn -main
   "Generate a random grid and print it out."

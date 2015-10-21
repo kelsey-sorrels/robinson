@@ -1277,6 +1277,28 @@
                                                                               ["~" (rand-nth [:blue :light-blue :dark-blue]) :black]
                                                                               ["O"])
                                                            :dry-hole        ["O"]
+                                                           ;; pirate ship cell types
+                                                           :bulkhead        ["◘" :brown :black]
+                                                           :wheel           ["◘" :brown :black]
+                                                           :bulkhead2       ["◘" :brown :black]
+                                                           :wooden-wall     ["#" :brown :black]
+                                                           :hammock-v       ["◘" :brown :black]
+                                                           :hammock-h       ["◘" :brown :black]
+                                                           :deck            ["." :brown :black]
+                                                           :tackle          ["◘" :brown :black]
+                                                           :cannon          ["◘" :brown :black]
+                                                           :cannon-trunk    ["◘" :brown :black]
+                                                           :grate           ["◘" :brown :black]
+                                                           :breach          ["◘" :brown :black]
+                                                           :table           ["◘" :brown :black]
+                                                           :chair           ["◘" :brown :black]
+                                                           :mast            ["◘" :brown :black]
+                                                           :beam            ["◘" :brown :black]
+                                                           :locker          ["◘" :brown :black]
+                                                           :locker2         ["◘" :brown :black]
+                                                           :ships-wheel     ["◘" :brown :black]
+                                                           :porthole        ["◘" :brown :black]
+                                                           :chest           ["◘" :brown :black]
                                                            (do (log/info (format "unknown type: %s %s" (str (get cell :type)) (str cell)))
                                                            ["?"])))))
                                            shaded-out-char (cond

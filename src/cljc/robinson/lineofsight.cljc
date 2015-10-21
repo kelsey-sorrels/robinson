@@ -301,7 +301,13 @@
     :mountain
     :bamboo
     :palm-tree
-    :fruit-tree})
+    :fruit-tree
+    ;; pirate cell types
+    :bulkhead
+    :bulkhead2
+    :wooden-wall
+    :mast
+    :porthole})
 
 
 (defn cell-blocking?

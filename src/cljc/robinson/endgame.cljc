@@ -99,12 +99,12 @@
                                    :axe   (rnd-nth ["Who speared enemies." "Spearer of enemies."] n2)
                                    :spear (rnd-nth ["Who axed enemies." "Axer of enemies."] n2)))))
                          :num-items-eaten
-                           (let [max-stat (reduce (fn [acc [id n]]
-                                                    (cond
-                                                      (nil? acc) [id n]
-                                                      (> (last acc) n) acc
-                                                      :else [id n]))
-                                                  nil (get-in state [:world :player :stats :num-items-eaten]))]
+                           (let [max-stat (reduce-kv (fn [acc id n]
+                                                       (cond
+                                                         (nil? acc) [id n]
+                                                         (> (last acc) n) acc
+                                                         :else [id n]))
+                                                     nil (get-in state [:world :player :stats :num-items-eaten]))]
                              (if (nil? max-stat)
                                "Too picky to eat"
                                (let [[item-id n] max-stat]

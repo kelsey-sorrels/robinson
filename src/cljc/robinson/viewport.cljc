@@ -326,7 +326,10 @@
                                                    x-range)))
                              cells
                              (map vector
-                                  (subvec place min-y max-y)
+                                  (try
+                                    (subvec place min-y max-y)
+                                    (catch Exception e
+                                      (log/error "place count" (count place) "min-y" min-y "max-y" max-y)))
                                   y-range)))
         cells (-> (transient [])
                     (conj-cells ul-cells start-x start-y v-width v-height r-x     r-y)

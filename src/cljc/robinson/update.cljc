@@ -500,8 +500,7 @@
 
    Valid directions are `:left` `:right` `:up` `:down`."
   [state direction]
-  (let [player-x (-> state :world :player :pos :x)
-        player-y (-> state :world :player :pos :y)
+  (let [[player-x player-y] (rp/player-xy state)
         target-x (+ player-x (case direction
                                :left -1
                                :right 1
@@ -511,15 +510,16 @@
                                :down 1
                                0))]
     (log/debug "open-door")
+    (log/info "target-xy" target-x target-y)
     (let [target-cell (rw/get-cell state target-x target-y)]
-      (log/debug "target-cell" target-cell)
+      (log/info "target-cell" target-cell)
       (if (and (not (nil? target-cell)) (= (target-cell :type) :close-door))
         (do
           (log/debug "opening door")
-          (log/debug (rw/get-cell state target-y target-x))
+          (log/debug (rw/get-cell state target-x target-y))
           (-> state
             (rc/append-log "The door creaks open")
-            (rw/assoc-cell state target-y target-x :type :open-door)))
+            (rw/assoc-cell target-x target-y :type :open-door)))
         state))))
 
 (defn open-left
@@ -558,12 +558,13 @@
                                :down 1
                                0))]
     (log/debug "close-door")
+    (log/info "target-xy" target-x target-y)
     (let [target-cell (rw/get-cell state target-x target-y)]
       (log/debug "target-cell" target-cell)
       (if (and (not (nil? target-cell)) (= (target-cell :type) :open-door))
         (-> state
           (rc/append-log "The door closes")
-          (rw/assoc-cell state target-y target-x :type :close-door))
+          (rw/assoc-cell target-x target-y :type :close-door))
         state))))
 
 (defn close-left

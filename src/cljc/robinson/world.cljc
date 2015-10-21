@@ -151,7 +151,7 @@
   (let [place-id (rv/xy->place-id state x y)
         [ax ay]  (rv/place-id->anchor-xy state place-id)
         [px py]    [(- x ax) (- y ay)]]
-    #_(log/info "assoc-cell" "place-id" place-id "x" x "y" y "ax" ax "ay" ay "px" px "py" py "kvs" keyvals)
+    (log/info "assoc-cell" "place-id" place-id "x" x "y" y "ax" ax "ay" ay "px" px "py" py "kvs" keyvals)
     (reduce (fn [state [k v]]
               #_(log/info "matching-keys" (matching-keys state [:world :places place-id :cells py px k]))
               (assoc-cell-fn state [:world :places place-id :cells py px k] v))

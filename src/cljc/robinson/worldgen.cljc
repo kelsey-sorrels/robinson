@@ -328,7 +328,10 @@
         n                     (rn/create-noise (rr/create-random seed))
         volcano-pos           (get-in state [:world :volcano-pos])
         lava-xys              (get-in state [:world :lava-points])
-        encounter             (rand-nth [:normal :pirate-ship])]
+        starting-pos          (rp/player-starting-pos state)
+        encounter             (if (rc/farther-than? starting-pos (rp/player-pos state) 80)
+                                :normal
+                                (rand-nth [:normal :pirate-ship]))]
     {:seed seed
      :pos {:x x :y y}
      :spawned-monsters {}

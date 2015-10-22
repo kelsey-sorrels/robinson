@@ -329,9 +329,11 @@
         volcano-pos           (get-in state [:world :volcano-pos])
         lava-xys              (get-in state [:world :lava-points])
         starting-pos          (rp/player-starting-pos state)
-        encounter             (if (rc/farther-than? starting-pos (rp/player-pos state) 80)
+        player-pos            (get-in state [:world :player :pos] starting-pos)
+        encounter             (if (and starting-pos
+                                       (rc/farther-than? starting-pos player-pos 80))
                                 :normal
-                                (rand-nth [:normal :pirate-ship]))]
+                                (rand-nth [:normal #_:pirate-ship]))]
     {:seed seed
      :pos {:x x :y y}
      :spawned-monsters {}

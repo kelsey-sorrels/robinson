@@ -2359,7 +2359,9 @@
                                                          :dirt
                                                          :gravel
                                                          :tall-grass
-                                                         :short-grass}
+                                                         :short-grass
+                                                         ;; pirate ship
+                                                         :deck}
                                                        (get-type x y)))))
           traversable?           (cond
                                    (and npc-can-move-in-water

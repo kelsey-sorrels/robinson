@@ -67,6 +67,9 @@
 ;; It's easier to use names than numbers.
 (def color-to-rgb-map
   {:brown       [139 69 19]
+   :dark-brown  [70 44 9]
+   :ship-brown  [67 51 30]
+   :ship-light-brown  [131 88 32]
    ;;:black       [0 0 0]
    :black       [6 6 11]
    :white       [255 255 255]
@@ -90,7 +93,8 @@
    :purple      (vec (tinter/hex-str-to-dec "8500D3"))
    :fushia      (vec (tinter/hex-str-to-dec "D30094"))
    :light-brown (vec (tinter/hex-str-to-dec "D8C474"))
-   :beige       (vec (tinter/hex-str-to-dec "C8B464"))})
+   :beige       (vec (tinter/hex-str-to-dec "C8B464"))
+   :dark-beige  (vec (tinter/hex-str-to-dec "7C612D"))})
 
 (defn limit-color
   [v]
@@ -1224,7 +1228,7 @@
                                                           (case (cell :type)
                                                            :vertical-wall   ["|"]
                                                            :horizontal-wall ["-"]
-                                                           :floor           ["."]
+                                                           :floor           ["·"]
                                                            :open-door       ["-"  :brown  :black #{:bold}]
                                                            :close-door      ["+"  :brown  :black #{:bold}]
                                                            :corridor        ["#"] 
@@ -1246,12 +1250,12 @@
                                                                                    (rand-nth [:red :orange :yellow])
                                                                                    :light-blue) :black]
                                                            :mountain        ["\u2206" :gray :black] ;; ∆
-                                                           :sand            ["."  :beige      :black]
-                                                           :dirt            ["."  :brown      :black]
+                                                           :sand            ["·"  :beige      :black]
+                                                           :dirt            ["·"  :brown      :black]
                                                            :dune            ["\u1d16"  :light-brown :black] ;; ᴖ
                                                            :rocky-shore     ["\u1d16"  :dark-gray  :black] ;; ᴖ
-                                                           :gravel          ["."  :gray       :black]
-                                                           :short-grass     ["."  :green      :black]
+                                                           :gravel          ["·"  :gray       :black]
+                                                           :short-grass     ["·"  :green      :black]
                                                            :tall-grass      ["\"" :dark-green :black]
                                                            :tree            ["T"  :dark-green :black]
                                                            :bamboo          ["\u01c1" :light-green :black] ;; ∥ 
@@ -1279,26 +1283,26 @@
                                                            :dry-hole        ["O"]
                                                            ;; pirate ship cell types
                                                            :bulkhead        ["◘" :brown :black]
-                                                           :wheel           ["◘" :brown :black]
+                                                           :wheel           ["○" :brown :black]
                                                            :bulkhead2       ["◘" :brown :black]
-                                                           :wooden-wall     ["#" :brown :black]
+                                                           :wooden-wall     ["#" :ship-brown :black]
+                                                           :railing         ["#" :ship-brown :black]
                                                            :hammock-v       ["◘" :brown :black]
                                                            :hammock-h       ["◘" :brown :black]
-                                                           :deck            ["." :brown :black]
-                                                           :tackle          ["◘" :brown :black]
-                                                           :cannon          ["◘" :brown :black]
-                                                           :cannon-trunk    ["◘" :brown :black]
-                                                           :grate           ["◘" :brown :black]
-                                                           :breach          ["◘" :brown :black]
-                                                           :table           ["◘" :brown :black]
-                                                           :chair           ["◘" :brown :black]
-                                                           :mast            ["◘" :brown :black]
-                                                           :beam            ["◘" :brown :black]
-                                                           :locker          ["◘" :brown :black]
+                                                           :deck            ["·" :dark-brown :black]
+                                                           :tackle          ["º" :brown :black]
+                                                           :cannon          ["║" :brown :black]
+                                                           :cannon-trunk    ["─" :brown :black]
+                                                           :grate           ["╬" :dark-beige :black]
+                                                           :table           ["╤" :ship-light-brown :black]
+                                                           :chair           ["╥" :ship-light-brown :black]
+                                                           :mast            ["╨" :ship-light-brown :black]
+                                                           :beam            ["═" :brown :black]
+                                                           :locker          ["L" :brown :black]
                                                            :locker2         ["◘" :brown :black]
-                                                           :ships-wheel     ["◘" :brown :black]
-                                                           :porthole        ["◘" :brown :black]
-                                                           :chest           ["◘" :brown :black]
+                                                           :ships-wheel     ["Φ" :brown :black]
+                                                           :porthole        ["°" :brown :black]
+                                                           :chest           ["■" :ship-light-brown :black]
                                                            (do (log/info (format "unknown type: %s %s" (str (get cell :type)) (str cell)))
                                                            ["?"])))))
                                            shaded-out-char (cond

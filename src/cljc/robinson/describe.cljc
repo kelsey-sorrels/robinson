@@ -53,7 +53,33 @@
                                       "a hole full of water"
                                       "an empty hole")
            :palisade               "a palisade"
-           :bamboo-water-collector "a bamboo water collector"))
+           :bamboo-water-collector "a bamboo water collector"
+           :open-door              "an open door"
+           :close-door             "a closed door"
+           :down-stairs            "a set of stairs going down"
+           :up-stairs              "a set of stairs going up"
+           ;; pirate ship
+           :bulkhead               "a bulkhead"
+           :wheel                  "a wheel"
+           :bulkhead2              "a bulkhead"
+           :wooden-wall            "a wooden wall"
+           :railing                "railing"
+           :hammock-v              "a hammock"
+           :hammock-h              "a hammock"
+           :deck                   "the deck"
+           :tackle                 "tackle"
+           :cannon                 "a cannon"
+           :cannon-trunk           "a cannon truck"
+           :grate                  "a grate"
+           :table                  "a table"
+           :chair                  "a chair"
+           :mast                   "a mast"
+           :beam                   "a beam"
+           :locker                 "a locker"
+           :locker2                "a locker"
+           :ships-wheel            "the ship's wheel"
+           :porthole               "a porthole"
+           :chest                  "a chest"))
     "strange land"))
 
 (defn describe-npc

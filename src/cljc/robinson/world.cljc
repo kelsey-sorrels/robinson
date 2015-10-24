@@ -372,7 +372,26 @@
                :palisade
                :dry-hole
                :freshwater-hole
-               :saltwater-hole} t))
+               :saltwater-hole
+               ;; pirate ship types
+               :bulkhead
+               :wheel
+               :bulkhead2
+               :wooden-wall
+               :tackle
+               :canon
+               :canon-trunk
+               :grate
+               :breach
+               :table
+               :mast
+               :beam
+               :locker
+               :locker2
+               :ships-wheel
+               :porthole
+               :chest
+               :railing} t))
 
 (defn type->water?
   [t]

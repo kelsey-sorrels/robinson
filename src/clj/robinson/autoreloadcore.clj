@@ -13,7 +13,10 @@
 (defn check-namespace-changes [track]
  (try
    (doseq [ns-sym (track)]
-     (when (not (contains? #{"robinson.autoreloadcore" "robinson.main"} (str ns-sym)))
+     (when (not (contains? #{"robinson.autoreloadcore"
+                             "robinson.main"
+                             "robinson-tools.worldgen"
+                             "robinson-tools.devtools"} (str ns-sym)))
      (log/info "Reloading namespace:" ns-sym)
        (require ns-sym :reload)
        (log/info "Done.")))

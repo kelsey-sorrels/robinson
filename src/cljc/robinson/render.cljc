@@ -107,12 +107,19 @@
 
 (defn color->rgb
   [color]
+  {:post [(vector? %)
+          (= (count %) 3)
+          (every? number? %)]}
   (get color-to-rgb-map color color))
 
 (defn darken-rgb
   ([rgb]
   (mapv #(int (/ % 10)) rgb))
   ([rgb d]
+  (assert (vector? rgb) (str "rgb not a vector"))
+  (assert (number? (nth rgb 0)) (str (nth rgb 0) " not a number"))
+  (assert (number? (nth rgb 1)) (str (nth rgb 1) " not a number"))
+  (assert (number? (nth rgb 2)) (str (nth rgb 2) " not a number"))
   (mapv #(int (limit-color (* % d))) rgb)))
 
 (defn night-tint
@@ -263,7 +270,7 @@
       :wizard    :purple)))
 
 (defn is-menu-state? [state]
-  (contains? #{:inventory :describe-inventory :pickup :drop :eat} (get-in state [:world :current-state])))
+  (contains? #{:inventory :describe-inventory :pickup-selection :drop :eat} (get-in state [:world :current-state])))
 
 (defn markup-length [s]
  (let [body    (str "<body>" s "</body>")
@@ -666,13 +673,13 @@
                       item))
          items)))
 
-(defn render-pick-up
-  "Render the pickup item menu if the world state is `:pickup`."
+(defn render-pick-up-selection
+  "Render the pickup item menu if the world state is `:pickup-selection`."
   [state]
   (let [screen           (state :screen)
-        player-x         (-> state :world :player :pos :x)
-        player-y         (-> state :world :player :pos :y)
-        cell             (get-cell state player-x player-y)
+        direction        (get-in state [:world :pickup-direction])
+        {x :x y :y}      (rw/player-adjacent-pos state direction)
+        cell             (get-cell state x y)
         cell-items       (or (cell :items) [])
         hotkeys          (-> state :world :remaining-hotkeys)
         selected-hotkeys (-> state :world :selected-hotkeys)
@@ -680,14 +687,14 @@
                                        (fn apply-hotkey [item hotkey] (assoc item :hotkey hotkey))
                                        hotkeys
                                        cell-items)]
-  (log/debug "player-x" player-x "player-y" player-y)
+  (log/debug "x" x "y" y)
   (log/debug "cell" cell)
   (log/debug "cell-items" cell-items)
   (render-multi-select screen "Pick up" selected-hotkeys (translate-identified-items state items))
   (put-chars screen (markup->chars 41 20 "<color fg=\"highlight\">space</color>-All" :black :white #{}))))
 
 (defn render-inventory
-  "Render the pickup item menu if the world state is `:pickup`."
+  "Render the pickup item menu if the world state is `:inventory`."
   [state]
   (render-multi-select (state :screen) "Inventory" [] (translate-identified-items state (-> state :world :player :inventory))))
 
@@ -1488,7 +1495,7 @@
         (log/info "message" message)
         (put-chars screen characters)))
     (case (current-state state)
-      :pickup               (render-pick-up state)
+      :pickup-selection     (render-pick-up-selection state)
       :inventory            (render-inventory state)
       :abilities            (render-abilities state)
       :player-stats         (render-player-stats state)

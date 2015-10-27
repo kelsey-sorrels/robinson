@@ -538,10 +538,19 @@
         x           (case direction
                       :left  (dec x)
                       :right (inc x)
+                      :up-left (dec x)
+                      :up-right (inc x)
+                      :down-left (dec x)
+                      :down-right (inc x)
                       x)
         y           (case direction
                       :up   (dec y)
-                      :down (inc y)                      y)]
+                      :down (inc y)
+                      :up-left (dec y)
+                      :up-right (dec y)
+                      :down-left (inc y)
+                      :down-right (inc y)
+                      y)]
     {:x x :y y}))
 
 (defn player-adjacent-cell

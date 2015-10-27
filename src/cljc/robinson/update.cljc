@@ -64,7 +64,10 @@
   (doseq [file (filter (fn [file] (re-matches #".*edn" (.getName file))) (file-seq (io/file "save")))]
     (log/info "Deleting" file)
     (.delete file)))
-  
+
+(def directions-ext
+  #{:left :right :down :up :up-left :up-right :down-left :down-right :center})
+
 (defn translate-directions
   [keyin]
   (case keyin
@@ -601,8 +604,10 @@
     ;; return the non-selcted pile to the cell
     ;; remove selected-hotkeys from remaining-hotkeys
     ;; clear selected-hotkeys
-    (let [[player-cell x y]  (rw/player-cellxy state)
-          items              (vec (get player-cell :items))
+    (let [direction          (get-in state [:world :pickup-direction])
+          {x :x y :y}      (rw/player-adjacent-pos state direction)
+          cell               (rw/get-cell state x y)
+          items              (vec (get cell :items))
           remaining-hotkeys  (-> state :world :remaining-hotkeys)
           divided-items      (group-by (fn [item] (if (contains? (-> state :world :selected-hotkeys) (item :hotkey))
                                                       :selected
@@ -625,7 +630,7 @@
                           ;; dup the item into inventory with hotkey
                           (rp/add-to-inventory selected-items)
                           ;; remove the item from cell
-                          (rw/assoc-current-cell-items not-selected-items)
+                          (rw/assoc-cell-items x y not-selected-items)
                           ;;;; hotkey is no longer available
                           (assoc-in [:world :remaining-hotkeys]
                               remaining-hotkeys)
@@ -634,10 +639,63 @@
           new-state)
         state)))
 
+(defn pickup-directions
+  [state]
+  (map second
+       (filter (fn [[cell direction]]
+                 (-> (get cell :items [])
+                     count
+                     pos?))
+               (map (fn [direction]
+                      [(rw/player-adjacent-cell state direction) direction])
+                    directions-ext))))
+
+(defn assoc-pickup-target
+  [state direction]
+  {:pre  [(contains? directions-ext direction)]}
+  (let [directions (pickup-directions state)]
+    (if (contains? (set directions) direction)
+      (-> state
+        (assoc-in [:world :pickup-direction] direction)
+        (rw/assoc-current-state :pickup-selection))
+      (-> state
+          (rc/append-log "Nothing to pickup.")
+          (rw/assoc-current-state :normal)))))
+  
+(defn pickup-left [state]
+  (assoc-pickup-target state :left))
+
+(defn pickup-right [state]
+  (assoc-pickup-target state :right))
+
+(defn pickup-up [state]
+  (assoc-pickup-target state :up))
+
+(defn pickup-down [state]
+  (assoc-pickup-target state :down))
+
+(defn pickup-up-left [state]
+  (assoc-pickup-target state :up-left))
+
+(defn pickup-up-right [state]
+  (assoc-pickup-target state :up-right))
+
+(defn pickup-down-left [state]
+  (assoc-pickup-target state :down-left))
+
+(defn pickup-down-right [state]
+  (assoc-pickup-target state :down-right))
+
+(defn pickup-center [state]
+  (assoc-pickup-target state :center))
+
+
 (defn pick-up-all
   [state]
-    (let [[player-cell x y]  (rw/player-cellxy state)
-          items              (vec (get player-cell :items))
+    (let [direction (get-in state [:world :pickup-direction])
+          {x :x y :y}        (rw/player-adjacent-pos state direction)
+          cell               (rw/get-cell state x y)
+          items              (vec (get cell :items))
           remaining-hotkeys  (-> state :world :remaining-hotkeys)
           selected-items     (map #(assoc %1 :hotkey %2)
                                   items
@@ -653,12 +711,13 @@
                           ;; dup the item into inventory with hotkey
                           (rp/add-to-inventory selected-items)
                           ;; remove the item from cell
-                          (rw/assoc-current-cell-items [])
+                          (rw/assoc-cell-items x y [])
                           ;;;; hotkey is no longer available
                           (assoc-in [:world :remaining-hotkeys]
                               remaining-hotkeys))]
           new-state)
         state)))
+
 
 (defn drop-item
   "Drop the item from the player's inventory whose hotkey matches `keyin`.
@@ -1106,26 +1165,229 @@
                                       (rc/ui-hint "You're not sure how to apply it to that.")
                                       (rw/assoc-current-state :normal)))))
 
+(defn harvest
+  "Collect non-item resources from adjacent or current cell"
+  [state direction]
+  {:pre  [(contains? directions-ext direction)]}
+  (let [player-x      (-> state :world :player :pos :x)
+        player-y      (-> state :world :player :pos :y)
+        distance      (rp/player-distance-from-starting-pos state)
+        target-x      (+ player-x (case direction
+                               :left -1
+                               :right 1
+                               :up-left -1
+                               :up-right 1
+                               :down-left -1
+                               :down-right 1
+                               0))
+        target-y (+ player-y (case direction
+                               :up  -1
+                               :down 1
+                               :up-left -1
+                               :up-right -1
+                               :down-left 1
+                               :down-right 1
+                               0))
+        target-cell   (rw/get-cell state target-x target-y)
+        harvestable   (get target-cell :harvestable false)
+        harvest-items (if (not= target-cell nil)
+                        (cond
+                          (= (get target-cell :type) :tree)
+                            (if (or harvestable
+                                    (= 0 (rr/uniform-int 1000)))
+                              [(rr/rand-nth [(ig/gen-item :stick) (ig/gen-item :plant-fiber)])]
+                              [])
+                          (= (get target-cell :type) :bamboo)
+                              (if (or harvestable
+                                      (= 0 (rr/uniform-int 1000)))
+                                [(ig/gen-item :bamboo)]
+                                [])
+                          (= (get target-cell :type) :palm-tree)
+                            (concat
+                              (if (or harvestable
+                                      (= 0 (rr/uniform-int 1000)))
+                                [(rr/rand-nth [(ig/gen-item :unhusked-coconut) (ig/gen-item :plant-fiber)])]
+                                []))
+                          (= (get target-cell :type) :tall-grass)
+                            (concat
+                              (if (or harvestable
+                                      (= 0 (rr/uniform-int 1000)))
+                                [(rr/rand-nth [(ig/gen-item :grass) (ig/gen-item :plant-fiber)])]
+                                []))
+                          (= (get target-cell :type) :gravel)
+                            (if (get target-cell :near-lava)
+                              (concat
+                                (if (or harvestable
+                                        (= 0 (rr/uniform-int 1000)))
+                                  [(rr/rand-nth [(ig/gen-item :rock) (ig/gen-item :obsidian)])]
+                                  []))
+                              (concat
+                                (if (or harvestable
+                                        ;; Make large flint stone have a higher chance of dropping away
+                                        ;; from the player's starting-pos.
+                                        (= 0 (rr/uniform-int 1000)))
+                                  (concat
+                                    (repeat (rr/uniform-int 4 6) (ig/gen-item :rock))
+                                    [(rr/rand-nth [(ig/gen-item :rock) (if (< 300 (rr/uniform-double 100 (max 101 distance)))
+                                                                         (ig/gen-item :large-flint)
+                                                                         (ig/gen-item :flint))])])
+                                  [])))
+                          :else [])
+                        [])]
+    (log/info "harvested" harvest-items)
+    (if (empty? harvest-items)
+      (rc/append-log state "You don't find anything.")
+      (-> state
+        (rp/add-to-inventory harvest-items)
+        (rw/update-cell target-x target-y (fn [cell] (dissoc cell :harvestable)))
+        (as-> state (reduce rp/update-harvested state harvest-items))
+        (rc/append-log (format "You gather %s." (clojure.string/join ", " (map #(if (> (get % :count 1) 1)
+                                                                                  (format "%d %s" (get % :count) (get % :name-plural))
+                                                                                  (format "%s %s" (if (contains? #{\a \e \i \o} (first (get % :name)))
+                                                                                                     "an"
+                                                                                                     "a")
+                                                                                                  (get % :name)))
+                                                                              harvest-items))))))))
+
+(defn harvest-left [state]
+  (harvest state :left))
+
+(defn harvest-right [state]
+  (harvest state :right))
+
+(defn harvest-up [state]
+  (harvest state :up))
+
+(defn harvest-down [state]
+  (harvest state :down))
+
+(defn harvest-up-left [state]
+  (harvest state :up-left))
+
+(defn harvest-up-right [state]
+  (harvest state :up-right))
+
+(defn harvest-down-left [state]
+  (harvest state :down-left))
+
+(defn harvest-down-right [state]
+  (harvest state :down-right))
+
+(defn harvest-center [state]
+  (harvest state :center))
+
+(defn smart-pickup
+  [state]
+  ;; If there is just one adjacent thing to pickup, just pick it up. Otherwise enter a pickup mode.
+  (let [directions (pickup-directions state)]
+    (log/info "smart-pickup directions" (vec directions))
+    (cond
+      (empty? directions)
+        (-> state
+          (rc/append-log "Nothing to pick up.")
+          (rw/assoc-current-state :normal))
+      (= (count directions) 1)
+        (assoc-pickup-target state (first directions))
+      :else
+        (rw/assoc-current-state state :pickup))))
+
+(defn harvestable-directions
+  [state]
+  (map second
+       (filter (fn [[cell direction]]
+                 (log/info "cell" cell "direction" direction)
+                 (get cell :harvestable))
+               (map (fn [direction]
+                      [(rw/player-adjacent-cell state direction) direction])
+                    directions-ext))))
+
+(defn smart-harvest
+  [state]
+  ;; If there is just one adjacent thing to harvest, just harvest it. Otherwise enter a harvest mode.
+  (let [directions (harvestable-directions state)]
+    (cond
+      (empty? directions)
+        (-> state
+          (rc/append-log "Nothing to harvest.")
+          (rw/assoc-current-state :normal))
+      (= (count directions) 1)
+        (-> state
+          (harvest (first directions))
+          (rw/assoc-current-state :normal))
+      :else
+        (rw/assoc-current-state state :harvest))))
+
+(defn smart-open
+  [state]
+  ;; If there is just one adjacent thing to open, just open it. Otherwise enter open mode.
+  state)
+
+
 (defn action-select
   [state]
-  (let [actions (as-> [] actions
+  (let [#_#_actions (as-> [] actions
                   (if (-> (rw/player-cellxy state) first :items count pos?)
                     (conj actions {:state-id :pickup
                                    :name "Pickup"})
+                    actions)
+                  (if (-> (rw/player-cellxy state) first :harvestable)
+                    (conj actions {:state-id :harvest
+                                   :name "Harvest"})
+                    actions))
+        pickup-directions (pickup-directions state)
+        _ (log/info "pickup directions" (vec pickup-directions))
+        harvest-directions (harvestable-directions state)
+        _ (log/info "harvest-directions" (vec harvest-directions))
+        actions (as-> [] actions
+                  (if (seq pickup-directions)
+                    (conj actions {:state-id :pickup
+                                   :name "Pickup"})
+                    actions)
+                  (if (seq harvest-directions)
+                    (conj actions {:state-id :harvest
+                                   :name "Harvest"})
                     actions))]
-    (assoc-in state
-              [:world :action-select]
-              (map (fn [action hotkey]
-                     (assoc action :hotkey hotkey))
-                   actions
-                   rc/hotkeys))))
+      (log/info "num pickup-directions" (count pickup-directions)
+                "num harvest-directions" (count harvest-directions))
+    (cond
+      (and (zero? (count pickup-directions))
+           (zero? (count harvest-directions)))
+        (-> state
+          (rc/append-log "No available actions.")
+          (rw/assoc-current-state :normal))
+      (zero? (count harvest-directions))
+        (do (log/info "doing smart-pickup")
+        (smart-pickup state))
+      (zero? (count pickup-directions))
+        (smart-harvest state)
+      #_#_(zero? (count harvest-directions))
+        (-> state
+          (rc/ui-hint "Pick a direction.")
+          (rw/assoc-current-state :pickup))
+      #_#_(zero? (count pickup-directions))
+        (-> state
+          (rc/ui-hint "Pick a direction.")
+          (rw/assoc-current-state :harvest))
+      :else
+        (-> state
+          (assoc-in [:world :action-select]
+                    (map (fn [action hotkey]
+                           (assoc action :hotkey hotkey))
+                         actions
+                         rc/hotkeys))
+          (rw/assoc-current-state :action-select)))))
 
 (defn do-selected-action
   [state keyin]
-  (if-let [action (first (filter (fn [{:keys [state-id hotkey]}]
+  (if-let [action (get (first (filter (fn [{:keys [state-id hotkey]}]
                                    (= hotkey keyin))
-                                 (get-in state [:world :action-select])))]
-    (rw/assoc-current-state state (get action :state-id))
+                                 (get-in state [:world :action-select])))
+                       :state-id)]
+    (case action
+      :pickup
+        (smart-pickup state)
+      :harvest
+        (smart-harvest state))
     state))
 
 (defn quaff-only-adjacent-cell
@@ -1288,117 +1550,6 @@
         cursor-pos   (apply rc/xy->pos (rv/-xy player-xy viewport-xy))]
       ; cursor pos = player pos in screen coordinates
       (assoc-in state [:world :cursor] cursor-pos)))
-
-(defn harvest
-  "Collect non-item resources from adjacent or current cell"
-  [state direction]
-  {:pre  [(contains? #{:left :right :up :down :up-left :up-right :down-left :down-right :center} direction)]}
-  (let [player-x      (-> state :world :player :pos :x)
-        player-y      (-> state :world :player :pos :y)
-        distance      (rp/player-distance-from-starting-pos state)
-        target-x      (+ player-x (case direction
-                               :left -1
-                               :right 1
-                               :up-left -1
-                               :up-right 1
-                               :down-left -1
-                               :down-right 1
-                               0))
-        target-y (+ player-y (case direction
-                               :up  -1
-                               :down 1
-                               :up-left -1
-                               :up-right -1
-                               :down-left 1
-                               :down-right 1
-                               0))
-        target-cell   (rw/get-cell state target-x target-y)
-        harvestable   (get target-cell :harvestable false)
-        harvest-items (if (not= target-cell nil)
-                        (cond
-                          (= (get target-cell :type) :tree)
-                            (if (or harvestable
-                                    (= 0 (rr/uniform-int 1000)))
-                              [(rr/rand-nth [(ig/gen-item :stick) (ig/gen-item :plant-fiber)])]
-                              [])
-                          (= (get target-cell :type) :bamboo)
-                              (if (or harvestable
-                                      (= 0 (rr/uniform-int 1000)))
-                                [(ig/gen-item :bamboo)]
-                                [])
-                          (= (get target-cell :type) :palm-tree)
-                            (concat
-                              (if (or harvestable
-                                      (= 0 (rr/uniform-int 1000)))
-                                [(rr/rand-nth [(ig/gen-item :unhusked-coconut) (ig/gen-item :plant-fiber)])]
-                                []))
-                          (= (get target-cell :type) :tall-grass)
-                            (concat
-                              (if (or harvestable
-                                      (= 0 (rr/uniform-int 1000)))
-                                [(rr/rand-nth [(ig/gen-item :grass) (ig/gen-item :plant-fiber)])]
-                                []))
-                          (= (get target-cell :type) :gravel)
-                            (if (get target-cell :near-lava)
-                              (concat
-                                (if (or harvestable
-                                        (= 0 (rr/uniform-int 1000)))
-                                  [(rr/rand-nth [(ig/gen-item :rock) (ig/gen-item :obsidian)])]
-                                  []))
-                              (concat
-                                (if (or harvestable
-                                        ;; Make large flint stone have a higher chance of dropping away
-                                        ;; from the player's starting-pos.
-                                        (= 0 (rr/uniform-int 1000)))
-                                  (concat
-                                    (repeat (rr/uniform-int 4 6) (ig/gen-item :rock))
-                                    [(rr/rand-nth [(ig/gen-item :rock) (if (< 300 (rr/uniform-double 100 (max 101 distance)))
-                                                                         (ig/gen-item :large-flint)
-                                                                         (ig/gen-item :flint))])])
-                                  [])))
-                          :else [])
-                        [])]
-    (log/info "harvested" harvest-items)
-    (if (empty? harvest-items)
-      (rc/append-log state "You don't find anything.")
-      (-> state
-        (rp/add-to-inventory harvest-items)
-        (rw/update-cell target-x target-y (fn [cell] (dissoc cell :harvestable)))
-        (as-> state (reduce rp/update-harvested state harvest-items))
-        (rc/append-log (format "You gather %s." (clojure.string/join ", " (map #(if (> (get % :count 1) 1)
-                                                                                  (format "%d %s" (get % :count) (get % :name-plural))
-                                                                                  (format "%s %s" (if (contains? #{\a \e \i \o} (first (get % :name)))
-                                                                                                     "an"
-                                                                                                     "a")
-                                                                                                  (get % :name)))
-                                                                              harvest-items))))))))
-
-(defn harvest-left [state]
-  (harvest state :left))
-
-(defn harvest-right [state]
-  (harvest state :right))
-
-(defn harvest-up [state]
-  (harvest state :up))
-
-(defn harvest-down [state]
-  (harvest state :down))
-
-(defn harvest-up-left [state]
-  (harvest state :up-left))
-
-(defn harvest-up-right [state]
-  (harvest state :up-right))
-
-(defn harvest-down-left [state]
-  (harvest state :down-left))
-
-(defn harvest-down-right [state]
-  (harvest state :down-right))
-
-(defn harvest-center [state]
-  (harvest state :center))
 
 (defn wield
   "Wield the item from the player's inventory whose hotkey matches `keyin`."
@@ -2992,7 +3143,7 @@
                                           (do-rest state))     :normal          true]}
                :normal    {\i          [identity               :inventory       false]
                            \d          [identity               :drop            false]
-                           \,          [identity               :pickup          false]
+                           \,          [smart-pickup            identity        false]
                            \e          [identity               :eat             false]
                            \o          [identity               :open            false]
                            \c          [identity               :close           false]
@@ -3006,14 +3157,14 @@
                            :up-right   [move-up-right          :normal          false]
                            :down-left  [move-down-left         :normal          false]
                            :down-right [move-down-right        :normal          false]
-                           :space      [action-select          :action-select   false]
+                           :space      [action-select          identity         false]
                            \q          [quaff-select           identity         false]
                            \w          [identity               :wield           false]
                            \W          [identity               :wield-ranged    false]
                            \f          [init-select-ranged-target
                                                                identity         false]
                            \r          [reload-ranged-weapon   :normal          false]
-                           \x          [identity               :harvest         false]
+                           \x          [smart-harvest          identity         false]
                            \a          [identity               :apply           false]
                            \;          [init-cursor            :describe        false]
                            \S          [identity               :sleep           false]
@@ -3150,9 +3301,22 @@
                            \b          [(fn [state]
                                         (apply-item state \b))
                                                                :normal          true]}
-               :pickup    {:escape     [identity               :normal          false]
+               :pickup    {:left       [pickup-left            identity         false]
+                           :down       [pickup-down            identity         false]
+                           :up         [pickup-up              identity         false]
+                           :right      [pickup-right           identity         false]
+                           :up-left    [pickup-up-left         identity         false]
+                           :up-right   [pickup-up-right        identity         false]
+                           :down-left  [pickup-down-left       identity         false]
+                           :down-right [pickup-down-right      identity         false]
+                           :numpad5    [pickup-center          identity         false]
+                           \>          [pickup-center          identity         false]
+                           :escape     [identity               :normal          false]}
+               :pickup-selection
+                          {:escape     [identity               :normal          false]
                            :space      [pick-up-all            :normal          true]
-                           :else       [toggle-hotkey          :pickup          false]
+                           :else       [toggle-hotkey          :pickup-selection
+                                                                                false]
                            :enter      [pick-up                :normal          true]}
                :eat       {:escape     [identity               :normal          false]
                            :else       [eat                    :normal          true]}
@@ -3322,6 +3486,7 @@
     :quaff-adj-or-inv
     :open
     :talk
+    :pickup
     :harvest
     :throw-direction
     :magic-direction

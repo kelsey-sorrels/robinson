@@ -254,7 +254,8 @@
   "Randomly add monsters inside the viewport."
   [state]
   (let [num-npcs (reduce + (vals (npc-freqs-in-player-place state)))]
-    (if (and (< (rr/uniform-int 100)
+    ;; higher random number = less npcs
+    (if (and (< (rr/uniform-int 110)
                 (if (rw/is-night? state)
                    (/ 180 (inc num-npcs))
                    (/ 80 (inc num-npcs))))

@@ -1688,7 +1688,10 @@
           (put-string (state :screen) 10 6 (format "Points: %s." points))
           (put-string (state :screen) 10 8 "Inventory:")
           (doall (map-indexed
-            (fn [idx item] (put-string (state :screen) 20 (+ idx 8) (item :name)))
+            (fn [idx item] (put-string (state :screen) 20 (+ idx 8) (format "%s%s" (if (pos? (get item :count 0))
+                                                                                     (format "%dx " (get item :count))
+                                                                                     "")
+                                                                                    (item :name))))
             (-> state :world :player :inventory)))
           (put-chars (state :screen) (markup->chars 10 22 "Play again? [<color fg=\"highlight\">y</color>/<color fg=\"highlight\">n</color>] <color fg=\"highlight\">space</color>-share and compare with other players")))
       :game-over-rescued

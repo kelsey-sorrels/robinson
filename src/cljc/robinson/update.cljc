@@ -1195,7 +1195,7 @@
                           (= (get target-cell :type) :tree)
                             (if (or harvestable
                                     (= 0 (rr/uniform-int 1000)))
-                              [(rr/rand-nth [(ig/gen-item :stick) (ig/gen-item :plant-fiber)])]
+                              [(rr/rand-nth [(ig/gen-item :stick) (ig/gen-item :stick) (ig/gen-item :stick) (ig/gen-item :stick) (ig/gen-item :plant-fiber)])]
                               [])
                           (= (get target-cell :type) :bamboo)
                               (if (or harvestable
@@ -1206,7 +1206,7 @@
                             (concat
                               (if (or harvestable
                                       (= 0 (rr/uniform-int 1000)))
-                                [(rr/rand-nth [(ig/gen-item :unhusked-coconut) (ig/gen-item :plant-fiber)])]
+                                [(rr/rand-nth [(ig/gen-item :unhusked-coconut) (ig/gen-item :unhusked-coconut) (ig/gen-item :unhusked-coconut) (ig/gen-item :plant-fiber)])]
                                 []))
                           (= (get target-cell :type) :tall-grass)
                             (concat
@@ -2939,7 +2939,13 @@
                 (let [place-id         (rv/xy->place-id state wx wy)
                       num-harvestable (get @harvestable-counts place-id)]
                   (if (< (rr/uniform-int 0 10000)
-                         (/ 8 (inc num-harvestable)))
+                         (/ (case cell-type
+                              :palm-tree 20
+                              :tree 25
+                              :tall-grass 2
+                              :gravel 20
+                              10)
+                            (inc num-harvestable)))
                     (do
                       (swap! harvestable-counts (fn [counts] (update counts place-id inc)))
                       (conj xy-fns [[wx wy]

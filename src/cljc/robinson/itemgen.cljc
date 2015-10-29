@@ -191,7 +191,10 @@
   [item]
   (contains? #{:bow
                :flint
-               :rock}
+               :rock
+               :unhusked-coconut
+               :coconut
+               :coconut-empty}
              (get item :id)))
 
 (defn item->ranged-combat-ammunition-item-id

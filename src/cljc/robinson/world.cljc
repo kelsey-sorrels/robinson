@@ -553,6 +553,10 @@
                       y)]
     {:x x :y y}))
 
+(defn player-adjacent-xy
+  [state direction]
+  (rc/pos->xy (player-adjacent-pos state direction)))
+
 (defn player-adjacent-cell
   [state direction]
   (apply get-cell state (rc/pos->xy (player-adjacent-pos state direction))))

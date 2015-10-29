@@ -317,22 +317,8 @@
    :post [(not (nil? %))]}
   (log/info "move-outside-safe-zone")
   (let [[player-cell x y] (rw/player-cellxy state)
-        target-x          (case direction
-                            :left (dec x)
-                            :right (inc x)
-                            :up-left (dec x)
-                            :down-left (dec x)
-                            :up-right (inc x)
-                            :down-right (inc x)
-                            x)
-        target-y          (case direction
-                            :up (dec y)
-                            :down (inc y)
-                            :up-left (dec y)
-                            :down-left (inc y)
-                            :up-right (dec y)
-                            :down-right (inc y)
-                            y)
+        [target-x
+         target-y] (rw/player-adjacent-xy state direction)
         target-place      (rv/xy->place-id state target-x target-y)
         rv/visible-place-ids (rv/visible-place-ids state target-x target-y)
         _ (log/info "target-x" target-x "target-y" target-y)
@@ -373,22 +359,8 @@
    :post [(vector? (get-in % [:world :npcs]))]}
   (let [player-x (-> state :world :player :pos :x)
         player-y (-> state :world :player :pos :y)
-        target-x (+ player-x (case direction
-                               :left -1
-                               :right 1
-                               :up-left -1
-                               :up-right 1
-                               :down-left -1
-                               :down-right 1
-                               0))
-        target-y (+ player-y (case direction
-                               :up  -1
-                               :down 1
-                               :up-left -1
-                               :up-right -1
-                               :down-left 1
-                               :down-right 1
-                               0))
+        [target-x
+         target-y] (rw/player-adjacent-xy state direction)
         target-cell (rw/get-cell state target-x target-y)]
     (log/info "moving to" target-x target-y "type:" (get target-cell :type))
     (log/info "inside-safe-zone?" (rv/xy-in-safe-zone? state target-x target-y) target-x target-y)
@@ -499,19 +471,10 @@
   (move state :down-right))
 
 (defn open-door
-  "Open the door one space in the direction relative to the player's position.
-
-   Valid directions are `:left` `:right` `:up` `:down`."
+  "Open the door one space in the direction relative to the player's position."
   [state direction]
-  (let [[player-x player-y] (rp/player-xy state)
-        target-x (+ player-x (case direction
-                               :left -1
-                               :right 1
-                               0))
-        target-y (+ player-y (case direction
-                               :up  -1
-                               :down 1
-                               0))]
+  (let [[target-x
+         target-y] (rw/player-adjacent-xy state direction)]
     (log/debug "open-door")
     (log/info "target-xy" target-x target-y)
     (let [target-cell (rw/get-cell state target-x target-y)]
@@ -546,20 +509,10 @@
   (open-door state :down))
 
 (defn close-door
-  "Close the door one space in the direction relative to the player's position.
-
-   Valid directions are `:left` `:right` `:up` `:down`."
+  "Close the door one space in the direction relative to the player's position."
   [state direction]
-  (let [player-x (-> state :world :player :pos :x)
-        player-y (-> state :world :player :pos :y)
-        target-x (+ player-x (case direction
-                               :left -1
-                               :right 1
-                               0))
-        target-y (+ player-y (case direction
-                               :up  -1
-                               :down 1
-                               0))]
+  (let [[target-x
+         target-y] (rw/player-adjacent-xy state direction)]
     (log/debug "close-door")
     (log/info "target-xy" target-x target-y)
     (let [target-cell (rw/get-cell state target-x target-y)]
@@ -885,16 +838,8 @@
 (defn apply-fishing-pole
   "Start fishing for something."
   [state direction]
-  (let [player-x      (-> state :world :player :pos :x)
-        player-y      (-> state :world :player :pos :y)
-        target-x      (+ player-x (case direction
-                                    :left -1
-                                    :right 1
-                                    0))
-        target-y      (+ player-y (case direction
-                                    :up  -1
-                                    :down 1
-                                    0))
+  (let [[target-x
+         target-y] (rw/player-adjacent-xy state direction)
         target-cell   (rw/get-cell state target-x target-y)
         new-state     (case direction
                         :left  :fishing-left
@@ -922,16 +867,8 @@
 (defn start-fire
   "Light something on fire, creating chaos."
   [state direction]
-  (let [player-x      (-> state :world :player :pos :x)
-        player-y      (-> state :world :player :pos :y)
-        target-x      (+ player-x (case direction
-                                    :left -1
-                                    :right 1
-                                    0))
-        target-y      (+ player-y (case direction
-                                    :up  -1
-                                    :down 1
-                                    0))
+  (let [[target-x
+         target-y] (rw/player-adjacent-xy state direction)
         target-cell   (rw/get-cell state target-x target-y)]
     (cond
       (rw/type->flammable? (get target-cell :type))
@@ -979,16 +916,8 @@
 (defn saw
   "Saw nearby tree creating logs."
   [state direction keyin]
-  (let [player-x      (-> state :world :player :pos :x)
-        player-y      (-> state :world :player :pos :y)
-        target-x      (+ player-x (case direction
-                                    :left -1
-                                    :right 1
-                                    0))
-        target-y      (+ player-y (case direction
-                                    :up  -1
-                                    :down 1
-                                    0))
+  (let [[target-x
+         target-y] (rw/player-adjacent-xy state direction)
         target-cell   (rw/get-cell state target-x target-y)]
     (log/info "saw dir" direction)
     (log/info "sawing at" target-x target-y)
@@ -1172,22 +1101,8 @@
   (let [player-x      (-> state :world :player :pos :x)
         player-y      (-> state :world :player :pos :y)
         distance      (rp/player-distance-from-starting-pos state)
-        target-x      (+ player-x (case direction
-                               :left -1
-                               :right 1
-                               :up-left -1
-                               :up-right 1
-                               :down-left -1
-                               :down-right 1
-                               0))
-        target-y (+ player-y (case direction
-                               :up  -1
-                               :down 1
-                               :up-left -1
-                               :up-right -1
-                               :down-left 1
-                               :down-right 1
-                               0))
+        [target-x
+         target-y] (rw/player-adjacent-xy state direction)
         target-cell   (rw/get-cell state target-x target-y)
         harvestable   (get target-cell :harvestable false)
         harvest-items (if (not= target-cell nil)
@@ -1317,27 +1232,67 @@
       :else
         (rw/assoc-current-state state :harvest))))
 
+(defn openable-directions
+  [state]
+  (map second
+       (filter (fn [[cell direction]]
+                 (log/info "cell" cell "direction" direction)
+                 (contains? #{:close-door} (get cell :type)))
+               (map (fn [direction]
+                      [(rw/player-adjacent-cell state direction) direction])
+                    directions-ext))))
 (defn smart-open
   [state]
   ;; If there is just one adjacent thing to open, just open it. Otherwise enter open mode.
-  state)
+  (let [directions (openable-directions state)]
+    (cond
+      (empty? directions)
+        (-> state
+          (rc/append-log "Nothing to open")
+          (rw/assoc-current-state :normal))
+      (= (count directions) 1)
+        (-> state
+          ;; TODO: open chests too
+          (open-door (first directions))
+          (rw/assoc-current-state :normal))
+      :else
+        (rw/assoc-current-state state :open))))
 
+(defn closeable-directions
+  [state]
+  (map second
+       (filter (fn [[cell direction]]
+                 (log/info "cell" cell "direction" direction)
+                 (contains? #{:open-door} (get cell :type)))
+               (map (fn [direction]
+                      [(rw/player-adjacent-cell state direction) direction])
+                    directions-ext))))
+(defn smart-close
+  [state]
+  ;; If there is just one adjacent thing to close, just close it. Otherwise enter close mode.
+  (let [directions (closeable-directions state)]
+    (cond
+      (empty? directions)
+        (-> state
+          (rc/append-log "Nothing to close")
+          (rw/assoc-current-state :normal))
+      (= (count directions) 1)
+        (-> state
+          (close-door (first directions))
+          (rw/assoc-current-state :normal))
+      :else
+        (rw/assoc-current-state state :close))))
 
 (defn action-select
   [state]
-  (let [#_#_actions (as-> [] actions
-                  (if (-> (rw/player-cellxy state) first :items count pos?)
-                    (conj actions {:state-id :pickup
-                                   :name "Pickup"})
-                    actions)
-                  (if (-> (rw/player-cellxy state) first :harvestable)
-                    (conj actions {:state-id :harvest
-                                   :name "Harvest"})
-                    actions))
-        pickup-directions (pickup-directions state)
+  (let [pickup-directions (pickup-directions state)
         _ (log/info "pickup directions" (vec pickup-directions))
         harvest-directions (harvestable-directions state)
         _ (log/info "harvest-directions" (vec harvest-directions))
+        open-directions (openable-directions state)
+        _ (log/info "open-directions" (vec open-directions))
+        close-directions (closeable-directions state)
+        _ (log/info "close-directions" (vec close-directions))
         actions (as-> [] actions
                   (if (seq pickup-directions)
                     (conj actions {:state-id :pickup
@@ -1346,28 +1301,36 @@
                   (if (seq harvest-directions)
                     (conj actions {:state-id :harvest
                                    :name "Harvest"})
-                    actions))]
+                    actions)
+                  (if (seq open-directions)
+                    (conj actions {:state-id :open
+                                   :name "Open"})
+                    actions)
+                  (if (seq close-directions)
+                    (conj actions {:state-id :close
+                                   :name "Close"})
+                    actions))
+        directions {:pickup-directions  pickup-directions
+                    :harvest-directions harvest-directions
+                    :open-directions    open-directions
+                    :close-directions   close-directions}]
       (log/info "num pickup-directions" (count pickup-directions)
-                "num harvest-directions" (count harvest-directions))
+                "num harvest-directions" (count harvest-directions)
+                "num open-directions" (count open-directions)
+                "num close-directions" (count close-directions))
     (cond
-      (and (zero? (count pickup-directions))
-           (zero? (count harvest-directions)))
+      (every? (comp zero? count second) directions)
         (-> state
           (rc/append-log "No available actions.")
           (rw/assoc-current-state :normal))
-      (zero? (count harvest-directions))
-        (do (log/info "doing smart-pickup")
-        (smart-pickup state))
-      (zero? (count pickup-directions))
+      (every? (comp zero? count second) (dissoc directions :pickup-directions))
+        (smart-pickup state)
+      (every? (comp zero? count second) (dissoc directions :harvest-directions))
         (smart-harvest state)
-      #_#_(zero? (count harvest-directions))
-        (-> state
-          (rc/ui-hint "Pick a direction.")
-          (rw/assoc-current-state :pickup))
-      #_#_(zero? (count pickup-directions))
-        (-> state
-          (rc/ui-hint "Pick a direction.")
-          (rw/assoc-current-state :harvest))
+      (every? (comp zero? count second) (dissoc directions :open-directions))
+        (smart-open state)
+      (every? (comp zero? count second) (dissoc directions :close-directions))
+        (smart-close state)
       :else
         (-> state
           (assoc-in [:world :action-select]
@@ -1387,7 +1350,11 @@
       :pickup
         (smart-pickup state)
       :harvest
-        (smart-harvest state))
+        (smart-harvest state)
+      :open
+        (smart-open state)
+      :close
+        (smart-close state))
     state))
 
 (defn quaff-only-adjacent-cell
@@ -1687,22 +1654,8 @@
   [state direction]
   (let [{cursor-x :x
          cursor-y :y} (get-in state [:world :cursor])
-        target-x (+ cursor-x (case direction
-                               :left -1
-                               :right 1
-                               :up-left -1
-                               :up-right 1
-                               :down-left -1
-                               :down-right 1
-                               0))
-        target-y (+ cursor-y (case direction
-                               :up  -1
-                               :down 1
-                               :up-left -1
-                               :up-right -1
-                               :down-left 1
-                               :down-right 1
-                               0))
+        [target-x
+         target-y] (rw/player-adjacent-xy state direction)
         cursor-pos (rc/xy->pos (rc/bound 0 target-x (dec (get-in state [:world :viewport :width])))
                                (rc/bound 0 target-y (dec (get-in state [:world :viewport :height]))))]
     (assoc-in state [:world :cursor] cursor-pos)))
@@ -1762,16 +1715,8 @@
 
    Valid directions are `:left` `:right` `:up` `:down`."
   [state direction]
-  (let [player-x (-> state :world :player :pos :x)
-        player-y (-> state :world :player :pos :y)
-        target-x (+ player-x (case direction
-                               :left -1
-                               :right 1
-                               0))
-        target-y (+ player-y (case direction
-                               :up  -1
-                               :down 1
-                               0))]
+  (let [[target-x
+         target-y] (rw/player-adjacent-xy state direction)]
     (log/debug "start-talking")
     (if-let [target-npc (rw/npc-at-xy state target-x target-y)]
       ;; store update the npc and world state with talking

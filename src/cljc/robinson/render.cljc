@@ -1308,6 +1308,7 @@
                                                            :locker          ["L" :brown :black]
                                                            :locker2         ["◘" :brown :black]
                                                            :ships-wheel     ["Φ" :brown :black]
+                                                           :ladder          ["≡" :dark-beige :black]
                                                            :porthole        ["°" :brown :black]
                                                            :chest           ["■" :ship-light-brown :black]
                                                            (do (log/info (format "unknown type: %s %s" (str (get cell :type)) (str cell)))

@@ -254,7 +254,7 @@
                            :meadow        (rr/rand-nth [
                                             {:type :dirt}
                                             {:type :tall-grass}
-                                            {:type :tall-grass}
+                                            {:type :tall-grass :items [(ig/gen-item :jack-o-lantern)]}
                                             {:type :short-grass}
                                             {:type :short-grass}])
                            :jungle        (if (< t 0.1)

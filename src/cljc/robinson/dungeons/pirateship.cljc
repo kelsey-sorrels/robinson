@@ -86,14 +86,14 @@
          (map (fn [{ch :ch :as tile}]
                 (if (contains? #{nil \space} ch)
                   nil
-                  (let [cell-type (-> ch
-                                    int
-                                    lookup-tile
-                                    :type)]
+                  (when-let [cell-type (-> ch
+                                       int
+                                       lookup-tile
+                                       :type)]
                     (if (and (contains? #{:table :chair :chest} cell-type)
                               (< 0.5 (rand)))
-                        {:type :deck}
-                        {:type cell-type}))))
+                      {:type :deck}
+                      {:type cell-type}))))
               line))
         ship))
 

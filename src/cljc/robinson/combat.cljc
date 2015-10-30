@@ -29,7 +29,7 @@
 
 (defn ranged-weapon?
   [attack]
-  (contains? #{:flint :rock :bow} attack))
+  (contains? #{:flint :rock :coconut :bow :jack-o-lantern} attack))
 
 (defn format [s & args]
   #?(:clj
@@ -202,6 +202,10 @@
   :sharpened-stick 2
   :flint 1.5
   :rock 1
+  :coconut 2
+  :unhusked-coconut 2
+  :empty-coconut 1
+  :jack-o-lantern 5
   #?(:clj
      (throw (Exception. (format "No value specified for %s" (name attack))))
      :cljs

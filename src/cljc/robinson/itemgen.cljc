@@ -120,6 +120,7 @@
    {:id  :purple-fruit            :name  "purple fruit"               :name-plural "purple fruits" :hunger 30}
    {:id  :white-fruit             :name  "white fruit"                :name-plural "white fruits" :hunger 30}
    {:id  :black-fruit             :name  "black fruit"                :name-plural "black fruits" :hunger 30}
+   {:id  :jack-o-lantern          :name  "jack-o-lantern"             :name-plural "jack-o-lanterns" :hunger 10}
    {:id  :bamboo                  :name  "bamboo"                     :name-plural "bamboo" :fuel 100}
    {:id  :raft                    :name  "raft"                       :name-plural "rafts"}
    {:id  :rock                    :name  "rock"                       :name-plural "rocks"}
@@ -194,7 +195,8 @@
                :rock
                :unhusked-coconut
                :coconut
-               :coconut-empty}
+               :coconut-empty
+               :jack-o-lantern}
              (get item :id)))
 
 (defn item->ranged-combat-ammunition-item-id
@@ -202,7 +204,11 @@
   (case (get item :id)
     :bow :arrow
     :flint :flint
-    :rock :rock))
+    :rock :rock
+    :unhusked-coconut :unhusked-coconut
+    :coconut :coconut
+    :empty-coconut :empty-coconut
+    :jack-o-lantern :jack-o-lantern))
 
 (defn requires-reload?
   [item]

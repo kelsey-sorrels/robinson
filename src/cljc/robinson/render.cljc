@@ -1231,6 +1231,7 @@
                                                             :fire-plough     [","]
                                                             :hand-drill      [","]
                                                             :bow-drill       [","]
+                                                            :jack-o-lantern  ["☻" :orange :black]
                                                             ["?"])
                                                           (case (cell :type)
                                                            :vertical-wall   ["|"]

@@ -28,6 +28,12 @@
      (:require-macros [robinson.macros :as rm]
                       [cljs.core.async.macros :refer [go go-loop]])))
 
+(defn halloween? []
+  (let [calendar (java.util.Calendar/getInstance)
+        month    (.get calendar java.util.Calendar/MONTH)
+        day-of-month (.get calendar java.util.Calendar/DAY_OF_MONTH)]
+    (and (= month 10)
+         (= day-of-month 31))))
 
 (defn rand-xy-in-circle
   [x y max-r]
@@ -254,7 +260,9 @@
                            :meadow        (rr/rand-nth [
                                             {:type :dirt}
                                             {:type :tall-grass}
-                                            {:type :tall-grass :items [(ig/gen-item :jack-o-lantern)]}
+                                            (if (halloween?)
+                                              {:type :tall-grass :items [(ig/gen-item :jack-o-lantern)]}
+                                              {:type :tall-grass})
                                             {:type :short-grass}
                                             {:type :short-grass}])
                            :jungle        (if (< t 0.1)

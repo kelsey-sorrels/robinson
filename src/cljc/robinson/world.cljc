@@ -86,7 +86,11 @@
 (defn current-place-id
   "Retrieve the current place id."
   [state]
-  (-> state :world :current-place))
+  (-> state :world :player :current-place-id))
+
+(defn assoc-current-place-id
+  [state place-id]
+  (assoc-in state [:world :player :current-place] place-id))
 
 (defn current-state
   [state]
@@ -134,6 +138,17 @@
      #_(log/info "matching-keys" (matching-keys state [:world :places place-id :cells py px]))
      (get-in state [:world :places  place-id :cells py px]))))
 
+(defn filter-cellxys
+  [state pred place-id]
+  (let [cellsxy (reduce (fn [cellsxy [line y]]
+                          (reduce (fn [cellsxy [cell x]]
+                                    (conj cellsxy [cell x y]))
+                                  cellsxy
+                                  (map vector line (range))))
+                        []
+                        (get-in state [:world :places place-id :cells]))]
+    (filter pred cellsxy)))
+  
 (defn update-cell
   [state x y f]
   (let [place-id (rv/xy->place-id state x y)

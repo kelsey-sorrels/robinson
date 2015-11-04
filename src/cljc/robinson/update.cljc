@@ -410,8 +410,7 @@
           (if (not (rv/xy-in-safe-zone? state target-x target-y))
             (move-outside-safe-zone state direction)
             state)
-          (assoc-in state [:world :player :pos :x] target-x)
-          (assoc-in state [:world :player :pos :y] target-y)
+          (rp/assoc-player-pos state (rc/xy->pos target-x target-y))
           (inc-time state)
           ;; rafting = more hunger
           (update-in state [:world :player :hunger] (partial + 0.05 ))
@@ -469,6 +468,57 @@
   "moves the player one space down and right provided he/she is able."
   [state]
   (move state :down-right))
+
+(defn stairs-down
+  "moves the player to the place indicated by the stairs to the position indicated by the stairs."
+  [state]
+  state)
+
+(defn stairs-up
+  "moves the player to the place indicated by the stairs to the position indicated by the stairs."
+  [state]
+  state)
+
+(defn use-stairs
+  [state]
+  (let [[player-cell x y] (rw/player-cellxy state)
+        orig-place-id     (rw/current-place-id state)]
+    (if (contains? #{:down-stairs :up-stairs} (get player-cell :type))
+      (let [dest-place-id  (get player-cell :dest-place-id)
+            dest-type      (get player-cell :dest-type)
+            gen-args       (get player-cell :gen-args)
+           ; insert the new place into the world
+           [state
+            dest-place-id] (rworldgen/load-place state dest-place-id dest-type gen-args)
+           [{src-place-id :src-place-id}
+             dest-x
+             dest-y]       (first (rw/filter-cellxys state
+                                                     (fn [{cell-type :type} _ _]
+                                                       (= cell-type
+                                                          (case (get player-cell :type)
+                                                            :up-stairs
+                                                              :down-stairs
+                                                            :down-stairs
+                                                              :up-stairs)))
+                                                      dest-place-id))]
+        (as-> state state
+          ;; if player-cell doesn't point directly to [dest-place-id dest-x dest-y]
+          ;;   connect it up
+          (if-not dest-place-id
+            (rw/update-cell state x y (fn [cell] (assoc cell :dest-place-id dest-place-id)))
+            state)
+          ;; point destination stairs back to [orig-place-id x y]
+          (if-not src-place-id
+            (rw/update-cell state dest-place-id (fn [cell] (assoc cell :dest-place-id orig-place-id)))
+            state)
+          ;; move the player to [dest-place-id dest-x dest-y]
+          (rp/assoc-player-pos state (rc/xy->pos dest-x dest-y))
+          (rp/assoc-player-place state dest-place-id)
+          ;; unload old places
+          (if orig-place-id     
+            (rworldgen/unload-place state orig-place-id)
+            state)))
+      (rc/ui-hint state "No stairs here."))))
 
 (defn open-door
   "Open the door one space in the direction relative to the player's position."
@@ -3122,6 +3172,8 @@
                            :up-right   [move-up-right          :normal          false]
                            :down-left  [move-down-left         :normal          false]
                            :down-right [move-down-right        :normal          false]
+                           \>          [use-stairs             :normal          false]
+                           \<          [use-stairs             :normal          false]
                            :space      [action-select          identity         false]
                            \q          [quaff-select           identity         false]
                            \w          [identity               :wield           false]

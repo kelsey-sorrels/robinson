@@ -223,6 +223,10 @@
                  (fn [player]
                    (update player k f))))
 
+(defn assoc-player-pos
+  [state pos]
+  (assoc-player-attribute state :pos pos))
+
 (defn player-status
   [state]
   (get-player-attribute state :status))
@@ -327,6 +331,14 @@
   "Return distance between player and `[x y]`."
   [state pos]
   (rc/distance pos (player-pos state)))
+
+(defn player-place
+  [state]
+  (get-player-attribute state :place))
+
+(defn assoc-player-place
+  [state place-id]
+  (assoc-player-attribute state :place place-id))
 
 (defn player-inventory
   [state]

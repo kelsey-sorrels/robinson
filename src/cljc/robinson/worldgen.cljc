@@ -458,15 +458,16 @@
 
 #?(:clj
 (defn load-place
-  "Returns a place, not state."
-  [state id]
+  "Load a place from disk or generate. Two form
+   `(load-place state id)` returns a place.
+   `(load-place state id place-type gen-args)` returns  a 2-vector `[the state with the place added, the id of the place added]`."
+  ([state id]
   (log/info "loading" id)
   ;; load the place into state. From file if exists or gen a new random place.
   (let [place
     (if (.exists (io/as-file (format "save/%s.place.edn" (str id))))
-      ;(rm/log-time "read-string time" ;;(clojure.edn/read-string {:readers {'Monster mg/map->Monster}} s)))
-        (with-open [o (io/input-stream (format "save/%s.place.edn" (str id)))]
-          (nippy/thaw-from-in! (DataInputStream. o)))
+      (with-open [o (io/input-stream (format "save/%s.place.edn" (str id)))]
+        (nippy/thaw-from-in! (DataInputStream. o)))
       (let [[ax ay]            (rv/place-id->anchor-xy state id)
             [v-width v-height] (rv/viewport-wh state)
             w-width            (get-in state [:world :width])
@@ -476,12 +477,26 @@
                                                   v-width v-height))))]
       (log/info "loaded place. width:" (count (first place)) "height:" (count place))
       place))
+  ([state id place-type gen-args]
+    ;; use id or generate 8 character hex encoded id string
+    (let [id    (or id (format "%x" (long (rand (bit-shift-left 1 32)))))
+          place (if (.exists (io/as-file (format "save/%s.place.edn" (str id))))
+                  (with-open [o (io/input-stream (format "save/%s.place.edn" (str id)))]
+                    (nippy/thaw-from-in! (DataInputStream. o)))
+                  (case place-type
+                    :pirate-ship
+                      ;; TODO: pass appropriate args
+                      (apply psg/random-place gen-args)
+                    (assert "Unknown place-type" place-type)))]
+      [(assoc-in state [:world :places id] place)
+       id])))
+                  
 
 ;TODO: fix in clojurescript
 :cljs
 (defn load-place
   "Returns a place, not state."
-  [state id]
+  ([state id]
   (log/info "loading" id)
   (let [place
     (let [[ax ay]            (rv/place-id->anchor-xy state id)
@@ -492,7 +507,8 @@
                                                 ax ay
                                                 v-width v-height)))]
     (log/info "loaded place. width:" (count (first place)) "height:" (count place))
-    place)))
+    place))))
+          
 
 (def save-place-chan (async/chan))
 

@@ -81,7 +81,7 @@
 (def chest        (make-tile \■ 254 :chest))
 
 (defn ship->cells
-  [ship]
+  [ship level]
   (mapv (fn [line]
          (map (fn [{ch :ch :as tile}]
                 (if (contains? #{nil \space} ch)
@@ -90,20 +90,28 @@
                                        int
                                        lookup-tile
                                        :type)]
-                    (if (and (contains? #{:table :chair :chest} cell-type)
-                              (< 0.5 (rand)))
-                      {:type :deck}
-                      {:type cell-type}))))
+                    (cond
+                      ;; remove some tables, chairs, and chests
+                      (contains? #{:table :chair :chest} cell-type)
+                        (if (< 0.5 (rand))
+                          {:type :deck}
+                          {:type cell-type})
+                      ;; include enouch information in down-stairs so
+                      ;;; that the next level can be created when the player uses the stairs
+                      (= cell-type :down-stairs)
+                        {:type      cell-type
+                         :dest-type :pirate-ship
+                         :gen-args  [(inc level)]}))))
               line))
         ship))
 
 (defn random-place
-  "Create a grid of random rooms with corridors connecting them and doors
-   where corridors connect to rooms."
-  [width height level]
+  "Create a pirate ship place. Returns a place, not a state."
+  [level]
   (let [ship (make-ship level)
-        cells (ship->cells ship)]
-    {:cells cells}))
+        cells (ship->cells ship level)]
+    {:cells    cells
+     :movement :fixed}))
 ;        upstairs     (conj [(first room-centers)] {:type :up-stairs})
 ;        downstairs   (conj [(last room-centers)] {:type :down-stairs})]
 ;    {:place (apply merge-with-canvas (canvas width height)
@@ -135,7 +143,7 @@
 
 (defn merge-cells
   [cells]
-  (let [ship-place (random-place 80 25 0)]
+  (let [ship-place (random-place 0)]
     (mapv (fn [line ship-line y]
             (mapv (fn [cell ship-cell x]
                    (merge-cell cell ship-cell x y))
@@ -151,5 +159,5 @@
   [& args]
   (let [level (or (read-string (first args)) 0)]
     (println (format "generating level %d..." level))
-    (doall (map println (place-to-ascii (get (random-place 80 25 level) :place))))))
+    (doall (map println (place-to-ascii (get (random-place level) :place))))))
 

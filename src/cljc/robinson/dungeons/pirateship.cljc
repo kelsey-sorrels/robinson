@@ -83,26 +83,28 @@
 (defn ship->cells
   [ship level]
   (mapv (fn [line]
-         (map (fn [{ch :ch :as tile}]
-                (if (contains? #{nil \space} ch)
-                  nil
-                  (when-let [cell-type (-> ch
-                                       int
-                                       lookup-tile
-                                       :type)]
-                    (cond
-                      ;; remove some tables, chairs, and chests
-                      (contains? #{:table :chair :chest} cell-type)
-                        (if (< 0.5 (rand))
-                          {:type :deck}
-                          {:type cell-type})
-                      ;; include enouch information in down-stairs so
-                      ;;; that the next level can be created when the player uses the stairs
-                      (= cell-type :down-stairs)
-                        {:type      cell-type
-                         :dest-type :pirate-ship
-                         :gen-args  [(inc level)]}))))
-              line))
+         (mapv (fn [{ch :ch :as tile}]
+                 (if (contains? #{nil \space} ch)
+                   nil
+                   (when-let [cell-type (-> ch
+                                        int
+                                        lookup-tile
+                                        :type)]
+                     (cond
+                       ;; remove some tables, chairs, and chests
+                       (contains? #{:table :chair :chest} cell-type)
+                         (if (< 0.5 (rand))
+                           {:type :deck}
+                           {:type cell-type})
+                       ;; include enouch information in down-stairs so
+                       ;;; that the next level can be created when the player uses the stairs
+                       (= cell-type :down-stairs)
+                         {:type      cell-type
+                          :dest-type :pirate-ship
+                          :gen-args  [(inc level)]}
+                       :else
+                         {:type cell-type}))))
+               line))
         ship))
 
 (defn random-place

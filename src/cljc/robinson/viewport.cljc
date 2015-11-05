@@ -57,22 +57,23 @@
   {:pre [(not (nil? state))
          (integer? x)
          (integer? y)]
-   :post [(vector? %)]}
-  (let [{v-width     :width
-         v-height    :height}
-        (get-in state [:world :viewport])]
-    #_(log/info "xy->place-id")
-    #_(log/info "world" (str (dissoc (get state :world) :places)))
-    #_(log/info x)
-    #_(log/info v-width)
-    #_(log/info y)
-    #_(log/info v-height)
-    [(if (neg? x)
-       (dec (int (/ (inc x) v-width)))
-       (int (/ x v-width)))
-     (if (neg? y)
-       (dec (int (/ (inc y) v-height)))
-       (int (/ y v-height)))]))
+   :post [(or (string? %) (vector? %))]}
+  (or (rp/player-place state)
+    (let [{v-width     :width
+           v-height    :height}
+          (get-in state [:world :viewport])]
+      #_(log/info "xy->place-id")
+      #_(log/info "world" (str (dissoc (get state :world) :places)))
+      #_(log/info x)
+      #_(log/info v-width)
+      #_(log/info y)
+      #_(log/info v-height)
+      [(if (neg? x)
+         (dec (int (/ (inc x) v-width)))
+         (int (/ x v-width)))
+       (if (neg? y)
+         (dec (int (/ (inc y) v-height)))
+         (int (/ y v-height)))])))
 
 (defn get-place
   [state x y]
@@ -94,11 +95,13 @@
            |   place cells
            /"
   [state place-id]
-  (let [{v-width     :width
-         v-height    :height}
-        (get-in state [:world :viewport])
-        [px py]      place-id]
-    [(* px v-width) (* py v-height)]))
+  (if (vector? place-id)
+    (let [{v-width     :width
+           v-height    :height}
+          (get-in state [:world :viewport])
+          [px py]      place-id]
+      [(* px v-width) (* py v-height)])
+    [0 0]))
 
 (defn +xy
   [[x1 y1] [x2 y2]]
@@ -110,29 +113,33 @@
 
 (defn visible-place-ids
   ([state]
-  (let [{v-width     :width
-         v-height    :height
-         {v-x :x v-y :y} :pos}
-        (get-in state [:world :viewport])
-        ;; upper left place
-        ul-place-id (xy->place-id state v-x v-y)
-        [px py]     ul-place-id]
-    [ul-place-id 
-     [(inc px) py]
-     [px       (inc py)]
-     [(inc px) (inc py)]]))
+  (if (vector? (get-in state [:world :current-place]))
+    (let [{v-width     :width
+           v-height    :height
+           {v-x :x v-y :y} :pos}
+          (get-in state [:world :viewport])
+          ;; upper left place
+          ul-place-id (xy->place-id state v-x v-y)
+          [px py]     ul-place-id]
+      [ul-place-id 
+       [(inc px) py]
+       [px       (inc py)]
+       [(inc px) (inc py)]])
+    [(get-in state [:world :current-place])]))
   ([state x y]
-  (let [{v-width     :width
-         v-height    :height
-         {v-x :x v-y :y} :pos}
-        (get-in state [:world :viewport])
-        ;; upper left place
-        ul-place-id (xy->place-id state (+ v-x x) (+ v-y y))
-        [px py]     ul-place-id]
-    [ul-place-id 
-     [(inc px) py]
-     [px       (inc py)]
-     [(inc px) (inc py)]])))
+  (if (vector? (get-in state [:world :current-place]))
+    (let [{v-width     :width
+           v-height    :height
+           {v-x :x v-y :y} :pos}
+          (get-in state [:world :viewport])
+          ;; upper left place
+          ul-place-id (xy->place-id state (+ v-x x) (+ v-y y))
+          [px py]     ul-place-id]
+      [ul-place-id 
+       [(inc px) py]
+       [px       (inc py)]
+       [(inc px) (inc py)]])
+    [(get-in state [:world :current-place])])))
 
 (defn viewport-xy
   [state]
@@ -248,107 +255,124 @@
     ;(log/info "cells" cells)
     cells))
 
+(defn place->cellxys
+  [place]
+  (let [cellxys (reduce (fn [cellxys [y line]]
+                          (reduce (fn [cellxys [x cell]]
+                                    (conj cellxys [cell x y x y]))
+                                  cellxys
+                                  (map vector (range) line)))
+                        []
+                        (map vector
+                             (range)
+                             (get place :cells)))]
+    cellxys))
+
 (defn cellsxy-in-viewport
   "Return a collection of cells in the viewport as an array.
   Each element in the array has this format
   `[cell viewport-x viewport-y world-x world-y]`."
   [state]
-  (let [{v-width     :width
-         v-height    :height
-         {v-x :x v-y :y} :pos}
-                          (get-in state [:world :viewport])
-        ;; upper left place
-        ul-place-id       (xy->place-id state v-x v-y)
-        [px py]           ul-place-id
-        ur-place-id       [(inc px) py]
-        ll-place-id       [px       (inc py)]
-        lr-place-id       [(inc px) (inc py)]
-        ;_ (log/info "ul-place-id" (str ul-place-id))
-        ;_ (log/info "ur-place-id" (str ur-place-id))
-        ;_ (log/info "ll-place-id" (str ll-place-id))
-        ;_ (log/info "lr-place-id" (str lr-place-id))
-        [ax ay] (place-id->anchor-xy state lr-place-id)
-        ;_ (log/info "v-x" v-x "v-y" v-y)
-        ;_ (log/info "v-width" v-width "v-height" v-height)
-        ;_ (log/info "ax" ax "ay" ay)
-        start-x            (- v-width (- ax v-x))
-        start-y            (- v-height (- ay v-y))
-        ;start-x           (mod v-x v-width)
-        ;start-y           (mod v-y v-height)
-        ;start-x           (if (pos? v-x)
-        ;                    start-x
-        ;                    (- v-width start-x))
-        ;start-y           (if (pos? v-y)
-        ;                    start-y
-        ;                    (- v-height start-y))
-        ;_ (log/info "start-x" start-x "start-y" start-y)
-        ;_ (log/info "place-ids" (str (keys (get-in state [:world :places]))))
-        ul-cells          (get-in state [:world :places ul-place-id :cells])
-        ur-cells          (get-in state [:world :places ur-place-id :cells])
-        ll-cells          (get-in state [:world :places ll-place-id :cells])
-        lr-cells          (get-in state [:world :places lr-place-id :cells])
-        ;_ (log/info "ul-place-0" (str (type (get-in state [:world ]))))
-        ;_ (log/info "ul-place-1" (str (type (get-in state [:world :places ]))))
-        ;_ (log/info "ul-place-2" (str (type (get-in state [:world :places ul-place-id]))))
-        ;_ (log/info "ul-place" (str ul-place))
-        ;_ (log/info "ur-place" (str ur-place))
-        ;_ (log/info "ll-place" (str ll-place))
-        ;_ (log/info "lr-place" (str lr-place))
-        ;first-wx (drop (dec v-x) (range))
-        ;first-vx (drop (dec start-x) (range))
-        ;rest-wx  (drop (+ -1 v-x start-x) (range))
-        dx       (- v-width start-x)
-        dy       (- v-height start-y)
-        r-x      (range 0 dx)
-        r-y      (range 0 dy)
-        r-xrest  (range dx v-width)
-        r-yrest  (range dy v-height)
-        ;_ (println "v-width" v-width)
-        ;_ (println "v-height" v-height)
-        ;_ (println "v-x" v-x)
-        ;_ (println "v-y" v-y)
-        ;_ (println "ax" ax)
-        ;_ (println "ay" ay)
-        ;_ (println "start-x" start-x)
-        ;_ (println "start-y" start-y)
-        ;_ (println "dx" dx)
-        ;_ (println "dy" dy)
-        ;_ (println "r-y" r-y)
-        ;_ (println "r-yrest" r-yrest)
-        ;_ (println "r-xrest" r-xrest)
-        conj-cells (fn [cells place min-x min-y max-x max-y x-range y-range]
-                     (reduce (fn [cells [line sy]]
-                               (reduce (fn [cells [cell sx]]
-                                         (conj! cells 
-                                                [cell sx sy (+ sx v-x) (+ sy v-y)]))
-                                       cells
-                                       (map vector (subvec line min-x max-x)
-                                                   x-range)))
-                             cells
-                             (map vector
-                                  (try
-                                    (subvec place min-y max-y)
-                                    (catch Exception e
-                                      (log/error "place count" (count place) "min-y" min-y "max-y" max-y)))
-                                  y-range)))
-        cells (-> (transient [])
-                    (conj-cells ul-cells start-x start-y v-width v-height r-x     r-y)
-                    (conj-cells ur-cells 0       start-y start-x v-height r-xrest r-y)
-                    (conj-cells ll-cells start-x 0       v-width start-y  r-x     r-yrest)
-                    (conj-cells lr-cells 0       0       start-x start-y  r-xrest r-yrest)
-                    persistent!)]
-    ;(log/info "ul-place-id" ul-place-id)
-    ;(log/info "ur-place-id" ur-place-id)
-    ;(log/info "lr-place-id" lr-place-id)
-    ;(log/info "ll-place-id" ll-place-id)
-    ;(log/info "ul-place" ul-place)
-    ;(log/info "\n\n")
-    ;(log/info "ur-place" ur-place)
-    ;(log/info "\n\n")
-    ;(log/info "ll-place" ll-place)
-    ;(log/info "\n\n")
-    ;(log/info "lr-place" lr-place)
-    ;(log/info "\n\n")
-    ;(time (log/info "cells" cells))
-    cells))
+  (let [place-id (get-in state [:world :current-place])]
+    (if (and place-id
+             (= (get-in state [:world :places place-id :movement] :fixed)))
+      (place->cellxys (get-in state [:world :places place-id]))
+      (let [{v-width     :width
+             v-height    :height
+             {v-x :x v-y :y} :pos}
+                              (get-in state [:world :viewport])
+            ;; upper left place
+            ul-place-id       (xy->place-id state v-x v-y)
+            [px py]           ul-place-id
+            ur-place-id       [(inc px) py]
+            ll-place-id       [px       (inc py)]
+            lr-place-id       [(inc px) (inc py)]
+            ;_ (log/info "ul-place-id" (str ul-place-id))
+            ;_ (log/info "ur-place-id" (str ur-place-id))
+            ;_ (log/info "ll-place-id" (str ll-place-id))
+            ;_ (log/info "lr-place-id" (str lr-place-id))
+            [ax ay] (place-id->anchor-xy state lr-place-id)
+            ;_ (log/info "v-x" v-x "v-y" v-y)
+            ;_ (log/info "v-width" v-width "v-height" v-height)
+            ;_ (log/info "ax" ax "ay" ay)
+            start-x            (- v-width (- ax v-x))
+            start-y            (- v-height (- ay v-y))
+            ;start-x           (mod v-x v-width)
+            ;start-y           (mod v-y v-height)
+            ;start-x           (if (pos? v-x)
+            ;                    start-x
+            ;                    (- v-width start-x))
+            ;start-y           (if (pos? v-y)
+            ;                    start-y
+            ;                    (- v-height start-y))
+            ;_ (log/info "start-x" start-x "start-y" start-y)
+            ;_ (log/info "place-ids" (str (keys (get-in state [:world :places]))))
+            ul-cells          (get-in state [:world :places ul-place-id :cells])
+            ur-cells          (get-in state [:world :places ur-place-id :cells])
+            ll-cells          (get-in state [:world :places ll-place-id :cells])
+            lr-cells          (get-in state [:world :places lr-place-id :cells])
+            ;_ (log/info "ul-place-0" (str (type (get-in state [:world ]))))
+            ;_ (log/info "ul-place-1" (str (type (get-in state [:world :places ]))))
+            ;_ (log/info "ul-place-2" (str (type (get-in state [:world :places ul-place-id]))))
+            ;_ (log/info "ul-place" (str ul-place))
+            ;_ (log/info "ur-place" (str ur-place))
+            ;_ (log/info "ll-place" (str ll-place))
+            ;_ (log/info "lr-place" (str lr-place))
+            ;first-wx (drop (dec v-x) (range))
+            ;first-vx (drop (dec start-x) (range))
+            ;rest-wx  (drop (+ -1 v-x start-x) (range))
+            dx       (- v-width start-x)
+            dy       (- v-height start-y)
+            r-x      (range 0 dx)
+            r-y      (range 0 dy)
+            r-xrest  (range dx v-width)
+            r-yrest  (range dy v-height)
+            ;_ (println "v-width" v-width)
+            ;_ (println "v-height" v-height)
+            ;_ (println "v-x" v-x)
+            ;_ (println "v-y" v-y)
+            ;_ (println "ax" ax)
+            ;_ (println "ay" ay)
+            ;_ (println "start-x" start-x)
+            ;_ (println "start-y" start-y)
+            ;_ (println "dx" dx)
+            ;_ (println "dy" dy)
+            ;_ (println "r-y" r-y)
+            ;_ (println "r-yrest" r-yrest)
+            ;_ (println "r-xrest" r-xrest)
+            conj-cells (fn [cells place min-x min-y max-x max-y x-range y-range]
+                         (reduce (fn [cells [line sy]]
+                                   (reduce (fn [cells [cell sx]]
+                                             (conj! cells 
+                                                    [cell sx sy (+ sx v-x) (+ sy v-y)]))
+                                           cells
+                                           (map vector (subvec line min-x max-x)
+                                                       x-range)))
+                                 cells
+                                 (map vector
+                                      (try
+                                        (subvec place min-y max-y)
+                                        (catch Exception e
+                                          (log/error "place count" (count place) "min-y" min-y "max-y" max-y)))
+                                      y-range)))
+            cells (-> (transient [])
+                        (conj-cells ul-cells start-x start-y v-width v-height r-x     r-y)
+                        (conj-cells ur-cells 0       start-y start-x v-height r-xrest r-y)
+                        (conj-cells ll-cells start-x 0       v-width start-y  r-x     r-yrest)
+                        (conj-cells lr-cells 0       0       start-x start-y  r-xrest r-yrest)
+                        persistent!)]
+        ;(log/info "ul-place-id" ul-place-id)
+        ;(log/info "ur-place-id" ur-place-id)
+        ;(log/info "lr-place-id" lr-place-id)
+        ;(log/info "ll-place-id" ll-place-id)
+        ;(log/info "ul-place" ul-place)
+        ;(log/info "\n\n")
+        ;(log/info "ur-place" ur-place)
+        ;(log/info "\n\n")
+        ;(log/info "ll-place" ll-place)
+        ;(log/info "\n\n")
+        ;(log/info "lr-place" lr-place)
+        ;(log/info "\n\n")
+        ;(time (log/info "cells" cells))
+        cells))))
 

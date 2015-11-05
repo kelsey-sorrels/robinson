@@ -332,14 +332,6 @@
   [state pos]
   (rc/distance pos (player-pos state)))
 
-(defn player-place
-  [state]
-  (get-player-attribute state :place))
-
-(defn assoc-player-place
-  [state place-id]
-  (assoc-player-attribute state :place place-id))
-
 (defn player-inventory
   [state]
   (get-in state [:world :player :inventory]))

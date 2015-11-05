@@ -1163,6 +1163,7 @@
         {{player-x :x player-y :y} :pos :as player} (rp/get-player state)
         d                                           (rlos/sight-distance state)
         cells                                       (rv/cellsxy-in-viewport state)
+        ;_ (println cells)
         ;_ (log/info "cells" (str cells))
         characters     (persistent!
                          (reduce (fn [characters [cell vx vy wx wy]]
@@ -1170,14 +1171,14 @@
                                    ;(clear (state :screen))
                                    ;;(debug "rendering place" (current-place state))
                                    ;; draw map
-                                   #_(log/info "render-cell" (str cell) vx vy wx wy)
+                                   ;(println "render-cell" (str cell) vx vy wx wy)
                                    #_(when (= (get cell :discovered 0) current-time)
                                      (println "render-cell" (select-keys cell [:type :discovered]) vx vy wx wy))
                                    (if (or (nil? cell)
                                            (not (cell :discovered)))
                                      characters
                                      (let [cell-items (cell :items)
-                                           ;_ (log/info "cell" (str cell) vx vy)
+                                           _ (println "render-cell" (str cell) vx vy wx wy)
                                            out-char (apply fill-put-string-color-style-defaults
                                                       (color-bloodied-char 
                                                         (< current-time (get cell :bloodied 0))

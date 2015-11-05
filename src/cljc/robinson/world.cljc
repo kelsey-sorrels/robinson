@@ -140,20 +140,30 @@
 
 (defn filter-cellxys
   [state pred place-id]
-  (let [cellsxy (reduce (fn [cellsxy [line y]]
-                          (reduce (fn [cellsxy [cell x]]
-                                    (conj cellsxy [cell x y]))
-                                  cellsxy
-                                  (map vector line (range))))
+  {:pre[(get-in state [:world :places place-id :cells])]}
+  (let [cellxys (reduce (fn [cellxys [y line]]
+                          (reduce (fn [cellxys [x cell]]
+                                    (if (pred [cell x y])
+                                      (conj cellxys [cell x y])
+                                      cellxys))
+                                  cellxys
+                                  (map vector (range) line)))
                         []
-                        (get-in state [:world :places place-id :cells]))]
-    (filter pred cellsxy)))
+                        (map vector
+                             (range)
+                             (get-in state [:world :places place-id :cells])))]
+                             
+    (log/info "found cells" cellxys)
+    cellxys))
   
 (defn update-cell
-  [state x y f]
+  ([state x y f]
   (let [place-id (rv/xy->place-id state x y)
         [ax ay]  (rv/place-id->anchor-xy state place-id)
         [x y]    [(- x ax) (- y ay)]]
+    (update-cell state place-id x y f)))
+  ([state place-id x y f]
+    (log/info "update-cell" (format "place-id[%s] y[%d] x[%d]" (str place-id) y x))
     (update-in state [:world :places place-id :cells y x] f)))
 
 (defn assoc-cell-fn

@@ -374,7 +374,8 @@
       (and (not (rw/collide? state target-x target-y {:include-npcs? false}))
            (not (rw/player-mounted-on-raft? state)))
         (as-> state state
-          (if (not (rv/xy-in-safe-zone? state target-x target-y))
+          (if (and (not (rv/xy-in-safe-zone? state target-x target-y))
+                   (not= :fixed (get-in state [:world :places (rw/current-place-id state) :movement])))
             (move-outside-safe-zone state direction)
             state)
           (if (rw/npc-at-xy state target-x target-y)
@@ -483,6 +484,7 @@
   [state]
   (let [[player-cell x y] (rw/player-cellxy state)
         orig-place-id     (rw/current-place-id state)]
+    (log/info "player-cell" player-cell "x" x "y" y)
     (if (contains? #{:down-stairs :up-stairs} (get player-cell :type))
       (let [dest-place-id  (get player-cell :dest-place-id)
             dest-type      (get player-cell :dest-type)
@@ -490,10 +492,11 @@
            ; insert the new place into the world
            [state
             dest-place-id] (rworldgen/load-place state dest-place-id dest-type gen-args)
+           _ (log/info "loaded-place" (get-in state [:world :places dest-place-id]))
            [{src-place-id :src-place-id}
              dest-x
              dest-y]       (first (rw/filter-cellxys state
-                                                     (fn [{cell-type :type} _ _]
+                                                     (fn [[{cell-type :type} _ _]]
                                                        (= cell-type
                                                           (case (get player-cell :type)
                                                             :up-stairs
@@ -509,11 +512,11 @@
             state)
           ;; point destination stairs back to [orig-place-id x y]
           (if-not src-place-id
-            (rw/update-cell state dest-place-id (fn [cell] (assoc cell :dest-place-id orig-place-id)))
+            (rw/update-cell state dest-place-id dest-x dest-y (fn [cell] (assoc cell :dest-place-id orig-place-id)))
             state)
           ;; move the player to [dest-place-id dest-x dest-y]
           (rp/assoc-player-pos state (rc/xy->pos dest-x dest-y))
-          (rp/assoc-player-place state dest-place-id)
+          (rw/assoc-current-place-id state dest-place-id)
           ;; unload old places
           (if orig-place-id     
             (rworldgen/unload-place state orig-place-id)
@@ -2946,7 +2949,7 @@
                 ;; drop harvest items
                 (contains? harvest-types cell-type)
                 (let [place-id         (rv/xy->place-id state wx wy)
-                      num-harvestable (get @harvestable-counts place-id)]
+                      num-harvestable (get @harvestable-counts place-id 0)]
                   (if (< (rr/uniform-int 0 10000)
                          (/ (case cell-type
                               :palm-tree 20

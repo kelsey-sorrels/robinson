@@ -149,11 +149,11 @@
                                       (let [s (sample-island n x y)
                                             adj-types (map (fn [[x y]] (sample-island n x y))
                                                            (rw/adjacent-xys x y))]
-                                        (log/info "sample" x y s (vec adj-types))
+                                        (log/debug "sample" x y s (vec adj-types))
                                         (every? (partial contains? #{:surf}) adj-types)))
                                     samples)
                 [sx sy] (-> spans first last)]
-            (log/info "spans" (vec spans))
+            (log/debug "spans" (vec spans))
             (if (and sx sy (rc/farther-than? (rc/xy->pos 0 0) (rc/xy->pos sx sy) 20))
               (recur (rc/xy->pos sx sy))
               (recur nil)))
@@ -427,7 +427,7 @@
              :pos {:x vx :y vy}}
            :places {place-id place-0}
                     ;:1 (init-place-1)}
-           :current-place :0_0
+           :current-place nil
            :volcano-pos (apply rc/xy->pos volcano-xy)
            :lava-points lava-points
            :time 25

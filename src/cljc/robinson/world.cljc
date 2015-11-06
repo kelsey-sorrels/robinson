@@ -86,11 +86,11 @@
 (defn current-place-id
   "Retrieve the current place id."
   [state]
-  (-> state :world :player :current-place-id))
+  (-> state :world :current-place-id))
 
 (defn assoc-current-place-id
   [state place-id]
-  (assoc-in state [:world :player :current-place] place-id))
+  (assoc-in state [:world :current-place] place-id))
 
 (defn current-state
   [state]

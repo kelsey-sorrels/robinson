@@ -1178,7 +1178,7 @@
                                            (not (cell :discovered)))
                                      characters
                                      (let [cell-items (cell :items)
-                                           _ (println "render-cell" (str cell) vx vy wx wy)
+                                           ;_ (println "render-cell" (str cell) vx vy wx wy)
                                            out-char (apply fill-put-string-color-style-defaults
                                                       (color-bloodied-char 
                                                         (< current-time (get cell :bloodied 0))
@@ -1346,19 +1346,19 @@
     (put-chars screen characters)
     ;; draw character
     ;(log/debug (-> state :world :player))
-    (put-string
-      screen
-      (- (-> state :world :player :pos :x)
-         (-> state :world :viewport :pos :x))
-      (- (-> state :world :player :pos :y)
-         (-> state :world :viewport :pos :y))
-      "@"
-      (if (< current-time (get player :bloodied 0))
-        :dark-red
-        :white)
-      (if (contains? (set (map :id (get (first (player-cellxy state)) :items))) :raft)
-        :brown
-        :black))
+    (let [[vx vy] (rv/viewport-xy state)
+          [x y]   (rp/player-xy state)]
+      (put-string
+        screen
+        (- x vx)
+        (- y vy)
+        "@"
+        (if (< current-time (get player :bloodied 0))
+          :dark-red
+          :white)
+        (if (contains? (set (map :id (get (first (player-cellxy state)) :items))) :raft)
+          :brown
+          :black)))
     ;; if character is fishing, draw pole
     (condp = (current-state state)
       :fishing-left  (put-string screen (dec (-> state :world :player :pos :x))

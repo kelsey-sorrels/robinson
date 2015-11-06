@@ -504,6 +504,7 @@
                                                             :down-stairs
                                                               :up-stairs)))
                                                       dest-place-id))]
+        (log/info "dest-place-id" dest-place-id)
         (as-> state state
           ;; if player-cell doesn't point directly to [dest-place-id dest-x dest-y]
           ;;   connect it up
@@ -3036,6 +3037,7 @@
         state)
       (rw/update-cells state xy-fns)
       (reduce-kv (fn [state place-id harvest-count]
+                   (log/info "updating num-harvestable-cells in" (or place-id "nil"))
                    (assoc-in state [:world :places place-id :num-harvestable-cells] harvest-count))
                  state
                  @harvestable-counts))))

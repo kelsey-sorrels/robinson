@@ -263,12 +263,13 @@
 
 (defn gen-random-monster [level cell-type]
   "Generate one random monster."
-  (log/info "Generating monster at level" level)
-  (cond
-    (contains? #{:water :surf} cell-type)
-    (id->monster (rr/rand-weighted-nth (partition 2 (get water-monster-probabilities level))))
-    :else
-    (id->monster (rr/rand-weighted-nth (partition 2 (get land-monster-probabilities level))))))
+  (let [level (min 9 level)]
+    (log/info "Generating monster at level" level)
+    (cond
+      (contains? #{:water :surf} cell-type)
+      (id->monster (rr/rand-weighted-nth (partition 2 (get water-monster-probabilities level))))
+      :else
+      (id->monster (rr/rand-weighted-nth (partition 2 (get land-monster-probabilities level)))))))
 
 (defn gen-monster [id]
   (id->monster id))

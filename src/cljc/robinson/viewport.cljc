@@ -58,7 +58,7 @@
          (integer? x)
          (integer? y)]
    :post [(or (string? %) (vector? %))]}
-  (or (rp/player-place state)
+  (or (get-in state [:world :current-place])
     (let [{v-width     :width
            v-height    :height}
           (get-in state [:world :viewport])]
@@ -113,7 +113,8 @@
 
 (defn visible-place-ids
   ([state]
-  (if (vector? (get-in state [:world :current-place]))
+  (if-let [current-place-id (get-in state [:world :current-place])]
+    [current-place-id]
     (let [{v-width     :width
            v-height    :height
            {v-x :x v-y :y} :pos}
@@ -124,10 +125,10 @@
       [ul-place-id 
        [(inc px) py]
        [px       (inc py)]
-       [(inc px) (inc py)]])
-    [(get-in state [:world :current-place])]))
+       [(inc px) (inc py)]])))
   ([state x y]
-  (if (vector? (get-in state [:world :current-place]))
+  (if-let [current-place-id (get-in state [:world :current-place])]
+    [current-place-id]
     (let [{v-width     :width
            v-height    :height
            {v-x :x v-y :y} :pos}
@@ -138,13 +139,16 @@
       [ul-place-id 
        [(inc px) py]
        [px       (inc py)]
-       [(inc px) (inc py)]])
-    [(get-in state [:world :current-place])])))
+       [(inc px) (inc py)]]))))
 
 (defn viewport-xy
   [state]
-  (let [viewport-pos (get-in state [:world :viewport :pos])]
-    (rc/pos->xy viewport-pos)))
+  (let [place-id (get-in state [:world :current-place])
+        movement (get-in state [:world :places place-id :movement])]
+    (if (= movement :fixed)
+      [0 0]
+      (let [viewport-pos (get-in state [:world :viewport :pos])]
+        (rc/pos->xy viewport-pos)))))
   
 (defn world-xy->screen-xy
   [state xy]
@@ -274,7 +278,7 @@
   `[cell viewport-x viewport-y world-x world-y]`."
   [state]
   (let [place-id (get-in state [:world :current-place])]
-    (if (and place-id
+    (if (and (not (nil? place-id))
              (= (get-in state [:world :places place-id :movement] :fixed)))
       (place->cellxys (get-in state [:world :places place-id]))
       (let [{v-width     :width
@@ -314,10 +318,10 @@
             ;_ (log/info "ul-place-0" (str (type (get-in state [:world ]))))
             ;_ (log/info "ul-place-1" (str (type (get-in state [:world :places ]))))
             ;_ (log/info "ul-place-2" (str (type (get-in state [:world :places ul-place-id]))))
-            ;_ (log/info "ul-place" (str ul-place))
-            ;_ (log/info "ur-place" (str ur-place))
-            ;_ (log/info "ll-place" (str ll-place))
-            ;_ (log/info "lr-place" (str lr-place))
+            ;_ (log/info "ul-place" (str ul-cells))
+            ;_ (log/info "ur-place" (str ur-cells))
+            ;_ (log/info "ll-place" (str ll-cells))
+            ;_ (log/info "lr-place" (str lr-cells))
             ;first-wx (drop (dec v-x) (range))
             ;first-vx (drop (dec start-x) (range))
             ;rest-wx  (drop (+ -1 v-x start-x) (range))

@@ -470,58 +470,161 @@
   [state]
   (move state :down-right))
 
-(defn stairs-down
-  "moves the player to the place indicated by the stairs to the position indicated by the stairs."
-  [state]
-  state)
+(defn use-stairs-island->generated
+  [state dest-place-id dest-x dest-y]
+  {:post [(not (nil? %))]}
+    (-> state
+      ;; unload old places
+      (rworldgen/unload-all-places)
+      ;; load the generated place
+      (assoc-in [:world :places dest-place-id] (rworldgen/load-place state dest-place-id))
+      ;; move the player to dest-x dest-y
+      (rp/assoc-player-pos (rc/xy->pos dest-x dest-y))
+      ;; set the dest place id
+      (rw/assoc-current-place-id dest-place-id)))
 
-(defn stairs-up
-  "moves the player to the place indicated by the stairs to the position indicated by the stairs."
-  [state]
-  state)
+(defn use-stairs-island->ungenerated
+  [state src-x src-y dest-type gen-args]
+  {:post [(not (nil? %))]}
+  (log/info "use-stairs-island->ungenerated" src-x src-y dest-type gen-args)
+  (let [; keep keys of island places to remove later
+        island-place-ids (keys (get-in state [:world :places]))
+        ; insert the new place into the world
+        [state
+         dest-place-id] (rworldgen/load-place state nil dest-type gen-args)
+        _ (log/info "loaded-place" dest-place-id)
+        ;; find the down-stairs location
+        [_ ;{src-place-id :src-place-id}
+          dest-x
+          dest-y] (first (rw/filter-cellxys state
+                                            (fn [[{cell-type :type} _ _]]
+                                              (= cell-type :up-stairs))
+                                             dest-place-id))]
+        (log/info "dest-place-id" dest-place-id)
+        (-> state
+          ;; connect the island's down-stairs to the now-generated place
+          (rw/update-cell src-x src-y (fn [cell] (assoc cell :dest-place-id dest-place-id
+                                                             :dest-pos      (rc/xy->pos dest-x dest-y))))
+                                                     
+          ;; point destination stairs back to island
+          (rw/update-cell dest-place-id
+                          dest-x
+                          dest-y
+                          (fn [cell] (assoc cell :dest-place-id nil
+                                                 :dest-type     nil
+                                                 :dest-pos      (rc/xy->pos src-x src-y))))
+          ;; move the player to [dest-place-id dest-x dest-y]
+          (rp/assoc-player-pos (rc/xy->pos dest-x dest-y))
+          (rw/assoc-current-place-id dest-place-id)
+          ;; unload old places
+          (rworldgen/unload-places island-place-ids))))
+
+(defn use-stairs-generated->island
+  [state dest-x dest-y]
+  {:post [(not (nil? %))]}
+  (-> state
+    ;; move the player to [dest-place-id dest-x dest-y]
+    (rp/assoc-player-pos (rc/xy->pos dest-x dest-y))
+    (rw/assoc-current-place-id nil)
+    (rworldgen/unload-all-places)
+    ;; load island places
+    (rworldgen/load-unload-places)
+    (update-visibility)))
+    
+(defn use-stairs-generated->generated
+  [state dest-place-id dest-x dest-y]
+  {:post [(not (nil? %))]}
+  (-> state
+    (rworldgen/unload-all-places)
+    ;; load the generated place
+    (rworldgen/load-place dest-place-id)
+    ;; move the player to [dest-place-id dest-x dest-y]
+    (rp/assoc-player-pos (rc/xy->pos dest-x dest-y))
+    (rw/assoc-current-place-id dest-place-id)))
+
+(defn use-stairs-generated->ungenerated
+  [state src-place-id src-x src-y dest-type gen-args]
+  {:post [(not (nil? %))]}
+  (let [; insert the new place into the world
+        [state
+         dest-place-id] (rworldgen/load-place state nil dest-type gen-args)
+        _ (log/info "loaded-place" dest-place-id)
+        ;; find the down-stairs location
+        [_ ;{src-place-id :src-place-id}
+          dest-x
+          dest-y] (first (rw/filter-cellxys state
+                                            (fn [[{cell-type :type} _ _]]
+                                              (= cell-type :up-stairs))
+                                             dest-place-id))]
+        (log/info "dest-place-id" dest-place-id)
+        (-> state
+          ;; connect the island's down-stairs to the now-generated place
+          (rw/update-cell src-x src-y (fn [cell] (assoc cell :dest-place-id dest-place-id
+                                                             :dest-pos      (rc/xy->pos dest-x dest-y))))
+                                                     
+          ;; point destination stairs back to srd
+          (rw/update-cell dest-place-id
+                          dest-x
+                          dest-y
+                          (fn [cell] (assoc cell :dest-place-id src-place-id
+                                                 :dest-pos      (rc/xy->pos src-x src-y))))
+          ;; move the player to [dest-place-id dest-x dest-y]
+          (rp/assoc-player-pos (rc/xy->pos dest-x dest-y))
+          (rw/assoc-current-place-id dest-place-id)
+          ;; unload old places
+          (rworldgen/unload-place src-place-id))))
 
 (defn use-stairs
   [state]
+  {:post [(not (nil? %))]}
   (let [[player-cell x y] (rw/player-cellxy state)
-        orig-place-id     (rw/current-place-id state)]
-    (log/info "player-cell" player-cell "x" x "y" y)
+        src-place-id     (rw/current-place-id state)]
+    (log/info "player-cell" player-cell "x" x "y" y "src-place-id" (or src-place-id "nil"))
     (if (contains? #{:down-stairs :up-stairs} (get player-cell :type))
       (let [dest-place-id  (get player-cell :dest-place-id)
             dest-type      (get player-cell :dest-type)
+            dest-pos       (get player-cell :dest-pos)
             gen-args       (get player-cell :gen-args)
-           ; insert the new place into the world
-           [state
-            dest-place-id] (rworldgen/load-place state dest-place-id dest-type gen-args)
-           _ (log/info "loaded-place" (get-in state [:world :places dest-place-id]))
-           [{src-place-id :src-place-id}
-             dest-x
-             dest-y]       (first (rw/filter-cellxys state
-                                                     (fn [[{cell-type :type} _ _]]
-                                                       (= cell-type
-                                                          (case (get player-cell :type)
-                                                            :up-stairs
-                                                              :down-stairs
-                                                            :down-stairs
-                                                              :up-stairs)))
-                                                      dest-place-id))]
-        (log/info "dest-place-id" dest-place-id)
-        (as-> state state
-          ;; if player-cell doesn't point directly to [dest-place-id dest-x dest-y]
-          ;;   connect it up
-          (if-not dest-place-id
-            (rw/update-cell state x y (fn [cell] (assoc cell :dest-place-id dest-place-id)))
-            state)
-          ;; point destination stairs back to [orig-place-id x y]
-          (if-not src-place-id
-            (rw/update-cell state dest-place-id dest-x dest-y (fn [cell] (assoc cell :dest-place-id orig-place-id)))
-            state)
-          ;; move the player to [dest-place-id dest-x dest-y]
-          (rp/assoc-player-pos state (rc/xy->pos dest-x dest-y))
-          (rw/assoc-current-place-id state dest-place-id)
-          ;; unload old places
-          (if orig-place-id     
-            (rworldgen/unload-place state orig-place-id)
-            state)))
+            src-kind       (if (nil? src-place-id)
+                             :island
+                             :generated)
+            dest-kind      (cond
+                             (and (nil? dest-place-id)
+                                  (nil? dest-type))
+                               :island
+                             (and (nil? dest-place-id)
+                                  (not (nil? dest-type)))
+                               :ungenerated
+                             :else
+                               :generated)]
+        (log/info "dest-place-id" (or dest-place-id "nil")
+                  "dest-type" (or dest-type "nil")
+                  "dest-pos" (or dest-pos "nil")
+                  "gen-args" (or gen-args "nil"))
+        (log/info "src-kind" src-kind "dest-kind" dest-kind)
+        (cond
+          ;; island->generated
+          (and (= src-kind :island)
+               (= dest-kind :generated))
+            (use-stairs-island->generated state dest-place-id (get dest-pos :x) (get dest-pos :y))
+          ;; island->ungenerated
+          (and (= src-kind :island)
+               (= dest-kind :ungenerated))
+            (use-stairs-island->ungenerated state x y dest-type gen-args)
+          ;; generated->island
+          (and (= src-kind :generated)
+               (= dest-kind :island))
+            (use-stairs-generated->island state (get dest-pos :x) (get dest-pos :y))
+          ;; generated->generated
+          (and (= src-kind :generated)
+               (= dest-kind :generated))
+            (use-stairs-generated->generated state dest-place-id (get dest-pos :x) (get dest-pos :y))
+          ;; generated->ungenerated
+          (and (= src-kind :generated)
+               (= dest-kind :ungenerated))
+            (use-stairs-generated->ungenerated state src-place-id x y dest-type gen-args)
+          :else
+            (assert "Invalid combination of values")))
       (rc/ui-hint state "No stairs here."))))
 
 (defn open-door

@@ -536,6 +536,14 @@
             state (get-in state [:world :npcs]))
     (rc/dissoc-in [:world :places id])))
 
+(defn unload-places
+  [state ks]
+  (reduce unload-place state ks))
+
+(defn unload-all-places
+  [state]
+  (unload-places state (keys (get-in state [:world :places]))))
+
 (defn load-unload-places
   [state]
   {:pre [(not (nil? state))]

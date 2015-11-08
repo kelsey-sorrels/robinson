@@ -380,7 +380,9 @@
             state)
           (if (rw/npc-at-xy state target-x target-y)
             ;; collided with npc. Engage in combat.
-            (rcombat/attack state [:world :player] (rnpc/npc->keys state (rw/npc-at-xy state target-x target-y)))
+            (let [npc (rw/npc-at-xy state target-x target-y)]
+              (log/info "npc" npc)
+              (rcombat/attack state [:world :player] (rnpc/npc->keys state npc)))
             (as-> state state
               (assoc-in state [:world :player :pos :x] target-x)
               (assoc-in state [:world :player :pos :y] target-y)

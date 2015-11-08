@@ -378,7 +378,9 @@
   [state x y]
   (first (filter (fn [npc] (and (= (-> npc :pos :x) x)
                                 (= (-> npc :pos :y) y)))
-                 (get-in state [:world :npcs]))))
+                 (if-let [place-id (current-place-id state)]
+                   (get-in state [:world :places place-id :npcs])
+                   (get-in state [:world :npcs])))))
 
 (defn type->collide?
   [t]

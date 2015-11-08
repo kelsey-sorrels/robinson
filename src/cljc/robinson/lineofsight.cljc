@@ -61,6 +61,7 @@
           (map (fn [[x y]] [(+ ox x) (+ oy y)])
                (line-segment [0 0] [(- dx ox) (- dy oy)]))))))))
 
+
 (defn square-points [x0 y0 radius]
   (letfn [(points [x y m]
             (let [x+   (+ x0 x)
@@ -128,6 +129,24 @@
              {}
              m))
 
+(defn adj-xys
+  [x y]
+  [[(inc x) y]
+   [(dec x) y]
+   [x (inc y)]
+   [x (dec y)]])
+
+(defn assoc-adj [m [x y] exclude-subtree?]
+  (reduce (fn [m k]
+            (log/info "testing" k)
+            (if (exclude-subtree? k)
+              (do
+                (log/info "adding post-process" k)
+                (assoc m k {}))
+              m))
+          m
+          (adj-xys x y)))
+
 ;; cull subtries with parent keys if `(exclude-subree? key)` is false.
 (defn cull-trie [exclude-subtree? trie]
   (w/prewalk (fn [m] (if (and (map? m)
@@ -135,7 +154,9 @@
                        (reduce-kv (fn [m k v]
                                     (if (exclude-subtree? k)
                                       (assoc m k {})
-                                      (assoc m k v)))
+                                      (-> m
+                                        (assoc k v)
+                                        (assoc-adj k exclude-subtree?))))
                                   {}
                                   m)
                        m))
@@ -152,6 +173,14 @@
       :leaf
       (log/info "got leaf" (z/node t)))))
 
+(defn conj!-adj [children [x y] exclude-subtree?]
+  (reduce (fn [children xy]
+            (if (exclude-subtree? xy)
+              (conj! children {xy {}})
+              children))
+          children
+          (adj-xys x y)))
+
 (defn cull-trie->keys [exclude-subtree? trie]
   (loop [t  (z/zipper ; branch?
                       map?
@@ -161,7 +190,9 @@
                           (reduce-kv (fn [children xy subtree]
                                        (if (exclude-subtree? xy)
                                          children
-                                         (conj! children subtree)))
+                                         (-> children
+                                           (conj! subtree)
+                                           (conj!-adj xy exclude-subtree?))))
                                      (transient [])
                                      node)))
                       ; make node

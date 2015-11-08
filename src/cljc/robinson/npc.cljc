@@ -20,13 +20,16 @@
    `[{:x 1 :y 1} {:x 0 :y 0}]`"
   [state pos navigable-types]
   {:pre [(= (set (keys pos)) #{:x :y})]}
-  (filter (fn [{x :x y :y}]
-            (let [cell (rw/get-cell state x y)]
-              (and (not (nil? cell))
-                   (contains? navigable-types (cell :type)))))
-          (for [x (range -1 1)
-                y (range -1 1)]
-            {:x (+ (pos :x) x) :y (+ (pos :y) y)})))
+  (let [place-id (rw/current-place-id state)]
+    (filter (fn [{x :x y :y}]
+              (let [cell (if-not (nil? place-id)
+                           (rw/get-cell state place-id x y)
+                           (rw/get-cell state x y))]
+                (and (not (nil? cell))
+                     (contains? navigable-types (cell :type)))))
+            (for [x (range -1 1)
+                  y (range -1 1)]
+              {:x (+ (pos :x) x) :y (+ (pos :y) y)}))))
 
 
 (defn adjacent-navigable-pos-extended
@@ -45,8 +48,15 @@
                 y (range -2 2)]
             {:x (+ (pos :x) x) :y (+ (pos :y) y)})))
 
+(defn npcs-path [state]
+  (if-let [place-id (rw/current-place-id state)]
+    [:world :places place-id :npcs]
+    [:world :npcs]))
 
-
+(defn get-npcs
+  [state]
+  (get-in state (npcs-path state)))
+    
 (defn npcs-in-viewport
   "Seq of npcs at the current place."
   [state]
@@ -56,7 +66,7 @@
               (assert (integer? x) (str "non-integer x-pos for npc" npc))
               (assert (integer? y) (str "non-integer y-pos for npc" npc))
               (rv/xy-in-viewport? state x y)))
-          (get-in state [:world :npcs])))
+          (get-npcs state)))
 
 (defn visible-npcs
   [state]
@@ -65,14 +75,13 @@
               (let [[x y] (rc/pos->xy (get npc :pos))]
                 (= (get (rw/get-cell state x y) :discovered)
                    t)))
-            (get-in state [:world :npcs]))))
-                       
+            (get-npcs state))))
 
 (defn npc-by-id
   "The npc with the :id id. Nil if not found."
   [state id]
   (first (filter (fn [npc] (= (npc :id) id))
-                 (get-in state [:world :npcs]))))
+                 (get-npcs state))))
 
 (defn index-of [coll item]
   (ffirst (filter  #(= (second %) item) (map-indexed vector coll))))
@@ -81,7 +90,9 @@
   "Find the keys required to lookup the npc.
    npc and (get-in state (npc->path state npc)) refer to the same npc."
   [state npc]
-  [:world :npcs (index-of (get-in state [:world :npcs]) npc)])
+  (if-let [place-id (rw/current-place-id state)]
+    [:world :places place-id :npcs (index-of (get-in state [:world :places place-id :npcs]) npc)]
+    [:world :npcs (index-of (get-in state [:world :npcs]) npc)]))
 
 (defn npc-freqs-in-player-place
   [state]
@@ -105,27 +116,27 @@
     (add-npc state npc x y nil))
   ([state npc x y buy-fn-path]
     (let [place-id (rv/xy->place-id state x y)]
-      (-> state
+      (-> state 
         (update-in [:world :places place-id :spawned-monsters]
                    (fn [freqs] (update freqs (get npc :race) (fn [n] (inc (or n 0))))))
-        (rc/conj-in [:world :npcs] (assoc npc :pos         (rc/xy->pos x y)
-                                              :inventory   (if (contains? npc :inventory)
-                                                             (npc :inventory)
-                                                           [])
-                                          :buy-fn-path buy-fn-path))))))
+        (rc/conj-in (npcs-path state) (assoc npc :pos         (rc/xy->pos x y)
+                                                 :inventory   (if (contains? npc :inventory)
+                                                                (npc :inventory)
+                                                              [])
+                                                 :buy-fn-path buy-fn-path))))))
 (defn remove-npc
   "Remove npc from state."
   [state npc]
   {:pre [(vector? (get-in state [:world :npcs]))]
    :post [(vector? (get-in % [:world :npcs]))]}
-  (rc/remove-in state [:world :npcs] (partial = npc)))
+  (rc/remove-in state (npcs-path state) (partial = npc)))
 
 (defn transfer-items-from-npc-to-player
   "Remove items from npc's inventory and add them to the player's inventory."
   [state npc-id item-pred]
   {:pre [(vector? (get-in state [:world :npcs]))]
    :post [(vector? (get-in % [:world :npcs]))]}
-  (let [npcs                     (get-in state [:world :npcs])
+  (let [npcs                     (get-npcs state)
         npc                      (first (filter #(= (% :id) npc-id) npcs))]
     (if npc
       (let [npc-inventory-grouped (group-by item-pred (get npc :inventory))
@@ -136,7 +147,7 @@
                                                     (get npc-inventory-grouped true) (first hotkey-groups))
                                                (get-in state [:world :player :inventory])))]
         (-> state
-          (rc/map-in [:world :npcs]
+          (rc/map-in (npcs-path state)
                      (fn [npc]
                        (if (= (npc :id)
                               npc-id)
@@ -154,7 +165,7 @@
 (defn transfer-items-from-player-to-npc
   "Remove items from player's inventory and add them to the npc's inventory."
   [state npc-id item-pred]
-  (let [npcs (get-in state [:world :npcs])
+  (let [npcs (get-npcs state)
         npc  (first (filter #(= (% :id) npc-id) npcs))]
     (if npc
       (let [player-inventory-grouped (group-by item-pred (get-in state [:world :player :inventory]))
@@ -163,7 +174,7 @@
                                                   (get npc :inventory)))]
         (log/debug "player-inventory-grouped" player-inventory-grouped)
         (-> state
-          (rc/map-in [:world :npcs]
+          (rc/map-in (npcs-path state)
                      (fn [npc]
                        (if (= (npc :id)
                               npc-id)
@@ -180,27 +191,28 @@
 (defn talking-npcs
   "A seq of npcs with which the player is talking."
   [state]
-  (filter (fn [npc] (contains? npc :talking)) (get-in state [:world :npcs])))
+  (filter (fn [npc] (contains? npc :talking)) (get-npcs state)))
 
 (defn npc-at-pos
   [state pos]
   (first (filter (fn [npc] (= (get npc :pos) pos))
-                 (get-in state [:world :npcs]))))
+                 (get-npcs state))))
 
 (defn update-npc-at-xy
   "Transform the npc at `[x y]` with the function f. (f npc)."
   [state x y f]
-  (rc/map-in state [:world :npcs] (fn [npc] (if (and (= (-> npc :pos :x) x)
-                                                     (= (-> npc :pos :y) y))
-                                                (f npc)
-                                                npc))))
+  (rc/map-in state (npcs-path state)
+                   (fn [npc] (if (and (= (-> npc :pos :x) x)
+                                      (= (-> npc :pos :y) y))
+                               (f npc)
+                               npc))))
 
 (defn update-npc
   "Transform the npc with the function f. (f npc)."
   [state npc f]
   {:pre [(some? state)]
    :post [(some? %)]}
-  (rc/update-in-matching state [:world :npcs] npc f))
+  (rc/update-in-matching state (npcs-path state) npc f))
 
 (defn monster-level
   [state]
@@ -259,7 +271,7 @@
                 (if (rw/is-night? state)
                    (/ 180 (inc num-npcs))
                    (/ 80 (inc num-npcs))))
-             (< (count (-> state :world :npcs))
+             (< (count (get-npcs state))
                60))
       (add-npcs state)
       state)))

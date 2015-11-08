@@ -301,7 +301,8 @@
   "Perform combat. The attacker fights the defender, but not vice-versa.
    Return a new state reflecting combat outcome."
   ([state attacker-path defender-path]
-  {:pre [(every? (set (keys (get-in state attacker-path))) [:attacks])
+  {:pre [(or (every? (set (keys (get-in state attacker-path))) [:attacks])
+             (assert false (str "attacker under specified" attacker-path)))
          (some? state)]}
    (let [attacker           (get-in state attacker-path)
          attack-type (or (get (first (filter (fn [item] (contains? item :wielded))
@@ -313,7 +314,8 @@
   {:pre [(vector? attacker-path)
          (vector? defender-path)
          (some? state)
-         (every? (set (keys (get-in state defender-path))) [:hp :pos :race :body-parts :inventory])
+         (or (every? (set (keys (get-in state defender-path))) [:hp :pos :race :body-parts :inventory])
+             (assert false (str "defender under specified " defender-path)))
          (vector? (get-in state [:world :npcs]))]
    :post [(some? %)
           (vector? (get-in % [:world :npcs]))]}

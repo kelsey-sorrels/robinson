@@ -1,6 +1,9 @@
 ;; Functions for randomly generating pirate ships
 (ns robinson.dungeons.pirateship
-  (:require [clojure.math.combinatorics :as combo]
+  (:require [robinson.common :as rc]
+            [robinson.monstergen :as mg]
+            [robinson.world :as rw]
+            [clojure.math.combinatorics :as combo]
             [algotools.algos.graph :as graph]
             [taoensso.timbre :as timbre]
             [rockpick.core :as rpc]
@@ -109,19 +112,27 @@
                line))
         ship))
 
+(defn make-npcs [cells level]
+  (reduce (fn [npcs [_ x y]]
+            (conj npcs (assoc (mg/gen-random-monster level :deck)
+                              :pos (rc/xy->pos x y))))
+          []
+          (take 10
+            (shuffle (filter (fn [[{cell-type :type} _ _]]
+                               (= cell-type :deck))
+                             (rw/with-xy cells))))))
+
 (defn random-place
   "Create a pirate ship place. Returns a place, not a state."
   [level]
   (let [ship (make-ship level)
-        cells (ship->cells ship level)]
+        cells (ship->cells ship level)
+        npcs  (if (> level 0)
+                (make-npcs cells level)
+                [])]
     {:cells    cells
-     :movement :fixed}))
-;        upstairs     (conj [(first room-centers)] {:type :up-stairs})
-;        downstairs   (conj [(last room-centers)] {:type :down-stairs})]
-;    {:place (apply merge-with-canvas (canvas width height)
-;                   (concat corridors rooms))
-;     :up-stairs upstairs
-;     :down-stairs downstairs}))
+     :movement :fixed
+     :npcs npcs}))
 
 (defn place-to-ascii
   "Convert a grid of cells into a list of strings so that it can be rendered."

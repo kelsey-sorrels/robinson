@@ -1292,26 +1292,25 @@
                                                            :dry-hole        ["O"]
                                                            ;; pirate ship cell types
                                                            :bulkhead        ["◘" :brown :black]
-                                                           :wheel           ["○" :brown :black]
+                                                           :wheel           ["○" :dark-brown :black]
                                                            :bulkhead2       ["◘" :brown :black]
                                                            :wooden-wall     ["#" :ship-brown :black]
                                                            :railing         ["#" :ship-brown :black]
                                                            :hammock-v       [")" :brown :black]
                                                            :hammock-h       ["-" :brown :black]
                                                            :deck            ["·" :dark-brown :black]
-                                                           :cannon-breach   ["║" :gray :brown]
+                                                           :canon-breach    ["║" :gray :dark-brown]
                                                            :tackle          ["º" :brown :black]
-                                                           :cannon          ["║" :brown :black]
-                                                           :cannon-trunk    ["─" :brown :black]
+                                                           :canon           ["║" :gray :black]
                                                            :grate           ["╬" :dark-beige :black]
                                                            :table           ["╤" :ship-light-brown :black]
                                                            :chair           ["╥" :ship-light-brown :black]
                                                            :mast            ["╨" :ship-light-brown :black]
                                                            :beam            ["═" :brown :black]
-                                                           :cannon-truck-1  ["▄" :brown :black]
+                                                           :canon-truck-1   ["▄" :dark-brown :black]
                                                            :locker          ["▌" :brown :black]
                                                            :locker2         ["▐" :brown :black]
-                                                           :cannon-truck-2  ["▀" :brown :black]
+                                                           :canon-truck-2   ["▀" :dark-brown :black]
                                                            :ships-wheel     ["Φ" :brown :black]
                                                            :ladder          ["≡" :dark-beige :black]
                                                            :porthole        ["°" :brown :black]
@@ -1399,12 +1398,13 @@
     (let [place-npcs (npcs-in-viewport state)
           ;_ (log/debug "place-npcs" place-npcs)
           pos (-> state :world :player :pos)
-          get-cell (memoize (fn [x y] (get-cell state x y)))]
+          get-cell (memoize (fn [x y] (get-cell state x y)))
+          place-id (rw/current-place-id state)]
       (doall (map (fn [npc]
                     (let [x         (-> npc :pos :x)
                           y         (-> npc :pos :y)
-                          vx        (- x (-> state :world :viewport :pos :x))
-                          vy        (- y (-> state :world :viewport :pos :y))
+                          vx        (- x (if place-id 0 (-> state :world :viewport :pos :x)))
+                          vy        (- y (if place-id 0 (-> state :world :viewport :pos :y)))
                           targeted? (when (= (current-state state) :select-ranged-target)
                                       (let [target-ranged-index (get-in state [:world :target-ranged-index])
                                             target-ranged-pos-coll (get-in state [:world :target-ranged-pos-coll])

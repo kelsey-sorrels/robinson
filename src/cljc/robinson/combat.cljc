@@ -314,8 +314,8 @@
   {:pre [(vector? attacker-path)
          (vector? defender-path)
          (some? state)
-         (or (every? (set (keys (get-in state defender-path))) [:hp :pos :race :body-parts :inventory])
-             (assert false (str "defender under specified " defender-path)))
+         (or (every? (set (keys (get-in state defender-path))) [:hp :pos :race :body-parts])
+             (assert false (str "defender under specified " defender-path (get-in state defender-path))))
          (vector? (get-in state [:world :npcs]))]
    :post [(some? %)
           (vector? (get-in % [:world :npcs]))]}

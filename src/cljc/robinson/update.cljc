@@ -3719,7 +3719,10 @@
                       (log/info "Done updating cells")
                       state))
                   ;; TODO: Add appropriate level
-                  (rnpc/add-npcs-random)
+                  (as-> state
+                    (if (nil? (rw/current-place-id state))
+                      (rnpc/add-npcs-random state)
+                      state))
                   ;; update visibility
                   (update-visibility)
                   ;; add will-to-live flavor message

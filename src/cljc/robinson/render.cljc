@@ -97,13 +97,22 @@
    :dark-beige  (vec (tinter/hex-str-to-dec "7C612D"))})
 
 (defn limit-color
-  [v]
-  (min (max 0 v) 255))
+  ([v]
+    (limit-color 0 v 255))
+  ([min-v v max-v]
+    (min (max min-v v) max-v)))
+
+(defn limit-rgb
+  [color limit]
+  (mapv (fn [c min-v]
+          (limit-color min-v c 255))
+        color
+        limit))
 
 (defn rgb->mono
   [[r g b]]
   (let [avg (bit-shift-right (+ (max r g b) (min r g b)) 1)]
-   [avg avg avg]))
+   (limit-rgb [avg avg avg] [6 6 11])))
 
 (defn color->rgb
   [color]
@@ -120,7 +129,7 @@
   (assert (number? (nth rgb 0)) (str (nth rgb 0) " not a number"))
   (assert (number? (nth rgb 1)) (str (nth rgb 1) " not a number"))
   (assert (number? (nth rgb 2)) (str (nth rgb 2) " not a number"))
-  (mapv #(int (limit-color (* % d))) rgb)))
+  (mapv (fn [v min-v] (int (limit-color min-v (* v d) 255))) rgb [5 5 7])))
 
 (defn night-tint
   [[r g b] d]
@@ -1319,7 +1328,9 @@
                                                            ["?"])))))
                                            shaded-out-char (cond
                                                              (not= (cell :discovered) current-time)
-                                                               (update-in out-char [1] (comp rgb->mono darken-rgb))
+                                                               (-> out-char
+                                                                 (update-in [1] (fn [c] (rgb->mono (darken-rgb c 0.15))))
+                                                                 (update-in [2] (fn [c] (rgb->mono (darken-rgb c 0.15)))))
                                                              (contains? cell :harvestable)
                                                                (let [[chr fg bg] out-char]
                                                                  [chr bg (night-tint (color->rgb fg) d)])

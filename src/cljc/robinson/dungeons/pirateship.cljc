@@ -1,11 +1,12 @@
 ;; Functions for randomly generating pirate ships
 (ns robinson.dungeons.pirateship
   (:require [robinson.common :as rc]
+            [robinson.random :as rr]
             [robinson.monstergen :as mg]
             [robinson.world :as rw]
             [clojure.math.combinatorics :as combo]
             [algotools.algos.graph :as graph]
-            [taoensso.timbre :as timbre]
+            [taoensso.timbre :as log]
             [rockpick.core :as rpc]
             clojure.set))
 
@@ -112,15 +113,30 @@
                line))
         ship))
 
+(defn level->monster-probabilities
+  [level]
+  (get {1 [1 :rat
+           1 :spider
+           1 :gecko]
+        2 [1 :spider
+           1 :snake]
+        3 [1 :snake
+           1 :crab]
+        4 [1 :crab
+           1 :snake]}
+       level))
+
 (defn make-npcs [cells level]
+  (let [monster-probabilities (partition 2 (level->monster-probabilities level))]
+  (log/info "monster-probabilities" monster-probabilities)
   (reduce (fn [npcs [_ x y]]
-            (conj npcs (assoc (mg/gen-random-monster level :deck)
+            (conj npcs (assoc (mg/id->monster (rr/rand-weighted-nth monster-probabilities))
                               :pos (rc/xy->pos x y))))
           []
           (take 10
             (shuffle (filter (fn [[{cell-type :type} _ _]]
                                (= cell-type :deck))
-                             (rw/with-xy cells))))))
+                             (rw/with-xy cells)))))))
 
 (defn random-place
   "Create a pirate ship place. Returns a place, not a state."

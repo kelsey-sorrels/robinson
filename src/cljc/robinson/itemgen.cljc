@@ -154,7 +154,18 @@
    {:id  :flashlight              :name  "flashlight"                 :name-plural "flashlights"           :charge 1500}
    {:id  :bedroll                 :name  "bedroll"                    :name-plural "bedrolls"}
    {:id  :tarp                    :name  "tarp"                       :name-plural "tarps"}
-   {:id  :saw                     :name  "saw"                        :name-plural "saws" :utility 100}])
+   {:id  :saw                     :name  "saw"                        :name-plural "saws" :utility 100}
+   ;; pirate ship items
+   {:id  :spices                  :name "spices"                      :name-plural "spices"}
+   {:id  :sail                    :name "sail"                        :name-plural "sails"}
+   {:id  :dice                    :name "dice"                        :name-plural "dice"}
+   {:id  :blanket                 :name "blanket"                     :name-plural "blankets"}
+   {:id  :cup                     :name "cup"                         :name-plural "cup"}
+   {:id  :silver-bar              :name "silver bar"                  :name-plural "silver bars"}
+   {:id  :bowl                    :name "bowl"                        :name-plural "bowls"}
+   {:id  :fork                    :name "fork"                        :name-plural "forks"}
+   {:id  :spoon                   :name "spoon"                       :name-plural "spoons"}
+   {:id  :rag                     :name "rag"                         :name-plural "rags"}])
 
 (def ^:private id->item-map
   (apply hash-map (mapcat (fn [[k v]] [k (first v)])

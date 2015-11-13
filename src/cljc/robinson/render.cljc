@@ -70,6 +70,7 @@
    :dark-brown  [70 44 9]
    :ship-brown  [67 51 30]
    :ship-light-brown  [131 88 32]
+   :ship-dark-brown  [33 25 15]
    ;;:black       [0 0 0]
    :black       [6 6 11]
    :white       [255 255 255]
@@ -1195,7 +1196,7 @@
                                                                  (seq cell-items)
                                                                  (= (cell :discovered) current-time))
                                                           (if (= (get cell :type) :chest)
-                                                            ["■" :light-brown :black]
+                                                            ["■" :dark-beige :black]
                                                             (case (or (-> cell-items first :type)
                                                                       (-> cell-items first :id))
                                                               :knife           [")"]
@@ -1244,6 +1245,17 @@
                                                               :hand-drill      [","]
                                                               :bow-drill       [","]
                                                               :jack-o-lantern  ["☻" :orange :black]
+                                                              ;; pirate ship items
+                                                              :spices          ["^"]
+                                                              :sail            ["#"]
+                                                              :dice            ["&"]
+                                                              :blanket         ["#"]
+                                                              :cup             ["&"]
+                                                              :silver-bar      ["$"]
+                                                              :bowl            ["&"]
+                                                              :fork            ["/"]
+                                                              :spoon           ["/"]
+                                                              :rag             ["#"]
                                                               ["?"]))
                                                           (case (cell :type)
                                                            :vertical-wall   ["|"]
@@ -1325,7 +1337,7 @@
                                                            :ships-wheel     ["Φ" :brown :black]
                                                            :ladder          ["≡" :dark-beige :black]
                                                            :porthole        ["°" :brown :black]
-                                                           :chest           ["■" :ship-light-brown :black]
+                                                           :chest           ["■" :ship-dark-brown :black]
                                                            (do (log/info (format "unknown type: %s %s" (str (get cell :type)) (str cell)))
                                                            ["?"])))))
                                            shaded-out-char (cond

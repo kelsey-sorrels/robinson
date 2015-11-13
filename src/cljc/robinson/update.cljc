@@ -984,6 +984,9 @@
                 (-> state
                   (rw/assoc-current-state :apply-item-body)
                   (rc/ui-hint "a-apply to skin, b-apply to tongue"))
+              ;; pirate items
+              (= id :dice)
+                (rc/append-log state (format "You roll a %d and a %d" (rr/uniform-int 1 7) (rr/uniform-int 1 7)))
               :else state))))
         state)))
 

@@ -3,6 +3,7 @@
   (:require [robinson.common :as rc]
             [robinson.random :as rr]
             [robinson.monstergen :as mg]
+            [robinson.itemgen :as ig]
             [robinson.world :as rw]
             [clojure.math.combinatorics :as combo]
             [algotools.algos.graph :as graph]
@@ -86,6 +87,24 @@
 (def porthole       (make-tile \° 248 :porthole))
 (def chest          (make-tile \■ 254 :chest))
 
+(defn gen-chest-item [level]
+  (let [item (ig/id->item (rand-nth [:spices
+                                     :sail
+                                     :dice
+                                     :blanket
+                                     :cup
+                                     :silver-bar
+                                     :bowl
+                                     :fork
+                                     :spoon
+                                     :rag
+                                     :knife
+                                     :rope]))]
+    (case (get item :type)
+      :knife
+        (assoc item :utility 10)
+      item)))
+
 (defn ship->cells
   [ship level]
   (mapv (fn [line]
@@ -101,7 +120,10 @@
                        (contains? #{:table :chair :chest} cell-type)
                          (if (< 0.5 (rand))
                            {:type :deck}
-                           {:type cell-type})
+                           (if (and (= cell-type :chest)
+                                    (< 0.2 (rand)))
+                             {:type cell-type :items (vec (repeatedly (int (rand 3)) (partial gen-chest-item level)))}
+                             {:type cell-type}))
                        ;; include enouch information in down-stairs so
                        ;;; that the next level can be created when the player uses the stairs
                        (= cell-type :down-stairs)

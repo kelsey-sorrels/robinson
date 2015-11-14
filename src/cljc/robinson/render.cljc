@@ -1275,6 +1275,9 @@
                                                            :surf            ["~" (if (= (cell :discovered) current-time)
                                                                                    (rand-nth [:white :light-blue :blue-green])
                                                                                    :light-blue) :black]
+                                                           :shallow-water   ["~" (if (= (cell :discovered) current-time)
+                                                                                   (rand-nth [:white :light-blue :blue-green])
+                                                                                   :light-blue) :black]
                                                            :swamp           ["~" (if (= (cell :discovered) current-time)
                                                                                    (rand-nth [:white :light-blue :blue-green])
                                                                                    :light-blue) :black]
@@ -1489,6 +1492,10 @@
                                                     :hermit-crab     ["c" :yellow :black]
                                                     :electric-eel    ["e" :brown :black]
                                                     :jellyfish       ["j"]
+                                                    ;; pirate ship npcs
+                                                    :giant-rat       ["R"]
+                                                    :eel             ["e"]
+                                                    :giant-lizard    ["L"]
                                                     :human           ["@" (class->rgb (get npc :class)) :black]
                                                     ["@"])) d) targeted?)))))
                    place-npcs)))

@@ -1338,6 +1338,7 @@
                                                            :ladder          ["≡" :dark-beige :black]
                                                            :porthole        ["°" :brown :black]
                                                            :chest           ["■" :ship-dark-brown :black]
+                                                           :artifact-chest  ["■" :dark-beige :black]
                                                            (do (log/info (format "unknown type: %s %s" (str (get cell :type)) (str cell)))
                                                            ["?"])))))
                                            shaded-out-char (cond

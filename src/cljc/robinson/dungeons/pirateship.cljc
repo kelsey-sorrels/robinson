@@ -17,7 +17,7 @@
   (vec (repeat height (vec (repeat width nil)))))
 
 (defn read-level-data [level]
-  {:pre [(<= 0 level 1)]}
+  {:pre [(<= 0 level 4)]}
   (let [files (filter (fn [file] (re-matches (re-pattern (format ".*%d-\\d.xp" level)) (.getName file)))
                       (file-seq (clojure.java.io/file "data/ship")))
         paths (map (fn [file] (.getPath file)) files)
@@ -83,6 +83,7 @@
 (def locker2        (make-tile \▐ 222 :locker2))
 (def cannon-truck-2 (make-tile \▀ 223 :canon-truck-2))
 (def ships-wheel    (make-tile \Φ 232 :ships-wheel))
+(def artifact-chest (make-tile \∩ 239 :artifact-chest))
 (def ladder         (make-tile \≡ 240 :ladder))
 (def porthole       (make-tile \° 248 :porthole))
 (def chest          (make-tile \■ 254 :chest))

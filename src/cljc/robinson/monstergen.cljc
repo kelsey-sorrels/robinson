@@ -18,7 +18,8 @@
                :centipede :turtle :red-frog :orange-frog :yellow-from
                :green-frog :blue-frog :purple-frog :parrot :crocodile
                :mosquito :mongoose :tarantula :monitor-lizard :komodo-dragon
-               :cobra :crab :hermit-crab} race))
+               :cobra :crab :hermit-crab
+               :giant-rat :giant-lizard} race))
 
 (defn can-spawn-intertidally?
   [race]
@@ -166,7 +167,10 @@
   (Monster. :crab           2 220 "crab"           "crabs"          nil 14 0 0.8   2     5    9 #{:head :body}                              #{:claw}                      :hostile-after-sound    :random                                 2 #{:hostile})
   (Monster. :hermit-crab    1 230 "hermit crab"    "hermit crabs"   nil 13 0 0.6   1     7   15 #{:head :shell :leg}                        #{:claw}                      :hostile-during-day     :random                                 1 #{:hostile})
   (Monster. :electric-eel   6 340 "electric eel"   "electric eels"  nil 15 0 0.6  10     5    8 #{:head :body}                              #{:bite}                      :hostile                :follow-player-in-range-or-random       2 #{:hostile})
-  (Monster. :jellyfish      3 190 "jellyfish"      "jellyfish"      nil  7 0 0.6   1     4    4 #{:body}                                    #{:sting-venom}               :retreat-after-attacked :random                                 1 #{:hostile})])
+  (Monster. :jellyfish      3 190 "jellyfish"      "jellyfish"      nil  7 0 0.6   1     4    4 #{:body}                                    #{:sting-venom}               :retreat-after-attacked :random                                 1 #{:hostile})
+  (Monster. :giant-rat     11 990 "giant rat"      "giant rats"     nil  7 0 1.1  10    10   10 #{:head :body :arm :leg :tail :face}        #{:bite :claw}                :retreat-after-attacked :follow-player-in-range-or-random       10 #{:hostile})
+  (Monster. :giant-lizard  11 990 "giant lizard"   "giant lizards"  nil  7 0 1.1  10    10   10 #{:head :body :arm :leg :tail :face}        #{:bite :claw}                :retreat-after-attacked :follow-player-in-range-or-random       10 #{:hostile})
+  (Monster. :eel           11 390 "eel"            "eels"           nil  7 0 1.1   5     8    7 #{:head :body :face}                        #{:bite}                      :retreat-after-attacked :follow-player-in-range-or-random       10 #{:hostile})])
 
 (def ^:private race->monster-map
   (apply hash-map (mapcat (fn [[k v]] [k (first v)])

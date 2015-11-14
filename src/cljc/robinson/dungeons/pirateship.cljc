@@ -71,6 +71,7 @@
 (def up-stairs      (make-tile \<  60 :up-stairs))
 (def cannon-breach  (make-tile \=  61 :canon-breach))
 (def down-stairs    (make-tile \>  62 :down-stairs))
+(def shallow-water  (make-tile \~ 126 :shallow-water))
 (def tackle         (make-tile \º 167 :tackle))
 (def cannon         (make-tile \║ 186 :canon))
 (def grate          (make-tile \╬ 206 :grate))
@@ -149,13 +150,45 @@
            1 :snake]}
        level))
 
+(defn make-boss-npcs [cells boss-type]
+ (case boss-type
+   :eels
+    (reduce (fn [npcs [_ x y]]
+              (conj npcs (assoc (mg/id->monster :eel)
+                                :pos (rc/xy->pos x y))))
+            []
+            (take 10
+              (shuffle (filter (fn [[{cell-type :type} _ _]]
+                                 (= cell-type :shallow-water))
+                               (rw/with-xy cells)))))
+   :giant-rat
+    (reduce (fn [npcs [_ x y]]
+              (conj npcs (assoc (mg/id->monster :giant-rat)
+                                :pos (rc/xy->pos x y))))
+            []
+            (take 1
+              (shuffle (filter (fn [[{cell-type :type} _ _]]
+                                 (= cell-type :shallow-water))
+                               (rw/with-xy cells)))))
+   :giant-lizard
+    (reduce (fn [npcs [_ x y]]
+              (conj npcs (assoc (mg/id->monster :giant-lizard)
+                                :pos (rc/xy->pos x y))))
+            []
+            (take 1
+              (shuffle (filter (fn [[{cell-type :type} _ _]]
+                                 (= cell-type :shallow-water))
+                               (rw/with-xy cells)))))))
+
 (defn make-npcs [cells level]
   (let [monster-probabilities (partition 2 (level->monster-probabilities level))]
   (log/info "monster-probabilities" monster-probabilities)
   (reduce (fn [npcs [_ x y]]
             (conj npcs (assoc (mg/id->monster (rr/rand-weighted-nth monster-probabilities))
                               :pos (rc/xy->pos x y))))
-          []
+          (if (= level 3)
+            (make-boss-npcs cells (rand-nth [:eels :giant-rat :giant-lizard]))
+            [])
           (take 10
             (shuffle (filter (fn [[{cell-type :type} _ _]]
                                (= cell-type :deck))

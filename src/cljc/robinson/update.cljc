@@ -2264,7 +2264,7 @@
   [state]
   (let [[cell _ _] (rw/player-cellxy state)
         bedroll?   (contains? (set (map :id (get cell :items []))) :bedroll)
-        in-water?  (contains? #{:ocean :surf} (get cell :type))]
+        in-water?  (contains? #{:ocean :surf :shallow-water} (get cell :type))]
     (if (= (rw/current-state state) :sleep)
       (if bedroll?
         (rp/player-update-wtl state
@@ -2618,7 +2618,7 @@
                                    (or (= [x y] npc-pos-vec)
                                        (and (not (rc/farther-than? npc-pos {:x x :y y} threshold))
                                             #_(not (contains? (disj npc-xys npc-pos-vec) [x y]))
-                                            (contains? #{:water :surf} (get-type x y))
+                                            (contains? #{:water :surf :shallow-water} (get-type x y))
                                             #_(every? water-traversable? (rw/adjacent-xys-ext x y)))))
           land-traversable?      (fn land-traversable? [[x y]]
                                    (or (= [x y] npc-pos-vec)
@@ -2702,7 +2702,7 @@
                                    (and (< 0 x width)
                                         (< 0 y height)
                                         (not (rc/farther-than? npc-pos {:x x :y y} threshold))
-                                        (contains? #{:water :surf} (get-type x y))
+                                        (contains? #{:water :surf :shallow-water} (get-type x y))
                                         #_(every? water-traversable? (rw/adjacent-xys-ext x y))))
           land-traversable?      (fn [[x y]]
 
@@ -2714,7 +2714,9 @@
                                                      :dirt
                                                      :gravel
                                                      :tall-grass
-                                                     :short-grass}
+                                                     :short-grass
+                                                     ;; pirate ship
+                                                     :deck}
                                                    (get-type x y)))
       
           traversable?           (cond
@@ -2750,7 +2752,7 @@
    :post [(not (nil? %))]}
   (let [npc-pos  (get npc :pos)
         navigable-types (if (mg/can-move-in-water? (get npc :race))
-                          #{:water :surf}
+                          #{:water :surf :shallow-water}
                           #{:floor
                             :corridor
                             :open-door
@@ -2758,7 +2760,9 @@
                             :dirt
                             :gravel
                             :tall-grass
-                            :short-grass})
+                            :short-grass
+                            ;; pirate ship
+                            :deck})
        adj-positions (rnpc/adjacent-navigable-pos state
                                                   npc-pos
                                                   navigable-types)]
@@ -2782,7 +2786,7 @@
         npc-pos  (get npc :pos)
         distance (rc/distance npc-pos target)
         navigable-types (if (mg/can-move-in-water? (get npc :race))
-                          #{:water :surf}
+                          #{:water :surf :shallow-water}
                           #{:floor
                             :corridor
                             :open-door
@@ -2792,7 +2796,10 @@
                             :dirt
                             :gravel
                             :tall-grass
-                            :short-grass})
+                            :short-grass
+                            :shallow-water
+                            ;; pirate ship
+                            :deck})
        adj-positions (rnpc/adjacent-navigable-pos state
                                                   npc-pos
                                                   navigable-types)]
@@ -2816,7 +2823,7 @@
         npc-pos  (get npc :pos)
         distance (rc/distance npc-pos target)
         navigable-types (if (mg/can-move-in-water? (get npc :race))
-                          #{:water :surf}
+                          #{:water :surf :shallow-water}
                           #{:floor
                             :corridor
                             :open-door
@@ -2824,7 +2831,10 @@
                             :dirt
                             :gravel
                             :tall-grass
-                            :short-grass})]
+                            :short-grass
+                            :shallow-water
+                            ;; pirate ship
+                            :deck})]
     (if (> distance threshold)
       ;; outside of range, move randomly into an adjacent cell
       (let [target (rr/rand-nth
@@ -2862,7 +2872,7 @@
                       :else
                       policy)
         navigable-types (if (mg/can-move-in-water? (get npc :race))
-                          #{:water :surf}
+                          #{:water :surf :shallow-water}
                           #{:floor
                             :corridor
                             :open-door
@@ -2870,7 +2880,10 @@
                             :dirt
                             :gravel
                             :tall-grass
-                            :short-grass})]
+                            :short-grass
+                            :shallow-water
+                            ;; pirate ship
+                            :deck})]
         ;_ (log/info "moving npc@" (get npc :pos) "with policy" policy)]
     (case policy
       :constant                            [nil nil npc]

@@ -61,12 +61,15 @@
        0.1
        0)))
 
+(declare worn-item)
 (defn player-toughness
   [state]
   (+ (get-player-attribute state :toughness)
      (if (buff-active? state :toughness)
        0.1
-       0)))
+       0)
+      (or (get (worn-item state) :toughness)
+          0)))
 
 (defrecord Player [id
                    name
@@ -340,6 +343,12 @@
   [actor]
   (first (filter (fn [item] (contains? item :wielded))
                  (get actor :inventory))))
+
+(defn worn-item
+  [state]
+  (first (filter (fn [item] (contains? item :worn))
+                 (get (get-player state) :inventory))))
+
 (defn player-hp
   [state]
   (get-in state [:world :player :hp]))
@@ -550,12 +559,18 @@
       (rc/conj-in [:world :remaining-hotkeys] hotkey))))
 
 (defn update-inventory-item
+  "Apply the fn f to inventory items where `(pred item)` is true."
+  [state pred f]
+  (rc/update-in-matching state [:world :player :inventory] pred f))
+
+(defn update-inventory-item-by-id
   "Apply the fn f to inventory item identified by id."
   [state id f]
-  (rc/map-in state [:world :player :inventory]
-    (fn [item] (if (= (get item :id) id)
-                 (f item)
-                 item))))
+  (update-inventory-item state (fn [item] (= (get item :id) id)) f))
+
+(defn update-worn-item-utility
+  [state f]
+  (update-inventory-item state (fn [item] (contains? item :worn)) f))
 
 (defn dec-item-count
   "Decreses the count of an item in inventory."
@@ -600,7 +615,7 @@
      ;; remove any broken items
     (reduce
       (fn [state item]
-        (log/info "Check to see if" item "has broken")
+        (log/debug "Check to see if" item "has broken")
         (if (< (get item :utility 2) 1)
           (as-> state state
             ;; item breaks

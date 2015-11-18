@@ -126,6 +126,25 @@
                                     (< 0.2 (rand)))
                              {:type cell-type :items (vec (repeatedly (int (rand 3)) (partial gen-chest-item level)))}
                              {:type cell-type}))
+                       ;; always put items in the artifact chest
+                       (= cell-type :artifact-chest)
+                         {:type cell-type  :items (rr/rand-nth [[(ig/id->item :cutlass)]
+                                                                [(ig/id->item :pistol)
+                                                                 (ig/id->item :paper-cartridge)
+                                                                 (ig/id->item :paper-cartridge)
+                                                                 (ig/id->item :paper-cartridge)
+                                                                 (ig/id->item :paper-cartridge)
+                                                                 (ig/id->item :paper-cartridge)
+                                                                 (ig/id->item :paper-cartridge)
+                                                                 (ig/id->item :paper-cartridge)
+                                                                 (ig/id->item :paper-cartridge)
+                                                                 (ig/id->item :paper-cartridge)
+                                                                 (ig/id->item :paper-cartridge)
+                                                                 (ig/id->item :paper-cartridge)
+                                                                 (ig/id->item :paper-cartridge)]
+                                                                [(ig/id->item :ale)]
+                                                                [(ig/id->item :navy-uniform)]
+                                                                [(ig/id->item :pirate-clothes)]])}
                        ;; include enouch information in down-stairs so
                        ;;; that the next level can be created when the player uses the stairs
                        (= cell-type :down-stairs)

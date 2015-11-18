@@ -536,13 +536,16 @@
 (defn use-stairs-generated->generated
   [state dest-place-id dest-x dest-y]
   {:post [(not (nil? %))]}
+  (log/info "use-stairs-generated->generated" dest-place-id dest-x dest-y)
   (-> state
     (rworldgen/unload-all-places)
     ;; load the generated place
-    (rworldgen/load-place dest-place-id)
+    (as-> state
+      (first (rworldgen/load-place state dest-place-id nil nil)))
     ;; move the player to [dest-place-id dest-x dest-y]
     (rp/assoc-player-pos (rc/xy->pos dest-x dest-y))
-    (rw/assoc-current-place-id dest-place-id)))
+    (rw/assoc-current-place-id dest-place-id)
+    (update-visibility)))
 
 (defn use-stairs-generated->ungenerated
   [state src-place-id src-x src-y dest-type gen-args]
@@ -879,7 +882,7 @@
     (case item-state
       :on
       (-> state
-        (rp/update-inventory-item :flashlight (fn [item] (assoc item :state :off)))
+        (rp/update-inventory-item-by-id :flashlight (fn [item] (assoc item :state :off)))
         (rc/append-log "You turn the flashlight off.")
         (inc-time)
         ;TODO: remove?
@@ -888,7 +891,7 @@
       :off
       (if (pos? (get item :charge))
         (-> state
-          (rp/update-inventory-item :flashlight (fn [item] (assoc item :state :on)))
+          (rp/update-inventory-item-by-id :flashlight (fn [item] (assoc item :state :on)))
           (rc/append-log "You turn the flashlight on.")
           (inc-time)
           ;TODO: remove?
@@ -898,6 +901,18 @@
           ;TODO: remove?
           (inc-time)
           (rc/append-log state "You try turning the flashlight on, but nothing happens."))))))
+
+(defn wear-clothes
+  [state selected-item]
+  (-> state
+    (rc/append-log (format "You wear the %s." (lower-case (get selected-item :name))))
+    ;; remove :worn from all items
+    (update-in [:world :player :inventory]
+      (fn [items] (mapv (fn [item] (dissoc item :worn)) items)))
+    (update-in [:world :player :inventory]
+      (fn [items] (mapv (fn [item] (if (= item selected-item)
+                                     (assoc item :worn true)
+                                     item)) items)))))
 
 (defn assoc-apply-item
   [state item]
@@ -984,6 +999,8 @@
                 (-> state
                   (rw/assoc-current-state :apply-item-body)
                   (rc/ui-hint "a-apply to skin, b-apply to tongue"))
+              (ig/is-clothes? item)
+                (wear-clothes state item)
               ;; pirate items
               (= id :dice)
                 (rc/append-log state (format "You roll a %d and a %d" (rr/uniform-int 1 7) (rr/uniform-int 1 7)))
@@ -1759,7 +1776,7 @@
           (if (pos? (rp/inventory-id->count state (ig/item->ranged-combat-ammunition-item-id ranged-weapon-item)))
             (-> state
               ;; set weapon as :loaded
-              (rp/update-inventory-item state
+              (rp/update-inventory-item-by-id state
                 (get ranged-weapon-item :id)
                 (fn [item] (assoc item :loaded true)))
               ;; dec ranged weapon ammunition
@@ -2280,6 +2297,11 @@
                                                 (rw/cells-in-range-of-player state 3)))
                                (+ dwtl 0.5)
                                dwtl)
+                  ;; if it is night and the player is not wearing clothes, things are extra tough.
+                  dwtl       (if (and (rw/is-night? state)
+                                      (nil? (rp/worn-item state)))
+                               (+ dwtl 0.5)
+                               dwtl)
                   ;; in water, cold and wet - less will to live.
                   dwtl       (+ dwtl
                                 (if in-water?
@@ -2519,13 +2541,13 @@
   {:pre [(not (nil? state))]
    :post [(not (nil? %))]}
   (if-let [flashlight (rp/inventory-id->item state :flashlight)]
-    (rp/update-inventory-item state :flashlight (fn [flashlight] (as-> flashlight flashlight
-                                                                   (if (= (get flashlight :state :off) :on)
-                                                                       (update-in flashlight [:charge] dec)
-                                                                       flashlight)
-                                                                   (if (neg? (get flashlight :charge))
-                                                                       (assoc flashlight :state :off)
-                                                                       flashlight))))
+    (rp/update-inventory-item-by-id state :flashlight (fn [flashlight] (as-> flashlight flashlight
+                                                                         (if (= (get flashlight :state :off) :on)
+                                                                             (update-in flashlight [:charge] dec)
+                                                                             flashlight)
+                                                                         (if (neg? (get flashlight :charge))
+                                                                             (assoc flashlight :state :off)
+                                                                             flashlight))))
     state))
 
 ;; forward declaration because update-state and repeat-cmmands are mutually recursive.
@@ -2633,7 +2655,8 @@
                                                          :tall-grass
                                                          :short-grass
                                                          ;; pirate ship
-                                                         :deck}
+                                                         :deck
+                                                         :shallow-water}
                                                        (get-type x y)))))
           traversable?           (cond
                                    (and npc-can-move-in-water

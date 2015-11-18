@@ -25,7 +25,7 @@
 
 (defn sharp-weapon?
   [attack]
-  (contains? #{:spear :axe :knife} attack))
+  (contains? #{:spear :axe :knife :cutlass} attack))
 
 (defn ranged-weapon?
   [attack]
@@ -206,6 +206,8 @@
   :unhusked-coconut 2
   :empty-coconut 1
   :jack-o-lantern 5
+  :cutlass 20
+  :pistol 20
   #?(:clj
      (throw (Exception. (format "No value specified for %s" (name attack))))
      :cljs
@@ -379,6 +381,10 @@
             (if (and (contains? (set defender-path) :player)
                      (= (rw/current-state state) :sleep))
               (assoc-in state [:world :current-state] :normal)
+              state)
+            ;; degrade player clothing if worn
+            (if (contains? (set defender-path) :player)
+              (rp/update-worn-item-utility state dec)
               state)
             (log-with-line state "3")
             ;; provoke temperamental animal

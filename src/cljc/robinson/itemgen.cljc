@@ -40,7 +40,8 @@
                :flint-knife
                :flint-axe
                :flint-spear
-               :sharpened-stick}
+               :sharpened-stick
+               :cutlass}
              id))
 
 (defn is-sharp? [item]
@@ -48,7 +49,8 @@
 
 (defn id-is-metal? [id]
   (contains? #{:knife
-               :saw}
+               :saw
+               :cutlass}
              id))
 
 (defn is-metal? [item]
@@ -92,7 +94,15 @@
                       first
                       keyword))))
        
-                                                 
+(defn id-is-clothes?
+  [id]
+  (contains? #{:pirate-clothes :navy-uniform}
+             id))
+
+(defn is-clothes?
+  [item]
+  (id-is-clothes? (get item :id)))
+
 (def ^:private items
   [
    {:id  :stick                   :name  "stick"                      :name-plural "sticks" :fuel 100 :utility 100}
@@ -165,7 +175,13 @@
    {:id  :bowl                    :name "bowl"                        :name-plural "bowls"}
    {:id  :fork                    :name "fork"                        :name-plural "forks"}
    {:id  :spoon                   :name "spoon"                       :name-plural "spoons"}
-   {:id  :rag                     :name "rag"                         :name-plural "rags"}])
+   {:id  :rag                     :name "rag"                         :name-plural "rags"}
+   {:id  :cutlass                 :name "cutlass"                     :name-plural "cutlasses" :attack :cutlass :utility 50}
+   {:id  :pistol                  :name "flintlock pistol"            :name-plural "flintlock pistols"}
+   {:id  :paper-cartridge         :name "paper cartridge"             :name-plural "paper cartridges" :fuel 10}
+   {:id  :ale                     :name "bottle of ale"               :name-plural "bottles of ale" :thirst 50}
+   {:id  :pirate-clothes          :name "pirate clothes"              :name-plural "pirate clothes" :utility 100 :toughness 0.2}
+   {:id  :navy-uniform            :name "navy uniform"                :name-plural "navy uniforms" :utility 100 :toughness 0.2}])
 
 (def ^:private id->item-map
   (apply hash-map (mapcat (fn [[k v]] [k (first v)])
@@ -196,7 +212,8 @@
                :obsidian-knife
                :flint-spear
                :flint-axe
-               :flint-knife}
+               :flint-knife
+               :cutlass}
              (get item :id)))
 
 (defn can-be-wielded-for-ranged-combat?
@@ -207,7 +224,8 @@
                :unhusked-coconut
                :coconut
                :coconut-empty
-               :jack-o-lantern}
+               :jack-o-lantern
+               :pistol}
              (get item :id)))
 
 (defn item->ranged-combat-ammunition-item-id
@@ -219,7 +237,8 @@
     :unhusked-coconut :unhusked-coconut
     :coconut :coconut
     :empty-coconut :empty-coconut
-    :jack-o-lantern :jack-o-lantern))
+    :jack-o-lantern :jack-o-lantern
+    :pistol :paper-cartridge))
 
 (defn requires-reload?
   [item]

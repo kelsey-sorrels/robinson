@@ -531,6 +531,8 @@
                                                   "(wielded)"
                                                 (contains? item :wielded-ranged)
                                                   "(wielded ranged)"
+                                                (contains? item :worn)
+                                                  "(worn)"
                                                 :else
                                                   ""))
                                    :fg (if (or (not use-applicable)
@@ -1195,7 +1197,7 @@
                                                         (if (and cell-items
                                                                  (seq cell-items)
                                                                  (= (cell :discovered) current-time))
-                                                          (if (= (get cell :type) :chest)
+                                                          (if (contains? #{:chest :artifact-chest} (get cell :type))
                                                             ["■" :dark-beige :black]
                                                             (case (or (-> cell-items first :type)
                                                                       (-> cell-items first :id))
@@ -1256,6 +1258,12 @@
                                                               :fork            ["/"]
                                                               :spoon           ["/"]
                                                               :rag             ["#"]
+                                                              :cutlass         [")"]
+                                                              :pistol          [")"]
+                                                              :paper-cartridge ["&"]
+                                                              :ale             ["!"]
+                                                              :pirate-clothes  ["["]
+                                                              :navy-uniform    ["["]
                                                               ["?"]))
                                                           (case (cell :type)
                                                            :vertical-wall   ["|"]

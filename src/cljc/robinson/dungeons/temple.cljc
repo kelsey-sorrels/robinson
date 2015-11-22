@@ -111,6 +111,43 @@
          [(read-string from) (read-string to)])
        (graph/MST-kruskal g true)))
 
+(defn additional-edges
+  "`room-centers` is a list of [x y]
+   `g` is a list of xy point pairs eg: [[[x y] [x y]] [[x y] [x y]] ...]"
+  [min-width min-height room-centers g]
+  (let [edges
+        (sort-by (fn [[[x1 y1] [x2 y2]]]
+                   (+ (rand-int 2) (rc/chebyshev-distance (rc/xy->pos x1 y1) (rc/xy->pos x2 y2))))
+                 (for [room-center-1 room-centers
+                       room-center-2 room-centers
+                       :when (let [[x1 y1] room-center-1
+                                   [x2 y2] room-center-2]
+                               (and ; rooms should not connect to themselves
+                                    ;(not= room-center-1 room-center-2)
+                                    ; rooms should connect only to rooms in the same row or column
+                                    (or (< (Math/abs (- x1 x2)) (+ min-width 3))
+                                        (< (Math/abs (- y1 y2)) (+ min-height 3)))
+                                    ; only close together rooms should be connected, but it must be greater than 0
+                                    ;  (ie exclude room from connecting to itself.
+                                    (let [d (rc/chebyshev-distance (rc/xy->pos x1 y1) (rc/xy->pos x2 y2))]
+                                      (< 0 d (+ min-width min-height 5)))
+                                    ; always connect from the upper left to the lower right
+                                    (< (+ (* x1 1000) y1) (+ (* x2 1000) y2))
+                                    ;; don't connect any rooms that are already connected
+                                    (not-any? (fn [room-center-pair]
+                                                (println "room-center-pair" room-center-pair)
+                                                (or (= room-center-pair
+                                                       [room-center-1 room-center-2])
+                                                    (= room-center-pair
+                                                       [room-center-2 room-center-1])))
+                                              g)))]
+                   [room-center-1 room-center-2]))]
+    (println "all extra edges" (reduce (fn [edges [[x1 y1] [x2 y2]]]
+                                         (conj edges [[x1 y1] [x2 y2] (rc/chebyshev-distance (rc/xy->pos x1 y1) (rc/xy->pos x2 y2))]))
+                                       []
+                                       edges))
+    (take 5 edges)))
+
 (defn vertical-or-horizontally-aligned?
   [& xys]
   (some (partial apply =) (apply map vector xys)))
@@ -310,7 +347,7 @@
                                               (if (nil? canvas-cell) {:type :nil} canvas-cell))}))))
                            cells-xy))
         cells (f canvas)]
-   (print-cells cells)
+   ;(print-cells cells)
    cells))
 
 (defn rand-int-range [min max]
@@ -350,6 +387,8 @@
         fcg          (points-to-fully-connected-graph room-centers)
         ;; g is a list of [[x1 y1] [x2 y2]] elements. List of pairs of points.
         g            (graph-to-minimum-spanning-tree fcg)
+        more-edges   (additional-edges min-width min-height room-centers g)
+        g            (concat g more-edges)
         ;; reduce over g
         cells        (reduce (fn [cells [start goal]]
                                (let [points (make-corridor-points cells room-centers-to-room-bounds start goal)]
@@ -359,8 +398,9 @@
                              g)
         upstairs     (conj [(first room-centers)] {:type :up-stairs})
         downstairs   (conj [(last room-centers)] {:type :down-stairs})]
-    (println "fcg" fcg)
+    ;(println "fcg" fcg)
     (println "g" g)
+    (println "more-edges" more-edges)
     ;(println (vec room-bounds))
     ;(println (vec rooms))
     {:place cells #_(apply merge-with-canvas (canvas width height)

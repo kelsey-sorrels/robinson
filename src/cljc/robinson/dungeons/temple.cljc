@@ -80,13 +80,18 @@
 (defn room-to-cellsxy
   "Convert the bounds of a room into a list of points that represent the room."
   [min-x min-y max-x max-y]
-  (let [top    [(map (fn [x] [x min-y {:type :horizontal-wall}]) (range min-x (inc max-x)))]
-        bottom [(map (fn [x] [x max-y {:type :horizontal-wall}]) (range min-x (inc max-x)))]
+  (let [alternate-corners? (> 0.5 (rand))
+        corners [[[min-x min-y {:type (if alternate-corners? :upper-left-2 :upper-left-1)}]
+                  [max-x min-y {:type (if alternate-corners? :upper-right-2 :upper-right-1)}]
+                  [min-x max-y {:type (if alternate-corners? :bottom-left-2 :bottom-left-1)}]
+                  [max-x max-y {:type (if alternate-corners? :bottom-right-2 :bottom-right-1)}]]]
+        top    [(map (fn [x] [x min-y {:type :horizontal-wall}]) (range (inc min-x) max-x))]
+        bottom [(map (fn [x] [x max-y {:type :horizontal-wall}]) (range (inc min-x) max-x))]
         middle-line (concat [[min-x {:type :vertical-wall}]]
                             (vec (map (fn [x] [x {:type :floor}]) (range (inc min-x) max-x)))
                             [[max-x {:type :vertical-wall}]])
         middle-lines (vec (map (fn [y] (map (fn [[x cell]] [x y cell]) middle-line)) (range (inc min-y) max-y)))
-        lines (concat top middle-lines bottom)]
+        lines (concat corners top middle-lines bottom)]
     (apply concat lines)))
 
 (defn points-to-fully-connected-graph
@@ -147,6 +152,19 @@
                                        []
                                        edges))
     (take 5 edges)))
+
+(defn find-junction-rooms [edges]
+  "Return 2 junction room centers. Candidate junction rooms have atleast 3 edges connected to them."
+  (let [counts (reduce (fn [m [from to]]
+                         (-> m
+                         (update from (fn [v] (inc (or v 0))))
+                         (update from (fn [v] (inc (or v 0))))))
+                       {}
+                       edges)
+       junctions (keys (into {} (filter (fn [[_ connections]] (> connections 2))
+                                        counts)))]
+    (println "junctions" junctions)
+    (set (take 2 junctions))))
 
 (defn vertical-or-horizontally-aligned?
   [& xys]
@@ -210,7 +228,8 @@
     (= y max-y)
       :horizontal
     :else
-      (assert false (format "Unknown wall type %d %d %d %d %d %d" min-x min-y max-x max-y x y))))
+      (rand-nth [:vertical :horizontal])
+      #_(assert false (format "Unknown wall type %d %d %d %d %d %d" min-x min-y max-x max-y x y))))
 
 (defn multi-part-segment
   [from from-type to to-type]
@@ -227,13 +246,17 @@
     (= from-type :vertical)
       (horizontal-corner-segment from to)))
 
-(defn make-corridor-points [cells room-centers-to-room-bounds start end]
+(defn make-corridor-points [cells room-centers-to-room-bounds junction-room-centers start end]
   "Finds a list of `[x y]`s comprising a corridor from `start` to `end`.
    `room-centers-to-room-bounds` is a map with `[x y]` keys and `[min-x min-y max-x max-y]` values."
   (let [start-room-bounds (get room-centers-to-room-bounds start)
         end-room-bounds   (get room-centers-to-room-bounds end)
-        door-xy-1         (find-door start-room-bounds start end)
-        door-xy-2         (find-door end-room-bounds end start)]
+        door-xy-1         (if (contains? junction-room-centers start)
+                            start
+                            (find-door start-room-bounds start end))
+        door-xy-2         (if (contains? junction-room-centers end)
+                            end
+                            (find-door end-room-bounds end start))]
     (println "start" start)
     (println "start-room-bounds" start-room-bounds)
     (println "end" end)
@@ -256,85 +279,27 @@
         lines    (map (fn [line] (map last (group-by first line))) lines-xy)]
     lines))
 
-(defn cellsxy-to-ascii [cells-xy]
-  "Convert a grid of cells into a list of string that can be rendered."
-  (let [contents (map (fn [line] (clojure.string/join
-                                      (map (fn [[x y cell]]
-                                        (if (nil? cell)
-                                            \ 
-                                            (case (cell :type)
-                                              :floor \.
-                                              :vertical-wall \|
-                                              :horizontal-wall \-
-                                              \?)))
-                                       line))) cells-xy)]
-    contents))
-
 (defn merge-cells
   "When merging cells, given their types, determine
    the type of the resulting cell."
   [cell1 cell2]
-  (case (cell1 :type)
-    :floor (case (cell2 :type)
-             :floor :floor
-             :horizontal-wall :floor
-             :vertical-wall :floor
-             :corridor :close-door
-             :close-door :floor
-             :up-stairs :up-stairs
-             :down-stairs :down-stairs
-             :nil :floor)
-    :horizontal-wall (case (cell2 :type)
-             :floor :floor
-             :horizontal-wall :horizontal-wall
-             :vertical-wall :horizontal-wall
-             :corridor :close-door
-             :close-door :close-door
-             :up-stairs :up-stairs
-             :down-stairs :down-stairs
-             :nil :horizontal-wall)
-    :vertical-wall (case (cell2 :type)
-             :floor :floor
-             :horizontal-wall :horizontal-wall
-             :vertical-wall :vertical-wall
-             :corridor :close-door
-             :close-door :close-door
-             :up-stairs :up-stairs
-             :down-stairs :down-stairs
-             :nil :vertical-wall)
-    :corridor (case (cell2 :type)
-             :floor :floor
-             :horizontal-wall :close-door
-             :vertical-wall :close-door
-             :corridor :corridor
-             :close-door :close-door
-             :up-stairs :up-stairs
-             :down-stairs :down-stairs
-             :nil :corridor)
-    :close-door (case (cell2 :type)
-             :floor :floor
-             :horizontal-wall :close-door
-             :vertical-wall :close-door
-             :corridor :corridor
-             :close-door :close-door
-             :up-stairs :up-stairs
-             :down-stairs :down-stairs
-             :nil :close-door)
-    :up-stairs (case (cell2 :type)
-             :floor :up-stairs
-             :horizontal-wall :up-stairs
-             :vertical-wall :up-stairs
-             :corridor :up-stairs
-             :close-door :up-stairs
-             :nil :up-stairs)
-    :down-stairs (case (cell2 :type)
-             :floor :down-stairs 
-             :horizontal-wall :down-stairs 
-             :vertical-wall :down-stairs 
-             :corridor :down-stairs 
-             :close-door :down-stairs 
-             :nil :down-stairs)
-    :nil (cell2 :type)))
+  (println "merging cells" cell1 "," cell2)
+  (let [cell1-type (get cell1 :type)
+        cell2-type (get cell2 :type)]
+    (cond
+      (or (and (= cell1-type :corridor)
+               (contains? #{:horizontal-wall :vertical-wall :close-door} cell2-type))
+          (and (= cell2-type :corridor)
+               (contains? #{:horizontal-wall :vertical-wall :close-door} cell1-type)))
+        :close-door
+      (= cell1-type :nil)
+        cell2-type
+      (= cell2-type :nil)
+        cell1-type
+      (= cell1-type cell2-type)
+        cell1-type
+      :else
+        (assert false (format "Trying to merge %s %s" (str cell1-type) (str cell2-type))))))
 
 (defn merge-with-canvas
   "Merge a grid of `[x y cell]` into an existing grid. The result is a merged grid
@@ -353,6 +318,11 @@
 (defn rand-int-range [min max]
   (+ (rand-int (- max min)) min))
 
+(defn room-bounds-to-center
+  [[x1 y1 x2 y2]]
+  [(int (/ (+ x1 x2) 2))
+   (int (/ (+ y1 y2) 2))])
+  
 (defn random-place
   "Create a grid of random rooms with corridors connecting them and doors
    where corridors connect to rooms."
@@ -374,13 +344,11 @@
                                       [x y (+ x width) (+ y height)]))
                                     (range columns)))
                              (range rows))
-        rooms        (mapcat #(apply room-to-cellsxy %) room-bounds)
+        ;rooms        (mapcat #(apply room-to-cellsxy %) room-bounds)
         room-centers-to-room-bounds
                      (reduce (fn [m room-bounds]
-                               (let [[x1 y1 x2 y2] room-bounds]
-                                 (assoc m [(int (/ (+ x1 x2) 2))
-                                           (int (/ (+ y1 y2) 2))]
-                                          room-bounds)))
+                               (assoc m (room-bounds-to-center room-bounds)
+                                        room-bounds))
                              {}
                              room-bounds)
         room-centers (keys room-centers-to-room-bounds)
@@ -389,12 +357,24 @@
         g            (graph-to-minimum-spanning-tree fcg)
         more-edges   (additional-edges min-width min-height room-centers g)
         g            (concat g more-edges)
-        ;; reduce over g
+        ;; set of room centers that are junction rooms
+        junction-rooms (find-junction-rooms g)
+        ;; merge room cells to canvas, skipping junction rooms
+        cells        (reduce (fn [cells room-bound]
+                               (println "room-bound" room-bound)
+                               (if (contains? junction-rooms (room-bounds-to-center room-bound))
+                                 cells
+                                 (let [room-cellsxy (apply room-to-cellsxy room-bound)]
+                                   (println "room-cellsxy" room-cellsxy)
+                                   (apply merge-with-canvas cells room-cellsxy))))
+                             (canvas width height)
+                             room-bounds)
+        ;; reduce over g, merging corridor cells to canvas
         cells        (reduce (fn [cells [start goal]]
-                               (let [points (make-corridor-points cells room-centers-to-room-bounds start goal)]
+                               (let [points (make-corridor-points cells room-centers-to-room-bounds junction-rooms start goal)]
                                  (println "corridor points" points)
                                  (apply merge-with-canvas cells (points-to-corridor points))))
-                             (apply merge-with-canvas (canvas width height) rooms)
+                             cells
                              g)
         upstairs     (conj [(first room-centers)] {:type :up-stairs})
         downstairs   (conj [(last room-centers)] {:type :down-stairs})]
@@ -416,11 +396,19 @@
                                         (if (nil? cell)
                                             \ 
                                             (case (cell :type)
-                                              :floor \.
-                                              :vertical-wall \|
-                                              :horizontal-wall \-
-                                              :close-door \+
+                                              :floor \·
                                               :corridor \#
+                                              :vertical-wall \║
+                                              :horizontal-wall \═
+                                              :upper-left-1 \╔
+                                              :upper-right-1 \╗
+                                              :bottom-left-1 \╚
+                                              :bottom-right-1 \╝
+                                              :upper-left-2 \◙
+                                              :upper-right-2 \◙
+                                              :bottom-left-2 \◙
+                                              :bottom-right-2 \◙
+                                              :close-door \+
                                               :up-stairs \<
                                               :down-stairs \>
                                               (str (cell :type)))))

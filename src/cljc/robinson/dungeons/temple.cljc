@@ -1,6 +1,8 @@
 ;; Functions for randomly generating maps.
 (ns robinson.dungeons.temple
   (:require [robinson.common :as rc]
+            [robinson.random :as rr]
+            [robinson.noise :as rn]
             [robinson.lineofsight :as rlos]
             [clojure.math.combinatorics :as combo]
             [algotools.algos.graph :as graph]
@@ -75,7 +77,80 @@
 (defn points-to-corridor
   "Convert a sequence of points `[x y]` into `[x y {:type :corridor}]`."
   [points]
-  (map (fn [[x y]] [x y {:type :corridor}]) points))
+  (let [moss-noise (rn/create-noise (rr/create-random 3))]
+    (map (fn [[x y]] 
+           (let [moss-probability (rn/noise moss-noise (/ x 10.0) (/ y 10.0))
+                 cell-type        (cond
+                                    (> moss-probability 0.7)
+                                      :moss-corridor
+                                    (< moss-probability 0.2)
+                                      :white-corridor
+                                    :else
+                                      :corridor)]
+             [x y {:type cell-type}]))
+         points)))
+
+(defn add-room-features
+  [cells-xy]
+  (let [xy->cell      (into {} (map (fn [[x y cell]] [[x y] cell]) cells-xy))
+        xy->cell-type (fn xy->cell-type [x y] (-> [x y] xy->cell (get :type)))
+        seed          1
+        vine-noise    (rn/create-noise (rr/create-random seed))
+        water-noise   (rn/create-noise (rr/create-random (inc seed)))
+        grass-noise   (rn/create-noise (rr/create-random (+ seed 2)))
+        moss-noise    (rn/create-noise (rr/create-random (+ seed 2)))]
+    (map (fn [[x y cell]]
+           (let [moss-probability (rn/noise grass-noise (/ x 10.0) (/ y 10.0))]
+             (case (get cell :type)
+               :floor
+                 (let [vine-probability  (rn/noise vine-noise (/ x 10.0) (/ y 10.0))
+                       water-probability (rn/noise water-noise (/ x 10.0) (/ y 10.0))
+                       grass-probability (rn/noise grass-noise (/ x 10.0) (/ y 10.0))
+                       [max-type max-p]  (reduce (fn [[max-type max-p] [cell-type p]]
+                                                   (if (> p max-p)
+                                                     [cell-type p]
+                                                     [max-type max-p]))
+                                                 [:vine vine-probability]
+                                                 [[:shallow-water water-probability]
+                                                  [:grass grass-probability]])]
+                   (if (or (and (= max-type :vine) (> max-p 0.85))
+                           (> max-p 0.8))
+                     [x y (assoc cell :type max-type)]
+                     [x y cell]))
+               (cond
+                 (> moss-probability 0.7)
+                   [x y (assoc cell :type (case (get cell :type)
+                                            :vertical-wall       :moss-vertical-wall
+                                            :horizontal-wall     :moss-horizontal-wall 
+                                            :vertical-wall-alt   :moss-vertical-wall-alt 
+                                            :horizontal-wall-alt :moss-horizontal-wall-alt 
+                                            :upper-left-1        :moss-upper-left-1 
+                                            :upper-right-1       :moss-upper-right-1 
+                                            :bottom-left-1       :moss-bottom-left-1 
+                                            :bottom-right-1      :moss-bottom-right-1 
+                                            :upper-left-2        :moss-upper-left-2 
+                                            :upper-right-2       :moss-upper-right-2 
+                                            :bottom-left-2       :moss-bottom-left-2 
+                                            :bottom-right-2      :moss-bottom-right-2
+                                            (get cell :type)))]
+                 (< moss-probability 0.2)
+                   [x y (assoc cell :type (case (get cell :type)
+                                            :vertical-wall       :white-vertical-wall
+                                            :horizontal-wall     :white-horizontal-wall 
+                                            :vertical-wall-alt   :white-vertical-wall-alt 
+                                            :horizontal-wall-alt :white-horizontal-wall-alt 
+                                            :upper-left-1        :white-upper-left-1 
+                                            :upper-right-1       :white-upper-right-1 
+                                            :bottom-left-1       :white-bottom-left-1 
+                                            :bottom-right-1      :white-bottom-right-1 
+                                            :upper-left-2        :white-upper-left-2 
+                                            :upper-right-2       :white-upper-right-2 
+                                            :bottom-left-2       :white-bottom-left-2 
+                                            :bottom-right-2      :white-bottom-right-2
+                                            (get cell :type)))]
+                 :else
+                   [x y cell]))))
+         cells-xy)))
 
 (defn room-to-cellsxy
   "Convert the bounds of a room into a list of points that represent the room."
@@ -85,14 +160,48 @@
                   [max-x min-y {:type (if alternate-corners? :upper-right-2 :upper-right-1)}]
                   [min-x max-y {:type (if alternate-corners? :bottom-left-2 :bottom-left-1)}]
                   [max-x max-y {:type (if alternate-corners? :bottom-right-2 :bottom-right-1)}]]]
-        top    [(map (fn [x] [x min-y {:type :horizontal-wall}]) (range (inc min-x) max-x))]
-        bottom [(map (fn [x] [x max-y {:type :horizontal-wall}]) (range (inc min-x) max-x))]
+        wall-greeble? (< 0.7 (rand))
+        [direction
+         location] (if wall-greeble?
+                     (if (> 0.5 (rand))
+                       [:horizontal (set (take (inc (rand-int 2)) (shuffle (range (inc min-x) max-x))))]
+                       [:vertical   (set (take (inc (rand-int 2)) (shuffle (range (inc min-y) max-y))))])
+                     [nil nil])
+        top    [(map (fn [x]
+                       [x min-y {:type :horizontal-wall}])
+                     (range (inc min-x) max-x))]
+        bottom [(map (fn [x]
+                       [x max-y {:type :horizontal-wall}])
+                     (range (inc min-x) max-x))]
+       ;; make one middle line template
         middle-line (concat [[min-x {:type :vertical-wall}]]
                             (vec (map (fn [x] [x {:type :floor}]) (range (inc min-x) max-x)))
                             [[max-x {:type :vertical-wall}]])
-        middle-lines (vec (map (fn [y] (map (fn [[x cell]] [x y cell]) middle-line)) (range (inc min-y) max-y)))
-        lines (concat corners top middle-lines bottom)]
-    (apply concat lines)))
+        ;; duplicate it
+        middle-lines (vec (map (fn [y]
+                                 (map (fn [[x cell]]
+                                        [x y cell])
+                                      middle-line))
+                               (range (inc min-y) max-y)))
+        cellsxy (apply concat (concat corners top middle-lines bottom))
+        ;; add greeble
+        cellsxy (map (fn [[x y cell]]
+                       (if wall-greeble?
+                         (cond
+                           (and (= direction :horizontal)
+                                (= (get cell :type) :horizontal-wall)
+                                (contains? location x))
+                             [x y (assoc cell :type :horizontal-wall-alt)]
+                           (and (= direction :vertical)
+                                (= (get cell :type) :vertical-wall)
+                                (contains? location y))
+                             [x y (assoc cell :type :vertical-wall-alt)]
+                           :else
+                           [x y cell])
+                         [x y cell]))
+                      cellsxy)
+        cellsxy (add-room-features cellsxy)]
+   cellsxy))
 
 (defn points-to-fully-connected-graph
   [points]
@@ -287,10 +396,14 @@
   (let [cell1-type (get cell1 :type)
         cell2-type (get cell2 :type)]
     (cond
-      (or (and (= cell1-type :corridor)
-               (contains? #{:horizontal-wall :vertical-wall :close-door} cell2-type))
-          (and (= cell2-type :corridor)
-               (contains? #{:horizontal-wall :vertical-wall :close-door} cell1-type)))
+      (or (and (contains? #{:corridor :moss-corridor :white-corridor} cell1-type)
+               (contains? #{:horizontal-wall :horizontal-wall-alt :vertical-wall :vertical-wall-alt :close-door
+                            :moss-horizontal-wall :moss-horizontal-wall-alt :moss-vertical-wall :moss-vertical-wall-alt
+                            :white-horizontal-wall :white-horizontal-wall-alt :white-vertical-wall :white-vertical-wall-alt} cell2-type))
+          (and (contains? #{:corridor :moss-corridor :white-corridor} cell2-type)
+               (contains? #{:horizontal-wall :horizontal-wall-alt :vertical-wall :vertical-wall-alt :close-door
+                            :moss-horizontal-wall :moss-horizontal-wall-alt :moss-vertical-wall :moss-vertical-wall-alt
+                            :white-horizontal-wall :white-horizontal-wall-alt :white-vertical-wall :white-vertical-wall-alt} cell2-type)))
         :close-door
       (= cell1-type :nil)
         cell2-type
@@ -397,20 +510,54 @@
                                             \ 
                                             (case (cell :type)
                                               :floor \·
-                                              :corridor \#
-                                              :vertical-wall \║
-                                              :horizontal-wall \═
-                                              :upper-left-1 \╔
-                                              :upper-right-1 \╗
-                                              :bottom-left-1 \╚
-                                              :bottom-right-1 \╝
-                                              :upper-left-2 \◙
-                                              :upper-right-2 \◙
-                                              :bottom-left-2 \◙
-                                              :bottom-right-2 \◙
+                                              :corridor "\033[38;2;191;171;143m#\033[0m"
+                                              ;:vertical-wall \║
+                                              :vertical-wall "\033[38;2;191;171;143m║\033[0m"
+                                              :horizontal-wall "\033[38;2;191;171;143m═\033[0m"
+                                              :vertical-wall-alt \°
+                                              :horizontal-wall-alt \°
+                                              :upper-left-1 "\033[38;2;191;171;143m╔\033[0m"
+                                              :upper-right-1 "\033[38;2;191;171;143m╗\033[0m"
+                                              :bottom-left-1 "\033[38;2;191;171;143m╚\033[0m"
+                                              :bottom-right-1 "\033[38;2;191;171;143m╝\033[0m"
+                                              :upper-left-2 "\033[38;2;191;171;143m◙\033[0m"
+                                              :upper-right-2 "\033[38;2;191;171;143m◙\033[0m"
+                                              :bottom-left-2 "\033[38;2;191;171;143m◙\033[0m"
+                                              :bottom-right-2 "\033[38;2;191;171;143m◙\033[0m"
                                               :close-door \+
+                                              ;:shallow-water \~
+                                              :shallow-water "\033[38;2;1;217;163m~\033[0m"
+                                              :grass "\033[38;2;1;140;1m\"\033[0m"
+                                              ;:vine \⌠
+                                              :vine "\033[38;2;1;140;1m⌠\033[0m"
                                               :up-stairs \<
                                               :down-stairs \>
+                                              :moss-corridor "\033[38;2;1;140;1m#\033[0m"
+                                              :moss-vertical-wall "\033[38;2;1;140;1m║\033[0m"
+                                              :moss-horizontal-wall  "\033[38;2;1;140;1m═\033[0m"
+                                              :moss-vertical-wall-alt  "\033[38;2;1;140;1m°\033[0m"
+                                              :moss-horizontal-wall-alt  "\033[38;2;1;140;1m°\033[0m"
+                                              :moss-upper-left-1  "\033[38;2;1;140;1m╔\033[0m"
+                                              :moss-upper-right-1  "\033[38;2;1;140;1m╗\033[0m"
+                                              :moss-bottom-left-1  "\033[38;2;1;140;1m╚\033[0m"
+                                              :moss-bottom-right-1  "\033[38;2;1;140;1m╝\033[0m"
+                                              :moss-upper-left-2  "\033[38;2;1;140;1m◙\033[0m"
+                                              :moss-upper-right-2  "\033[38;2;1;140;1m◙\033[0m"
+                                              :moss-bottom-left-2  "\033[38;2;1;140;1m◙\033[0m"
+                                              :moss-bottom-right-2 "\033[38;2;1;140;1m◙\033[0m"
+                                              :white-corridor "#"
+                                              :white-vertical-wall "║"
+                                              :white-horizontal-wall  "═"
+                                              :white-vertical-wall-alt  "°"
+                                              :white-horizontal-wall-alt  "°"
+                                              :white-upper-left-1  "╔"
+                                              :white-upper-right-1  "╗"
+                                              :white-bottom-left-1  "╚"
+                                              :white-bottom-right-1  "╝"
+                                              :white-upper-left-2  "◙"
+                                              :white-upper-right-2  "◙"
+                                              :white-bottom-left-2  "◙"
+                                              :white-bottom-right-2 "◙"
                                               (str (cell :type)))))
                                        line))) place)]
     contents))

@@ -90,6 +90,10 @@
              [x y {:type cell-type}]))
          points)))
 
+(defn make-chest-items
+  []
+  [])
+
 (defn add-room-features
   [cells-xy]
   (let [xy->cell      (into {} (map (fn [[x y cell]] [[x y] cell]) cells-xy))
@@ -113,10 +117,15 @@
                                                  [:vine vine-probability]
                                                  [[:shallow-water water-probability]
                                                   [:grass grass-probability]])]
-                   (if (or (and (= max-type :vine) (> max-p 0.85))
-                           (> max-p 0.8))
-                     [x y (assoc cell :type max-type)]
-                     [x y cell]))
+                   (cond
+                     (or (and (= max-type :vine) (> max-p 0.85))
+                         (> max-p 0.8))
+                       [x y (assoc cell :type max-type)]
+                     (> (rand) 0.90)
+                       [x y (rand-nth [{:type :chest :items (make-chest-items)}
+                                       {:type :altar}])]
+                     :else
+                       [x y cell]))
                (cond
                  (> moss-probability 0.7)
                    [x y (assoc cell :type (case (get cell :type)
@@ -489,8 +498,16 @@
                                  (apply merge-with-canvas cells (points-to-corridor points))))
                              cells
                              g)
-        upstairs     (conj [(first room-centers)] {:type :up-stairs})
-        downstairs   (conj [(last room-centers)] {:type :down-stairs})]
+        [[upstairs-x upstairs-y]] (shuffle (clojure.set/difference (set room-centers) junction-rooms))
+        [[downstairs-x downstairs-y]] (shuffle (filter (fn [[x y]]
+                                                         (rc/farther-than?
+                                                           (rc/xy->pos x y)
+                                                           (rc/xy->pos upstairs-x upstairs-y)
+                                                           (/ (min width height) 2.0)))
+                                                       (clojure.set/difference (set room-centers) junction-rooms)))
+        cells        (-> cells
+                       (assoc-in [upstairs-y upstairs-x :type] :up-stairs)
+                       (assoc-in [downstairs-y downstairs-x :type] :down-stairs))]
     ;(println "fcg" fcg)
     (println "g" g)
     (println "more-edges" more-edges)
@@ -498,8 +515,8 @@
     ;(println (vec rooms))
     {:place cells #_(apply merge-with-canvas (canvas width height)
                      (concat corridors rooms))
-     :up-stairs upstairs
-     :down-stairs downstairs}))
+     #_#_:up-stairs upstairs
+     #_#_:down-stairs downstairs}))
 
 (defn place-to-ascii
   "Convert a grid of cells into a list of strings so that it can be rendered."
@@ -525,6 +542,8 @@
                                               :bottom-left-2 "\033[38;2;191;171;143m◙\033[0m"
                                               :bottom-right-2 "\033[38;2;191;171;143m◙\033[0m"
                                               :close-door \+
+                                              :altar \┬
+                                              :chest "\033[38;2;124;97;45m■\033[0m"
                                               ;:shallow-water \~
                                               :shallow-water "\033[38;2;1;217;163m~\033[0m"
                                               :grass "\033[38;2;1;140;1m\"\033[0m"

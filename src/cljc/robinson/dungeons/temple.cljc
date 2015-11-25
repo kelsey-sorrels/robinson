@@ -116,7 +116,7 @@
                                                      [max-type max-p]))
                                                  [:vine vine-probability]
                                                  [[:shallow-water water-probability]
-                                                  [:grass grass-probability]])]
+                                                  [:tall-grass grass-probability]])]
                    (cond
                      (or (and (= max-type :vine) (> max-p 0.85))
                          (> max-p 0.8))
@@ -397,7 +397,7 @@
         lines    (map (fn [line] (map last (group-by first line))) lines-xy)]
     lines))
 
-(defn merge-cells
+(defn merge-cell-types
   "When merging cells, given their types, determine
    the type of the resulting cell."
   [cell1 cell2]
@@ -429,12 +429,12 @@
 
 (defn merge-with-canvas
   "Merge a grid of `[x y cell]` into an existing grid. The result is a merged grid
-   following the rules of `merge-cells`."
+   following the rules of `merge-cell-types`."
   [canvas & cells-xy]
   (let [f (apply comp (map (fn [[x y cell]]
                              (fn [c] (update-in c [y x]
                                (fn [canvas-cell]
-                                 {:type (merge-cells (if (nil? cell) {:type :nil} cell)
+                                 {:type (merge-cell-types (if (nil? cell) {:type :nil} cell)
                                               (if (nil? canvas-cell) {:type :nil} canvas-cell))}))))
                            cells-xy))
         cells (f canvas)]
@@ -452,7 +452,7 @@
 (defn random-place
   "Create a grid of random rooms with corridors connecting them and doors
    where corridors connect to rooms."
-  [width height]
+  [width height level]
   (let [num-rooms 19
         min-width 3
         min-height 3
@@ -552,7 +552,7 @@
                                               :chest "\033[38;2;124;97;45m■\033[0m"
                                               ;:shallow-water \~
                                               :shallow-water "\033[38;2;1;217;163m~\033[0m"
-                                              :grass "\033[38;2;1;140;1m\"\033[0m"
+                                              :tall-grass "\033[38;2;1;140;1m\"\033[0m"
                                               ;:vine \⌠
                                               :vine "\033[38;2;1;140;1m⌠\033[0m"
                                               :up-stairs \<
@@ -591,10 +591,32 @@
   [cells]
   (doall (map println (place-to-ascii cells))))
   
+(defn merge-cells
+  [cells]
+  (let [temple-place (random-place 80 25 0)]
+    (mapv (fn [line temple-line y]
+            (mapv (fn [cell temple-cell x]
+                   (let [cell-type (get cell :type)
+                         is-corridor (contains? #{:corridor :moss-corridor :white-corridor} (get temple-cell :type))]
+                     (if is-corridor
+                       {:type (case (get temple-cell :type)
+                                :corridor
+                                  :dirt
+                                :moss-corridor
+                                  :short-grass
+                                :white-corridor
+                                  :gravel)}
+                       (or temple-cell cell))))
+                  line
+                  temple-line
+                  (range)))
+          cells
+          (get temple-place :cells)
+          (range))))
 
 (defn -main
   "Generate a random grid and print it out."
   [& args]
   (println "generating...")
-  (print-cells (get (random-place 80 25) :cells)))
+  (print-cells (get (random-place 80 25 0) :cells)))
 

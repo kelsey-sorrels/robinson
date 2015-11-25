@@ -87,6 +87,8 @@
    :light-green [163 206 39]
    :green       [68 137 26];(vec (tinter/hex-str-to-dec "81D300"))
    :dark-green  (vec (tinter/hex-str-to-dec "406900"))
+   :moss-green  [1 140 1]
+   :temple-beige [191 171 143]
    :blue-green  [55 148 110];(vec (tinter/hex-str-to-dec "19B4D7"))
    :blue        [0 87 132];(vec (tinter/hex-str-to-dec "00ACD3"))
    :light-blue  [203 219 252];(vec (tinter/hex-str-to-dec "19B4D7"))
@@ -1266,8 +1268,6 @@
                                                               :navy-uniform    ["["]
                                                               ["?"]))
                                                           (case (cell :type)
-                                                           :vertical-wall   ["|"]
-                                                           :horizontal-wall ["-"]
                                                            :floor           ["·"]
                                                            :open-door       ["-"  :brown  :black #{:bold}]
                                                            :close-door      ["+"  :brown  :black #{:bold}]
@@ -1350,6 +1350,48 @@
                                                            :porthole        ["°" :brown :black]
                                                            :chest           ["■" :ship-dark-brown :black]
                                                            :artifact-chest  ["■" :dark-beige :black]
+                                                           ;; ruined temple cell types
+                                                           :vertical-wall   ["║" :temple-beige :black]
+                                                           :horizontal-wall ["═" :temple-beige :black]
+                                                           :vertical-wall-alt ["°" :white :black]
+                                                           :horizontal-wall-alt ["°" :white :black]
+                                                           :upper-left-1 ["╔" :temple-beige :black]
+                                                           :upper-right-1 ["╗" :temple-beige :black]
+                                                           :bottom-left-1 ["╚" :temple-beige :black]
+                                                           :bottom-right-1 ["╝" :temple-beige :black]
+                                                           :upper-left-2 ["◙":temple-beige :black]
+                                                           :upper-right-2 ["◙":temple-beige :black]
+                                                           :bottom-left-2 ["◙":temple-beige :black]
+                                                           :bottom-right-2 ["◙":temple-beige :black]
+                                                           :altar          ["┬" :white :black]
+                                                           :vine           ["⌠" :moss-green :black]
+                                                           :moss-corridor  ["#" :moss-green :black]
+                                                           :moss-vertical-wall   ["║" :moss-green :black]
+                                                           :moss-horizontal-wall ["═" :moss-green :black]
+                                                           :moss-vertical-wall-alt ["°" :white :black]
+                                                           :moss-horizontal-wall-alt ["°" :white :black]
+                                                           :moss-upper-left-1 ["╔" :moss-green :black]
+                                                           :moss-upper-right-1 ["╗" :moss-green :black]
+                                                           :moss-bottom-left-1 ["╚" :moss-green :black]
+                                                           :moss-bottom-right-1 ["╝" :moss-green :black]
+                                                           :moss-upper-left-2 ["◙":moss-green :black]
+                                                           :moss-upper-right-2 ["◙":moss-green :black]
+                                                           :moss-bottom-left-2 ["◙":moss-green :black]
+                                                           :moss-bottom-right-2 ["◙":moss-green :black]
+                                                           :white-corridor  ["#" :white :black]
+                                                           :white-vertical-wall   ["║" :white :black]
+                                                           :white-horizontal-wall ["═" :white :black]
+                                                           :white-vertical-wall-alt ["°" :white :black]
+                                                           :white-horizontal-wall-alt ["°" :white :black]
+                                                           :white-upper-left-1 ["╔" :white :black]
+                                                           :white-upper-right-1 ["╗" :white :black]
+                                                           :white-bottom-left-1 ["╚" :white :black]
+                                                           :white-bottom-right-1 ["╝" :white :black]
+                                                           :white-upper-left-2 ["◙":white :black]
+                                                           :white-upper-right-2 ["◙":white :black]
+                                                           :white-bottom-left-2 ["◙":white :black]
+                                                           :white-bottom-right-2 ["◙":white :black]
+                                              
                                                            (do (log/info (format "unknown type: %s %s" (str (get cell :type)) (str cell)))
                                                            ["?"])))))
                                            shaded-out-char (cond

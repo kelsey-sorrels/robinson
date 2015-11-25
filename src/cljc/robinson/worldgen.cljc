@@ -14,6 +14,7 @@
             [robinson.lineofsight :as rlos]
             [robinson.npc :as rnpc]
             [robinson.dungeons.pirateship :as psg]
+            [robinson.dungeons.temple :as tg]
             #?@(:clj (
                 [robinson.macros :as rm]
                 [taoensso.nippy :as nippy]
@@ -341,7 +342,7 @@
         encounter             (if (and starting-pos
                                        (rc/farther-than? starting-pos player-pos 80))
                                 :normal
-                                (rand-nth [:normal :pirate-ship]))]
+                                (rand-nth [:normal :pirate-ship :temple]))]
     {:seed seed
      :pos {:x x :y y}
      :spawned-monsters {}
@@ -350,7 +351,9 @@
                           :normal
                             cells
                           :pirate-ship
-                            (psg/merge-cells cells)))}))
+                            (psg/merge-cells cells)
+                          :temple
+                            (tg/merge-cells cells)))}))
 
 (defn init-world
   "Create a randomly generated world.
@@ -485,8 +488,11 @@
                     (nippy/thaw-from-in! (DataInputStream. o)))
                   (case place-type
                     :pirate-ship
-                      ;; TODO: pass appropriate args
+                      ;; pass appropriate args
                       (apply psg/random-place gen-args)
+                    :temple
+                      ;; pass appropriate args
+                      (apply tg/random-place gen-args)
                     (assert "Unknown place-type" place-type)))]
       [(assoc-in state [:world :places id] place)
        id])))

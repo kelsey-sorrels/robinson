@@ -49,7 +49,7 @@
   "Takes a room and returns an [x y] of a door on the edge of the room."
   [[x-min y-min x-max y-max] start end]
   (let [side         (find-point-relation start end)]
-    (println "find-door" start end side)
+    ;(println "find-door" start end side)
     (rand-nth (case side
                 :left
                   (map (fn [i] [x-min i]) (range (inc y-min) y-max))
@@ -265,7 +265,7 @@
                                                        [room-center-2 room-center-1])))
                                               g)))]
                    [room-center-1 room-center-2]))]
-    (println "all extra edges" (reduce (fn [edges [[x1 y1] [x2 y2]]]
+    #_(println "all extra edges" (reduce (fn [edges [[x1 y1] [x2 y2]]]
                                          (conj edges [[x1 y1] [x2 y2] (rc/chebyshev-distance (rc/xy->pos x1 y1) (rc/xy->pos x2 y2))]))
                                        []
                                        edges))
@@ -281,7 +281,7 @@
                        edges)
        junctions (keys (into {} (filter (fn [[_ connections]] (> connections 2))
                                         counts)))]
-    (println "junctions" junctions)
+    #_(println "junctions" junctions)
     (set (take 2 junctions))))
 
 (defn vertical-or-horizontally-aligned?
@@ -293,7 +293,7 @@
         *
         ******x"
   [[x1 y1] [x2 y2]]
-  (println "horizontal-s-segment")
+  #_(println "horizontal-s-segment")
   (let [mid-x (int (/ (+ x1 x2) 2))]
     (concat (map #(vector % y1)    (range* x1 mid-x))
             (map #(vector mid-x %) (range* y1 y2))
@@ -308,7 +308,7 @@
           *
           x"
   [[x1 y1] [x2 y2]]
-  (println "vertical-s-segment")
+  #_(println "vertical-s-segment")
   (let [mid-y (int (/ (+ y1 y2) 2))]
     (concat (map #(vector x1 %)    (range* y1 mid-y))
             (map #(vector % mid-y) (range* x1 x2))
@@ -320,7 +320,7 @@
      *
      *****x"
   [[x1 y1] [x2 y2]]
-  (println "vertical-corner-segment")
+  #_(println "vertical-corner-segment")
   (concat (map #(vector x1 %) (range* y1 y2))
           (map #(vector % y2) (range* x1 x2))))
 
@@ -330,7 +330,7 @@
           *
           x"
   [[x1 y1] [x2 y2]]
-  (println "horizontal-corner-segment")
+  #_(println "horizontal-corner-segment")
   (concat (map #(vector x1 %) (range* y1 y2))
           (map #(vector % y2) (range* x1 x2))))
 
@@ -353,7 +353,7 @@
   [from from-type to to-type]
   {:pre [(contains? #{:vertical :horizontal} from-type)
          (contains? #{:vertical :horizontal} to-type)]}
-  (println "multi-part-segment" from-type to-type)
+  #_(println "multi-part-segment" from-type to-type)
   (cond
     (= from-type to-type :horizontal)
       (vertical-s-segment from to)
@@ -375,12 +375,12 @@
         door-xy-2         (if (contains? junction-room-centers end)
                             end
                             (find-door end-room-bounds end start))]
-    (println "start" start)
-    (println "start-room-bounds" start-room-bounds)
-    (println "end" end)
-    (println "end-room-bounds"end-room-bounds)
-    (println "door-1" door-xy-1)
-    (println "door-2" door-xy-2)
+    ;(println "start" start)
+    ;(println "start-room-bounds" start-room-bounds)
+    ;(println "end" end)
+    ;(println "end-room-bounds"end-room-bounds)
+    ;(println "door-1" door-xy-1)
+    ;(println "door-2" door-xy-2)
     (cond
       (vertical-or-horizontally-aligned? door-xy-1 door-xy-2)
         (rlos/line-segment door-xy-1 door-xy-2)
@@ -401,19 +401,23 @@
   "When merging cells, given their types, determine
    the type of the resulting cell."
   [cell1 cell2]
-  (println "merging cells" cell1 "," cell2)
+  ;(println "merging cells" cell1 "," cell2)
   (let [cell1-type (get cell1 :type)
         cell2-type (get cell2 :type)]
     (cond
       (or (and (contains? #{:corridor :moss-corridor :white-corridor} cell1-type)
-               (contains? #{:horizontal-wall :horizontal-wall-alt :vertical-wall :vertical-wall-alt :close-door
+               (contains? #{:horizontal-wall :horizontal-wall-alt :vertical-wall :vertical-wall-alt :close-door :open-door
                             :moss-horizontal-wall :moss-horizontal-wall-alt :moss-vertical-wall :moss-vertical-wall-alt
-                            :white-horizontal-wall :white-horizontal-wall-alt :white-vertical-wall :white-vertical-wall-alt} cell2-type))
+                            :white-horizontal-wall :white-horizontal-wall-alt :white-vertical-wall :white-vertical-wall-alt}
+                          cell2-type))
           (and (contains? #{:corridor :moss-corridor :white-corridor} cell2-type)
-               (contains? #{:horizontal-wall :horizontal-wall-alt :vertical-wall :vertical-wall-alt :close-door
+               (contains? #{:horizontal-wall :horizontal-wall-alt :vertical-wall :vertical-wall-alt :close-door :open-door
                             :moss-horizontal-wall :moss-horizontal-wall-alt :moss-vertical-wall :moss-vertical-wall-alt
-                            :white-horizontal-wall :white-horizontal-wall-alt :white-vertical-wall :white-vertical-wall-alt} cell2-type)))
-        :close-door
+                            :white-horizontal-wall :white-horizontal-wall-alt :white-vertical-wall :white-vertical-wall-altr}
+                          cell2-type)))
+        (rand-nth [:close-door :open-door :corridor :moss-corridor :white-corridor])
+      (every? #{:corridor :moss-corridor :white-corridor} [cell1-type cell2-type])
+        cell1-type
       (= cell1-type :nil)
         cell2-type
       (= cell2-type :nil)
@@ -513,8 +517,9 @@
     (println "more-edges" more-edges)
     ;(println (vec room-bounds))
     ;(println (vec rooms))
-    {:place cells #_(apply merge-with-canvas (canvas width height)
-                     (concat corridors rooms))
+    {:cells cells 
+     :movement :fixed
+     :npcs []
      #_#_:up-stairs upstairs
      #_#_:down-stairs downstairs}))
 
@@ -541,6 +546,7 @@
                                               :upper-right-2 "\033[38;2;191;171;143m◙\033[0m"
                                               :bottom-left-2 "\033[38;2;191;171;143m◙\033[0m"
                                               :bottom-right-2 "\033[38;2;191;171;143m◙\033[0m"
+                                              :open-door \'
                                               :close-door \+
                                               :altar \┬
                                               :chest "\033[38;2;124;97;45m■\033[0m"
@@ -590,5 +596,5 @@
   "Generate a random grid and print it out."
   [& args]
   (println "generating...")
-  (print-cells (get (random-place 80 25) :place)))
+  (print-cells (get (random-place 80 25) :cells)))
 

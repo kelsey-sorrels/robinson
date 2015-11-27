@@ -340,6 +340,7 @@
     :mast
     :porthole
     ;; ruined temple types
+    :empty
     :vertical-wall-alt
     :horizontal-wall-alt
     :upper-left-1

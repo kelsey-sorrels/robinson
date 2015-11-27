@@ -1391,6 +1391,7 @@
                                                            :white-upper-right-2 ["◙":white :black]
                                                            :white-bottom-left-2 ["◙":white :black]
                                                            :white-bottom-right-2 ["◙":white :black]
+                                                           :empty                [" " :black :black]
                                               
                                                            (do (log/info (format "unknown type: %s %s" (str (get cell :type)) (str cell)))
                                                            ["?"])))))

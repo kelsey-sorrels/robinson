@@ -418,7 +418,43 @@
                :ships-wheel
                :porthole
                :chest
-               :railing} t))
+               :railing
+               ;; ruined temple types
+               :empty
+               :vertical-wall-alt
+               :horizontal-wall-alt
+               :upper-left-1
+               :upper-right-1
+               :bottom-left-1
+               :bottom-right-1
+               :upper-left-2
+               :upper-right-2
+               :bottom-left-2
+               :bottom-right-2
+               :moss-vertical-wall
+               :moss-horizontal-wall
+               :moss-vertical-wall-alt
+               :moss-horizontal-wall-alt
+               :moss-upper-left-1
+               :moss-upper-right-1
+               :moss-bottom-left-1
+               :moss-bottom-right-1
+               :moss-upper-left-2
+               :moss-upper-right-2
+               :moss-bottom-left-2
+               :moss-bottom-right-2
+               :white-vertical-wall
+               :white-horizontal-wall
+               :white-vertical-wall-alt
+               :white-horizontal-wall-alt
+               :white-upper-left-1
+               :white-upper-right-1
+               :white-bottom-left-1
+               :white-bottom-right-1
+               :white-upper-left-2
+               :white-upper-right-2
+               :white-bottom-left-2
+               :white-bottom-right-2} t))
 
 (defn type->water?
   [t]

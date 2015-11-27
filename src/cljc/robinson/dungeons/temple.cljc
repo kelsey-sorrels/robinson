@@ -4,13 +4,13 @@
             [robinson.random :as rr]
             [robinson.noise :as rn]
             [robinson.lineofsight :as rlos]
+            [robinson.world :as rw]
+            [robinson.monstergen :as mg]
             [clojure.math.combinatorics :as combo]
             [algotools.algos.graph :as graph]
             [taoensso.timbre :as log]
             algotools.data.union-find
             clojure.set))
-
-(timbre/refer-timbre)
 
 (declare print-cells)
 
@@ -64,14 +64,14 @@
   "Generate a random set of edges between rooms such that each room
    is traversable from every other room."
   [nodes]
-  (let [_ (trace "all nodes" nodes)
+  (let [_ (log/trace "all nodes" nodes)
         minimum-edges (map vector nodes (rest nodes))
         all-edges (combo/combinations nodes 2)
-        _ (trace "all edges" all-edges)
-        _ (trace "minimum-edges" minimum-edges)
+        _ (log/trace "all edges" all-edges)
+        _ (log/trace "minimum-edges" minimum-edges)
         random-edges (map vec (take (/ (count nodes) 2) (shuffle all-edges)))
         union-edges  (distinct (concat minimum-edges random-edges))]
-    (trace "union-edges" union-edges)
+    (log/trace "union-edges" union-edges)
     union-edges))
 
 (defn points-to-corridor
@@ -449,13 +449,37 @@
   [(int (/ (+ x1 x2) 2))
    (int (/ (+ y1 y2) 2))])
 
+(defn level->monster-probabilities
+  [level]
+  (get {1 [1 :spider
+           1 :gecko]
+        2 [1 :spider
+           1 :gecko]
+        3 [1 :mosquito
+           1 :snake
+           1 :spider]
+        4 [1 :cobra
+           1 :tarantula]
+        5 [1 :cobra
+           1 :tarantula]
+        6 [1 :cobra
+           1 :tarantula]
+        7 [1 :monkey
+           1 :centipede]
+        8 [1 :monkey
+           1 :centipede]}
+       level))
+
+(defn make-boss-npcs [cells boss-type]
+  cells)
+
 (defn make-npcs [cells level]
   (let [monster-probabilities (partition 2 (level->monster-probabilities level))]
   (log/info "monster-probabilities" monster-probabilities)
   (reduce (fn [npcs [_ x y]]
             (conj npcs (assoc (mg/id->monster (rr/rand-weighted-nth monster-probabilities))
                               :pos (rc/xy->pos x y))))
-          (if (= level 3)
+          (if (= level 8)
             (make-boss-npcs cells (rand-nth [:eels :giant-rat :giant-lizard]))
             [])
           (take 10

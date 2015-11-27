@@ -6,7 +6,7 @@
             [robinson.lineofsight :as rlos]
             [clojure.math.combinatorics :as combo]
             [algotools.algos.graph :as graph]
-            [taoensso.timbre :as timbre]
+            [taoensso.timbre :as log]
             algotools.data.union-find
             clojure.set))
 
@@ -21,9 +21,9 @@
 (defn canvas
   "Create a blank grid using `nil` for cell values."
   [width height]
-  (vec (repeat height (vec (repeat width nil)))))
+  (vec (repeat height (vec (repeat width {:type :empty})))))
 
-(defn find-point-relation [[start-x start-y] [end-x end-y]]
+(defn find-point-relation [width height [start-x start-y] [end-x end-y]]
   "  top
     \\    /
      \\  /
@@ -32,8 +32,8 @@
      /  \\
     /    \\
     bottom"
-  (let [left-bottom  (> (- end-y start-y) (- end-x start-x))
-        bottom-right (> (- end-y start-y) (* -1 (- end-x start-x)))]
+  (let [left-bottom  (> (- end-y start-y) (* (/ height width) (- end-x start-x)))
+        bottom-right (> (- end-y start-y) (* -1 (/ height width) (- end-x start-x)))]
     (cond
       (and left-bottom bottom-right)
         :bottom
@@ -48,7 +48,7 @@
 (defn find-door
   "Takes a room and returns an [x y] of a door on the edge of the room."
   [[x-min y-min x-max y-max] start end]
-  (let [side         (find-point-relation start end)]
+  (let [side         (find-point-relation (- x-max x-min) (- y-max y-min) start end)]
     ;(println "find-door" start end side)
     (rand-nth (case side
                 :left
@@ -258,17 +258,17 @@
                                     (< (+ (* x1 1000) y1) (+ (* x2 1000) y2))
                                     ;; don't connect any rooms that are already connected
                                     (not-any? (fn [room-center-pair]
-                                                (println "room-center-pair" room-center-pair)
+                                                (log/debug "room-center-pair" room-center-pair)
                                                 (or (= room-center-pair
                                                        [room-center-1 room-center-2])
                                                     (= room-center-pair
                                                        [room-center-2 room-center-1])))
                                               g)))]
                    [room-center-1 room-center-2]))]
-    #_(println "all extra edges" (reduce (fn [edges [[x1 y1] [x2 y2]]]
-                                         (conj edges [[x1 y1] [x2 y2] (rc/chebyshev-distance (rc/xy->pos x1 y1) (rc/xy->pos x2 y2))]))
-                                       []
-                                       edges))
+    (log/debug "all extra edges" (reduce (fn [edges [[x1 y1] [x2 y2]]]
+                                           (conj edges [[x1 y1] [x2 y2] (rc/chebyshev-distance (rc/xy->pos x1 y1) (rc/xy->pos x2 y2))]))
+                                         []
+                                         edges))
     (take 5 edges)))
 
 (defn find-junction-rooms [edges]
@@ -281,7 +281,7 @@
                        edges)
        junctions (keys (into {} (filter (fn [[_ connections]] (> connections 2))
                                         counts)))]
-    #_(println "junctions" junctions)
+    (log/debug "junctions" junctions)
     (set (take 2 junctions))))
 
 (defn vertical-or-horizontally-aligned?
@@ -293,7 +293,7 @@
         *
         ******x"
   [[x1 y1] [x2 y2]]
-  #_(println "horizontal-s-segment")
+  (log/debug "horizontal-s-segment")
   (let [mid-x (int (/ (+ x1 x2) 2))]
     (concat (map #(vector % y1)    (range* x1 mid-x))
             (map #(vector mid-x %) (range* y1 y2))
@@ -308,7 +308,7 @@
           *
           x"
   [[x1 y1] [x2 y2]]
-  #_(println "vertical-s-segment")
+  (log/debug "vertical-s-segment")
   (let [mid-y (int (/ (+ y1 y2) 2))]
     (concat (map #(vector x1 %)    (range* y1 mid-y))
             (map #(vector % mid-y) (range* x1 x2))
@@ -320,7 +320,7 @@
      *
      *****x"
   [[x1 y1] [x2 y2]]
-  #_(println "vertical-corner-segment")
+  (log/debug "vertical-corner-segment")
   (concat (map #(vector x1 %) (range* y1 y2))
           (map #(vector % y2) (range* x1 x2))))
 
@@ -330,7 +330,7 @@
           *
           x"
   [[x1 y1] [x2 y2]]
-  #_(println "horizontal-corner-segment")
+  (log/debug "horizontal-corner-segment")
   (concat (map #(vector x1 %) (range* y1 y2))
           (map #(vector % y2) (range* x1 x2))))
 
@@ -353,7 +353,7 @@
   [from from-type to to-type]
   {:pre [(contains? #{:vertical :horizontal} from-type)
          (contains? #{:vertical :horizontal} to-type)]}
-  #_(println "multi-part-segment" from-type to-type)
+  (log/debug "multi-part-segment" from-type to-type)
   (cond
     (= from-type to-type :horizontal)
       (vertical-s-segment from to)
@@ -375,12 +375,12 @@
         door-xy-2         (if (contains? junction-room-centers end)
                             end
                             (find-door end-room-bounds end start))]
-    ;(println "start" start)
-    ;(println "start-room-bounds" start-room-bounds)
-    ;(println "end" end)
-    ;(println "end-room-bounds"end-room-bounds)
-    ;(println "door-1" door-xy-1)
-    ;(println "door-2" door-xy-2)
+    (log/debug "start" start)
+    (log/debug "start-room-bounds" start-room-bounds)
+    (log/debug "end" end)
+    (log/debug "end-room-bounds"end-room-bounds)
+    (log/debug "door-1" door-xy-1)
+    (log/debug "door-2" door-xy-2)
     (cond
       (vertical-or-horizontally-aligned? door-xy-1 door-xy-2)
         (rlos/line-segment door-xy-1 door-xy-2)
@@ -401,7 +401,7 @@
   "When merging cells, given their types, determine
    the type of the resulting cell."
   [cell1 cell2]
-  ;(println "merging cells" cell1 "," cell2)
+  (log/debug "merging cells" cell1 "," cell2)
   (let [cell1-type (get cell1 :type)
         cell2-type (get cell2 :type)]
     (cond
@@ -418,9 +418,9 @@
         (rand-nth [:close-door :open-door :corridor :moss-corridor :white-corridor])
       (every? #{:corridor :moss-corridor :white-corridor} [cell1-type cell2-type])
         cell1-type
-      (= cell1-type :nil)
+      (= cell1-type :empty)
         cell2-type
-      (= cell2-type :nil)
+      (= cell2-type :empty)
         cell1-type
       (= cell1-type cell2-type)
         cell1-type
@@ -448,12 +448,28 @@
   [[x1 y1 x2 y2]]
   [(int (/ (+ x1 x2) 2))
    (int (/ (+ y1 y2) 2))])
+
+(defn make-npcs [cells level]
+  (let [monster-probabilities (partition 2 (level->monster-probabilities level))]
+  (log/info "monster-probabilities" monster-probabilities)
+  (reduce (fn [npcs [_ x y]]
+            (conj npcs (assoc (mg/id->monster (rr/rand-weighted-nth monster-probabilities))
+                              :pos (rc/xy->pos x y))))
+          (if (= level 3)
+            (make-boss-npcs cells (rand-nth [:eels :giant-rat :giant-lizard]))
+            [])
+          (take 10
+            (shuffle (filter (fn [[{cell-type :type} _ _]]
+                               (= cell-type :deck))
+                             (rw/with-xy cells)))))))
+
   
 (defn random-place
   "Create a grid of random rooms with corridors connecting them and doors
    where corridors connect to rooms."
-  [width height level]
-  (let [num-rooms 19
+  [level]
+  (let [width 80
+        height 23
         min-width 3
         min-height 3
         max-width 10
@@ -487,18 +503,18 @@
         junction-rooms (find-junction-rooms g)
         ;; merge room cells to canvas, skipping junction rooms
         cells        (reduce (fn [cells room-bound]
-                               (println "room-bound" room-bound)
+                               (log/debug "room-bound" room-bound)
                                (if (contains? junction-rooms (room-bounds-to-center room-bound))
                                  cells
                                  (let [room-cellsxy (apply room-to-cellsxy room-bound)]
-                                   (println "room-cellsxy" room-cellsxy)
+                                   (log/debug "room-cellsxy" room-cellsxy)
                                    (apply merge-with-canvas cells room-cellsxy))))
                              (canvas width height)
                              room-bounds)
         ;; reduce over g, merging corridor cells to canvas
         cells        (reduce (fn [cells [start goal]]
                                (let [points (make-corridor-points cells room-centers-to-room-bounds junction-rooms start goal)]
-                                 (println "corridor points" points)
+                                 (log/debug "corridor points" points)
                                  (apply merge-with-canvas cells (points-to-corridor points))))
                              cells
                              g)
@@ -509,12 +525,19 @@
                                                            (rc/xy->pos upstairs-x upstairs-y)
                                                            (/ (min width height) 2.0)))
                                                        (clojure.set/difference (set room-centers) junction-rooms)))
-        cells        (-> cells
-                       (assoc-in [upstairs-y upstairs-x :type] :up-stairs)
-                       (assoc-in [downstairs-y downstairs-x :type] :down-stairs))]
+        cells        (as-> cells cells
+                       ;; only add up-stairs to levels > 0
+                       ;; ie: temple merged into island should not have up-stairs.
+                       (if (pos? level)
+                         (assoc-in cells [upstairs-y upstairs-x :type] :up-stairs)
+                         cells)
+                       (update-in cells [downstairs-y downstairs-x] (fn [cell]
+                                                                      (assoc cell :type :down-stairs
+                                                                                  :dest-type :temple
+                                                                                  :gen-args [(inc level)]))))]
     ;(println "fcg" fcg)
-    (println "g" g)
-    (println "more-edges" more-edges)
+    (log/debug "g" g)
+    (log/debug "more-edges" more-edges)
     ;(println (vec room-bounds))
     ;(println (vec rooms))
     {:cells cells 
@@ -593,7 +616,7 @@
   
 (defn merge-cells
   [cells]
-  (let [temple-place (random-place 80 25 0)]
+  (let [temple-place (random-place 0)]
     (mapv (fn [line temple-line y]
             (mapv (fn [cell temple-cell x]
                    (let [cell-type (get cell :type)
@@ -606,7 +629,9 @@
                                   :short-grass
                                 :white-corridor
                                   :gravel)}
-                       (or temple-cell cell))))
+                       (if (= (get temple-cell :type) :empty)
+                         cell
+                         temple-cell))))
                   line
                   temple-line
                   (range)))
@@ -618,5 +643,5 @@
   "Generate a random grid and print it out."
   [& args]
   (println "generating...")
-  (print-cells (get (random-place 80 25 0) :cells)))
+  (print-cells (get (random-place 0) :cells)))
 

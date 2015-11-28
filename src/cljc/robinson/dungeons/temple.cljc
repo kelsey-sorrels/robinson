@@ -497,7 +497,7 @@
         min-width 3
         min-height 3
         max-width 10
-        max-height 8
+        max-height 7
         rows (int (/ height max-height))
         columns (int (/ width max-width))
         ;; list: [[x y width height] ...]
@@ -511,37 +511,49 @@
                                     (range columns)))
                              (range rows))
         ;rooms        (mapcat #(apply room-to-cellsxy %) room-bounds)
-        room-centers-to-room-bounds
-                     (reduce (fn [m room-bounds]
-                               (assoc m (room-bounds-to-center room-bounds)
-                                        room-bounds))
-                             {}
-                             room-bounds)
-        room-centers (keys room-centers-to-room-bounds)
-        fcg          (points-to-fully-connected-graph room-centers)
-        ;; g is a list of [[x1 y1] [x2 y2]] elements. List of pairs of points.
-        g            (graph-to-minimum-spanning-tree fcg)
-        more-edges   (additional-edges min-width min-height room-centers g)
-        g            (concat g more-edges)
-        ;; set of room centers that are junction rooms
-        junction-rooms (find-junction-rooms g)
-        ;; merge room cells to canvas, skipping junction rooms
-        cells        (reduce (fn [cells room-bound]
-                               (log/debug "room-bound" room-bound)
-                               (if (contains? junction-rooms (room-bounds-to-center room-bound))
-                                 cells
-                                 (let [room-cellsxy (apply room-to-cellsxy room-bound)]
-                                   (log/debug "room-cellsxy" room-cellsxy)
-                                   (apply merge-with-canvas cells room-cellsxy))))
-                             (canvas width height)
-                             room-bounds)
-        ;; reduce over g, merging corridor cells to canvas
-        cells        (reduce (fn [cells [start goal]]
-                               (let [points (make-corridor-points cells room-centers-to-room-bounds junction-rooms start goal)]
-                                 (log/debug "corridor points" points)
-                                 (apply merge-with-canvas cells (points-to-corridor points))))
-                             cells
-                             g)
+        [room-centers
+         junction-rooms
+         cells]       (loop []
+                        (if-let [[room-centers
+                                  junction-rooms
+                                  cells]
+                                               (try
+                                                 (let [room-centers-to-room-bounds
+                                                                    (reduce (fn [m room-bounds]
+                                                                              (assoc m (room-bounds-to-center room-bounds)
+                                                                                       room-bounds))
+                                                                            {}
+                                                                            room-bounds)
+                                                       room-centers (keys room-centers-to-room-bounds)
+                                                       fcg          (points-to-fully-connected-graph room-centers)
+                                                       ;; g is a list of [[x1 y1] [x2 y2]] elements. List of pairs of points.
+                                                       g            (graph-to-minimum-spanning-tree fcg)
+                                                       more-edges   (additional-edges min-width min-height room-centers g)
+                                                       g            (concat g more-edges)
+                                                       ;; set of room centers that are junction rooms
+                                                       junction-rooms (find-junction-rooms g)
+                                                       ;; merge room cells to canvas, skipping junction rooms
+                                                       cells        (reduce (fn [cells room-bound]
+                                                                              (log/debug "room-bound" room-bound)
+                                                                              (if (contains? junction-rooms (room-bounds-to-center room-bound))
+                                                                                cells
+                                                                                (let [room-cellsxy (apply room-to-cellsxy room-bound)]
+                                                                                  (log/debug "room-cellsxy" room-cellsxy)
+                                                                                  (apply merge-with-canvas cells room-cellsxy))))
+                                                                            (canvas width height)
+                                                                            room-bounds)
+                                                       ;; reduce over g, merging corridor cells to canvas
+                                                       cells        (reduce (fn [cells [start goal]]
+                                                                   (let [points (make-corridor-points cells room-centers-to-room-bounds junction-rooms start goal)]
+                                                                     (log/debug "corridor points" points)
+                                                                     (apply merge-with-canvas cells (points-to-corridor points))))
+                                                                 cells
+                                                                 g)]
+                                                   [room-centers junction-rooms cells])
+                                                 (catch Exception e
+                                                   nil))]
+                        [room-centers junction-rooms cells]
+                        (recur)))
         [[upstairs-x upstairs-y]] (shuffle (clojure.set/difference (set room-centers) junction-rooms))
         [[downstairs-x downstairs-y]] (shuffle (filter (fn [[x y]]
                                                          (rc/farther-than?
@@ -560,8 +572,8 @@
                                                                                   :dest-type :temple
                                                                                   :gen-args [(inc level)]))))]
     ;(println "fcg" fcg)
-    (log/debug "g" g)
-    (log/debug "more-edges" more-edges)
+    ;(log/debug "g" g)
+    ;(log/debug "more-edges" more-edges)
     ;(println (vec room-bounds))
     ;(println (vec rooms))
     {:cells cells 

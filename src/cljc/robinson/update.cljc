@@ -3392,9 +3392,17 @@
                                               (clojure.inspector/inspect-tree (get state :world))
                                               state)
                                             state))            :normal          false]
-                          \6           [(fn [state]
+                          #_#_\6           [(fn [state]
                                           (if (get-in state [:world :dev-mode])
                                             (assoc-in state [:world :npcs] [])
+                                            state))
+                                                               :normal          false]
+                          \6           [(fn [state]
+                                          (if (get-in state [:world :dev-mode])
+                                            (rw/assoc-cells state (zipmap (for [x (range 80)
+                                                                                y (range 23)]
+                                                                            [x y])
+                                                                          (repeat {:discovered (rw/get-time state)})))
                                             state))
                                                                :normal          false]
                           \7           [(fn [state]

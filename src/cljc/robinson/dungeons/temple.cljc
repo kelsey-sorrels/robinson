@@ -50,8 +50,8 @@
   "Takes a room and returns an [x y] of a door on the edge of the room."
   [[x-min y-min x-max y-max] start end]
   (let [side         (find-point-relation (- x-max x-min) (- y-max y-min) start end)]
-    ;(println "find-door" start end side)
-    (rand-nth (case side
+    (log/info "find-door" start end side)
+    (rr/rand-nth (case side
                 :left
                   (map (fn [i] [x-min i]) (range (inc y-min) y-max))
                 :right
@@ -70,7 +70,7 @@
         all-edges (combo/combinations nodes 2)
         _ (log/trace "all edges" all-edges)
         _ (log/trace "minimum-edges" minimum-edges)
-        random-edges (map vec (take (/ (count nodes) 2) (shuffle all-edges)))
+        random-edges (map vec (take (/ (count nodes) 2) (rr/rnd-shuffle all-edges)))
         union-edges  (distinct (concat minimum-edges random-edges))]
     (log/trace "union-edges" union-edges)
     union-edges))
@@ -93,16 +93,16 @@
 
 (defn gen-chest-item
   [level]
-  (let [item (ig/id->item (rand-nth [:cup
-                                     :bowl
-                                     :jewlery
-                                     :statue
-                                     :human-skull
-                                     :gong
+  (let [item (ig/id->item (rr/rand-nth [;:cup
+                                     ;:bowl
+                                     ;:jewlery
+                                     ;:statue
+                                     ;:human-skull
+                                     ;:gong
                                      :stone-tablet
                                      :codex
                                      :rag]))]
-    (log/info "gen-chest item" item)
+    (log/debug "gen-chest item" item)
     (case (get item :type)
       :knife
         (assoc item :utility 10)
@@ -113,7 +113,7 @@
   [level cells-xy]
   (let [xy->cell      (into {} (map (fn [[x y cell]] [[x y] cell]) cells-xy))
         xy->cell-type (fn xy->cell-type [x y] (-> [x y] xy->cell (get :type)))
-        seed          1
+        seed          (hash cells-xy)
         vine-noise    (rn/create-noise (rr/create-random seed))
         water-noise   (rn/create-noise (rr/create-random (inc seed)))
         grass-noise   (rn/create-noise (rr/create-random (+ seed 2)))
@@ -136,11 +136,9 @@
                      (or (and (= max-type :vine) (> max-p 0.85))
                          (> max-p 0.8))
                        [x y (assoc cell :type max-type)]
-                     (> (rand) 0.90)
-                       (let [num-items (rr/uniform-int 3)]
-                         (log/info "num-items" num-items)
-                       [x y (rand-nth [{:type :chest :items (vec (repeatedly num-items (partial gen-chest-item level)))}
-                                       {:type :altar}])])
+                     (> (rr/uniform-double) 0.90)
+                       [x y (rr/rand-nth [{:type :chest :items (vec (repeatedly (rr/uniform-int 3) (partial gen-chest-item level)))}
+                                          {:type :altar}])]
                      :else
                        [x y cell]))
                (cond
@@ -181,17 +179,17 @@
 (defn room-to-cellsxy
   "Convert the bounds of a room into a list of points that represent the room."
   [level min-x min-y max-x max-y]
-  (let [alternate-corners? (> 0.5 (rand))
+  (let [alternate-corners? (> 0.5 (rr/uniform-double))
         corners [[[min-x min-y {:type (if alternate-corners? :upper-left-2 :upper-left-1)}]
                   [max-x min-y {:type (if alternate-corners? :upper-right-2 :upper-right-1)}]
                   [min-x max-y {:type (if alternate-corners? :bottom-left-2 :bottom-left-1)}]
                   [max-x max-y {:type (if alternate-corners? :bottom-right-2 :bottom-right-1)}]]]
-        wall-greeble? (< 0.7 (rand))
+        wall-greeble? (< 0.7 (rr/uniform-double))
         [direction
          location] (if wall-greeble?
-                     (if (> 0.5 (rand))
-                       [:horizontal (set (take (inc (rand-int 2)) (shuffle (range (inc min-x) max-x))))]
-                       [:vertical   (set (take (inc (rand-int 2)) (shuffle (range (inc min-y) max-y))))])
+                     (if (> 0.5 (rr/uniform-double))
+                       [:horizontal (set (take (inc (rr/uniform-int 2)) (shuffle (range (inc min-x) max-x))))]
+                       [:vertical   (set (take (inc (rr/uniform-int 2)) (shuffle (range (inc min-y) max-y))))])
                      [nil nil])
         top    [(map (fn [x]
                        [x min-y {:type :horizontal-wall}])
@@ -257,7 +255,7 @@
   [min-width min-height room-centers g]
   (let [edges
         (sort-by (fn [[[x1 y1] [x2 y2]]]
-                   (+ (rand-int 2) (rc/chebyshev-distance (rc/xy->pos x1 y1) (rc/xy->pos x2 y2))))
+                   (+ (rr/uniform-int 2) (rc/chebyshev-distance (rc/xy->pos x1 y1) (rc/xy->pos x2 y2))))
                  (for [room-center-1 room-centers
                        room-center-2 room-centers
                        :when (let [[x1 y1] room-center-1
@@ -265,8 +263,8 @@
                                (and ; rooms should not connect to themselves
                                     ;(not= room-center-1 room-center-2)
                                     ; rooms should connect only to rooms in the same row or column
-                                    (or (< (Math/abs (- x1 x2)) (+ min-width 3))
-                                        (< (Math/abs (- y1 y2)) (+ min-height 3)))
+                                    (or (< (Math/abs (- x1 x2)) (+ min-width 0))
+                                        (< (Math/abs (- y1 y2)) (+ min-height 0)))
                                     ; only close together rooms should be connected, but it must be greater than 0
                                     ;  (ie exclude room from connecting to itself.
                                     (let [d (rc/chebyshev-distance (rc/xy->pos x1 y1) (rc/xy->pos x2 y2))]
@@ -363,7 +361,7 @@
     (= y max-y)
       :horizontal
     :else
-      (rand-nth [:vertical :horizontal])
+      (rr/rand-nth [:vertical :horizontal])
       #_(assert false (format "Unknown wall type %d %d %d %d %d %d" min-x min-y max-x max-y x y))))
 
 (defn multi-part-segment
@@ -392,12 +390,12 @@
         door-xy-2         (if (contains? junction-room-centers end)
                             end
                             (find-door end-room-bounds end start))]
-    (log/debug "start" start)
-    (log/debug "start-room-bounds" start-room-bounds)
-    (log/debug "end" end)
-    (log/debug "end-room-bounds"end-room-bounds)
-    (log/debug "door-1" door-xy-1)
-    (log/debug "door-2" door-xy-2)
+    (log/info "start" start)
+    (log/info "start-room-bounds" start-room-bounds)
+    (log/info "end" end)
+    (log/info "end-room-bounds"end-room-bounds)
+    (log/info "door-1" door-xy-1)
+    (log/info "door-2" door-xy-2)
     (cond
       (vertical-or-horizontally-aligned? door-xy-1 door-xy-2)
         (rlos/line-segment door-xy-1 door-xy-2)
@@ -432,7 +430,7 @@
                             :moss-horizontal-wall :moss-horizontal-wall-alt :moss-vertical-wall :moss-vertical-wall-alt
                             :white-horizontal-wall :white-horizontal-wall-alt :white-vertical-wall :white-vertical-wall-altr}
                           cell2-type)))
-        (rand-nth [:close-door :open-door :corridor :moss-corridor :white-corridor])
+        (rr/rand-nth [:close-door :open-door :corridor :moss-corridor :white-corridor])
       (every? #{:corridor :moss-corridor :white-corridor} [cell1-type cell2-type])
         cell1-type
       (= cell1-type :empty)
@@ -454,7 +452,7 @@
                                  (let [cell-type (merge-cell-types (if (nil? cell) {:type :nil} cell)
                                                                    (if (nil? canvas-cell) {:type :nil} canvas-cell))
                                        items     (vec (concat (get cell :items []) (get canvas-cell :items [])))]
-                                   (log/info "cell" cell "canvas-cell" canvas-cell "items" items)
+                                   (log/debug "cell" cell "canvas-cell" canvas-cell "items" items)
                                    (as-> {} new-cell
                                      (assoc new-cell :type cell-type)
                                      (if (seq items) 
@@ -464,9 +462,6 @@
         cells (f canvas)]
    ;(print-cells cells)
    cells))
-
-(defn rand-int-range [min max]
-  (+ (rand-int (- max min)) min))
 
 (defn room-bounds-to-center
   [[x1 y1 x2 y2]]
@@ -512,7 +507,7 @@
             (conj npcs (assoc (mg/id->monster (rr/rand-weighted-nth monster-probabilities))
                               :pos (rc/xy->pos x y))))
           (if (= level 8)
-            (make-boss-npcs cells (rand-nth [:giant-centipede :gorilla :giant-snake]))
+            (make-boss-npcs cells (rr/rand-nth [:giant-centipede :gorilla :giant-snake]))
             [])
           (take 20
             (shuffle (filter (fn [[{cell-type :type} _ _]]
@@ -535,10 +530,10 @@
         ;; list: [[x y width height] ...]
         room-bounds  (mapcat (fn [row] 
                                (map (fn [column]
-                                      (let [width (rand-int-range min-width (dec max-width))
-                                            height (rand-int-range min-height (dec max-height))
-                                            x (rand-int-range (* column max-width) (+ (* column max-width) (dec max-width) (- width))) 
-                                            y (rand-int-range (* row max-height) (+ (* row max-height) (dec max-height) (- height)))]
+                                      (let [width (rr/uniform-int min-width (dec max-width))
+                                            height (rr/uniform-int min-height (dec max-height))
+                                            x (rr/uniform-int (* column max-width) (+ (* column max-width) (dec max-width) (- width))) 
+                                            y (rr/uniform-int (* row max-height) (+ (* row max-height) (dec max-height) (- height)))]
                                       [x y (+ x width) (+ y height)]))
                                     (range columns)))
                              (range rows))
@@ -576,11 +571,11 @@
                                                                             room-bounds)
                                                        ;; reduce over g, merging corridor cells to canvas
                                                        cells        (reduce (fn [cells [start goal]]
-                                                                   (let [points (make-corridor-points cells room-centers-to-room-bounds junction-rooms start goal)]
-                                                                     (log/debug "corridor points" points)
-                                                                     (apply merge-with-canvas cells (points-to-corridor points))))
-                                                                 cells
-                                                                 g)]
+                                                                              (let [points (make-corridor-points cells room-centers-to-room-bounds junction-rooms start goal)]
+                                                                                (log/debug "corridor points" points)
+                                                                                (apply merge-with-canvas cells (points-to-corridor points))))
+                                                                            cells
+                                                                            g)]
                                                    [room-centers junction-rooms cells])
                                                  (catch Throwable t
                                                    (log/warn t)

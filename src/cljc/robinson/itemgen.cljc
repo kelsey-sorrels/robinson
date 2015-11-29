@@ -1,6 +1,7 @@
 ;; Functions for generating random items.
 (ns robinson.itemgen
-  (:require [robinson.monstergen :as mg]
+  (:require [robinson.random :as rr]
+            [robinson.monstergen :as mg]
             #?@(:cljs (
                [goog.string :as gstring]
                [goog.string.format]))))
@@ -259,6 +260,10 @@
 (defn id->fuel
   [id]
   (get (id->item id) :fuel 0))
+
+(defn gen-text-id
+  []
+  (rr/rand-nth [:secret-history :mirror :cistern :cocoon :skulls :angles :demons :sins]))
 
 (defn -main
   "Generate five random items and display them."

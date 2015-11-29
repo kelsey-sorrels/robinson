@@ -1007,7 +1007,7 @@
                     (rp/update-inventory-item-by-id state id (fn [item] (assoc item :text-id (ig/gen-text-id))))
                     state)
                   (let [item (rp/inventory-id->item state id)]
-                    (rc/append-log state (format "You read about %s." (rdesc/gen-temple-text item))))
+                    (rc/append-log state (format "You peice together a story about %s." (rdesc/gen-temple-text item))))
                   (rw/assoc-current-state state :normal))
               ;; pirate items
               (= id :dice)

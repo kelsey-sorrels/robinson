@@ -118,6 +118,7 @@
  ([rnd lo hi] {:pre [(<= lo hi)]} (+ (int lo) (next-int! rnd (- (int hi) (int lo))))))
 
 (defn uniform-double
+ ([] (uniform-double 1.0))
  ([hi] {:pre [(pos? hi)]} (* hi (next-double! *rnd*)))
  ([lo hi] {:pre [(< lo hi)]} (+ lo (* (next-double! *rnd*) (- hi lo))))
  ([rnd lo hi] {:pre [(< lo hi)]} (+ lo (* (next-double! rnd) (- hi lo)))))

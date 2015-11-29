@@ -215,3 +215,15 @@
                 state
                 directions))))))
 
+(defn gen-temple-text
+  [item]
+  (case (get item :text-id)
+    :secret-history "the secret histories of deathless kings"
+    :mirror "a mirror that reflects incorporeal attributes"
+    :cistern "a cistern of sacrificial blood"
+    :cocoon "a cocoon of the God-Thing"
+    :skulls "a collection of heretic skulls"
+    :angles "a list of names of angels"
+    :demons "a list of names of demons"
+    :sins   "a bag of stones with sins inscribed on them"
+    (format "unspeakable horrors of %s" (str item))))

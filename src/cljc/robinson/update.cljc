@@ -1001,6 +1001,14 @@
                   (rc/ui-hint "a-apply to skin, b-apply to tongue"))
               (ig/is-clothes? item)
                 (wear-clothes state item)
+              (contains?  #{:stone-tablet :codex} id)
+                (as-> state state
+                  (if (nil? (get item :text-id))
+                    (rp/update-inventory-item-by-id state id (fn [item] (assoc item :text-id (ig/gen-text-id))))
+                    state)
+                  (let [item (rp/inventory-id->item state id)]
+                    (rc/append-log state (format "You read about %s." (rdesc/gen-temple-text item))))
+                  (rw/assoc-current-state state :normal))
               ;; pirate items
               (= id :dice)
                 (rc/append-log state (format "You roll a %d and a %d" (rr/uniform-int 1 7) (rr/uniform-int 1 7)))

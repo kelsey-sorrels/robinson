@@ -19,7 +19,10 @@
                :green-frog :blue-frog :purple-frog :parrot :crocodile
                :mosquito :mongoose :tarantula :monitor-lizard :komodo-dragon
                :cobra :crab :hermit-crab
-               :giant-rat :giant-lizard} race))
+               ;; pirate ship bosses
+               :giant-rat :giant-lizard
+               ;; ruined temple bosses
+               :giant-centipede :gorilla :giant-snake} race))
 
 (defn can-spawn-intertidally?
   [race]
@@ -168,9 +171,16 @@
   (Monster. :hermit-crab    1 230 "hermit crab"    "hermit crabs"   nil 13 0 0.6   1     7   15 #{:head :shell :leg}                        #{:claw}                      :hostile-during-day     :random                                 1 #{:hostile})
   (Monster. :electric-eel   6 340 "electric eel"   "electric eels"  nil 15 0 0.6  10     5    8 #{:head :body}                              #{:bite}                      :hostile                :follow-player-in-range-or-random       2 #{:hostile})
   (Monster. :jellyfish      3 190 "jellyfish"      "jellyfish"      nil  7 0 0.6   1     4    4 #{:body}                                    #{:sting-venom}               :retreat-after-attacked :random                                 1 #{:hostile})
+  ;; pirate ship bosses
   (Monster. :giant-rat     11 990 "giant rat"      "giant rats"     nil  7 0 1.1  10    10   10 #{:head :body :arm :leg :tail :face}        #{:bite :claw}                :retreat-after-attacked :follow-player-in-range-or-random       10 #{:hostile})
   (Monster. :giant-lizard  11 990 "giant lizard"   "giant lizards"  nil  7 0 1.1  10    10   10 #{:head :body :arm :leg :tail :face}        #{:bite :claw}                :retreat-after-attacked :follow-player-in-range-or-random       10 #{:hostile})
-  (Monster. :eel           11 390 "eel"            "eels"           nil  7 0 1.1   5     8    7 #{:head :body :face}                        #{:bite}                      :retreat-after-attacked :follow-player-in-range-or-random       10 #{:hostile})])
+  (Monster. :eel           11 390 "eel"            "eels"           nil  7 0 1.1   5     8    7 #{:head :body :face}                        #{:bite}                      :retreat-after-attacked :follow-player-in-range-or-random       10 #{:hostile})
+  ;; ruined temple bosses
+  (Monster. :giant-cenitpete
+                           11 990 "giant centipede""giant centipedges"
+                                                                    nil  7 0 1.1  10    10   10 #{:head :body :leg :face}                   #{:bite}                      :hostile                :follow-player-in-range-or-random       40 #{:hostile})
+  (Monster. :giant-lizard  11 990 "gorilla"        "gorillas"       nil  7 0 1.1  10    10   10 #{:head :body :arm :leg :tail :face}        #{:bite :claw}                :hostile                :follow-player-in-range-or-random       40 #{:hostile})
+  (Monster. :eel           11 390 "giant snake"    "giant snakes"   nil  7 0 1.1  10    10   10 #{:head :body :face}                        #{:bite}                      :hostile                :follow-player-in-range-or-random       40 #{:hostile})])
 
 (def ^:private race->monster-map
   (apply hash-map (mapcat (fn [[k v]] [k (first v)])

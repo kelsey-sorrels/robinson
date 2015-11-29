@@ -1266,6 +1266,13 @@
                                                               :ale             ["!"]
                                                               :pirate-clothes  ["["]
                                                               :navy-uniform    ["["]
+                                                              ;; ruined temple items
+                                                              :jewlery          ["\""]
+                                                              :statue           ["&"]
+                                                              :human-skull      ["☻" :white :black]
+                                                              :gong             ["&"]
+                                                              :stone-tablet     ["&"]
+                                                              :codex            ["&"]
                                                               ["?"]))
                                                           (case (cell :type)
                                                            :floor           ["·"]
@@ -1547,6 +1554,10 @@
                                                     :giant-rat       ["R"]
                                                     :eel             ["e"]
                                                     :giant-lizard    ["L"]
+                                                    ;; ruined temple npcs
+                                                    :giant-centipedge ["C"]
+                                                    :gorilla         ["M"]
+                                                    :giant-snake     ["\u00A7" :green :black] ;;§
                                                     :human           ["@" (class->rgb (get npc :class)) :black]
                                                     ["@"])) d) targeted?)))))
                    place-npcs)))

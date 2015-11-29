@@ -727,7 +727,7 @@
     :wtl->thirst "wtl->thirst"
     :str+1 "Increase strength (+2%)"
     :dex+1 "Increase dexterity (+1)"
-    :max-hp+1 "Increase map hp (+1)"
+    :max-hp+1 "Increase max hp (+1)"
     :toughness+1 "Increase toughness (+1)"
     :speed+1 "Increase speed (+5%)"
     :wtl->strength-buff "Increase strength temporarily"

@@ -6,6 +6,7 @@
             [robinson.lineofsight :as rlos]
             [robinson.world :as rw]
             [robinson.monstergen :as mg]
+            [robinson.itemgen :as ig]
             [clojure.math.combinatorics :as combo]
             [algotools.algos.graph :as graph]
             [taoensso.timbre :as log]
@@ -90,12 +91,26 @@
              [x y {:type cell-type}]))
          points)))
 
-(defn make-chest-items
-  []
-  [])
+(defn gen-chest-item
+  [level]
+  (let [item (ig/id->item (rand-nth [:cup
+                                     :bowl
+                                     :jewlery
+                                     :statue
+                                     :human-skull
+                                     :gong
+                                     :stone-tablet
+                                     :codex
+                                     :rag]))]
+    (log/info "gen-chest item" item)
+    (case (get item :type)
+      :knife
+        (assoc item :utility 10)
+      item)))
+ 
 
 (defn add-room-features
-  [cells-xy]
+  [level cells-xy]
   (let [xy->cell      (into {} (map (fn [[x y cell]] [[x y] cell]) cells-xy))
         xy->cell-type (fn xy->cell-type [x y] (-> [x y] xy->cell (get :type)))
         seed          1
@@ -122,8 +137,10 @@
                          (> max-p 0.8))
                        [x y (assoc cell :type max-type)]
                      (> (rand) 0.90)
-                       [x y (rand-nth [{:type :chest :items (make-chest-items)}
-                                       {:type :altar}])]
+                       (let [num-items (rr/uniform-int 3)]
+                         (log/info "num-items" num-items)
+                       [x y (rand-nth [{:type :chest :items (vec (repeatedly num-items (partial gen-chest-item level)))}
+                                       {:type :altar}])])
                      :else
                        [x y cell]))
                (cond
@@ -163,7 +180,7 @@
 
 (defn room-to-cellsxy
   "Convert the bounds of a room into a list of points that represent the room."
-  [min-x min-y max-x max-y]
+  [level min-x min-y max-x max-y]
   (let [alternate-corners? (> 0.5 (rand))
         corners [[[min-x min-y {:type (if alternate-corners? :upper-left-2 :upper-left-1)}]
                   [max-x min-y {:type (if alternate-corners? :upper-right-2 :upper-right-1)}]
@@ -209,7 +226,7 @@
                            [x y cell])
                          [x y cell]))
                       cellsxy)
-        cellsxy (add-room-features cellsxy)]
+        cellsxy (add-room-features level cellsxy)]
    cellsxy))
 
 (defn points-to-fully-connected-graph
@@ -434,8 +451,15 @@
   (let [f (apply comp (map (fn [[x y cell]]
                              (fn [c] (update-in c [y x]
                                (fn [canvas-cell]
-                                 {:type (merge-cell-types (if (nil? cell) {:type :nil} cell)
-                                              (if (nil? canvas-cell) {:type :nil} canvas-cell))}))))
+                                 (let [cell-type (merge-cell-types (if (nil? cell) {:type :nil} cell)
+                                                                   (if (nil? canvas-cell) {:type :nil} canvas-cell))
+                                       items     (vec (concat (get cell :items []) (get canvas-cell :items [])))]
+                                   (log/info "cell" cell "canvas-cell" canvas-cell "items" items)
+                                   (as-> {} new-cell
+                                     (assoc new-cell :type cell-type)
+                                     (if (seq items) 
+                                       (assoc new-cell :items items)
+                                       new-cell)))))))
                            cells-xy))
         cells (f canvas)]
    ;(print-cells cells)
@@ -471,7 +495,15 @@
        level))
 
 (defn make-boss-npcs [cells boss-type]
-  cells)
+  (reduce (fn [npcs [_ x y]]
+            (conj npcs (assoc (mg/id->monster boss-type)
+                              :pos (rc/xy->pos x y))))
+          []
+          (take 1
+            (shuffle (filter (fn [[{cell-type :type} _ _]]
+                               (= cell-type :shallow-water))
+                             (rw/with-xy cells))))))
+
 
 (defn make-npcs [cells level]
   (let [monster-probabilities (partition 2 (level->monster-probabilities level))]
@@ -480,11 +512,11 @@
             (conj npcs (assoc (mg/id->monster (rr/rand-weighted-nth monster-probabilities))
                               :pos (rc/xy->pos x y))))
           (if (= level 8)
-            (make-boss-npcs cells (rand-nth [:eels :giant-rat :giant-lizard]))
+            (make-boss-npcs cells (rand-nth [:giant-centipede :gorilla :giant-snake]))
             [])
-          (take 10
+          (take 20
             (shuffle (filter (fn [[{cell-type :type} _ _]]
-                               (= cell-type :deck))
+                               (= cell-type :floor))
                              (rw/with-xy cells)))))))
 
   
@@ -537,7 +569,7 @@
                                                                               (log/debug "room-bound" room-bound)
                                                                               (if (contains? junction-rooms (room-bounds-to-center room-bound))
                                                                                 cells
-                                                                                (let [room-cellsxy (apply room-to-cellsxy room-bound)]
+                                                                                (let [room-cellsxy (apply room-to-cellsxy level room-bound)]
                                                                                   (log/debug "room-cellsxy" room-cellsxy)
                                                                                   (apply merge-with-canvas cells room-cellsxy))))
                                                                             (canvas width height)
@@ -550,7 +582,8 @@
                                                                  cells
                                                                  g)]
                                                    [room-centers junction-rooms cells])
-                                                 (catch Exception e
+                                                 (catch Throwable t
+                                                   (log/warn t)
                                                    nil))]
                         [room-centers junction-rooms cells]
                         (recur)))
@@ -570,7 +603,8 @@
                        (update-in cells [downstairs-y downstairs-x] (fn [cell]
                                                                       (assoc cell :type :down-stairs
                                                                                   :dest-type :temple
-                                                                                  :gen-args [(inc level)]))))]
+                                                                                  :gen-args [(inc level)]))))
+        npcs         (make-npcs cells level)]
     ;(println "fcg" fcg)
     ;(log/debug "g" g)
     ;(log/debug "more-edges" more-edges)
@@ -578,7 +612,7 @@
     ;(println (vec rooms))
     {:cells cells 
      :movement :fixed
-     :npcs []
+     :npcs npcs
      #_#_:up-stairs upstairs
      #_#_:down-stairs downstairs}))
 

@@ -181,7 +181,14 @@
    {:id  :paper-cartridge         :name "paper cartridge"             :name-plural "paper cartridges" :fuel 10}
    {:id  :ale                     :name "bottle of ale"               :name-plural "bottles of ale" :thirst 50}
    {:id  :pirate-clothes          :name "pirate clothes"              :name-plural "pirate clothes" :utility 100 :toughness 0.2}
-   {:id  :navy-uniform            :name "navy uniform"                :name-plural "navy uniforms" :utility 100 :toughness 0.2}])
+   {:id  :navy-uniform            :name "navy uniform"                :name-plural "navy uniforms" :utility 100 :toughness 0.2}
+   ;; ruined temple items
+   {:id  :jewlery                 :name "jewlery"                     :name-plural "jewelery"}
+   {:id  :statue                  :name "statue"                      :name-plural "statues"}
+   {:id  :human-skull             :name "human skull"                 :name-plural "human skulls"}
+   {:id  :gong                    :name "gong"                        :name-plural "gongs"}
+   {:id  :stone-tablet            :name "stone tablet"                :name-plural "stone tablets"}
+   {:id  :codex                   :name "codex"                       :name-plural "codices"}])
 
 (def ^:private id->item-map
   (apply hash-map (mapcat (fn [[k v]] [k (first v)])

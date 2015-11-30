@@ -474,6 +474,10 @@
          (contains? item2 :count))
       (update-in item1 [:count] (partial + (get item2 :count)))))
 
+;; ids in this set will not be coalesced into collections of existing items.
+(def non-mass-ids
+  #{})
+
 (defn add-to-inventory
   "Adds `item` to player's inventory assigning hotkeys as necessary."
   [state items]
@@ -490,7 +494,12 @@
         inventory               (mapv
                                   (fn [items]
                                     (reduce merge-items items))
-                                  (vals (group-by :id  (concat inventory items))))
+                                  (vals (group-by (fn [item]
+                                                   (if (contains? non-mass-ids (get item :id))
+                                                     ; val that should not be equal to any other vals. Also consider (atom) or something else.
+                                                     (rand)
+                                                     (get item :id)))
+                                                  (concat inventory items))))
         _                       (log/debug "new inventory hotkeys" (set (map :hotkey inventory)))
         _                       (log/info "new inventory" inventory)
         ;; find the hotkeys that were previously used in inventory that are no longer in use

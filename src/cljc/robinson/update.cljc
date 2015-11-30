@@ -177,12 +177,6 @@
                              (disj (set hotkeys) keyin)
                              (conj (set hotkeys) keyin)))))
 
-(defn system-time-millis []
-  #?(:clj
-     (System/currentTimeMillis)
-     :cljs
-     (.getMilliseconds (js/Date.))))
-
 ;; update visibility
 (defn update-visibility
   [state]
@@ -239,7 +233,7 @@
       (let [state (-> state
                     (assoc :world (loop []
                                     (if-let [w (try
-                                                 (rworldgen/init-world (system-time-millis))
+                                                 (rworldgen/init-world (rc/system-time-millis))
                                                  (catch #?@(:clj  (Throwable e)
                                                             :cljs (js/Error e))
                                                    (log/error e)
@@ -1004,10 +998,18 @@
               (contains?  #{:stone-tablet :codex} id)
                 (as-> state state
                   (if (nil? (get item :text-id))
-                    (rp/update-inventory-item-by-id state id (fn [item] (assoc item :text-id (ig/gen-text-id))))
+                    (let [text-id (ig/gen-text-id state)]
+                      (as-> state state
+                        (rp/update-inventory-item-by-id state id (fn [item] (assoc item :text-id text-id)))
+                        (if (ig/is-fruit-text-id? text-id)
+                          ;; identified fruit
+                          (rc/conj-in state [:world :fruit :identified] (ig/fruit-text-id->fruit-id text-id))
+                          state)))
                     state)
                   (let [item (rp/inventory-id->item state id)]
-                    (rc/append-log state (format "You peice together a story about %s." (rdesc/gen-temple-text item))))
+                    (as-> state state
+                      (rc/append-log state (format "You peice together a story about %s." (rdesc/gen-temple-text item)))
+                      (rp/conj-player-status state (get item :text-id))))
                   (rw/assoc-current-state state :normal))
               ;; pirate items
               (= id :dice)

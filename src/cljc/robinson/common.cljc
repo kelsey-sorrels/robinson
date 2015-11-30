@@ -363,3 +363,9 @@
   (let [settings (get state :settings)]
     (enduro/reset! settings new-settings)))
 
+(defn system-time-millis []
+  #?(:clj
+     (System/currentTimeMillis)
+     :cljs
+     (.getMilliseconds (js/Date.))))
+

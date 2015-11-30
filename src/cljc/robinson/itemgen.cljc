@@ -68,9 +68,13 @@
   [item]
   (id-is-fruit? (get item :id)))
 
+(defn id-is-poisonous?
+  [state id]
+  (contains? (get-in state [:world :fruit :poisonous]) id))
+
 (defn is-poisonous?
   [state item]
-  (contains? (get-in state [:world :fruit :poisonous]) (get item :id)))
+  (id-is-poisonous? (get item :id)))
 
 (defn skin-identifiable?
   [state item]
@@ -262,8 +266,26 @@
   (get (id->item id) :fuel 0))
 
 (defn gen-text-id
-  []
-  (rr/rand-nth [:secret-history :mirror :cistern :cocoon :skulls :angles :demons :sins]))
+  [state]
+  (if (< (rr/uniform-double) 0.2)
+    (let [fruit-stories (reduce (fn [fruit-stories fruit-id]
+                                  (conj fruit-stories
+                                        (keyword (str (name fruit-id)
+                                                      (if (id-is-poisonous? state fruit-id)
+                                                        "-poisonous"
+                                                        "-safe")))))
+                                []
+                                [:red-fruit :orange-fruit :yellow-fruit :green-fruit
+                                 :blue-fruit :purple-fruit :white-fruit :black-fruit])]
+      (rr/rand-nth fruit-stories))
+      (rr/rand-nth [:secret-history :mirror :cistern :cocoon :skulls :angles :demons :sins])))
+
+(defn is-fruit-text-id?
+  [id]
+  (= (second (clojure.string/split (str id) #"-")) "fruit"))
+
+(defn fruit-text-id->fruit-id [text-id]
+  (keyword (clojure.string/replace (name text-id) #"-poisonous|-safe" "")))
 
 (defn -main
   "Generate five random items and display them."

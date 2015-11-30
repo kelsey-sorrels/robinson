@@ -93,15 +93,15 @@
 
 (defn gen-chest-item
   [level]
-  (let [item (ig/id->item (rr/rand-nth [;:cup
-                                     ;:bowl
-                                     ;:jewlery
-                                     ;:statue
-                                     ;:human-skull
-                                     ;:gong
-                                     :stone-tablet
-                                     :codex
-                                     :rag]))]
+  (let [item (ig/id->item (rr/rand-nth [:cup
+                                        :bowl
+                                        :jewlery
+                                        :statue
+                                        :human-skull
+                                        :gong
+                                        :stone-tablet
+                                        :codex
+                                        :rag]))]
     (log/debug "gen-chest item" item)
     (case (get item :type)
       :knife
@@ -113,7 +113,7 @@
   [level cells-xy]
   (let [xy->cell      (into {} (map (fn [[x y cell]] [[x y] cell]) cells-xy))
         xy->cell-type (fn xy->cell-type [x y] (-> [x y] xy->cell (get :type)))
-        seed          (hash cells-xy)
+        seed          (rc/system-time-millis)
         vine-noise    (rn/create-noise (rr/create-random seed))
         water-noise   (rn/create-noise (rr/create-random (inc seed)))
         grass-noise   (rn/create-noise (rr/create-random (+ seed 2)))
@@ -308,7 +308,7 @@
         *
         ******x"
   [[x1 y1] [x2 y2]]
-  (log/debug "horizontal-s-segment")
+  (log/info "horizontal-s-segment")
   (let [mid-x (int (/ (+ x1 x2) 2))]
     (concat (map #(vector % y1)    (range* x1 mid-x))
             (map #(vector mid-x %) (range* y1 y2))
@@ -323,7 +323,7 @@
           *
           x"
   [[x1 y1] [x2 y2]]
-  (log/debug "vertical-s-segment")
+  (log/info "vertical-s-segment")
   (let [mid-y (int (/ (+ y1 y2) 2))]
     (concat (map #(vector x1 %)    (range* y1 mid-y))
             (map #(vector % mid-y) (range* x1 x2))
@@ -335,7 +335,7 @@
      *
      *****x"
   [[x1 y1] [x2 y2]]
-  (log/debug "vertical-corner-segment")
+  (log/info "vertical-corner-segment")
   (concat (map #(vector x1 %) (range* y1 y2))
           (map #(vector % y2) (range* x1 x2))))
 
@@ -345,7 +345,7 @@
           *
           x"
   [[x1 y1] [x2 y2]]
-  (log/debug "horizontal-corner-segment")
+  (log/info "horizontal-corner-segment")
   (concat (map #(vector x1 %) (range* y1 y2))
           (map #(vector % y2) (range* x1 x2))))
 
@@ -374,9 +374,9 @@
       (vertical-s-segment from to)
     (= from-type to-type :vertical)
       (horizontal-s-segment from to)
-    (= from-type :horizontal)
+    (= from-type :horizontal) ; to vertical
       (vertical-corner-segment from to)
-    (= from-type :vertical)
+    (= from-type :vertical) ; to horizontal
       (horizontal-corner-segment from to)))
 
 (defn make-corridor-points [cells room-centers-to-room-bounds junction-room-centers start end]
@@ -446,6 +446,8 @@
   "Merge a grid of `[x y cell]` into an existing grid. The result is a merged grid
    following the rules of `merge-cell-types`."
   [canvas & cells-xy]
+  (log/debug "before")
+  ;(print-cells canvas)
   (let [f (apply comp (map (fn [[x y cell]]
                              (fn [c] (update-in c [y x]
                                (fn [canvas-cell]
@@ -460,8 +462,9 @@
                                        new-cell)))))))
                            cells-xy))
         cells (f canvas)]
-   ;(print-cells cells)
-   cells))
+  (log/debug "after")
+  ;(print-cells canvas)
+  cells))
 
 (defn room-bounds-to-center
   [[x1 y1 x2 y2]]
@@ -538,50 +541,37 @@
                                     (range columns)))
                              (range rows))
         ;rooms        (mapcat #(apply room-to-cellsxy %) room-bounds)
-        [room-centers
-         junction-rooms
-         cells]       (loop []
-                        (if-let [[room-centers
-                                  junction-rooms
-                                  cells]
-                                               (try
-                                                 (let [room-centers-to-room-bounds
-                                                                    (reduce (fn [m room-bounds]
-                                                                              (assoc m (room-bounds-to-center room-bounds)
-                                                                                       room-bounds))
-                                                                            {}
-                                                                            room-bounds)
-                                                       room-centers (keys room-centers-to-room-bounds)
-                                                       fcg          (points-to-fully-connected-graph room-centers)
-                                                       ;; g is a list of [[x1 y1] [x2 y2]] elements. List of pairs of points.
-                                                       g            (graph-to-minimum-spanning-tree fcg)
-                                                       more-edges   (additional-edges min-width min-height room-centers g)
-                                                       g            (concat g more-edges)
-                                                       ;; set of room centers that are junction rooms
-                                                       junction-rooms (find-junction-rooms g)
-                                                       ;; merge room cells to canvas, skipping junction rooms
-                                                       cells        (reduce (fn [cells room-bound]
-                                                                              (log/debug "room-bound" room-bound)
-                                                                              (if (contains? junction-rooms (room-bounds-to-center room-bound))
-                                                                                cells
-                                                                                (let [room-cellsxy (apply room-to-cellsxy level room-bound)]
-                                                                                  (log/debug "room-cellsxy" room-cellsxy)
-                                                                                  (apply merge-with-canvas cells room-cellsxy))))
-                                                                            (canvas width height)
-                                                                            room-bounds)
-                                                       ;; reduce over g, merging corridor cells to canvas
-                                                       cells        (reduce (fn [cells [start goal]]
-                                                                              (let [points (make-corridor-points cells room-centers-to-room-bounds junction-rooms start goal)]
-                                                                                (log/debug "corridor points" points)
-                                                                                (apply merge-with-canvas cells (points-to-corridor points))))
-                                                                            cells
-                                                                            g)]
-                                                   [room-centers junction-rooms cells])
-                                                 (catch Throwable t
-                                                   (log/warn t)
-                                                   nil))]
-                        [room-centers junction-rooms cells]
-                        (recur)))
+        room-centers-to-room-bounds
+                     (reduce (fn [m room-bounds]
+                               (assoc m (room-bounds-to-center room-bounds)
+                                        room-bounds))
+                             {}
+                             room-bounds)
+        room-centers (keys room-centers-to-room-bounds)
+        fcg          (points-to-fully-connected-graph room-centers)
+        ;; g is a list of [[x1 y1] [x2 y2]] elements. List of pairs of points.
+        g            (graph-to-minimum-spanning-tree fcg)
+        more-edges   (additional-edges min-width min-height room-centers g)
+        ;g            (concat g more-edges)
+        ;; set of room centers that are junction rooms
+        junction-rooms (find-junction-rooms g)
+        ;; merge room cells to canvas, skipping junction rooms
+        cells        (reduce (fn [cells room-bound]
+                               (log/debug "room-bound" room-bound)
+                               (if (contains? junction-rooms (room-bounds-to-center room-bound))
+                                 cells
+                                 (let [room-cellsxy (apply room-to-cellsxy level room-bound)]
+                                   (log/debug "room-cellsxy" room-cellsxy)
+                                   (apply merge-with-canvas cells room-cellsxy))))
+                             (canvas width height)
+                             room-bounds)
+        ;; reduce over g, merging corridor cells to canvas
+        cells        (reduce (fn [cells [start goal]]
+                               (let [points (make-corridor-points cells room-centers-to-room-bounds junction-rooms start goal)]
+                                 (log/debug "corridor points" points)
+                                 (apply merge-with-canvas cells (points-to-corridor points))))
+                             cells
+                             g)
         [[upstairs-x upstairs-y]] (shuffle (clojure.set/difference (set room-centers) junction-rooms))
         [[downstairs-x downstairs-y]] (shuffle (filter (fn [[x y]]
                                                          (rc/farther-than?
@@ -619,6 +609,7 @@
                                         (if (nil? cell)
                                             \ 
                                             (case (cell :type)
+                                              :empty " "
                                               :floor \·
                                               :corridor "\033[38;2;191;171;143m#\033[0m"
                                               ;:vertical-wall \║

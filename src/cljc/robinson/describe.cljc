@@ -1,6 +1,7 @@
 ;; Functions that help construct description messages.
 (ns robinson.describe
   (:require
+    [robinson.random :as rr]
     [robinson.itemgen  :as ig]
     [robinson.monstergen :as mg]
     [clojure.string :refer [lower-case]]
@@ -226,4 +227,20 @@
     :angles "a list of names of angels"
     :demons "a list of names of demons"
     :sins   "a bag of stones with sins inscribed on them"
+    :red-fruit-safe "the virtues of red fruit"
+    :red-fruit-poisonous "the evils of red fruit"
+    :orange-fruit-safe "the purity of orange fruit"
+    :orange-fruit-poisonous "the corruptness of orange fruit"
+    :yellow-fruit-safe "the righteousness of yellow fruit"
+    :yellow-fruit-poisonous "the wickedness of yellow fruit"
+    :green-fruit-safe "the fineness of green fruit"
+    :green-fruit-poisonous "the wrath of green fruit"
+    :blue-fruit-safe "the worthiness of blue fruit"
+    :blue-fruit-poisonous "the harm of blue fruit"
+    :purple-fruit-safe "the superiority of purple fruit"
+    :purple-fruit-poisonous "the foulness of purple fruit"
+    :white-fruit-safe "the prestige of white fruit"
+    :white-fruit-poisonous "the inferiority of white fruit"
+    :black-fruit-safe "the excellence of black fruit"
+    :black-fruit-poisonous "the poisonousness of black fruit"
     (format "unspeakable horrors of %s" (str item))))

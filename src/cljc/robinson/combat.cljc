@@ -25,11 +25,11 @@
 
 (defn sharp-weapon?
   [attack]
-  (contains? #{:spear :axe :knife :cutlass} attack))
+  (contains? #{:spear :axe :knife :cutlass :ritual-knife :ancient-spear} attack))
 
 (defn ranged-weapon?
   [attack]
-  (contains? #{:flint :rock :coconut :bow :jack-o-lantern} attack))
+  (contains? #{:flint :rock :coconut :bow :jack-o-lantern :pistol :ancient-spear :blowgun} attack))
 
 (defn format [s & args]
   #?(:clj
@@ -206,8 +206,13 @@
   :unhusked-coconut 2
   :empty-coconut 1
   :jack-o-lantern 5
+  ;; pirate items
   :cutlass 20
   :pistol 20
+  ;; ruined temple items
+  :ritual-knife 30
+  :ancient-spear 20
+  :blowgun 10
   #?(:clj
      (throw (Exception. (format "No value specified for %s" (name attack))))
      :cljs

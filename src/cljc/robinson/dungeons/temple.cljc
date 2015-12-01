@@ -586,9 +586,28 @@
                          (assoc-in cells [upstairs-y upstairs-x :type] :up-stairs)
                          cells)
                        (update-in cells [downstairs-y downstairs-x] (fn [cell]
-                                                                      (assoc cell :type :down-stairs
-                                                                                  :dest-type :temple
-                                                                                  :gen-args [(inc level)]))))
+                                                                      (if (< level 8)
+                                                                        (assoc cell :type :down-stairs
+                                                                                    :dest-type :temple
+                                                                                    :gen-args [(inc level)])
+                                                                        (assoc cell :type :artifact-chest
+                                                                                    :items (rr/rand-nth [[(ig/id->item :robe)]
+                                                                                                         [(ig/id->item :ritual-knife)]
+                                                                                                         [(ig/id->item :ancient-spear)]
+                                                                                                         [(ig/id->item :blowgun)
+                                                                                                          (ig/id->item :blowdart)
+                                                                                                          (ig/id->item :blowdart)
+                                                                                                          (ig/id->item :blowdart)
+                                                                                                          (ig/id->item :blowdart)
+                                                                                                          (ig/id->item :blowdart)
+                                                                                                          (ig/id->item :blowdart)
+                                                                                                          (ig/id->item :blowdart)
+                                                                                                          (ig/id->item :blowdart)
+                                                                                                          (ig/id->item :blowdart)
+                                                                                                          (ig/id->item :blowdart)]
+                                                                                                         [(ig/id->item :cure)
+                                                                                                          (ig/id->item :cure)
+                                                                                                          (ig/id->item :cure)]]))))))
         npcs         (make-npcs cells level)]
     ;(println "fcg" fcg)
     ;(log/debug "g" g)

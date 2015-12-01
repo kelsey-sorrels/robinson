@@ -101,7 +101,7 @@
        
 (defn id-is-clothes?
   [id]
-  (contains? #{:pirate-clothes :navy-uniform}
+  (contains? #{:pirate-clothes :navy-uniform :robe}
              id))
 
 (defn is-clothes?
@@ -193,7 +193,13 @@
    {:id  :human-skull             :name "human skull"                 :name-plural "human skulls"}
    {:id  :gong                    :name "gong"                        :name-plural "gongs"}
    {:id  :stone-tablet            :name "stone tablet"                :name-plural "stone tablets"}
-   {:id  :codex                   :name "codex"                       :name-plural "codices"}])
+   {:id  :codex                   :name "codex"                       :name-plural "codices"}
+   {:id  :robe                    :name "robe"                        :name-plural "robes" :fuel 20}
+   {:id  :ritual-knife            :name "ritualistic knife"           :name-plural "ritualistic knives" :attack :ritualistic-knife :utility 20}
+   {:id  :ancient-spear           :name "ancient spear"               :name-plural "ancient spears" :attack :ancient-spear :utility 20}
+   {:id  :blowgun                 :name "blowgun"                     :name-plural "blowguns"}
+   {:id  :blowdart                :name "blowdart"                    :name-plural "blowdarts" :fuel 10}
+   {:id  :cure                    :name "cure"                        :name-plural "cures"}])
 
 (def ^:private id->item-map
   (apply hash-map (mapcat (fn [[k v]] [k (first v)])
@@ -250,7 +256,9 @@
     :coconut :coconut
     :empty-coconut :empty-coconut
     :jack-o-lantern :jack-o-lantern
-    :pistol :paper-cartridge))
+    :pistol :paper-cartridge
+    :ancient-spear :ancient-spear
+    :blowgun :blowdart))
 
 (defn requires-reload?
   [item]

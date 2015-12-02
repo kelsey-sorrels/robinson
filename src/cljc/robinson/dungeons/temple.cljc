@@ -61,20 +61,6 @@
                 :bottom
                   (map (fn [i] [i y-max]) (range (inc x-min) x-max))))))
 
-(defn rooms-to-edges
-  "Generate a random set of edges between rooms such that each room
-   is traversable from every other room."
-  [nodes]
-  (let [_ (log/trace "all nodes" nodes)
-        minimum-edges (map vector nodes (rest nodes))
-        all-edges (combo/combinations nodes 2)
-        _ (log/trace "all edges" all-edges)
-        _ (log/trace "minimum-edges" minimum-edges)
-        random-edges (map vec (take (/ (count nodes) 2) (rr/rnd-shuffle all-edges)))
-        union-edges  (distinct (concat minimum-edges random-edges))]
-    (log/trace "union-edges" union-edges)
-    union-edges))
-
 (defn points-to-corridor
   "Convert a sequence of points `[x y]` into `[x y {:type :corridor}]`."
   [points]
@@ -176,14 +162,54 @@
                    [x y cell]))))
          cells-xy)))
 
+(defn add-crushing-wall
+  [cellsxy]
+  cellsxy)
+
+(defn add-wall-darts
+  [cellsxy]
+  cellsxy)
+
+(defn add-spike-pit
+  [cellsxy]
+  cellsxy)
+
+(defn add-rolling-boulder
+  [cellsxy]
+  cellsxy)
+
+(defn add-snake-trap
+  [cellsxy]
+  cellsxy)
+
+(defn add-gas-trap
+  [cellsxy]
+  cellsxy)
+
+(defn add-trap
+  [cellsxy]
+  (case (rr/rand-nth [:crushing-wall :wall-darts :spike-pit :rolling-boulder :snake-trap :gas-trap])
+    :crushing-wall
+      (add-crushing-wall cellsxy)
+    :wall-darts
+      (add-wall-darts cellsxy)
+    :spike-pit
+      (add-spike-pit cellsxy)
+    :rolling-boulder
+      (add-rolling-boulder cellsxy)
+    :snake-trap
+      (add-snake-trap cellsxy)
+    :gas-trap
+      (add-gas-trap cellsxy)))
+
 (defn room-to-cellsxy
   "Convert the bounds of a room into a list of points that represent the room."
   [level min-x min-y max-x max-y]
-  (let [alternate-corners? (> 0.5 (rr/uniform-double))
-        corners [[[min-x min-y {:type (if alternate-corners? :upper-left-2 :upper-left-1)}]
-                  [max-x min-y {:type (if alternate-corners? :upper-right-2 :upper-right-1)}]
-                  [min-x max-y {:type (if alternate-corners? :bottom-left-2 :bottom-left-1)}]
-                  [max-x max-y {:type (if alternate-corners? :bottom-right-2 :bottom-right-1)}]]]
+  (let [trap-room? (> 0.5 (rr/uniform-double))
+        corners [[[min-x min-y {:type (if trap-room? :upper-left-2 :upper-left-1)}]
+                  [max-x min-y {:type (if trap-room? :upper-right-2 :upper-right-1)}]
+                  [min-x max-y {:type (if trap-room? :bottom-left-2 :bottom-left-1)}]
+                  [max-x max-y {:type (if trap-room? :bottom-right-2 :bottom-right-1)}]]]
         wall-greeble? (< 0.7 (rr/uniform-double))
         [direction
          location] (if wall-greeble?
@@ -224,7 +250,10 @@
                            [x y cell])
                          [x y cell]))
                       cellsxy)
-        cellsxy (add-room-features level cellsxy)]
+        cellsxy (add-room-features level cellsxy)
+        cellsxy (if trap-room?
+                  (add-trap cellsxy)
+                  cellsxy)]
    cellsxy))
 
 (defn points-to-fully-connected-graph

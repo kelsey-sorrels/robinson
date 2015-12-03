@@ -163,8 +163,19 @@
          cells-xy)))
 
 (defn add-crushing-wall
-  [cellsxy]
-  cellsxy)
+  [min-x min-y max-x max-y cellsxy]
+  (if-let [[trap-x trap-y _] (first (filter (fn [[_ _ cell]] (= (get cell :type) :floor)) (rr/rnd-shuffle cellsxy)))]
+    (map (fn [[x y cell]]
+           (if (and (= x trap-x)
+                    (= y trap-y))
+             [x y (assoc cell :type         :crushing-wall-trigger
+                               :room-bounds {:min-x min-x
+                                             :min-y min-y
+                                             :max-x max-x
+                                             :max-y max-y})]
+             [x y cell]))
+           cellsxy)
+    cellsxy))
 
 (defn add-wall-darts
   [cellsxy]
@@ -187,7 +198,7 @@
   cellsxy)
 
 (defn add-trap
-  [cellsxy]
+  [min-x min-y max-x max-y cellsxy]
   (case (rr/rand-nth [:crushing-wall :wall-darts :spike-pit :rolling-boulder :snake-trap :gas-trap])
     :crushing-wall
       (add-crushing-wall cellsxy)
@@ -252,7 +263,7 @@
                       cellsxy)
         cellsxy (add-room-features level cellsxy)
         cellsxy (if trap-room?
-                  (add-trap cellsxy)
+                  (add-trap min-x min-y max-x max-y cellsxy)
                   cellsxy)]
    cellsxy))
 

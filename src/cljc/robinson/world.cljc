@@ -155,6 +155,12 @@
                              
     (log/info "found cells" cellxys)
     cellxys))
+
+(defn update-current-place
+  [state f]
+  (if-let [place-id (current-place-id state)]
+    (update-in state [:world :places place-id] f)
+    state))
   
 (defn update-cell
   ([state x y f]

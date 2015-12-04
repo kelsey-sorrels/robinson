@@ -8,6 +8,7 @@
             [robinson.viewport :as rv]
             [robinson.aterminal :as rat]
             [robinson.describe :as rdesc]
+            [robinson.traps :as rt]
             [robinson.dialog :as rdiag]
             [robinson.player :as rp]
             [robinson.math :as rmath]
@@ -384,7 +385,8 @@
                     items (get cell :items)]
                 (if (seq items)
                   (rdesc/search state)
-                  state))))
+                  state))
+              (rt/trigger-traps state)))
           (inc-time state))
       (= (get (rw/npc-at-xy state target-x target-y) :in-party?) true)
         (-> state
@@ -3782,6 +3784,8 @@
                       state))
                   ;; update visibility
                   (update-visibility)
+                  ;; update traps
+                  (rt/update-traps)
                   ;; add will-to-live flavor message
                   (log-will-to-live-flavor wtl)
                   ;; maybe gain level

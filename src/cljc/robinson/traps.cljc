@@ -2,6 +2,8 @@
 (ns robinson.traps
   (:require 
             [robinson.common :as rc]
+            [robinson.random :as rr]
+            [robinson.player :as rp]
             [robinson.world :as rw]
             [taoensso.timbre :as log]))
 
@@ -9,16 +11,67 @@
   [state trap]
   (rw/update-current-place state (fn [place] (update place :traps (fn [traps] (conj traps trap))))))
 
+(defn find-doors
+  [state min-x min-y max-x max-y]
+  (filter (fn [[x y]]
+            (contains? #{:close-door :open-door}
+                       (get (rw/get-cell state) :type)))
+          (for [x (range min-x (inc max-x))
+                y (range min-y (inc max-y))
+                :when (or (= x min-x)
+                          (= x max-x)
+                          (= y min-y)
+                          (= y max-y))]
+            [x y])))
+
+(defn crushing-wall-direction
+  [state player-xy min-x min-y max-x max-y]
+  (let [door-xys (find-doors state min-x min-y max-x max-y)
+        door-xy  (rr/rand-nth door-xys)]
+    ;; finding direction from player to door is the direction the wall will move
+    (rc/find-point-relation (- min-x max-x) (- min-y max-y) player-xy door-xy)))
+
+(defn make-trap-xy-sequence
+   "Returns a list ex: [[[x y] [x y] [x y]] [[x y] [x y] [x y]] ...]
+   a sequence of xy's where each element is the location of
+   the crushing wall as it moves. As the wall is updated
+   the first element is discarded. When drawn only the first
+   set of xys are drawn."
+  [min-x min-y max-x max-y direction]
+  (case direction
+    ; <--
+    :left
+      (for [x (range (dec max-x) min-x)]
+        (for [y (range (inc min-y) max-y)]
+          [x y]))
+    ; -->
+    :right
+      (for [x (range (inc min-x) max-x)]
+        (for [y (range (inc min-y) max-y)]
+          [x y]))
+    ;/\
+    ;|
+    :up
+      (for [y (range (dec max-y) min-y)]
+        (for [x (range (inc min-x) max-x)]
+          [x y]))
+    ;|
+    ;\/
+    :down
+      (for [y (range (inc min-y) max-y)]
+        (for [x (range (inc min-x) max-x)]
+          [x y]))))
 
 (defn trigger-crushing-wall
   [state x y cell]
   ;; determine trap advancement mechanics
-  (let [trap-direction nil ;:up :down :left :right
-        trap-locations []] ; list ex: [[[x y] [x y] [x y]] [[x y] [x y] [x y]] ...]
-                           ; a sequence of xy's where each element is the location of
-                           ; the crushing wall as it moves. As the wall is updated
-                           ; the first element is discarded. When drawn only the first
-                           ; set of xys are drawn.
+  (let [{{min-x :min-x
+          min-y :min-y
+          max-x :max-x
+          max-y :max-y}
+        :room-bounds}  cell
+        trap-direction (crushing-wall-direction state (rp/player-xy) min-x min-y max-x max-y) ;:up :down :left :right
+        trap-locations (make-trap-xy-sequence min-x min-y max-x max-y trap-direction)]
     (-> state
       ;; reveal trap cell
       (rw/assoc-cell x y :trap-found true)

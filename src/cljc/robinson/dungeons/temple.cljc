@@ -147,7 +147,7 @@
            (if (and (= x trap-x)
                     (= y trap-y))
              [x y (assoc cell :type         :crushing-wall-trigger
-                               :room-bounds {:min-x min-x
+                              :room-bounds  {:min-x min-x
                                              :min-y min-y
                                              :max-x max-x
                                              :max-y max-y})]
@@ -179,7 +179,7 @@
   [min-x min-y max-x max-y cellsxy]
   (case (rr/rand-nth [:crushing-wall :wall-darts :spike-pit :rolling-boulder :snake-trap :gas-trap])
     :crushing-wall
-      (add-crushing-wall cellsxy)
+      (add-crushing-wall min-x min-y max-x max-y cellsxy)
     :wall-darts
       (add-wall-darts cellsxy)
     :spike-pit
@@ -460,6 +460,20 @@
       :else
         (assert false (format "Trying to merge %s %s" (str cell1-type) (str cell2-type))))))
 
+(defn merge-cell-values
+  [v1 v2]
+  (if (= (type v1) (type v2))
+    (cond
+      (vector? v1)
+        (vec (concat v1 v2))
+      (map? v1)
+        (merge v1 v2)
+      (list? v1)
+        (concat v1 v2)
+      :else
+        v2)
+     v2))
+
 (defn merge-with-canvas
   "Merge a grid of `[x y cell]` into an existing grid. The result is a merged grid
    following the rules of `merge-cell-types`."
@@ -470,14 +484,10 @@
                              (fn [c] (update-in c [y x]
                                (fn [canvas-cell]
                                  (let [cell-type (merge-cell-types (if (nil? cell) {:type :nil} cell)
-                                                                   (if (nil? canvas-cell) {:type :nil} canvas-cell))
-                                       items     (vec (concat (get cell :items []) (get canvas-cell :items [])))]
-                                   (log/debug "cell" cell "canvas-cell" canvas-cell "items" items)
-                                   (as-> {} new-cell
-                                     (assoc new-cell :type cell-type)
-                                     (if (seq items) 
-                                       (assoc new-cell :items items)
-                                       new-cell)))))))
+                                                                   (if (nil? canvas-cell) {:type :nil} canvas-cell))]
+                                   (log/debug "cell" cell "canvas-cell" canvas-cell)
+                                   (-> (merge-with merge-cell-values canvas-cell cell)
+                                       (assoc :type cell-type)))))))
                            cells-xy))
         cells (f canvas)]
   (log/debug "after")

@@ -35,6 +35,7 @@
                                                fsm-current-state]]
             [robinson.npc :as rnpc :refer [talking-npcs
                                            npcs-in-viewport]]
+            [robinson.traps :as rt]
             [robinson.aterminal :as rat]
             [tinter.core :as tinter]
             clojure.set
@@ -625,6 +626,25 @@
     ;    (int (-> state :world :player :hp))
     ;    (-> state :world :player :max-hp)
     ;    (apply str (interpose " " (-> state :world :player :status)))
+
+(defn render-crushing-wall
+  [screen trap]
+  (let [ch (case (get trap :direction)
+             :up    "╧"
+             :down  "╤"
+             :left  "╢"
+             :right "╟")]
+    (put-chars screen (for [[x y] (first (get trap :locations))]
+                        {:x x :y y :c ch :fg [90 90 90] :bg [0 0 0]}))))
+
+(defn render-traps
+  [state]
+  (when-let [traps (rt/current-place-traps state)]
+    (let [screen (get state :screen)]
+      (doseq [trap traps]
+        (case (get trap :type)
+          :crushing-wall
+            (render-crushing-wall screen trap))))))
 
 (def image-cache (atom {}))
 
@@ -1594,7 +1614,8 @@
                                                                     "")))]
         (log/info "num-log-msgs" num-logs)
         (log/info "message" message)
-        (put-chars screen characters)))
+        (put-chars screen characters)
+        (render-traps state)))
     (case (current-state state)
       :pickup-selection     (render-pick-up-selection state)
       :inventory            (render-inventory state)

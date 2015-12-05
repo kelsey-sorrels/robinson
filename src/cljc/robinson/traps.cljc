@@ -11,25 +11,36 @@
   [state trap]
   (rw/update-current-place state (fn [place] (update place :traps (fn [traps] (conj traps trap))))))
 
-(defn find-doors
+(defn room-bound-xys
+  [min-x min-y max-x max-y]
+  (for [x (range min-x (inc max-x))
+        y (range min-y (inc max-y))
+        :when (or (= x min-x)
+                  (= x max-x)
+                  (= y min-y)
+                  (= y max-y))]
+    [x y]))
+  
+(defn find-exits
   [state min-x min-y max-x max-y]
+  (log/info "room-bound-xys" (vec (room-bound-xys min-x min-y max-x max-y)))
   (filter (fn [[x y]]
-            (contains? #{:close-door :open-door}
-                       (get (rw/get-cell state) :type)))
-          (for [x (range min-x (inc max-x))
-                y (range min-y (inc max-y))
-                :when (or (= x min-x)
-                          (= x max-x)
-                          (= y min-y)
-                          (= y max-y))]
-            [x y])))
+            (log/info "x" x "y" y "type" (get (rw/get-cell state x y) :type))
+            (contains? #{:close-door :open-door :corridor :moss-corridor :white-corridor}
+                       (get (rw/get-cell state x y) :type)))
+          (room-bound-xys min-x min-y max-x max-y)))
 
 (defn crushing-wall-direction
   [state player-xy min-x min-y max-x max-y]
-  (let [door-xys (find-doors state min-x min-y max-x max-y)
-        door-xy  (rr/rand-nth door-xys)]
-    ;; finding direction from player to door is the direction the wall will move
-    (rc/find-point-relation (- min-x max-x) (- min-y max-y) player-xy door-xy)))
+  (let [exit-xys (vec (find-exits state min-x min-y max-x max-y))
+        _ (log/info "door-xys" exit-xys)
+        exit-xy  (rr/rand-nth exit-xys)]
+    ;; finding direction from player to exit is the direction the wall will move
+    (case (rc/find-point-relation (- min-x max-x) (- min-y max-y) player-xy exit-xy)
+      :left   :left
+      :right  :right
+      :top    :up
+      :bottom :down)))
 
 (defn make-trap-xy-sequence
    "Returns a list ex: [[[x y] [x y] [x y]] [[x y] [x y] [x y]] ...]
@@ -38,10 +49,11 @@
    the first element is discarded. When drawn only the first
    set of xys are drawn."
   [min-x min-y max-x max-y direction]
+  (log/info "making trap xy sequence" "min-x" min-x "min-y" min-y "max-x" max-x "max-y" max-y "direction" direction)
   (case direction
     ; <--
     :left
-      (for [x (range (dec max-x) min-x)]
+      (for [x (range (dec max-x) min-x -1)]
         (for [y (range (inc min-y) max-y)]
           [x y]))
     ; -->
@@ -52,7 +64,7 @@
     ;/\
     ;|
     :up
-      (for [y (range (dec max-y) min-y)]
+      (for [y (range (dec max-y) min-y -1)]
         (for [x (range (inc min-x) max-x)]
           [x y]))
     ;|
@@ -65,12 +77,13 @@
 (defn trigger-crushing-wall
   [state x y cell]
   ;; determine trap advancement mechanics
+  (log/info "x" x "y" y "cell" cell)
   (let [{{min-x :min-x
           min-y :min-y
           max-x :max-x
           max-y :max-y}
         :room-bounds}  cell
-        trap-direction (crushing-wall-direction state (rp/player-xy) min-x min-y max-x max-y) ;:up :down :left :right
+        trap-direction (crushing-wall-direction state (rp/player-xy state) min-x min-y max-x max-y) ;:up :down :left :right
         trap-locations (make-trap-xy-sequence min-x min-y max-x max-y trap-direction)]
     (-> state
       ;; reveal trap cell
@@ -107,5 +120,5 @@
 
 (defn update-traps
   [state]
-  (reduce update-trap (current-place-traps state))) 
+  (reduce update-trap state (current-place-traps state))) 
 

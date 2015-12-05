@@ -93,6 +93,27 @@
     true
     (> (distance-sq (xy->pos x1 y1) (xy->pos x2 y2)) (* l l)))))
   
+(defn find-point-relation [width height [start-x start-y] [end-x end-y]]
+  "  top
+    \\    /
+     \\  /
+      \\/
+  left/\\right
+     /  \\
+    /    \\
+    bottom"
+  (let [left-bottom  (> (- end-y start-y) (* (/ height width) (- end-x start-x)))
+        bottom-right (> (- end-y start-y) (* -1 (/ height width) (- end-x start-x)))]
+    (cond
+      (and left-bottom bottom-right)
+        :bottom
+      left-bottom
+        :left
+      bottom-right
+        :right
+      :else
+        :top)))
+
 
 (defn bound [min-v v max-v]
   (min max-v (max min-v v)))

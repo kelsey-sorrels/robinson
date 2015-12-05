@@ -24,32 +24,10 @@
   [width height]
   (vec (repeat height (vec (repeat width {:type :empty})))))
 
-(defn find-point-relation [width height [start-x start-y] [end-x end-y]]
-  "  top
-    \\    /
-     \\  /
-      \\/
-  left/\\right
-     /  \\
-    /    \\
-    bottom"
-  (let [left-bottom  (> (- end-y start-y) (* (/ height width) (- end-x start-x)))
-        bottom-right (> (- end-y start-y) (* -1 (/ height width) (- end-x start-x)))]
-    (cond
-      (and left-bottom bottom-right)
-        :bottom
-      left-bottom
-        :left
-      bottom-right
-        :right
-      :else
-        :top)))
-
-
 (defn find-door
   "Takes a room and returns an [x y] of a door on the edge of the room."
   [[x-min y-min x-max y-max] start end]
-  (let [side         (find-point-relation (- x-max x-min) (- y-max y-min) start end)]
+  (let [side         (rc/find-point-relation (- x-max x-min) (- y-max y-min) start end)]
     (log/info "find-door" start end side)
     (rr/rand-nth (case side
                 :left

@@ -9,7 +9,7 @@
 
 (defn conj-trap-in-current-place
   [state trap]
-  (rw/update-current-place state (fn [place] (update place :traps (fn [traps] (conj traps trap))))))
+  (rw/update-current-place state (fn [place] (update place :traps (fn [traps] (vec (conj traps trap)))))))
 
 (defn room-bound-xys
   [min-x min-y max-x max-y]
@@ -78,6 +78,7 @@
   [state x y cell]
   ;; determine trap advancement mechanics
   (log/info "x" x "y" y "cell" cell)
+  ;; TODO: only trigger once
   (let [{{min-x :min-x
           min-y :min-y
           max-x :max-x
@@ -103,14 +104,18 @@
       state)))
 
 (defn update-crushing-wall-trap
-  [state trap]
-  state)
+  [state idx]
+  (let [place-id (rw/current-place-id state)]
+    (update-in state
+               [:world :places place-id :traps idx :locations]
+               (comp rest vec))))
 
 (defn update-trap
-  [state trap]
+  [state [idx trap]]
+  (log/info "updating trap" [idx trap])
   (case (get trap :type)
     :crushing-wall
-      (update-crushing-wall-trap state trap)
+      (update-crushing-wall-trap state idx)
     state))
 
 (defn current-place-traps
@@ -120,5 +125,19 @@
 
 (defn update-traps
   [state]
-  (reduce update-trap state (current-place-traps state))) 
+  (as-> state state
+    (reduce update-trap state (map-indexed vector (current-place-traps state)))
+    (if-let [place-id (rw/current-place-id state)]
+      (update-in state
+                 [:world :places place-id :traps]
+                 (fn [traps]
+                   (reduce (fn [traps trap]
+                             ;; remove expended crusing wall traps
+                             (if (and (= (get trap :type) :crushing-wall)
+                                      (empty? (get trap :locations)))
+                               traps
+                               (vec (conj traps trap))))
+                           []
+                           traps)))
+      state)))
 

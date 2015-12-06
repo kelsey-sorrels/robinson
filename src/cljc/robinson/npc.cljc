@@ -198,6 +198,10 @@
   (first (filter (fn [npc] (= (get npc :pos) pos))
                  (get-npcs state))))
 
+(defn npc-at-xy
+  [state x y]
+  (npc-at-pos state (rc/xy->pos x y)))
+
 (defn update-npc-at-xy
   "Transform the npc at `[x y]` with the function f. (f npc)."
   [state x y f]

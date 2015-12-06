@@ -248,7 +248,7 @@
 
 (defmethod calc-dmg :melee
   [state attacker attack attack-type defender defender-body-part]
-  #_(log/info "Attacker" attacker "attacker-type" (type attacker) "Defernder" defender "defender-type" (type defender))
+  #_(log/info "Attacker" attacker "attacker-type" (type attacker) "Defender" defender "defender-type" (type defender))
   (log/info "attacker" (:race attacker) "defender" (:race defender))
   ;;Damage = Astr * (Adex / Dsp) * (As / Ds) * (At / Dt)
   (let [attacker-strength  (dcp/get-strength attacker state)
@@ -265,7 +265,7 @@
 
 (defn calc-dmg-ranged-or-thrown
   [state attacker attack attack-type defender defender-body-part]
-  #_(log/info "Attacker" attacker "attacker-type" (type attacker) "Defernder" defender "defender-type" (type defender))
+  #_(log/info "Attacker" attacker "attacker-type" (type attacker) "Defender" defender "defender-type" (type defender))
   (log/info "attacker" (:race attacker) "defender" (:race defender))
   ;;Damage = Astr * (Adex / Dsp) * (As / Ds) * (At / Dt)
   (let [attacker-strength  (dcp/get-strength attacker state)
@@ -309,7 +309,7 @@
    Return a new state reflecting combat outcome."
   ([state attacker-path defender-path]
   {:pre [(or (every? (set (keys (get-in state attacker-path))) [:attacks])
-             (assert false (str "attacker under specified" attacker-path)))
+             (assert false (str "attacker under specified" attacker-path (get-in state attacker-path))))
          (some? state)]}
    (let [attacker           (get-in state attacker-path)
          attack-type (or (get (first (filter (fn [item] (contains? item :wielded))

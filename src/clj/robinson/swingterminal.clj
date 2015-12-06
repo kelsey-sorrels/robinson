@@ -4,7 +4,9 @@
             robinson.aterminal)
   (:require [robinson.macros :as rm]
             [taoensso.timbre :as timbre]
+            [clojure-watch.core :as cwc]
             [clojure.core.async :as async :refer [go go-loop]]
+            clojure.core.memoize
             clojure.java.io)
   (:import  
             java.util.concurrent.LinkedBlockingQueue
@@ -91,7 +93,7 @@
           character-map    (atom character-map-cleared)
           cursor-xy        (atom nil)
           ;; draws a character to an image and returns the image. 
-          glyph-cache      (memoize (fn [component font-metrics highlight char-width char-height c]
+          glyph-cache      (clojure.core.memoize/memo (fn [component font-metrics highlight char-width char-height c]
                              (info "Creating glyph for" c)
                              (let [glyph-image                       (.createImage component char-width char-height)
                                    offscreen-graphics-2d ^Graphics2D (.getGraphics glyph-image)
@@ -251,6 +253,17 @@
                              (.setFocusTraversalKeysEnabled false)
                              (.setResizable false)
                              (.pack))]
+      ;; Start font file change listener thread
+      (cwc/start-watch [{:path "./fonts"
+                         :event-types [:modify]
+                         :bootstrap (fn [path] (println "Starting to watch " path))
+                         :callback (fn [event filename]
+                                     (println "Reloading font" filename)
+                                     (reset! normal-font
+                                             (make-font filename Font/PLAIN font-size))
+                                     (clojure.core.memoize/memo-clear! glyph-cache))
+                         :options {:recursive true}}])
+      ;; Create and return terminal
       (reify ATerminal
         (get-size [this]
           [columns rows])

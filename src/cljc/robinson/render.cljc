@@ -644,7 +644,8 @@
       (doseq [trap traps]
         (case (get trap :type)
           :crushing-wall
-            (render-crushing-wall screen trap))))))
+            (render-crushing-wall screen trap)
+          nil)))))
 
 (def image-cache (atom {}))
 

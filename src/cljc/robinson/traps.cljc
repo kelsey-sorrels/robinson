@@ -13,6 +13,8 @@
 ;; Trap protocol
 (defrecord Trap [type
                  race
+                 name
+                 name-plural
                  speed
                  size
                  strength
@@ -124,6 +126,10 @@
                                                 :crushing-wall
                                                 ; race
                                                 :trap
+                                                ; name
+                                                "spiked wall"
+                                                ; name-plural
+                                                "spiked walls"
                                                 ; speed
                                                 1
                                                 ; size
@@ -152,16 +158,18 @@
   [state idx]
   (let [place-id (rw/current-place-id state)
         xys      (second (get-in state [:world :places place-id :traps idx :locations] []))]
-    ;; is the player or any npcs in the next set of xys?
+    ;; are any npcs in the next set of xys?
     (cond
       (some (fn [[x y]] (rnpc/npc-at-xy state x y)) xys)
         ;; damage creatures in xys
         (reduce (fn [state [x y]]
+                  (log/info "Trap attacking npc at" x y)
                   (if-let [npc (rnpc/npc-at-xy state x y)]
                     (let [npc-path (rnpc/npc->keys state npc)
                           wall-path [:world :places place-id :traps idx]]
-                      (rcombat/attack state wall-path npc-path)
-                    state)))
+                      (log/info "crushing wall" wall-path "attacking" npc-path)
+                      (rcombat/attack state wall-path npc-path))
+                    state))
                 state
                 xys)
       (contains? (set xys) (rp/player-xy state))
@@ -177,6 +185,8 @@
 
 (defn update-trap
   [state [idx trap]]
+  {:pre [(not (nil? state))]
+   :post [(not (nil? %))]}
   (log/info "updating trap" [idx trap])
   (case (get trap :type)
     :crushing-wall

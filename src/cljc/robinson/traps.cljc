@@ -5,7 +5,36 @@
             [robinson.random :as rr]
             [robinson.player :as rp]
             [robinson.world :as rw]
+            [robinson.npc :as rnpc]
+            [robinson.combat :as rcombat]
+            [robinson.dynamiccharacterproperties :as dcp]
             [taoensso.timbre :as log]))
+
+;; Trap protocol
+(defrecord Trap [type
+                 race
+                 speed
+                 size
+                 strength
+                 dexterity
+                 toughness
+                 attacks]
+  Object
+  (toString [this] (str "#Trap" (into {} this)))
+  ;; Dispatch DynaimicCharacterProperties to multi-methods
+  dcp/DynamicCharacterProperties
+  (get-energy [this state]
+    (get this :energy))
+  (get-speed [this state]
+    (get this :speed))
+  (get-size [this state]
+    (get this :size))
+  (get-strength [this state]
+    (get this :strength))
+  (get-dexterity [this state]
+    (get this :dexterity))
+  (get-toughness [this state]
+    (get this :toughness)))
 
 (defn conj-trap-in-current-place
   [state trap]
@@ -53,24 +82,24 @@
   (case direction
     ; <--
     :left
-      (for [x (range (dec max-x) min-x -1)]
+      (for [x (range max-x min-x -1)]
         (for [y (range (inc min-y) max-y)]
           [x y]))
     ; -->
     :right
-      (for [x (range (inc min-x) max-x)]
+      (for [x (range min-x max-x)]
         (for [y (range (inc min-y) max-y)]
           [x y]))
     ;/\
     ;|
     :up
-      (for [y (range (dec max-y) min-y -1)]
+      (for [y (range max-y min-y -1)]
         (for [x (range (inc min-x) max-x)]
           [x y]))
     ;|
     ;\/
     :down
-      (for [y (range (inc min-y) max-y)]
+      (for [y (range min-y max-y)]
         (for [x (range (inc min-x) max-x)]
           [x y]))))
 
@@ -91,9 +120,25 @@
       (rw/assoc-cell x y :trap-found true)
       (rc/append-log "You find a trap")
       ;; add trap obj to place
-      (conj-trap-in-current-place {:type :crushing-wall
-                                   :direction trap-direction
-                                   :locations trap-locations}))))
+      (conj-trap-in-current-place (assoc (Trap. ; type
+                                                :crushing-wall
+                                                ; race
+                                                :trap
+                                                ; speed
+                                                1
+                                                ; size
+                                                50
+                                                ; strength
+                                                5
+                                                ; dexterity
+                                                1
+                                                ; toughness
+                                                5
+                                                ; attacks
+                                                #{:spike})
+                                     ;; crushing-wall specific
+                                     :direction trap-direction
+                                     :locations trap-locations)))))
 
 (defn trigger-traps
   [state]
@@ -105,10 +150,30 @@
 
 (defn update-crushing-wall-trap
   [state idx]
-  (let [place-id (rw/current-place-id state)]
-    (update-in state
-               [:world :places place-id :traps idx :locations]
-               (comp rest vec))))
+  (let [place-id (rw/current-place-id state)
+        xys      (second (get-in state [:world :places place-id :traps idx :locations] []))]
+    ;; is the player or any npcs in the next set of xys?
+    (cond
+      (some (fn [[x y]] (rnpc/npc-at-xy state x y)) xys)
+        ;; damage creatures in xys
+        (reduce (fn [state [x y]]
+                  (if-let [npc (rnpc/npc-at-xy state x y)]
+                    (let [npc-path (rnpc/npc->keys state npc)
+                          wall-path [:world :places place-id :traps idx]]
+                      (rcombat/attack state wall-path npc-path)
+                    state)))
+                state
+                xys)
+      (contains? (set xys) (rp/player-xy state))
+        ;; damage player
+        (let [player-path [:world :player]
+              wall-path [:world :places place-id :traps idx]]
+          (rcombat/attack state wall-path player-path))
+      ;; move crushing wall forward
+      :else
+      (update-in state
+                 [:world :places place-id :traps idx :locations]
+                 (comp rest vec)))))
 
 (defn update-trap
   [state [idx trap]]
@@ -127,6 +192,7 @@
   [state]
   (as-> state state
     (reduce update-trap state (map-indexed vector (current-place-traps state)))
+    ;; clean up traps if expired
     (if-let [place-id (rw/current-place-id state)]
       (update-in state
                  [:world :places place-id :traps]

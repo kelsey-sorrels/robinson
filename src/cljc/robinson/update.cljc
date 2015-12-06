@@ -2938,7 +2938,7 @@
 (defn add-monsters-debug
   "Add a monster randomly just inside the player's view."
   [state]
-  (let [r          (rlos/sight-distance state)
+  (let [r          3 ;3 ;3 ;(rlos/sight-distance state)
         [player-x
          player-y] (rp/player-xy state)
         xys        (rlos/perimeter-xys player-x player-y (min 5 r))

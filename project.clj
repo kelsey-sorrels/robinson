@@ -41,6 +41,7 @@
                  [dorothy "0.0.6"]
                  [com.taoensso/nippy "2.9.0"]
                  [com.taoensso/timbre "4.0.2"]
+                 [clojure-watch "LATEST"]
                  [alandipert/enduro "1.2.0"]
                  [alandipert/storage-atom "1.2.4"]
                  [rm-hull/monet "0.2.1"]]

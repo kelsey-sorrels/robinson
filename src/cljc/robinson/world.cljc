@@ -406,6 +406,8 @@
                :dry-hole
                :freshwater-hole
                :saltwater-hole
+               ;; traps
+               :crushing-wall
                ;; pirate ship types
                :bulkhead
                :wheel
@@ -482,6 +484,19 @@
   [t]
   (contains? #{:sand :surf} t))
 
+(defn collide-trap?
+   [state x y]
+   (when-let [place-id (current-place-id state)]
+     (some (fn [trap]
+             (case (get trap :type)
+               :crushing-wall
+                 (some (fn [[trap-x trap-y]]
+                         (and (= x trap-x)
+                              (= y trap-y)))
+                       (first (get trap :locations)))
+               false))
+          (get-in state [:world :places place-id :traps] []))))
+
 (defn collide?
   "Return `true` if the cell at `[x y]` is non-traverable. Ie: a wall, closed door or simply does
    not exist. Cells occupied by npcs are considered non-traversable."
@@ -502,6 +517,8 @@
         ;; water collides?
         (and collide-water?
              (= (cell :type) :water))
+        ;; trap collides?
+        (collide-trap? state x y)
         ;; player collides?
         (and collide-player?
              (= [x y] (rp/player-xy state)))

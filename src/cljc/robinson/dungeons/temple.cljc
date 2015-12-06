@@ -240,7 +240,8 @@
                          [x y cell]))
                       cellsxy)
         cellsxy (add-room-features level cellsxy)
-        cellsxy (if trap-room?
+        cellsxy (if (and trap-room?
+                         (pos? level))
                   (add-trap min-x min-y max-x max-y cellsxy)
                   cellsxy)]
    cellsxy))

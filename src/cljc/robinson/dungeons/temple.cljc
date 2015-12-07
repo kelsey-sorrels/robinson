@@ -564,7 +564,7 @@
                                (map (fn [column]
                                       (let [width (rr/uniform-int min-width (dec max-width))
                                             height (rr/uniform-int min-height (dec max-height))
-                                            x (rr/uniform-int (* column max-width) (+ (* column max-width) (dec max-width) (- width))) 
+                                            x (inc (rr/uniform-int (* column max-width) (+ (* column max-width) (dec max-width) (- width))) )
                                             y (rr/uniform-int (* row max-height) (+ (* row max-height) (dec max-height) (- height)))]
                                       [x y (+ x width) (+ y height)]))
                                     (range columns)))

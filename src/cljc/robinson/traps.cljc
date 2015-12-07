@@ -146,13 +146,20 @@
                                      :direction trap-direction
                                      :locations trap-locations)))))
 
-(defn trigger-traps
-  [state]
-  (let [[cell x y] (rw/player-cellxy state)]
+(defn trigger-if-trap
+  [state [x y]]
+  (let [cell (rw/get-cell state x y)]
     (case (get cell :type)
       :crushing-wall-trigger
         (trigger-crushing-wall state x y cell)
       state)))
+
+(defn trigger-traps
+  [state]
+  (reduce trigger-if-trap
+          state
+          (conj (map (comp rc/pos->xy :pos) (rnpc/visible-npcs state))
+                (rp/player-xy state))))
 
 (defn update-crushing-wall-trap
   [state idx]
@@ -204,16 +211,17 @@
     (reduce update-trap state (map-indexed vector (current-place-traps state)))
     ;; clean up traps if expired
     (if-let [place-id (rw/current-place-id state)]
-      (update-in state
-                 [:world :places place-id :traps]
-                 (fn [traps]
-                   (reduce (fn [traps trap]
-                             ;; remove expended crusing wall traps
-                             (if (and (= (get trap :type) :crushing-wall)
-                                      (empty? (get trap :locations)))
-                               traps
-                               (vec (conj traps trap))))
-                           []
-                           traps)))
+      (-> state
+        (update-in [:world :places place-id :traps]
+                   (fn [traps]
+                     (reduce (fn [traps trap]
+                               ;; remove expended crusing wall traps
+                               (if (and (= (get trap :type) :crushing-wall)
+                                        (empty? (get trap :locations)))
+                                 traps
+                                 (vec (conj traps trap))))
+                             []
+                             traps)))
+        trigger-traps)
       state)))
 

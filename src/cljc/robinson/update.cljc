@@ -2668,7 +2668,10 @@
                                                          :short-grass
                                                          ;; pirate ship
                                                          :deck
-                                                         :shallow-water}
+                                                         :shallow-water
+                                                         :moss-corridor
+                                                         :white-corridor
+                                                         :crushing-wall-trigger}
                                                        (get-type x y)))))
           traversable?           (cond
                                    (and npc-can-move-in-water

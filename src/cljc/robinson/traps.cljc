@@ -110,41 +110,43 @@
   ;; determine trap advancement mechanics
   (log/info "x" x "y" y "cell" cell)
   ;; TODO: only trigger once
-  (let [{{min-x :min-x
-          min-y :min-y
-          max-x :max-x
-          max-y :max-y}
-        :room-bounds}  cell
-        trap-direction (crushing-wall-direction state (rp/player-xy state) min-x min-y max-x max-y) ;:up :down :left :right
-        trap-locations (make-trap-xy-sequence min-x min-y max-x max-y trap-direction)]
-    (-> state
-      ;; reveal trap cell
-      (rw/assoc-cell x y :trap-found true)
-      (rc/append-log "You find a trap")
-      ;; add trap obj to place
-      (conj-trap-in-current-place (assoc (Trap. ; type
-                                                :crushing-wall
-                                                ; race
-                                                :trap
-                                                ; name
-                                                "spiked wall"
-                                                ; name-plural
-                                                "spiked walls"
-                                                ; speed
-                                                1
-                                                ; size
-                                                50
-                                                ; strength
-                                                5
-                                                ; dexterity
-                                                1
-                                                ; toughness
-                                                5
-                                                ; attacks
-                                                #{:spike})
-                                     ;; crushing-wall specific
-                                     :direction trap-direction
-                                     :locations trap-locations)))))
+  (if (> (rw/get-time state) (+ (get cell :last-triggered 0) 20))
+    (let [{{min-x :min-x
+            min-y :min-y
+            max-x :max-x
+            max-y :max-y}
+          :room-bounds}  cell
+          trap-direction (crushing-wall-direction state (rp/player-xy state) min-x min-y max-x max-y) ;:up :down :left :right
+          trap-locations (make-trap-xy-sequence min-x min-y max-x max-y trap-direction)]
+      (-> state
+        ;; reveal trap cell
+        (rw/assoc-cell x y :trap-found true)
+        (rc/append-log "You find a trap")
+        ;; add trap obj to place
+        (conj-trap-in-current-place (assoc (Trap. ; type
+                                                  :crushing-wall
+                                                  ; race
+                                                  :trap
+                                                  ; name
+                                                  "spiked wall"
+                                                  ; name-plural
+                                                  "spiked walls"
+                                                  ; speed
+                                                  1
+                                                  ; size
+                                                  50
+                                                  ; strength
+                                                  5
+                                                  ; dexterity
+                                                  1
+                                                  ; toughness
+                                                  5
+                                                  ; attacks
+                                                  #{:spike})
+                                       ;; crushing-wall specific
+                                       :direction trap-direction
+                                       :locations trap-locations))))
+    state))
 
 (defn trigger-if-trap
   [state [x y]]

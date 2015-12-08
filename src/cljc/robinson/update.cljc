@@ -385,8 +385,7 @@
                     items (get cell :items)]
                 (if (seq items)
                   (rdesc/search state)
-                  state))
-              (rt/trigger-traps state)))
+                  state))))
           (inc-time state))
       (= (get (rw/npc-at-xy state target-x target-y) :in-party?) true)
         (-> state
@@ -2669,6 +2668,7 @@
                                                          ;; pirate ship
                                                          :deck
                                                          :shallow-water
+                                                         ;; ruined temple
                                                          :moss-corridor
                                                          :white-corridor
                                                          :crushing-wall-trigger}
@@ -3379,7 +3379,10 @@
                                           (log/info "monster level" (rnpc/monster-level state))
                                           state)               :normal false]
                           \0           [(fn [state]
-                                          (rp/player-update-xp state (partial + 100))) :normal false]
+                                          (-> state
+                                            (rp/player-update-xp (partial + 100))
+                                            (rp/player-update-hunger (fn [hunger] 0))
+                                            (rp/player-update-thirst (fn [thirst] 0)))) :normal false]
                           \1           [(fn [state]
                                           (log/info "showing world")
                                           (when (get-in state [:world :dev-mode])

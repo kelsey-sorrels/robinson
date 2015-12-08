@@ -140,24 +140,60 @@
                    [x y cell]))))
          cells-xy)))
 
+(defn update-cellsxy
+  [cellsxy vx vy f]
+  (map (fn [[x y cell]]
+         (if (and (= x vx)
+                  (= y vy))
+           [x y (f cell)]
+           [x y cell]))
+       cellsxy))
+
 (defn add-crushing-wall
   [min-x min-y max-x max-y cellsxy]
   (if-let [[trap-x trap-y _] (first (filter (fn [[_ _ cell]] (= (get cell :type) :floor)) (rr/rnd-shuffle cellsxy)))]
-    (map (fn [[x y cell]]
-           (if (and (= x trap-x)
-                    (= y trap-y))
-             [x y (assoc cell :type         :crushing-wall-trigger
-                              :room-bounds  {:min-x min-x
-                                             :min-y min-y
-                                             :max-x max-x
-                                             :max-y max-y})]
-             [x y cell]))
-           cellsxy)
+    (update-cellsxy cellsxy
+                    trap-x
+                    trap-y
+                    (fn [cell]
+                      (assoc cell :type         :crushing-wall-trigger
+                                     :room-bounds  {:min-x min-x
+                                                    :min-y min-y
+                                                    :max-x max-x
+                                                    :max-y max-y})))
     cellsxy))
 
 (defn add-wall-darts
-  [cellsxy]
-  cellsxy)
+  [min-x min-y max-x max-y direction location cellsxy]
+  ;; find all floor cells in line of greeble
+  (log/info "add-wall-darts" direction location)
+  (let [direction          (or direction :horizontal)
+        location           (or location [])
+        trigger-candidates (set (case direction
+                                  :vertical
+                                    (mapcat (fn [y] (map vector (range (inc min-x) max-x) (repeat y))) location)
+                                  :horizontal
+                                    (mapcat (fn [x] (map vector (repeat x) (range (inc min-y) max-y))) location)))
+        floor-cellsxy (filter (fn [[x y cell]] (and (= (get cell :type) :floor)
+                                                    (contains? trigger-candidates [x y])))
+                              cellsxy)]
+    (log/info "floor-cellsxy" (vec floor-cellsxy))
+    ;pick one at random to be the trigger and identify the src cell.
+    (if-let [[trigger-x trigger-y trigger-cell] (rr/rand-nth floor-cellsxy)]
+      (let [[src-x
+             src-y] (case direction
+                      :horizontal
+                        [(rr/rand-nth [min-x max-x]) trigger-y]
+                      :vertical
+                        [trigger-x (rr/rand-nth [min-y max-y])])]
+        (update-cellsxy cellsxy
+                        trigger-x
+                        trigger-y
+                        (fn [cell]
+                          (assoc cell :type    :wall-darts-trigger
+                                      :src-pos {:x src-x
+                                                :y src-y}))))
+      cellsxy)))
 
 (defn add-spike-pit
   [cellsxy]
@@ -176,12 +212,15 @@
   cellsxy)
 
 (defn add-trap
-  [min-x min-y max-x max-y cellsxy]
+  "Adds a trap to a room. `min-x` `min-y` `max-x` `max-y` define the room bounds. `direction` and `location`
+  define room greeble where `direction` is one of `:vertical` or `:horizontal` and `location` is a set of x
+  or y values respectively."
+  [min-x min-y max-x max-y direction location cellsxy]
   (case (rr/rand-nth [:crushing-wall :wall-darts :spike-pit :rolling-boulder :snake-trap :gas-trap])
     :crushing-wall
       (add-crushing-wall min-x min-y max-x max-y cellsxy)
     :wall-darts
-      (add-wall-darts cellsxy)
+      (add-wall-darts min-x min-y max-x max-y direction location cellsxy)
     :spike-pit
       (add-spike-pit cellsxy)
     :rolling-boulder
@@ -194,15 +233,16 @@
 (defn room-to-cellsxy
   "Convert the bounds of a room into a list of points that represent the room."
   [level min-x min-y max-x max-y]
-  (let [trap-room? (> 0.5 (rr/uniform-double))
+  (let [trap-room? (> 0.99 (rr/uniform-double))
         corners [[[min-x min-y {:type (if trap-room? :upper-left-2 :upper-left-1)}]
                   [max-x min-y {:type (if trap-room? :upper-right-2 :upper-right-1)}]
                   [min-x max-y {:type (if trap-room? :bottom-left-2 :bottom-left-1)}]
                   [max-x max-y {:type (if trap-room? :bottom-right-2 :bottom-right-1)}]]]
-        wall-greeble? (< 0.7 (rr/uniform-double))
+        wall-greeble? (> 0.7 (rr/uniform-double))
         [direction
          location] (if wall-greeble?
                      (if (> 0.5 (rr/uniform-double))
+                       ;; :horizontal occurs on horizontal walls, :vertical occurs on vertical walls
                        [:horizontal (set (take (inc (rr/uniform-int 2)) (shuffle (range (inc min-x) max-x))))]
                        [:vertical   (set (take (inc (rr/uniform-int 2)) (shuffle (range (inc min-y) max-y))))])
                      [nil nil])
@@ -242,7 +282,7 @@
         cellsxy (add-room-features level cellsxy)
         cellsxy (if (and trap-room?
                          (pos? level))
-                  (add-trap min-x min-y max-x max-y cellsxy)
+                  (add-trap min-x min-y max-x max-y direction location cellsxy)
                   cellsxy)]
    cellsxy))
 
@@ -435,7 +475,7 @@
   "When merging cells, given their types, determine
    the type of the resulting cell."
   [cell1 cell2]
-  (log/debug "merging cells" cell1 "," cell2)
+  ;(log/debug "merging cells" cell1 "," cell2)
   (let [cell1-type (get cell1 :type)
         cell2-type (get cell2 :type)]
     (cond
@@ -486,7 +526,7 @@
                                (fn [canvas-cell]
                                  (let [cell-type (merge-cell-types (if (nil? cell) {:type :nil} cell)
                                                                    (if (nil? canvas-cell) {:type :nil} canvas-cell))]
-                                   (log/debug "cell" cell "canvas-cell" canvas-cell)
+                                   ;(log/debug "cell" cell "canvas-cell" canvas-cell)
                                    (-> (merge-with merge-cell-values canvas-cell cell)
                                        (assoc :type cell-type)))))))
                            cells-xy))
@@ -710,6 +750,7 @@
                                               :white-upper-right-2  "◙"
                                               :white-bottom-left-2  "◙"
                                               :white-bottom-right-2 "◙"
+                                              :wall-darts-trigger "^"
                                               (str (cell :type)))))
                                        line))) place)]
     contents))
@@ -747,5 +788,11 @@
   "Generate a random grid and print it out."
   [& args]
   (println "generating...")
-  (print-cells (get (random-place 0) :cells)))
+  (loop []
+    (if-let [cells (try
+                     (get (random-place 1) :cells)
+                     (catch Throwable e
+                       nil))]
+      (print-cells cells)
+      (recur))))
 

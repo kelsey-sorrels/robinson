@@ -1420,6 +1420,10 @@
                                                            :white-bottom-left-2 ["◙":white :black]
                                                            :white-bottom-right-2 ["◙":white :black]
                                                            :empty                [" " :black :black]
+                                                           :crushing-wall-trigger
+                                                                             (if (get cell :trap-found)
+                                                                               ["^"]
+                                                                               ["·"])
                                               
                                                            (do (log/info (format "unknown type: %s %s" (str (get cell :type)) (str cell)))
                                                            ["?"])))))

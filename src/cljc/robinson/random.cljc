@@ -139,7 +139,8 @@
 
 (defn rand-nth
   ([coll]
-  (rand-nth *rnd* coll))
+  (when (seq coll)
+    (rand-nth *rnd* coll)))
   ([rnd coll]
   (nth coll (uniform-int rnd 0 (count coll)))))
 

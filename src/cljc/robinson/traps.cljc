@@ -120,7 +120,8 @@
           trap-locations (make-trap-xy-sequence min-x min-y max-x max-y trap-direction)]
       (-> state
         ;; reveal trap cell
-        (rw/assoc-cell x y :trap-found true)
+        (rw/assoc-cell x y :trap-found     true
+                           :last-triggered (rw/get-time state))
         (rc/append-log "You find a trap")
         ;; add trap obj to place
         (conj-trap-in-current-place (assoc (Trap. ; type

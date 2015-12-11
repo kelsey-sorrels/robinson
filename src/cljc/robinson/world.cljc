@@ -136,6 +136,7 @@
    (let [[px py]    [(- x ax) (- y ay)]]
      #_(log/info "get-cell" place-id ax ay x y px py)
      #_(log/info "matching-keys" (matching-keys state [:world :places place-id :cells py px]))
+     (println "get-cell" place-id py px)
      (get-in state [:world :places  place-id :cells py px]))))
 
 (defn filter-cellxys
@@ -353,31 +354,71 @@
   ([state direction]
    (direction->xys state direction 5))
   ([state direction distance]
+   (let [[start-x start-y] (rp/player-xy state)]
+     (direction->xys state start-x start-y direction distance)))
+  ([state start-x start-y direction distance]
    {:pre [(contains? #{:left :right :up :down} direction)]}
-   (let [{x :x y :y}      (get-in state [:world :player :pos])
-         {width :width
+   (let [{width :width
           height :height} (get state :world)
-         min-x            (max 0 (- x distance))
-         min-y            (max 0 (- y distance))
-         max-x            (min width (+ x distance))
-         max-y            (min height (+ y distance))]
+         min-x            (max 0 (- start-x distance))
+         min-y            (max 0 (- start-y distance))
+         max-x            (min width (+ start-x distance))
+         max-y            (min height (+ start-y distance))]
+     (println "min-max" min-x min-y max-x max-y start-x start-y)
      (case direction
-       :left  (reverse (map (fn [x] [x y]) (range min-x x)))
-       :right (map (fn [x] [x y]) (range (inc x) (inc max-x)))
-       :up    (reverse (map (fn [y] [x y]) (range min-y y)))
-       :down  (map (fn [y] [x y]) (range (inc y) (inc max-y)))))))
+       :left  (map (fn [x] [x start-y]) (range start-x (dec min-x) -1))
+       :right (map (fn [x] [x start-y]) (range start-x max-x))
+       :up    (map (fn [y] [start-x y]) (range start-y (dec min-y) -1))
+       :down  (map (fn [y] [start-x y]) (range start-y max-y))))))
+
+(defn player-adjacent-pos
+  [state direction]
+  (let [{x :x y :y} (rp/player-pos state)
+        x           (case direction
+                      :left  (dec x)
+                      :right (inc x)
+                      :up-left (dec x)
+                      :up-right (inc x)
+                      :down-left (dec x)
+                      :down-right (inc x)
+                      x)
+        y           (case direction
+                      :up   (dec y)
+                      :down (inc y)
+                      :up-left (dec y)
+                      :up-right (dec y)
+                      :down-left (inc y)
+                      :down-right (inc y)
+                      y)]
+    {:x x :y y}))
+
+(defn player-adjacent-xy
+  [state direction]
+  (rc/pos->xy (player-adjacent-pos state direction)))
+
+(defn player-adjacent-cell
+  [state direction]
+  (apply get-cell state (rc/pos->xy (player-adjacent-pos state direction))))
 
 (defn direction->cells
   ([state direction]
    (direction->cells state direction 5))
   ([state direction distance]
+    (let [[start-x
+           start-y] (player-adjacent-xy state direction)]
+     (direction->cells state start-x start-y direction distance)))
+  ([state start-x start-y direction distance]
    {:pre [(contains? #{:left :right :up :down} direction)]}
-   (map (fn [[x y]] (get-cell state x y)) (direction->xys state direction distance))))
+   (map (fn [[x y]] (println "xy" x y) (get-cell state x y)) (direction->xys state start-x start-y direction distance))))
 
 (defn direction->cellsxy
-  [state direction]
-  (map (fn [[x y]] [(get-cell state x y) x y])
-       (direction->xys state direction)))
+  ([state direction distance]
+    (let [[start-x
+           start-y] (player-adjacent-xy state direction)]
+     (direction->cellsxy state start-x start-y direction distance)))
+  ([state start-x start-y direction distance]
+   (map (fn [[x y]] [(get-cell state x y) x y])
+        (direction->xys state start-x start-y direction distance))))
 
 (defn npc-at-xy
   "npc at [x y] of the current place. Otherwise `nil`."
@@ -551,31 +592,39 @@
   ([state x y]
   (collide-in-water? state x y {})))
 
-
 (defn first-collidable-object
  "Return a map based on the first collidable cell in cellsxy.
   If an npc is encountered first, return `{:npc npc}`.
+  If the player is encountered first, return `{:player player}`.
   If a non-npc is encountered first, return `{:cell cell}`.
   If no collision occurs in any of the cells, return `{}`."
- [state direction max-distance]
- {:pre [(contains? #{:up :down :left :right} direction)]}
-  (let [cellsxy (remove (fn [[cell x y]]
-                          (rc/farther-than? (rc/xy->pos x y)
-                                            (get-in state [:world :player :pos])
-                                            max-distance))
-                        (direction->cellsxy state direction))]
-   (loop [[cell x y] (first cellsxy)
-          xs         (rest cellsxy)]
-     (let [npc (npc-at-xy state x y)]
-       (cond
-         (not (nil? npc))
-           {:npc npc :pos (rc/xy->pos x y)}
-         (collide? state x y false)
-           {:cell cell :pos (rc/xy->pos x y)}
-         (empty? xs)
-           {}
-         :else
-           (recur (first xs) (rest xs)))))))
+  ([state direction max-distance]
+    (let [[start-x
+           start-y] (player-adjacent-xy state direction)]
+      (first-collidable-object state start-x start-y direction max-distance)))
+  ([state start-x start-y direction max-distance]
+  {:pre [(contains? #{:up :down :left :right} direction)]}
+    (let [player-xy (rp/player-xy state)
+          cellsxy   (remove (fn [[cell x y]]
+                              (rc/farther-than? (rc/xy->pos x y)
+                                                (get-in state [:world :player :pos])
+                                                max-distance))
+                            (direction->cellsxy state start-x start-y direction max-distance))]
+     (println "cellsxy" cellsxy)
+     (loop [[cell x y] (first cellsxy)
+            xs         (rest cellsxy)]
+       (let [npc (npc-at-xy state x y)]
+         (cond
+           (= [x y] player-xy)
+             {:player (rp/get-player state)}
+           (not (nil? npc))
+             {:npc npc :pos (rc/xy->pos x y)}
+           (collide? state x y false)
+             {:cell cell :pos (rc/xy->pos x y)}
+           (empty? xs)
+             {}
+           :else
+             (recur (first xs) (rest xs))))))))
 
 (defn player-adjacent-xys
   [state]
@@ -617,35 +666,6 @@
                  (map (fn [[x y]] (rc/xy->pos x y))
                       (rect->xys [(- x distance) (- y distance)]
                                  [(+ x distance) (+ y distance)]))))))
-
-(defn player-adjacent-pos
-  [state direction]
-  (let [{x :x y :y} (rp/player-pos state)
-        x           (case direction
-                      :left  (dec x)
-                      :right (inc x)
-                      :up-left (dec x)
-                      :up-right (inc x)
-                      :down-left (dec x)
-                      :down-right (inc x)
-                      x)
-        y           (case direction
-                      :up   (dec y)
-                      :down (inc y)
-                      :up-left (dec y)
-                      :up-right (dec y)
-                      :down-left (inc y)
-                      :down-right (inc y)
-                      y)]
-    {:x x :y y}))
-
-(defn player-adjacent-xy
-  [state direction]
-  (rc/pos->xy (player-adjacent-pos state direction)))
-
-(defn player-adjacent-cell
-  [state direction]
-  (apply get-cell state (rc/pos->xy (player-adjacent-pos state direction))))
 
 
 (defn player-mounted-on-raft?

@@ -191,6 +191,16 @@
                         trigger-y
                         (fn [cell]
                           (assoc cell :type    :wall-darts-trigger
+                                      ;; direction the darts are flying from->to
+                                      :direction (case direction
+                                                   :horizontal
+                                                     (if (< src-y trigger-y)
+                                                       :down
+                                                       :up)
+                                                   :vertical
+                                                     (if (< src-x trigger-x)
+                                                       :right
+                                                       :left))
                                       :src-pos {:x src-x
                                                 :y src-y}))))
       cellsxy)))

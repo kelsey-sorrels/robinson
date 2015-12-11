@@ -149,6 +149,21 @@
                                        :locations trap-locations))))
     state))
 
+(defn trigger-wall-darts
+  [state cell]
+  (let [direction (get cell :direction)
+        obj       (rw/first-collidable-object state direction 5)]
+    (cond
+      (contains? obj :npc)
+        (let [[x y]             (rc/pos->xy (get cell :src-pos))
+              place-id          (rw/current-place-id state)
+              trigger-cell-path [:world :places place-id y x]]
+        (rcombat/attack state trigger-cell-path  npc-path)
+      (contains? obj :player)
+      (contains? obj :cell)
+      :else
+        state)))
+
 (defn trigger-if-trap
   [state [x y]]
   (let [cell (rw/get-cell state x y)]

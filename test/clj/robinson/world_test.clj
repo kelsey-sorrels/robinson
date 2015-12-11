@@ -1,13 +1,7 @@
 (ns robinson.world-test
   (:require [robinson.world :as rw]
-            #+clj
             [clojure.test :as t
-              :refer (is deftest with-test run-tests testing)]
-            #+cljs
-            [cemerick.cljs.test :as t])
- #+cljs
- (:require-macros [cemerick.cljs.test
-                    :refer (is deftest with-test run-tests testing test-var)]))
+              :refer (is deftest with-test run-tests testing)]))
 
 
 (deftest test-adjacent-to-player-0
@@ -18,17 +12,42 @@
   (is (true? (rw/adjacent-to-player? {:world {:player {:pos {:x 26, :y 9}}}}
                                      {:x 25 :y 9}))))
 
+(deftest direction->xys-0
+  (is (= [[2 1] [2 0]]
+         (rw/direction->xys {:world {:width 5 :height 5}} 2 1 :up 2))))
+
+(deftest direction->xys-1
+  (is (= [[2 1] [2 2]]
+         (rw/direction->xys {:world {:width 5 :height 5}} 2 1 :down 2))))
+
+(deftest direction->xys-2
+  (is (= [[2 1] [1 1]]
+         (rw/direction->xys {:world {:width 5 :height 5}} 2 1 :left 2))))
+
+(deftest direction->xys-3
+  (is (= [[2 1] [3 1]]
+         (rw/direction->xys {:world {:width 5 :height 5}} 2 1 :right 2))))
+
 (def direction->cells-state
  {:world {:viewport {:width 6
                      :height 5}
           :width 6
           :height 5
           :player {:pos {:x 2 :y 2}}
-          :places {[0 0] [[:a :b :c :d :e :f]
+          :places {[0 0] {:cells
+                         [[:a :b :c :d :e :f]
                           [:g :h :i :j :k :l]
                           [:m :n :o :p :q :r]
                           [:s :t :y :v :w :x]
-                          [:y :z :0 :1 :2 :3]]}}})
+                          [:y :z :0 :1 :2 :3]]}}}})
+(deftest get-cell-0
+  (is (= :a (rw/get-cell direction->cells-state 0 0))))
+
+(deftest get-cell-1
+  (is (= :b (rw/get-cell direction->cells-state 1 0))))
+
+(deftest get-cell-2
+  (is (= :g (rw/get-cell direction->cells-state 0 1))))
 
 (deftest direction->cells-0
   (is (= (rw/direction->cells
@@ -66,11 +85,17 @@
           :height 5
           :player {:pos {:x 2 :y 2}}
           :npcs []
-          :places {[0 0] [[{:type :vertical-wall}  {:type :vertical-wall}{:type :vertical-wall}{:type :vertical-wall}{:type :vertial-wall}]
+          :places {[0 0] {:cells
+                          [[{:type :vertical-wall}  {:type :vertical-wall}{:type :vertical-wall}{:type :vertical-wall}{:type :vertial-wall}]
                           [{:type :horizontal-wall}{:type :floor}        {:type :floor}        {:type :floor}        {:type :horizontal-wall}]
                           [{:type :horizontal-wall}{:type :floor}        {:type :floor}        {:type :floor}        {:type :horizontal-wall}]
                           [{:type :horizontal-wall}{:type :floor}        {:type :floor}        {:type :floor}        {:type :horizontal-wall}]
-                          [{:type :vertical-wall}  {:type :vertical-wall}{:type :vertical-wall}{:type :vertical-wall}{:type :vertial-wall}]]}}})
+                          [{:type :vertical-wall}  {:type :vertical-wall}{:type :vertical-wall}{:type :vertical-wall}{:type :vertial-wall}]]}}}})
+
+(deftest direction->cellsxy-0
+  (is (= [[{:type :floor} 2 1]
+          [{:type :vertical-wall} 2 0]]
+         (rw/direction->cellsxy first-collidable-cells-state 2 1 :up 3))))
 
 (deftest first-collidable-cells-0
   (is (= {:cell {:type :vertical-wall} :pos {:x 2 :y 0}}
@@ -84,11 +109,12 @@
           :height 5
           :player {:pos {:x 2 :y 2}}
           :npcs []
-          :places {[0 0] [[{:type :vertical-wall}  {:type :vertical-wall}{:type :vertical-wall}{:type :vertical-wall}{:type :vertial-wall}]
+          :places {[0 0] {:cells
+                         [[{:type :vertical-wall}  {:type :vertical-wall}{:type :vertical-wall}{:type :vertical-wall}{:type :vertial-wall}]
                           [{:type :horizontal-wall}{:type :floor}        {:type :floor}        {:type :floor}        {:type :horizontal-wall}]
                           [{:type :horizontal-wall}{:type :floor}        {:type :floor}        {:type :floor}        {:type :horizontal-wall}]
                           [{:type :horizontal-wall}{:type :floor}        {:type :floor}        {:type :floor}        {:type :horizontal-wall}]
-                          [{:type :vertical-wall}  {:type :vertical-wall}{:type :vertical-wall}{:type :vertical-wall}{:type :vertial-wall}]]}}})
+                          [{:type :vertical-wall}  {:type :vertical-wall}{:type :vertical-wall}{:type :vertical-wall}{:type :vertial-wall}]]}}}})
 
 (def assoc-cells-result
   {:world {:viewport {:width 5
@@ -97,11 +123,12 @@
           :height 5
           :player {:pos {:x 2 :y 2}}
           :npcs []
-          :places {[0 0] [[{:type :vertical-wall}  {:type :vertical-wall}        {:type :vertical-wall}{:type :vertical-wall}{:type :vertial-wall}]
+          :places {[0 0] {:cells
+                         [[{:type :vertical-wall}  {:type :vertical-wall}        {:type :vertical-wall}{:type :vertical-wall}{:type :vertial-wall}]
                           [{:type :horizontal-wall}{:type :floor :discovered 10} {:type :floor}        {:type :floor}        {:type :horizontal-wall}]
                           [{:type :horizontal-wall}{:type :sand :discovered 10} {:type :floor}        {:type :floor}        {:type :horizontal-wall}]
                           [{:type :horizontal-wall}{:type :floor}                {:type :floor}        {:type :floor}        {:type :horizontal-wall}]
-                          [{:type :vertical-wall}  {:type :vertical-wall}        {:type :vertical-wall}{:type :vertical-wall}{:type :vertial-wall}]]}}})
+                          [{:type :vertical-wall}  {:type :vertical-wall}        {:type :vertical-wall}{:type :vertical-wall}{:type :vertial-wall}]]}}}})
 
 (deftest assoc-cells-state-0
   (is (= (rw/assoc-cells assoc-cells-state {[1 1] {:discovered 10}

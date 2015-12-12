@@ -102,6 +102,11 @@
          (let [state first-collidable-cells-state] 
            (rw/first-collidable-object state :up 3)))))
 
+(deftest first-collidable-cells-1
+  (is (= {:player {:pos {:x 2 :y 2}}}
+         (let [state first-collidable-cells-state] 
+           (rw/first-collidable-object state 1 2 :right 3)))))
+
 (def assoc-cells-state
   {:world {:viewport {:width 5
                      :height 5}

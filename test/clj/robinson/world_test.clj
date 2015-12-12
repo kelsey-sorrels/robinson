@@ -13,8 +13,8 @@
                                      {:x 25 :y 9}))))
 
 (deftest direction->xys-0
-  (is (= [[2 1] [2 0]]
-         (rw/direction->xys {:world {:width 5 :height 5}} 2 1 :up 2))))
+  (is (= [[2 3] [2 2]]
+         (rw/direction->xys {:world {:width 5 :height 5}} 2 3 :up 2))))
 
 (deftest direction->xys-1
   (is (= [[2 1] [2 2]]

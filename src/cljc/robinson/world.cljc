@@ -360,15 +360,15 @@
    {:pre [(contains? #{:left :right :up :down} direction)]}
    (let [{width :width
           height :height} (get state :world)
-         min-x            (max 0 (- start-x distance))
-         min-y            (max 0 (- start-y distance))
+         min-x            (max -1 (- start-x distance))
+         min-y            (max -1 (- start-y distance))
          max-x            (min width (+ start-x distance))
          max-y            (min height (+ start-y distance))]
      (println "min-max" min-x min-y max-x max-y start-x start-y)
      (case direction
-       :left  (map (fn [x] [x start-y]) (range start-x (dec min-x) -1))
+       :left  (map (fn [x] [x start-y]) (range start-x min-x -1))
        :right (map (fn [x] [x start-y]) (range start-x max-x))
-       :up    (map (fn [y] [start-x y]) (range start-y (dec min-y) -1))
+       :up    (map (fn [y] [start-x y]) (range start-y min-y -1))
        :down  (map (fn [y] [start-x y]) (range start-y max-y))))))
 
 (defn player-adjacent-pos

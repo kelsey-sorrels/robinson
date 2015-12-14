@@ -109,7 +109,7 @@
   [state x y cell]
   ;; determine trap advancement mechanics
   (log/info "x" x "y" y "cell" cell)
-  ;; TODO: only trigger once
+  ;; Only trigger once every 20 turns max
   (if (> (rw/get-time state) (+ (get cell :last-triggered 0) 20))
     (let [{{min-x :min-x
             min-y :min-y
@@ -151,16 +151,26 @@
 
 (defn trigger-wall-darts
   [state cell]
-  (let [direction (get cell :direction)
-        obj       (rw/first-collidable-object state direction 5)]
+  ;; find the first interesting object starting at the src cell and moving in the direction
+  ;; toward the triggering cell.
+  (let [[src-x src-y] (rc/pos->xy (get cell :src-pos))
+        direction     (get cell :direction)
+        obj           (rw/first-collidable-object state src-x src-y direction 5)]
+    (log/info "trigger-wall-darts" direction obj)
     (cond
       (contains? obj :npc)
         (let [[x y]             (rc/pos->xy (get cell :src-pos))
               place-id          (rw/current-place-id state)
-              trigger-cell-path [:world :places place-id y x]]
-        (rcombat/attack state trigger-cell-path  npc-path)
+              trigger-cell-path [:world :places place-id y x]
+              npc-path          (rnpc/npc->keys state (get obj :npc))]
+        (rcombat/attack state trigger-cell-path  npc-path))
       (contains? obj :player)
+        (let [[x y]             (rc/pos->xy (get cell :src-pos))
+              place-id          (rw/current-place-id state)
+              trigger-cell-path [:world :places place-id y x]]
+        (rcombat/attack state trigger-cell-path [:world :player]))
       (contains? obj :cell)
+        (rc/append-log state "Schwaff! The arrow wizzes past.")
       :else
         state)))
 
@@ -170,6 +180,8 @@
     (case (get cell :type)
       :crushing-wall-trigger
         (trigger-crushing-wall state x y cell)
+      :wall-darts-trigger
+        (trigger-wall-darts state cell)
       state)))
 
 (defn trigger-traps

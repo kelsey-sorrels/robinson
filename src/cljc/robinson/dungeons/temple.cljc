@@ -170,9 +170,15 @@
   (let [direction          (or direction :horizontal)
         location           (or location [])
         trigger-candidates (set (case direction
-                                  :vertical
-                                    (mapcat (fn [y] (map vector (range (inc min-x) max-x) (repeat y))) location)
+                                  ;; o---------o
                                   :horizontal
+                                    (mapcat (fn [y] (map vector (range (inc min-x) max-x) (repeat y))) location)
+                                  ;; o
+                                  ;; |
+                                  ;; |
+                                  ;; |
+                                  ;; o
+                                  :vertical
                                     (mapcat (fn [x] (map vector (repeat x) (range (inc min-y) max-y))) location)))
         floor-cellsxy (filter (fn [[x y cell]] (and (= (get cell :type) :floor)
                                                     (contains? trigger-candidates [x y])))
@@ -182,10 +188,22 @@
     (if-let [[trigger-x trigger-y trigger-cell] (rr/rand-nth floor-cellsxy)]
       (let [[src-x
              src-y] (case direction
+                      ;; trigger
                       :horizontal
                         [(rr/rand-nth [min-x max-x]) trigger-y]
                       :vertical
                         [trigger-x (rr/rand-nth [min-y max-y])])]
+        (log/info "Adding wall dart trigger @" trigger-x trigger-y)
+        (log/info "With wall dart src @" src-x src-y)
+        (case direction
+          :horizontal
+            (do
+              (assert (= src-y trigger-y) (format "src-y(%d) not= trigger-y(%d)" src-y trigger-y))
+              (assert (not= src-x trigger-x) (format "src-x(%d) = trigger-x(%d)" src-x trigger-x)))
+          :vertical
+            (do
+              (assert (= src-x trigger-x) (format "src-x(%d) not= trigger-x(%d)" src-x trigger-x))
+              (assert (not= src-y trigger-y) (format "src-y(%d) = trigger-y(%d)" src-y trigger-y))))
         (update-cellsxy cellsxy
                         trigger-x
                         trigger-y
@@ -194,16 +212,18 @@
                                       ;; direction the darts are flying from->to
                                       :direction (case direction
                                                    :horizontal
-                                                     (if (< src-y trigger-y)
-                                                       :down
-                                                       :up)
-                                                   :vertical
                                                      (if (< src-x trigger-x)
                                                        :right
-                                                       :left))
+                                                       :left)
+                                                   :vertical
+                                                     (if (< src-y trigger-y)
+                                                       :down
+                                                       :up))
                                       :src-pos {:x src-x
                                                 :y src-y}))))
-      cellsxy)))
+      (do
+        (log/info "Cold not add wall dart trigger")
+        cellsxy))))
 
 (defn add-spike-pit
   [cellsxy]
@@ -252,9 +272,9 @@
         [direction
          location] (if wall-greeble?
                      (if (> 0.5 (rr/uniform-double))
-                       ;; :horizontal occurs on horizontal walls, :vertical occurs on vertical walls
-                       [:horizontal (set (take (inc (rr/uniform-int 2)) (shuffle (range (inc min-x) max-x))))]
-                       [:vertical   (set (take (inc (rr/uniform-int 2)) (shuffle (range (inc min-y) max-y))))])
+                       ;; :horizontal occurs on vertical walls, :vertical occurs on horizontal walls
+                       [:horizontal (set (take (inc (rr/uniform-int 2)) (shuffle (range (inc min-y) max-y))))]
+                       [:vertical   (set (take (inc (rr/uniform-int 2)) (shuffle (range (inc min-x) max-x))))])
                      [nil nil])
         top    [(map (fn [x]
                        [x min-y {:type :horizontal-wall}])
@@ -277,11 +297,11 @@
         cellsxy (map (fn [[x y cell]]
                        (if wall-greeble?
                          (cond
-                           (and (= direction :horizontal)
+                           (and (= direction :vertical)
                                 (= (get cell :type) :horizontal-wall)
                                 (contains? location x))
                              [x y (assoc cell :type :horizontal-wall-alt)]
-                           (and (= direction :vertical)
+                           (and (= direction :horizontal)
                                 (= (get cell :type) :vertical-wall)
                                 (contains? location y))
                              [x y (assoc cell :type :vertical-wall-alt)]
@@ -760,6 +780,7 @@
                                               :white-upper-right-2  "◙"
                                               :white-bottom-left-2  "◙"
                                               :white-bottom-right-2 "◙"
+                                              :crushing-wall-trigger "_"
                                               :wall-darts-trigger "^"
                                               (str (cell :type)))))
                                        line))) place)]
@@ -802,6 +823,7 @@
     (if-let [cells (try
                      (get (random-place 1) :cells)
                      (catch Throwable e
+                       (log/error e)
                        nil))]
       (print-cells cells)
       (recur))))

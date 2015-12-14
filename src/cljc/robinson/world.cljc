@@ -136,7 +136,6 @@
    (let [[px py]    [(- x ax) (- y ay)]]
      #_(log/info "get-cell" place-id ax ay x y px py)
      #_(log/info "matching-keys" (matching-keys state [:world :places place-id :cells py px]))
-     (println "get-cell" place-id py px)
      (get-in state [:world :places  place-id :cells py px]))))
 
 (defn filter-cellxys
@@ -364,7 +363,6 @@
          min-y            (max -1 (- start-y distance))
          max-x            (min width (+ start-x distance))
          max-y            (min height (+ start-y distance))]
-     (println "min-max" min-x min-y max-x max-y start-x start-y)
      (case direction
        :left  (map (fn [x] [x start-y]) (range start-x min-x -1))
        :right (map (fn [x] [x start-y]) (range start-x max-x))

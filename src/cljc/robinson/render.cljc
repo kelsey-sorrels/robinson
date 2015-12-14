@@ -855,7 +855,10 @@
                         :right
                         :left)
         description   (rdesc/describe-cell-at-xy state (+ x cursor-x) (+ y cursor-y))]
-  (render-text (state :screen) position "Look" description)))
+  (render-text (state :screen) position "Look" (if (get-in state [:world :dev-mode])
+                                                 (str description "[" (+ x cursor-x) " " (+ y cursor-y) "]"
+                                                      (get-cell state (+ x cursor-x) (+ y cursor-y)))
+                                                 description))))
 
 (defn render-apply
   "Render the inventory menu with `Apply` as the title."

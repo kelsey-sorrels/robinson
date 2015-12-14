@@ -45,6 +45,7 @@
            :short-grass            "short grass"
            :bamboo                 "a bamboo grove"
            :mountain               "a mountain"
+           :shallow-water          "shallow water"
            :swamp                  "swamp"
            :lava                   "a lava flow"
            :freshwater-hole        (if (> (get cell :water 0) 10)
@@ -123,7 +124,9 @@
            :white-upper-left-2     "a pale ornate corner"
            :white-upper-right-2    "a pale ornate corner"
            :white-bottom-left-2    "a pale ornate corner"
-           :white-bottom-right-2   "a pale ornate corner"))
+           :white-bottom-right-2   "a pale ornate corner"
+           :crushing-wall-trigger  "TODO"
+           :wall-darts-trigger     "TODO"))
     "strange land"))
 
 (defn describe-npc

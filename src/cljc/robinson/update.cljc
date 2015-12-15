@@ -2671,7 +2671,8 @@
                                                          ;; ruined temple
                                                          :moss-corridor
                                                          :white-corridor
-                                                         :crushing-wall-trigger}
+                                                         :crushing-wall-trigger
+                                                         :wall-darts-trigger}
                                                        (get-type x y)))))
           traversable?           (cond
                                    (and npc-can-move-in-water

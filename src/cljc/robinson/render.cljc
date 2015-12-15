@@ -1427,6 +1427,10 @@
                                                                              (if (get cell :trap-found)
                                                                                ["^"]
                                                                                ["·"])
+                                                           :wall-dart-trigger
+                                                                             (if (get cell :trap-found)
+                                                                               ["^"]
+                                                                               ["·"])
                                               
                                                            (do (log/info (format "unknown type: %s %s" (str (get cell :type)) (str cell)))
                                                            ["?"])))))

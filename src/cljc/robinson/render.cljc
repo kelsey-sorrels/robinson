@@ -1427,7 +1427,7 @@
                                                                              (if (get cell :trap-found)
                                                                                ["^"]
                                                                                ["·"])
-                                                           :wall-dart-trigger
+                                                           :wall-darts-trigger
                                                                              (if (get cell :trap-found)
                                                                                ["^"]
                                                                                ["·"])

@@ -369,6 +369,30 @@
        :up    (map (fn [y] [start-x y]) (range start-y min-y -1))
        :down  (map (fn [y] [start-x y]) (range start-y max-y))))))
 
+(defn adjacent-xy
+  [x y direction]
+  (let [x           (case direction
+                      :left  (dec x)
+                      :right (inc x)
+                      :up-left (dec x)
+                      :up-right (inc x)
+                      :down-left (dec x)
+                      :down-right (inc x)
+                      x)
+        y           (case direction
+                      :up   (dec y)
+                      :down (inc y)
+                      :up-left (dec y)
+                      :up-right (dec y)
+                      :down-left (inc y)
+                      :down-right (inc y)
+                      y)]
+    [x y]))
+
+(defn adjacent-pos
+  [{x :x y :y} direction]
+  (apply rc/xy->pos (adjacent-xy x y direction)))
+
 (defn player-adjacent-pos
   [state direction]
   (let [{x :x y :y} (rp/player-pos state)

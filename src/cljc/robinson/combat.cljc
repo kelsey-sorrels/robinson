@@ -304,21 +304,28 @@
   (assert v msg)
   v)
 
+(defn attacker-or-path->attacker
+  [state attacker-or-path]
+  (if (record? attacker-or-path)
+    attacker-or-path
+    (get-in state attacker-or-path)))
+
 (defn attack
   "Perform combat. The attacker fights the defender, but not vice-versa.
    Return a new state reflecting combat outcome."
-  ([state attacker-path defender-path]
-  {:pre [(or (every? (set (keys (get-in state attacker-path))) [:attacks])
-             (assert false (str "attacker under specified" attacker-path (get-in state attacker-path))))
+  ([state attacker-or-path defender-path]
+  {:pre [(or (or (record? attacker-or-path)
+                  (every? (set (keys (get-in state attacker-or-path))) [:attacks]))
+             (assert false (str "attacker under specified" attacker-or-path (get-in state attacker-or-path))))
          (some? state)]}
-   (let [attacker           (get-in state attacker-path)
+   (let [attacker           (attacker-or-path->attacker state attacker-or-path)
          attack-type (or (get (first (filter (fn [item] (contains? item :wielded))
-                                     (get-in state (conj attacker-path :inventory) [])))
+                                             (get attacker :inventory [])))
                               :attack)
                          (rr/rand-nth (vec (get attacker :attacks))))]
-     (attack state attacker-path defender-path attack-type)))
-  ([state attacker-path defender-path attack]
-  {:pre [(vector? attacker-path)
+     (attack state attacker-or-path defender-path attack-type)))
+  ([state attacker-or-path defender-path attack]
+  {:pre [(or (vector? attacker-or-path) (record? attacker-or-path))
          (vector? defender-path)
          (some? state)
          (or (every? (set (keys (get-in state defender-path))) [:hp :pos :race :body-parts])
@@ -326,10 +333,10 @@
          (vector? (get-in state [:world :npcs]))]
    :post [(some? %)
           (vector? (get-in % [:world :npcs]))]}
-  (log/info "attacker-path" attacker-path "defender-path" defender-path)
+  (log/info "attacker-or-path" attacker-or-path "defender-path" defender-path)
   (let [defender             (get-in state defender-path)
         ;; 
-        attacker             (get-in state attacker-path)
+        attacker             (attacker-or-path->attacker state attacker-or-path)
         attack-item          (rp/wielded-item attacker)
         attack-type          (cond
                                (keyword attack)
@@ -353,7 +360,7 @@
                                hit   (+ (calc-dmg state attacker attack attack-type defender defender-body-part) (if shot-poisoned-arrow 1 0))
                                :else 0)
         is-wound             (> dmg 1.5)]
-    (log/info "attack" attacker-path "is attacking defender" defender-path)
+    (log/info "attack" attacker-or-path "is attacking defender" defender-path)
     #_(log/info "attacker-detail" attacker)
     #_(log/info "defender-detail" defender)
     (log/info "attack" attack)
@@ -453,7 +460,7 @@
             (log-with-line state "9")
             (ce/on-hit defender state)
             (log-with-line state "10")
-            (if (contains? (set attacker-path) :player)
+            (if (contains? (set attacker-or-path) :player)
               (rp/update-npc-attacked state defender attack)
               state))
         ;; defender dead? (0 or less hp)

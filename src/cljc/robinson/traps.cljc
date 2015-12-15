@@ -5,6 +5,7 @@
             [robinson.random :as rr]
             [robinson.player :as rp]
             [robinson.world :as rw]
+            [robinson.describe :as rdesc]
             [robinson.npc :as rnpc]
             [robinson.combat :as rcombat]
             [robinson.dynamiccharacterproperties :as dcp]
@@ -150,29 +151,55 @@
     state))
 
 (defn trigger-wall-darts
-  [state cell]
+  [state x y cell]
   ;; find the first interesting object starting at the src cell and moving in the direction
   ;; toward the triggering cell.
-  (let [[src-x src-y] (rc/pos->xy (get cell :src-pos))
-        direction     (get cell :direction)
-        obj           (rw/first-collidable-object state src-x src-y direction 5)]
+  (let [direction     (get cell :direction)
+        [src-x src-y] (rc/pos->xy (rw/adjacent-pos (get cell :src-pos) direction))
+        obj           (rw/first-collidable-object state src-x src-y direction 5)
+        ;; TODO: give the trap an inventory including a :range-wielded dart gun that it fires to that ranged combat works
+        src-trap      (Trap. ; type
+                             :dart
+                             ; race
+                             :trap
+                             ; name
+                             "dart"
+                             ; name-plural
+                             "darts"
+                             ; speed
+                             5
+                             ; size
+                             5
+                             ; strength
+                             5
+                             ; dexterity
+                             3
+                             ; toughness
+                             5
+                             ; attacks
+                             #{:spike})]
     (log/info "trigger-wall-darts" direction obj)
-    (cond
-      (contains? obj :npc)
-        (let [[x y]             (rc/pos->xy (get cell :src-pos))
-              place-id          (rw/current-place-id state)
-              trigger-cell-path [:world :places place-id y x]
-              npc-path          (rnpc/npc->keys state (get obj :npc))]
-        (rcombat/attack state trigger-cell-path  npc-path))
-      (contains? obj :player)
-        (let [[x y]             (rc/pos->xy (get cell :src-pos))
-              place-id          (rw/current-place-id state)
-              trigger-cell-path [:world :places place-id y x]]
-        (rcombat/attack state trigger-cell-path [:world :player]))
-      (contains? obj :cell)
-        (rc/append-log state "Schwaff! The arrow wizzes past.")
-      :else
-        state)))
+    (as-> state state
+      ;; reveal trap cell
+      (rw/assoc-cell state x y :trap-found     true
+                               :last-triggered (rw/get-time state))
+      (rc/append-log state "You find a trap")
+      (cond
+        (contains? obj :npc)
+          (let [[x y]             (rc/pos->xy (get cell :src-pos))
+                place-id          (rw/current-place-id state)
+                trigger-cell-path [:world :places place-id y x]
+                npc-path          (rnpc/npc->keys state (get obj :npc))]
+            (rcombat/attack state src-trap  npc-path))
+        (contains? obj :player)
+          (let [[x y]             (rc/pos->xy (get cell :src-pos))
+                place-id          (rw/current-place-id state)
+                trigger-cell-path [:world :places place-id y x]]
+          (rcombat/attack state src-trap [:world :player]))
+        (contains? obj :cell)
+          (rc/append-log state (format "Schwaff! Thump! The dart hits %s." (rdesc/describe-cell-type (get obj :cell))))
+        :else
+          state))))
 
 (defn trigger-if-trap
   [state [x y]]
@@ -181,7 +208,7 @@
       :crushing-wall-trigger
         (trigger-crushing-wall state x y cell)
       :wall-darts-trigger
-        (trigger-wall-darts state cell)
+        (trigger-wall-darts state x y cell)
       state)))
 
 (defn trigger-traps

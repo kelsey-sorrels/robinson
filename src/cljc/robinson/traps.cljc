@@ -201,6 +201,40 @@
         :else
           state))))
 
+(defn trigger-poisonous-gas
+  [state x y cell]
+  ;; Only trigger once every 20 turns max
+  (if true;(> (rw/get-time state) (+ (get cell :last-triggered 0) 20))
+    (-> state
+      ;; reveal trap cell
+      (rw/assoc-cell x y :trap-found     true
+                         :last-triggered (rw/get-time state))
+      (rc/append-log "Hiss..poisonous gas is released.")
+      ;; add trap obj to place
+      (conj-trap-in-current-place (assoc (Trap. ; type
+                                                :poisonous-gas
+                                                ; race
+                                                :trap
+                                                ; name
+                                                "poisonous gas"
+                                                ; name-plural
+                                                "poisonous gasses"
+                                                ; speed
+                                                1
+                                                ; size
+                                                50
+                                                ; strength
+                                                5
+                                                ; dexterity
+                                                1
+                                                ; toughness
+                                                5
+                                                ; attacks
+                                                #{:poisonous-gas})
+                                     ;; poisonous-gas specific
+                                     :locations #{[x y]})))
+    state))
+
 (defn trigger-if-trap
   [state [x y]]
   (let [cell (rw/get-cell state x y)]
@@ -209,6 +243,8 @@
         (trigger-crushing-wall state x y cell)
       :wall-darts-trigger
         (trigger-wall-darts state x y cell)
+      :poisonous-gas-trigger
+        (trigger-poisonous-gas state x y cell)
       state)))
 
 (defn trigger-traps

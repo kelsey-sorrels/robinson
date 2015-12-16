@@ -239,7 +239,13 @@
 
 (defn add-gas-trap
   [cellsxy]
-  cellsxy)
+  (if-let [[trap-x trap-y _] (first (filter (fn [[_ _ cell]] (= (get cell :type) :floor)) (rr/rnd-shuffle cellsxy)))]
+    (update-cellsxy cellsxy
+                    trap-x
+                    trap-y
+                    (fn [cell]
+                      (assoc cell :type :poisonous-gas-trigger)))
+    cellsxy))
 
 (defn add-trap
   "Adds a trap to a room. `min-x` `min-y` `max-x` `max-y` define the room bounds. `direction` and `location`

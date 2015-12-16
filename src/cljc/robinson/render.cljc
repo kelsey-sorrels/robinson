@@ -255,6 +255,14 @@
   [^robinson.aterminal.ATerminal screen characters]
   (rat/put-chars screen characters))
 
+(defn set-fg
+  [^robinson.aterminal.ATerminal screen x y fg]
+  (rat/set-fg screen x y fg))
+
+(defn set-bg
+  [^robinson.aterminal.ATerminal screen x y bg]
+  (rat/set-bg screen x y bg))
+
 (defn get-size
   [^robinson.aterminal.ATerminal screen]
   (rat/get-size screen))
@@ -637,6 +645,12 @@
     (put-chars screen (for [[x y] (first (get trap :locations))]
                         {:x x :y y :c ch :fg [90 90 90] :bg [0 0 0]}))))
 
+(defn render-poisonous-gas
+  [screen trap]
+  (doseq [[x y] (get trap :locations)]
+    (let [bg (color->rgb (rand-nth [:beige :temple-beige :light-brown]))]
+    (set-bg screen x y bg))))
+
 (defn render-traps
   [state]
   (when-let [traps (rt/current-place-traps state)]
@@ -645,6 +659,8 @@
         (case (get trap :type)
           :crushing-wall
             (render-crushing-wall screen trap)
+          :poisonous-gas
+            (render-poisonous-gas screen trap)
           nil)))))
 
 (def image-cache (atom {}))
@@ -1431,6 +1447,10 @@
                                                                              (if (get cell :trap-found)
                                                                                ["^"]
                                                                                ["·"])
+                                                           :poisonous-gas-trigger
+                                                                             (if (get cell :trap-found)
+                                                                               ["^"]
+                                                                               ["_"])
                                               
                                                            (do (log/info (format "unknown type: %s %s" (str (get cell :type)) (str cell)))
                                                            ["?"])))))

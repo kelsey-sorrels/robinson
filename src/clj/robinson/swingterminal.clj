@@ -313,6 +313,14 @@
                           cm))
                       cm
                       (group-by :y characters)))))
+        (set-fg [this x y fg]
+          (let [fg-color  (Color. (long (fg 0)) (long (fg 1)) (long (fg 2)))]
+            (swap! character-map
+                   (fn [cm] (assoc-in cm [y x :fg-color] fg-color)))))
+        (set-bg [this x y bg]
+          (let [bg-color  (Color. (long (bg 0)) (long (bg 1)) (long (bg 2)))]
+            (swap! character-map
+                   (fn [cm] (assoc-in cm [y x :bg-color] bg-color)))))
         (get-key-chan [this]
           key-chan)
         (apply-font [this windows-font else-font size smooth]

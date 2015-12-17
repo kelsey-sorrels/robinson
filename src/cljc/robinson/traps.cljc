@@ -204,6 +204,7 @@
 (defn trigger-poisonous-gas
   [state x y cell]
   ;; Only trigger once every 20 turns max
+  (log/info "trigger-poisonous-gas")
   (if true;(> (rw/get-time state) (+ (get cell :last-triggered 0) 20))
     (-> state
       ;; reveal trap cell
@@ -232,7 +233,7 @@
                                                 ; attacks
                                                 #{:poisonous-gas})
                                      ;; poisonous-gas specific
-                                     :locations #{[x y]})))
+                                     :locations {[x y] 1})))
     state))
 
 (defn trigger-if-trap
@@ -249,6 +250,7 @@
 
 (defn trigger-traps
   [state]
+  (log/info "trigger traps")
   (reduce trigger-if-trap
           state
           (conj (map (comp rc/pos->xy :pos) (rnpc/visible-npcs state))
@@ -283,6 +285,33 @@
                  [:world :places place-id :traps idx :locations]
                  (comp rest vec)))))
 
+(defn adj-passable-xys
+  [state x y]
+  (remove (fn [[x y]] (rw/collide? state x y))
+          (rw/adjacent-xys x y)))
+
+(defn update-poisonous-gas-trap 
+  [state idx]
+  (let [place-id    (rw/current-place-id state)
+        xy->density (second (get-in state [:world :places place-id :traps idx :locations] []))
+        _ (log/info "xy->density" xy->density)
+        target-xys  (set (mapcat (fn [[x y]] (adj-passable-xys state x y)) (keys xy->density)))
+        _ (log/info "target-xys" target-xys)
+        xy->density (reduce (fn [xy->density-acc [x y]]
+                              ;; sum adjacent densities, divide by 4 and subtract decay
+                              (let [density (reduce (fn [density src-xy]
+                                                      (+ density (get xy->density src-xy)))
+                                                    0
+                                                    (adj-passable-xys state x y))
+                                    density (- (/ density 4) 0.01)]
+                              (if (> density 0.0)
+                                (assoc xy->density-acc [x y] density)
+                                xy->density-acc)))
+                            {}
+                            target-xys)]
+    (log/info "xy->density" xy->density)
+    (assoc-in state [:world :places place-id :traps idx :locations] xy->density)))
+
 (defn update-trap
   [state [idx trap]]
   {:pre [(not (nil? state))]
@@ -291,6 +320,8 @@
   (case (get trap :type)
     :crushing-wall
       (update-crushing-wall-trap state idx)
+    :poisonous-gas
+      (update-poisonous-gas-trap state idx)
     state))
 
 (defn current-place-traps
@@ -298,8 +329,17 @@
   (let [place-id (rw/current-place-id state)]
     (get-in state [:world :places place-id :traps] [])))
 
+(defn remove-trap?
+  [trap]
+  (case (get trap :type)
+    :crushing-wall
+      (empty? (get trap :locations))
+    :poisonous-gas
+      (empty? (get trap :locations))))
+      
 (defn update-traps
   [state]
+  (log/info "update-traps")
   (as-> state state
     (reduce update-trap state (map-indexed vector (current-place-traps state)))
     ;; clean up traps if expired
@@ -309,9 +349,10 @@
                    (fn [traps]
                      (reduce (fn [traps trap]
                                ;; remove expended crusing wall traps
-                               (if (and (= (get trap :type) :crushing-wall)
-                                        (empty? (get trap :locations)))
-                                 traps
+                               (if (remove-trap? trap)
+                                 (do
+                                   (log/info "removing trap" trap)
+                                   traps)
                                  (vec (conj traps trap))))
                              []
                              traps)))

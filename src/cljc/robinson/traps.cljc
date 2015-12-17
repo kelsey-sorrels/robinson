@@ -293,17 +293,17 @@
 (defn update-poisonous-gas-trap 
   [state idx]
   (let [place-id    (rw/current-place-id state)
-        xy->density (second (get-in state [:world :places place-id :traps idx :locations] []))
+        xy->density (get-in state [:world :places place-id :traps idx :locations] {})
         _ (log/info "xy->density" xy->density)
         target-xys  (set (mapcat (fn [[x y]] (adj-passable-xys state x y)) (keys xy->density)))
         _ (log/info "target-xys" target-xys)
         xy->density (reduce (fn [xy->density-acc [x y]]
                               ;; sum adjacent densities, divide by 4 and subtract decay
                               (let [density (reduce (fn [density src-xy]
-                                                      (+ density (get xy->density src-xy)))
+                                                      (+ density (get xy->density src-xy 0)))
                                                     0
                                                     (adj-passable-xys state x y))
-                                    density (- (/ density 4) 0.01)]
+                                    density (- (/ density 4) 0.005)]
                               (if (> density 0.0)
                                 (assoc xy->density-acc [x y] density)
                                 xy->density-acc)))

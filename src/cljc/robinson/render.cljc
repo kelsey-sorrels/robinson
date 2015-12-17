@@ -647,7 +647,7 @@
 
 (defn render-poisonous-gas
   [screen trap]
-  (doseq [[x y] (get trap :locations)]
+  (doseq [[x y] (keys (get trap :locations))]
     (let [bg (color->rgb (rand-nth [:beige :temple-beige :light-brown]))]
     (set-bg screen x y bg))))
 

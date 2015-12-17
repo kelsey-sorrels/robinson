@@ -94,6 +94,7 @@
 ;; Indicate that the player action advanced time (this will include getting hungrier/thirstier, updating visibility, monsters attacking, updating cells, etc.
 (defn inc-time
   [state]
+  (log/info "inc-time=true")
   (assoc-in state [:world :inc-time] true))
 
 (defn inc-time?
@@ -102,6 +103,7 @@
 
 (defn clear-inc-time
   [state]
+  (log/info "inc-time = false")
   (rc/dissoc-in state [:world :inc-time]))
 
 (defn next-font
@@ -3712,15 +3714,6 @@
     ;(log/debug "current-state" current-state)
     (if (or (contains? table keyin) (contains? table :else))
       (let [[transition-fn new-state advance-time] (if (contains? table keyin) (get table keyin) (get table :else))
-            ;; some states conditionally advance time by calling (advance-time state)
-            ;; check to see if this has occurred if advance-time was not set in the state transition entry
-            advance-time (if-not advance-time
-                           (inc-time? state)
-                           advance-time)
-            ;; clear inc-time flag if set
-            state        (if (inc-time? state)
-                           (clear-inc-time state)
-                           state)
             ;; if the table contains keyin, then pass through transition-fn assuming arity-1 [state]
             ;; else the transition-fn takes [state keyin]. Bind keying so that it becomes arity-1 [state]
             _ (log/debug "current-state" (get-in state [:world :current-state]))
@@ -3733,10 +3726,20 @@
             _ (log/debug "type of npcs" (type (get-in state [:world :npcs])))
             new-time  (inc (get-in state [:world :time]))
             state     (rc/clear-ui-hint state)
-            state     (transition-fn
-                        (if advance-time
-                          (assoc-in state [:world :time] new-time)
-                          state))
+            state     (transition-fn state)
+            ;; some states conditionally advance time by calling (advance-time state)
+            ;; check to see if this has occurred if advance-time was not set in the state transition entry
+            advance-time (if-not advance-time
+                           (inc-time? state)
+                           advance-time)
+            state     (if advance-time
+                        (assoc-in state [:world :time] new-time)
+                        state)
+            _ (log/info "advance-time" advance-time)
+            ;; clear inc-time flag if set
+            state        (if (inc-time? state)
+                           (clear-inc-time state)
+                           state)
             _ (log/debug "current-state" (get-in state [:world :current-state]))
             _ (log/debug "new-state" new-state)
             _ (log/debug "type of npcs" (type (get-in state [:world :npcs])))

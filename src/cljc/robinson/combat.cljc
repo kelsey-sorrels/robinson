@@ -164,6 +164,7 @@
               [:*     :human   :squeeze       :*        :miss] (format "The %s starts to constrict around you but fumbles." attacker-name)
               [:*     :human   :clamp         :*        :miss] (format "The %s tries to clamp onto you but isn't fast enough." attacker-name)
               [:*     :human   :spike         :*        :miss] (format "You almost get poked by the %s's spikes." attacker-name)
+              [:*     :human   :poisonous-gas :*        :miss] "You get a wiff of noxious gas."
               [:mosquito
                       :human   :bite          :*        :hit]  (format "The %s sinks its probiscus into your flesh." attacker-name)
               [:*     :human   :bite          :*        :hit]  (format "The %s sinks its teeth into your flesh." attacker-name)
@@ -176,6 +177,10 @@
               [:*     :human   :squeeze       :*        :hit]  (format "The %s squeezes you leaving you gasping for breath." attacker-name)
               [:*     :human   :clamp         :*        :hit]  (format "The %s clamps down on your flesh crushing it." attacker-name)
               [:*     :human   :spike         :*        :hit]  (format "The %s's spikes drive into your body." attacker-name)
+              [:*     :human   :poisonous-gas :*        :hit]  "The noxious gas enters your body."
+              [:trap  :*       :poisonous-gas :*        :dead] (format "The poisonous gas suffocates the %s killing it." defender-name)
+              [:trap  :*       :poisonous-gas :*        :miss] (format "The poisonous gas waffs over the %s." defender-name)
+              [:trap  :*       :poisonous-gas :*        :hit] (format "The poisonous gas enters the %s's body." defender-name)
               [:*     :*       :*             :*        :*  ]  (format "The %s hits you." attacker-name))]
      (log/debug "attack message" msg)
      msg))
@@ -213,6 +218,8 @@
   :ritual-knife 30
   :ancient-spear 20
   :blowgun 10
+  ;; traps
+  :poisonous-gas 4
   #?(:clj
      (throw (Exception. (format "No value specified for %s" (name attack))))
      :cljs

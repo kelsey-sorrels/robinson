@@ -1450,7 +1450,7 @@
                                                            :poisonous-gas-trigger
                                                                              (if (get cell :trap-found)
                                                                                ["^"]
-                                                                               ["_"])
+                                                                               ["·"])
                                               
                                                            (do (log/info (format "unknown type: %s %s" (str (get cell :type)) (str cell)))
                                                            ["?"])))))

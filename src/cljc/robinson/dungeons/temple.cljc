@@ -227,7 +227,13 @@
 
 (defn add-spike-pit
   [cellsxy]
-  cellsxy)
+  (if-let [[trap-x trap-y _] (first (filter (fn [[_ _ cell]] (= (get cell :type) :floor)) (rr/rnd-shuffle cellsxy)))]
+    (update-cellsxy cellsxy
+                    trap-x
+                    trap-y
+                    (fn [cell]
+                      (assoc cell :type :spike-pit)))
+    cellsxy))
 
 (defn add-rolling-boulder
   [cellsxy]

@@ -206,34 +206,45 @@
   ;; Only trigger once every 20 turns max
   (log/info "trigger-poisonous-gas")
   (if true;(> (rw/get-time state) (+ (get cell :last-triggered 0) 20))
-    (-> state
-      ;; reveal trap cell
-      (rw/assoc-cell x y :trap-found     true
-                         :last-triggered (rw/get-time state))
-      (rc/append-log "Hiss..poisonous gas is released.")
-      ;; add trap obj to place
-      (conj-trap-in-current-place (assoc (Trap. ; type
-                                                :poisonous-gas
-                                                ; race
-                                                :trap
-                                                ; name
-                                                "poisonous gas"
-                                                ; name-plural
-                                                "poisonous gasses"
-                                                ; speed
-                                                1
-                                                ; size
-                                                50
-                                                ; strength
-                                                5
-                                                ; dexterity
-                                                1
-                                                ; toughness
-                                                5
-                                                ; attacks
-                                                #{:poisonous-gas})
-                                     ;; poisonous-gas specific
-                                     :locations {[x y] 1})))
+    (let [trap (assoc (Trap. ; type
+                                 :poisonous-gas
+                                 ; race
+                                 :trap
+                                 ; name
+                                 "poisonous gas"
+                                 ; name-plural
+                                 "poisonous gasses"
+                                 ; speed
+                                 1
+                                 ; size
+                                 50
+                                 ; strength
+                                 5
+                                 ; dexterity
+                                 1
+                                 ; toughness
+                                 5
+                                 ; attacks
+                                 #{:poisonous-gas})
+                      ;; poisonous-gas specific
+                      :locations {[x y] 1})]
+      (-> state
+        ;; reveal trap cell
+        (rw/assoc-cell x y :trap-found     true
+                           :last-triggered (rw/get-time state))
+        (rc/append-log "Hiss..poisonous gas is released.")
+        ;; add trap obj to place
+        (conj-trap-in-current-place trap)
+        (as-> state
+          ;; attack player if player is in gas
+          (if (= [x y] (rp/player-xy state))
+            (rcombat/attack state trap [:world :player])
+            state)
+          ;; attack npcs in gas
+          (if-let [npc (rw/npc-at-xy state x y)]
+            (let [npc-path (rnpc/npc->keys state npc)]
+              (rcombat/attack state trap npc-path))
+            state))))
     state))
 
 (defn trigger-if-trap
@@ -287,13 +298,17 @@
 
 (defn adj-passable-xys
   [state x y]
-  (remove (fn [[x y]] (rw/collide? state x y))
-          (rw/adjacent-xys x y)))
+  (conj (remove (fn [[x y]] (rw/collide? state x y {:collide-player? false
+                                               :collide-npcs? false
+                                               :collide-water false}))
+           (rw/adjacent-xys x y))
+        [x y]))
 
 (defn update-poisonous-gas-trap 
   [state idx]
   (let [place-id    (rw/current-place-id state)
-        xy->density (get-in state [:world :places place-id :traps idx :locations] {})
+        trap        (get-in state [:world :places place-id :traps idx])
+        xy->density (get trap :locations {})
         _ (log/info "xy->density" xy->density)
         target-xys  (set (mapcat (fn [[x y]] (adj-passable-xys state x y)) (keys xy->density)))
         _ (log/info "target-xys" target-xys)
@@ -303,14 +318,28 @@
                                                       (+ density (get xy->density src-xy 0)))
                                                     0
                                                     (adj-passable-xys state x y))
-                                    density (- (/ density 4) 0.005)]
+                                    density (- (/ density 5) 0.005)]
                               (if (> density 0.0)
                                 (assoc xy->density-acc [x y] density)
                                 xy->density-acc)))
                             {}
                             target-xys)]
     (log/info "xy->density" xy->density)
-    (assoc-in state [:world :places place-id :traps idx :locations] xy->density)))
+    (as->
+      (assoc-in state [:world :places place-id :traps idx :locations] xy->density)
+      state
+      ;; attack player if player is in gas
+      (if (contains? (set (keys xy->density)) (rp/player-xy state))
+        (rcombat/attack state trap [:world :player])
+        state)
+      ;; attack npcs in gas
+      (reduce (fn [state [x y]]
+                (if-let [npc (rw/npc-at-xy state x y)]
+                  (let [npc-path (rnpc/npc->keys state npc)]
+                    (rcombat/attack state trap npc-path))
+                  state))
+              state
+              (keys xy->density)))))
 
 (defn update-trap
   [state [idx trap]]

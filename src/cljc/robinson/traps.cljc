@@ -247,6 +247,43 @@
             state))))
     state))
 
+(defn trigger-spike-pit
+  [state x y cell]
+  (log/info "trigger-spike-pit")
+  (let [trap (Trap. ; type
+                    :spike-pit
+                    ; race
+                    :trap
+                    ; name
+                    "spike pit"
+                    ; name-plural
+                    "spike pits"
+                    ; speed
+                    1
+                    ; size
+                    50
+                    ; strength
+                    5
+                    ; dexterity
+                    1
+                    ; toughness
+                    5
+                    ; attacks
+                    #{:spike})]
+    (-> state
+      ;; reveal trap cell
+      (rw/assoc-cell x y :trap-found     true)
+      (as-> state
+        ;; attack player if player is in pit
+        (if (= [x y] (rp/player-xy state))
+          (rcombat/attack state trap [:world :player])
+          state)
+        ;; attack npcs in pit
+        (if-let [npc (rw/npc-at-xy state x y)]
+          (let [npc-path (rnpc/npc->keys state npc)]
+            (rcombat/attack state trap npc-path))
+          state)))))
+
 (defn trigger-if-trap
   [state [x y]]
   (let [cell (rw/get-cell state x y)]
@@ -257,6 +294,8 @@
         (trigger-wall-darts state x y cell)
       :poisonous-gas-trigger
         (trigger-poisonous-gas state x y cell)
+      :spike-pit
+        (trigger-spike-pit state x y cell)
       state)))
 
 (defn trigger-traps

@@ -1451,6 +1451,10 @@
                                                                              (if (get cell :trap-found)
                                                                                ["^"]
                                                                                ["·"])
+                                                           :spike-pit
+                                                                             (if (get cell :trap-found)
+                                                                               ["^"]
+                                                                               ["·"])
                                               
                                                            (do (log/info (format "unknown type: %s %s" (str (get cell :type)) (str cell)))
                                                            ["?"])))))

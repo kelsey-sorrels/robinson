@@ -127,7 +127,8 @@
            :white-bottom-right-2   "a pale ornate corner"
            :crushing-wall-trigger  "TODO"
            :wall-darts-trigger     "TODO"
-           :poisonous-gas-trigger     "TODO"))
+           :poisonous-gas-trigger  "TODO"
+           :spike-pit              "TODO"))
     "strange land"))
 
 (defn describe-npc

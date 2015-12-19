@@ -5,6 +5,7 @@
             [robinson.random :as rr]
             [robinson.player :as rp]
             [robinson.world :as rw]
+            [robinson.monstergen :as mg]
             [robinson.describe :as rdesc]
             [robinson.npc :as rnpc]
             [robinson.combat :as rcombat]
@@ -284,6 +285,43 @@
             (rcombat/attack state trap npc-path))
           state)))))
 
+(defn find-snake-src-xys
+  [state min-x min-y max-x max-y]
+  (let [perimeter-xys (set
+                        (concat (map vector (range (inc min-x) max-x) (repeat (inc min-y)))
+                                (map vector (range (inc min-x) max-x) (repeat (dec max-y)))
+                                (map vector (repeat (inc min-x)) (range (inc min-y) max-y))
+                                (map vector (repeat (dec max-x)) (range (inc min-y) max-y))))]
+    (log/info "perimeter-xys" perimeter-xys)
+    (take 4 (filter (fn [[x y]]
+                      (and
+                        (= (get (rw/get-cell state x y) :type) :floor)
+                        (nil? (rw/npc-at-xy state x y))
+                        (not= (rp/player-xy state) [x y])))
+                    perimeter-xys))))
+
+(defn trigger-snakes
+  [state x y cell]
+  (log/info "x" x "y" y "cell" cell)
+  ;; Only trigger once every 20 turns max
+  (let [{{min-x :min-x
+          min-y :min-y
+          max-x :max-x
+          max-y :max-y}
+        :room-bounds}  cell
+        snake-src-xys  (find-snake-src-xys state min-x min-y max-x max-y)]
+    (log/info "snake-src-xys" (vec snake-src-xys))
+    (-> state
+      ;; reveal trap cell
+      (rw/assoc-cell x y :trap-found     true
+                         :last-triggered (rw/get-time state))
+      (rc/append-log "You find a trap. Snakes pour out of the walls.")
+      ;; add snakes to place
+      (as-> state
+        (reduce (fn [state [x y]] (rnpc/add-npc state (mg/gen-monster :snake) x y))
+                state
+                snake-src-xys)))))
+
 (defn trigger-if-trap
   [state [x y]]
   (let [cell (rw/get-cell state x y)]
@@ -296,6 +334,8 @@
         (trigger-poisonous-gas state x y cell)
       :spike-pit
         (trigger-spike-pit state x y cell)
+      :snakes-trigger
+        (trigger-snakes state x y cell)
       state)))
 
 (defn trigger-traps

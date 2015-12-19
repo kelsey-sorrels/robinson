@@ -128,7 +128,8 @@
            :crushing-wall-trigger  "TODO"
            :wall-darts-trigger     "TODO"
            :poisonous-gas-trigger  "TODO"
-           :spike-pit              "TODO"))
+           :spike-pit              "TODO"
+           :snakes-trigger         "TODO"))
     "strange land"))
 
 (defn describe-npc

@@ -157,10 +157,10 @@
                     trap-y
                     (fn [cell]
                       (assoc cell :type         :crushing-wall-trigger
-                                     :room-bounds  {:min-x min-x
-                                                    :min-y min-y
-                                                    :max-x max-x
-                                                    :max-y max-y})))
+                                  :room-bounds  {:min-x min-x
+                                                 :min-y min-y
+                                                 :max-x max-x
+                                                 :max-y max-y})))
     cellsxy))
 
 (defn add-wall-darts
@@ -240,8 +240,19 @@
   cellsxy)
 
 (defn add-snake-trap
-  [cellsxy]
-  cellsxy)
+  [min-x min-y max-x max-y cellsxy]
+  (if-let [[trap-x trap-y _] (first (filter (fn [[_ _ cell]] (= (get cell :type) :floor)) (rr/rnd-shuffle cellsxy)))]
+    (update-cellsxy cellsxy
+                    trap-x
+                    trap-y
+                    (fn [cell]
+                      (assoc cell :type :snakes-trigger
+                                  :room-bounds  {:min-x min-x
+                                                 :min-y min-y
+                                                 :max-x max-x
+                                                 :max-y max-y})))
+    cellsxy))
+
 
 (defn add-gas-trap
   [cellsxy]
@@ -258,7 +269,7 @@
   define room greeble where `direction` is one of `:vertical` or `:horizontal` and `location` is a set of x
   or y values respectively."
   [min-x min-y max-x max-y direction location cellsxy]
-  (case (rr/rand-nth [:crushing-wall :wall-darts :spike-pit :rolling-boulder :snake-trap :gas-trap])
+  (case (rr/rand-nth [:crushing-wall :wall-darts :spike-pit #_:rolling-boulder :snake-trap :gas-trap])
     :crushing-wall
       (add-crushing-wall min-x min-y max-x max-y cellsxy)
     :wall-darts
@@ -268,7 +279,7 @@
     :rolling-boulder
       (add-rolling-boulder cellsxy)
     :snake-trap
-      (add-snake-trap cellsxy)
+      (add-snake-trap min-x min-y max-x max-y cellsxy)
     :gas-trap
       (add-gas-trap cellsxy)))
 

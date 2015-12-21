@@ -340,7 +340,7 @@
         starting-pos          (rp/player-starting-pos state)
         player-pos            (get-in state [:world :player :pos] starting-pos)
         encounter             (if (and starting-pos
-                                       (rc/farther-than? starting-pos player-pos 80))
+                                       (rc/farther-than? starting-pos player-pos 30))
                                 (rand-nth [:normal :pirate-ship :temple])
                                 :normal)]
     {:seed seed
@@ -353,7 +353,10 @@
                           :pirate-ship
                             (psg/merge-cells cells)
                           :temple
-                            (tg/merge-cells cells)))}))
+                            ;; don't spawn temple if every cell is ocean
+                            (if (not-every? (partial = :water) (map :type (mapcat identity cells)))
+                              (tg/merge-cells cells)
+                              cells)))}))
 
 (defn init-world
   "Create a randomly generated world.

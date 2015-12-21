@@ -815,22 +815,44 @@
   
 (defn merge-cells
   [cells]
-  (let [temple-place (random-place 0)]
+  (let [temple-place (loop []
+                       (if-let [place (try
+                                        (random-place 0)
+                                        (catch Throwable t
+                                          nil))]
+                         place
+                         (recur)))]
     (mapv (fn [line temple-line y]
             (mapv (fn [cell temple-cell x]
                    (let [cell-type (get cell :type)
                          is-corridor (contains? #{:corridor :moss-corridor :white-corridor} (get temple-cell :type))]
-                     (if is-corridor
+                     (cond
+                       is-corridor
                        {:type (case (get temple-cell :type)
                                 :corridor
-                                  :dirt
+                                  (if (and (contains? {:water :surf} cell-type)
+                                           (< 1 (rr/uniform-int 3)))
+                                    (rr/rand-nth [:surf :corridor])
+                                    :dirt)
                                 :moss-corridor
-                                  :short-grass
+                                  (if (and (contains? {:water :surf} cell-type)
+                                           (< 1 (rr/uniform-int 3)))
+                                    (rr/rand-nth [:surf :corridor :moss-corridor])
+                                    :short-grass)
                                 :white-corridor
-                                  :gravel)}
-                       (if (= (get temple-cell :type) :empty)
+                                  (if (and (contains? {:water :surf} cell-type)
+                                           (< 1 (rr/uniform-int 3)))
+                                    (rr/rand-nth [:surf :corridor :white-corridor])
+                                  :gravel))}
+                       (= (get temple-cell :type) :empty)
                          cell
-                         temple-cell))))
+                       (and (= (get temple-cell :type) :floor)
+                            (contains? {:water :surf} cell-type))
+                         (if (< 1 (rr/uniform-int 2))
+                           cell
+                           temple-cell)
+                       :else
+                         temple-cell)))
                   line
                   temple-line
                   (range)))

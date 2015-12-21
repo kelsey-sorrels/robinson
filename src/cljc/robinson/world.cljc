@@ -138,6 +138,10 @@
      #_(log/info "matching-keys" (matching-keys state [:world :places place-id :cells py px]))
      (get-in state [:world :places  place-id :cells py px]))))
 
+(defn get-cell-type
+  [state x y]
+  (get (get-cell state x y) :type))
+
 (defn filter-cellxys
   [state pred place-id]
   {:pre[(get-in state [:world :places place-id :cells])]}

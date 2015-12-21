@@ -1712,7 +1712,8 @@
 
 (defn find-trap
   [state x y]
-  (if (rt/is-trap-type? (rw/get-cell-type state x y))
+  (if (and (rt/is-trap-type? (rw/get-cell-type state x y))
+           (< 1 (rr/uniform-int 10)))
     (rw/assoc-cell state  x y :trap-found true)
     state))
 

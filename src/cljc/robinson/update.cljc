@@ -1710,6 +1710,20 @@
       ; cursor pos = player pos in screen coordinates
       (assoc-in state [:world :cursor] cursor-pos)))
 
+(defn find-trap
+  [state x y]
+  (if (rt/is-trap-type? (rw/get-cell-type state x y))
+    (rw/assoc-cell state  x y :trap-found true)
+    state))
+
+(defn find-traps
+  [state]
+  (let [[x y] (rp/player-xy state)]
+    (reduce (fn [state [x y]]
+              (find-trap state x y))
+            state
+            (rw/adjacent-xys x y))))
+
 (defn wield
   "Wield the item from the player's inventory whose hotkey matches `keyin`."
   [state keyin]
@@ -3352,7 +3366,8 @@
                            \a          [identity               :apply           false]
                            \;          [init-cursor            :describe        false]
                            \S          [identity               :sleep           false]
-                           \s          [rdesc/search           :normal          true]
+                           \s          [(comp find-traps
+                                              rdesc/search)    :normal          true]
                            ;\S          [rdesc/extended-search  :normal          true]
                            \Q          [identity               :quests          false]
                            \M          [toggle-mount           :normal          false]

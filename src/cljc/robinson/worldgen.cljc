@@ -341,8 +341,8 @@
         player-pos            (get-in state [:world :player :pos] starting-pos)
         encounter             (if (and starting-pos
                                        (rc/farther-than? starting-pos player-pos 80))
-                                :normal
-                                (rand-nth [:normal :pirate-ship :temple]))]
+                                (rand-nth [:normal :pirate-ship :temple])
+                                :normal)]
     {:seed seed
      :pos {:x x :y y}
      :spawned-monsters {}

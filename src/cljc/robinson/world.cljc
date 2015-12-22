@@ -628,7 +628,7 @@
     (cond (= (count more) 3)
             :direction-distance
           (and (= (count more) 5)
-               (keyword? (get more 3)))
+               (keyword? (nth more 3)))
             :direction-distance-with-startxy
           :else
             :cellsxy)))

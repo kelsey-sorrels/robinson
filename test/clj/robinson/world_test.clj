@@ -98,7 +98,7 @@
          (rw/direction->cellsxy first-collidable-cells-state 2 1 :up 3))))
 
 (deftest first-collidable-cells-0
-  (is (= {:cell {:type :vertical-wall} :pos {:x 2 :y 0}}
+  (is (= {:cell {:type :vertical-wall} :pos {:x 2 :y 0} :prev-pos {:x 2 :y 1}}
          (let [state first-collidable-cells-state] 
            (rw/first-collidable-object state :up 3)))))
 

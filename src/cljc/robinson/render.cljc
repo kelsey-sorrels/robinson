@@ -1873,8 +1873,11 @@
   [c]
   (case (int c)
       3 \u2665
+    179 \u2502
     219 \u2588
     220 \u2584
+    249 "·"
+    250 \u00B7
     c))
 
 (defn render-histogram

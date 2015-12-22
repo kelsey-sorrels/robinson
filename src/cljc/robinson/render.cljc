@@ -1528,7 +1528,7 @@
                                         :white :black)
       nil)
     ;; draw ranged-attack line
-    (when (= (current-state state) :select-ranged-target)
+    (when (contains? {:select-ranged-target :throw-inventory} (= (current-state state)))
       (let [target-ranged-index (get-in state [:world :target-ranged-index])
             target-ranged-pos-coll (get-in state [:world :target-ranged-pos-coll])
             target-pos             (nth target-ranged-pos-coll target-ranged-index)

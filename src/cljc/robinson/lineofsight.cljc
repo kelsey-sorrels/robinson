@@ -399,6 +399,12 @@
     (max 3.5 (+ 2.5 (* 18 (/ (reduce + values) (* 255 (count values)))))))
     5))
 
+(defn target->cellsxy
+  [state target-x target-y]
+  (let [[start-x
+         start-y] (rp/player-xy state)]
+    (map (fn [[x y]] [(rw/get-cell state x y) x y])
+         (line-segment-fast [start-x start-y] [target-x target-y]))))
 
 (defn -main
   "Run speed tests for `map-visibility`."

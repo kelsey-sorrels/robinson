@@ -1849,8 +1849,6 @@
         state)
       ;; do combat
       (rcombat/attack state [:world :player] (rnpc/npc->keys state npc) ranged-weapon-item))))
-      
-                                                             
 
 (defn free-cursor
   "Dissassociate the cursor from the world."
@@ -1880,6 +1878,17 @@
         cursor-pos (rc/xy->pos (rc/bound 0 target-x (dec (get-in state [:world :viewport :width])))
                                (rc/bound 0 target-y (dec (get-in state [:world :viewport :height]))))]
     (assoc-in state [:world :cursor] cursor-pos)))
+
+(defn get-cursor-pos
+  [state]
+  (get-in state [:world :cursor]))
+
+(defn get-cursor-world-xy
+  [state]
+  (let [{cx :x
+         cy :y}    (get-cursor-pos state)
+        [vx vy]    (rv/viewport-xy state)]
+    [(+ vx cx) (+ vy cy)]))
 
 (defn move-cursor-left
   "Move the cursor pos one space to the left keeping in mind the bounds of the current place."
@@ -1925,10 +1934,9 @@
   "Add to the log, a message describing the scene at the cell indicated by the
    cursor's position."
   [state]
-  (let [cursor-pos (get-in state [:world :cursor])
-        [x y]      (rv/viewport-xy state)]
+  (let [[x y]      (get-cursor-world-xy state)]
     (-> state
-      (rc/append-log (rdesc/describe-cell-at-xy state (+ x (cursor-pos :x)) (+ y (cursor-pos :y))))
+      (rc/append-log (rdesc/describe-cell-at-xy state x y))
       (free-cursor))))
 
 (defn start-talking
@@ -2083,50 +2091,46 @@
   [state keyin]
   (if-let [item (rw/inventory-and-player-cell-hotkey->item state keyin)]
     (-> state
-      (rc/ui-hint "Select direction.")
-      (assoc-throw-item item))
+      (rc/ui-hint "Select target.")
+      (assoc-throw-item item)
+      (init-cursor))
     state))
 
 (defn throw-selected-inventory
-  [state direction]
-  {:pre  [(contains? #{:left :right :up :down} direction)]}
+  [state]
+  {:pre  [(get-cursor-pos state)]}
   (let [item           (get-throw-item state)
-        throw-distance 5
-        obj            (rw/first-collidable-object state direction throw-distance)]
+        [target-x
+         target-y]     (get-cursor-world-xy state)
+        obj            (rw/first-collidable-object state (rlos/target->cellsxy state target-x target-y))]
     (cond
       (contains? obj :npc)
         ;; do attack
         (-> state
+          (free-cursor)
           (rcombat/attack [:world :player] (rnpc/npc->keys state (get obj :npc)) item)
           (rw/conj-cell-items (get-in obj [:pos :x]) (get-in obj [:pos :y]) item)
           (rp/dec-item-count (get item :id)))
       (contains? obj :cell)
         ;; drop item into cell before hitting colliding cell
         (as-> state state
+          (free-cursor state)
           (if (= (get-in obj [:cell :type]) :fire)
             (rw/update-cell state (get-in obj [:pos :x]) (get-in obj [:pos :y]) (fn [cell] (update-in cell [:fuel] (partial + (ig/id->fuel (get item :id))))))
-            (rw/conj-cell-items state
-                                (+ (get-in obj [:pos :x])
-                                   (case direction
-                                     :left 1
-                                     :right -1
-                                     0))
-                                (+ (get-in obj [:pos :y])
-                                   (case direction
-                                     :up 1
-                                     :down -1
-                                     0))
-                                (if (get item :rot-time)
-                                  (assoc item :rot-time (inc (rw/get-time state)))
-                                  item)))
+            (let [{x :x y :y} (get obj :prev-pos)]
+              (rw/conj-cell-items state
+                                  x
+                                  y
+                                  (if (get item :rot-time)
+                                    (assoc item :rot-time (inc (rw/get-time state)))
+                                    item))))
           (rp/dec-item-count state (get item :id)))
       :else
         ;; didn't hit anything, drop into cell at max-distance
-        (let [xys   (rw/direction->xys state direction)
-              [x y] (nth xys (min throw-distance (dec (count xys))))]
-          (-> state
-            (rw/conj-cell-items x y item)
-            (rp/dec-item-count (get item :id)))))))
+        (-> state
+          (free-cursor)
+          (rw/conj-cell-items target-x target-y item)
+          (rp/dec-item-count (get item :id))))))
 
 (defn throw-left
   [state]
@@ -3579,6 +3583,23 @@
                                                                identity         false]
                            \f          [fire-wielded-ranged-weapon
                                                                :normal          true]}
+               :throw-inventory
+                          {:escape     [identity               :normal          false]
+                           :else       [throw-select-inventory :select-throw-target
+                                                                                false]}
+               :select-throw-target
+                          {:escape     [free-cursor            :normal          false]
+                           :left       [move-cursor-left       identity         false]
+                           :down       [move-cursor-down       identity         false]
+                           :up         [move-cursor-up         identity         false]
+                           :right      [move-cursor-right      identity         false]
+                           :up-left    [move-cursor-up-left    identity         false]
+                           :up-right   [move-cursor-up-right   identity         false]
+                           :down-left  [move-cursor-down-left  identity         false]
+                           :down-right [move-cursor-down-right identity         false]
+                           \t          [throw-selected-inventory
+                                                               :normal          false]
+                           :else       [free-cursor            :normal          false]}
                :talking   {:escape     [stop-talking           :normal          false]
                            :else       [talk                   identity         true]}
                :shopping  {\a          [identity               :buy             true]
@@ -3610,15 +3631,6 @@
                           {:escape     [identity               :craft           false]
                            :enter      [craft                  :normal          true]
                            :else       [craft-select-recipe    identity         false]}
-               :throw-inventory
-                          {:escape     [identity               :normal          false]
-                           :else       [throw-select-inventory :throw-direction false]}
-               :throw-direction
-                          {:escape     [identity               :normal          false]
-                           :left       [throw-left             :normal          true]
-                           :down       [throw-down             :normal          true]
-                           :up         [throw-up               :normal          true]
-                           :right      [throw-right            :normal          true]}
                :fishing-left
                           {\.          [do-fishing             identity         true]
                            :else       [pass-state             :normal          false]}
@@ -3695,12 +3707,12 @@
 (def translate-direction-states
   #{:normal
     :describe
+    :select-throw-target
     :quaff-adj-or-inv
     :open
     :talk
     :pickup
     :harvest
-    :throw-direction
     :magic-direction
     :close})
 
@@ -3733,8 +3745,8 @@
       (let [[transition-fn new-state advance-time] (if (contains? table keyin) (get table keyin) (get table :else))
             ;; if the table contains keyin, then pass through transition-fn assuming arity-1 [state]
             ;; else the transition-fn takes [state keyin]. Bind keying so that it becomes arity-1 [state]
-            _ (log/debug "current-state" (get-in state [:world :current-state]))
-            _ (log/debug "transition-fn" transition-fn)
+            _ (log/info "current-state" (get-in state [:world :current-state]))
+            _ (log/info "transition-fn" transition-fn)
             transition-fn             (if (contains? table keyin)
                                         transition-fn
                                         (fn [state]

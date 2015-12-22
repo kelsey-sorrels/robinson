@@ -618,39 +618,56 @@
   ([state x y]
   (collide-in-water? state x y {})))
 
-(defn first-collidable-object
- "Return a map based on the first collidable cell in cellsxy.
-  If an npc is encountered first, return `{:npc npc}`.
-  If the player is encountered first, return `{:player player}`.
-  If a non-npc is encountered first, return `{:cell cell}`.
-  If no collision occurs in any of the cells, return `{}`."
-  ([state direction max-distance]
+(defmulti first-collidable-object 
+  "Return a map based on the first collidable cell in cellsxy.
+   If an npc is encountered first, return `{:npc npc}`.
+   If the player is encountered first, return `{:player player}`.
+   If a non-npc is encountered first, return `{:cell cell}`.
+   If no collision occurs in any of the cells, return `{}`."
+  (fn [& more]
+    (cond (= (count more) 3)
+            :direction-distance
+          (and (= (count more) 5)
+               (keyword? (get more 3)))
+            :direction-distance-with-startxy
+          :else
+            :cellsxy)))
+
+(defmethod first-collidable-object :direction-distance
+  [state direction max-distance]
     (let [[start-x
            start-y] (player-adjacent-xy state direction)]
       (first-collidable-object state start-x start-y direction max-distance)))
-  ([state start-x start-y direction max-distance]
+
+(defmethod first-collidable-object :direction-distance-with-startxy
+  [state start-x start-y direction max-distance]
   {:pre [(contains? #{:up :down :left :right} direction)]}
-    (let [player-xy (rp/player-xy state)
-          cellsxy   (remove (fn [[cell x y]]
-                              (rc/farther-than? (rc/xy->pos x y)
-                                                (get-in state [:world :player :pos])
-                                                max-distance))
-                            (direction->cellsxy state start-x start-y direction max-distance))]
-     (println "cellsxy" cellsxy)
-     (loop [[cell x y] (first cellsxy)
-            xs         (rest cellsxy)]
-       (let [npc (npc-at-xy state x y)]
-         (cond
-           (= [x y] player-xy)
-             {:player (rp/get-player state)}
-           (not (nil? npc))
-             {:npc npc :pos (rc/xy->pos x y)}
-           (collide? state x y false)
-             {:cell cell :pos (rc/xy->pos x y)}
-           (empty? xs)
-             {}
-           :else
-             (recur (first xs) (rest xs))))))))
+  (let [cellsxy   (remove (fn [[cell x y]]
+                            (rc/farther-than? (rc/xy->pos x y)
+                                              (get-in state [:world :player :pos])
+                                              max-distance))
+                          (direction->cellsxy state start-x start-y direction max-distance))]
+    (first-collidable-object state cellsxy)))
+
+(defmethod first-collidable-object :cellsxy
+  [state cellsxy]
+  (println "cellsxy" cellsxy)
+  (let [player-xy (rp/player-xy state)]
+    (loop [[pcell px py] (first cellsxy)
+           [cell x y]    (second cellsxy)
+           xs            (nnext cellsxy)]
+      (let [npc (npc-at-xy state x y)]
+        (cond
+          (= [x y] player-xy)
+            {:player (rp/get-player state)}
+          (not (nil? npc))
+            {:npc npc :pos (rc/xy->pos x y)}
+          (collide? state x y false)
+            {:cell cell :pos (rc/xy->pos x y) :prev-pos (rc/xy->pos px py)}
+          (empty? xs)
+            {}
+          :else
+            (recur [cell x y] (first xs) (rest xs)))))))
 
 (defn player-adjacent-xys
   [state]

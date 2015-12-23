@@ -154,6 +154,11 @@
               [:human :*       ranged-weapon? :shell    :dead] (format "You %s the %s in the shell ripping to peices and it dies." (rand-ranged-hit-verb) defender-name)
               [:human :*       ranged-weapon? :tentacle :dead] (format "You %s the %s in the tentacle shredding it and it dies." (rand-ranged-hit-verb) defender-name)
               [:human :*       ranged-weapon? :*        :dead] (format "You %s the %s causing massive injuries and it dies." (rand-ranged-hit-verb) defender-name)
+              [:human :*       :*             :*        :dead] (format "You %s the %s in the %s with the %s killing it." (rand-ranged-hit-verb) (name defender-race)
+                                                                                                                         (name defender-body-part) (name attack))
+              [:human :*       :*             :*        :hit]  (format "You %s the %s in the %s with the %s." (rand-ranged-hit-verb) (name defender-race)
+                                                                                                                                     (name defender-body-part) (name attack))
+              [:human :*       :*             :*        :miss] (format "You throw the %s at the %s, but miss." (name attack) (name defender-race))
               [:*     :human   :bite          :*        :miss] (format "The %s lunges at you with its mouth but misses." attacker-name)
               [:*     :human   :bite-venom    :*        :miss] (format "The %s snaps at you its mouth but misses." attacker-name)
               [:*     :human   :claw          :*        :miss] (format "The %s claws at you and narrowly misses." attacker-name)
@@ -181,7 +186,7 @@
               [:trap  :*       :poisonous-gas :*        :dead] (format "The poisonous gas suffocates the %s killing it." defender-name)
               [:trap  :*       :poisonous-gas :*        :miss] (format "The poisonous gas waffs over the %s." defender-name)
               [:trap  :*       :poisonous-gas :*        :hit] (format "The poisonous gas enters the %s's body." defender-name)
-              [:*     :*       :*             :*        :*  ]  (format "The %s hits you." attacker-name))]
+              [:*     :*       :*             :*        :*  ]  (assert false (format "Missing combat message %s %s %s %s %s." attacker-race defender-race attack defender-body-part damage-type)))]
      (log/debug "attack message" msg)
      msg))
 
@@ -280,7 +285,9 @@
         defender-speed     (dcp/get-speed defender state)
         attacker-size      (dcp/get-size attacker state)
         defender-size      (dcp/get-size defender state)
-        attack-toughness   (attack->toughness (get attack :id))
+        attack-toughness   (attack->toughness (if (= attack-type :thrown-item)
+                                                :thrown-item
+                                                (get attack :id)))
         defender-toughness (dcp/get-toughness defender state)]
     (* attacker-dexterity
        (/ (+ 5 (rr/uniform-double (* 10 attacker-dexterity))) (+ 15 defender-speed))
@@ -340,7 +347,7 @@
          (vector? (get-in state [:world :npcs]))]
    :post [(some? %)
           (vector? (get-in % [:world :npcs]))]}
-  (log/info "attacker-or-path" attacker-or-path "defender-path" defender-path)
+  (log/info "attacker-or-path" attacker-or-path "defender-path" defender-path "attack" attack)
   (let [defender             (get-in state defender-path)
         ;; 
         attacker             (attacker-or-path->attacker state attacker-or-path)
@@ -358,7 +365,6 @@
                                attack)
         shot-poisoned-arrow  (when thrown-item
                                (ig/arrow-poison-tipped? state thrown-item))
-        
         defender-body-part   (rr/rand-nth (vec (get defender :body-parts)))
         {x :x y :y}          (get defender :pos)
         hp                   (get defender :hp)

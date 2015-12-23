@@ -1857,27 +1857,32 @@
 
 (defn move-cursor
   [state direction]
-  (let [{cursor-x :x
+  (let [[player-x
+         player-y]    (rp/player-xy state)
+        {cursor-x :x
          cursor-y :y} (get-in state [:world :cursor])
-        target-x (+ cursor-x (case direction
-                               :left -1
-                               :right 1
-                               :up-left -1
-                               :up-right 1
-                               :down-left -1
-                               :down-right 1
-                               0))
-        target-y (+ cursor-y (case direction
-                               :up  -1
-                               :down 1
-                               :up-left -1
-                               :up-right -1
-                               :down-left 1
-                               :down-right 1
-                               0))
-        cursor-pos (rc/xy->pos (rc/bound 0 target-x (dec (get-in state [:world :viewport :width])))
-                               (rc/bound 0 target-y (dec (get-in state [:world :viewport :height]))))]
-    (assoc-in state [:world :cursor] cursor-pos)))
+        target-x      (+ cursor-x (case direction
+                                    :left -1
+                                    :right 1
+                                    :up-left -1
+                                    :up-right 1
+                                    :down-left -1
+                                    :down-right 1
+                                    0))
+        target-y      (+ cursor-y (case direction
+                                    :up  -1
+                                    :down 1
+                                    :up-left -1
+                                    :up-right -1
+                                    :down-left 1
+                                    :down-right 1
+                                    0))
+        cursor-pos    (rc/xy->pos (rc/bound 0 target-x (dec (get-in state [:world :viewport :width])))
+                                  (rc/bound 0 target-y (dec (get-in state [:world :viewport :height]))))]
+    (if (and (= (rw/current-state state) :select-throw-target)
+             (rc/farther-than? player-x player-y target-x target-y (* 5 (rp/player-dexterity state))))
+      (rc/ui-hint state "You can't throw that far.")
+      (assoc-in state [:world :cursor] cursor-pos))))
 
 (defn get-cursor-pos
   [state]

@@ -108,6 +108,10 @@
   [item]
   (id-is-clothes? (get item :id)))
 
+(defn id-can-stun?
+  [id]
+  (contains? #{:yellow-fruit :tarp} id))
+
 (def ^:private items
   [
    {:id  :stick                   :name  "stick"                      :name-plural "sticks" :fuel 100 :utility 100}

@@ -1857,8 +1857,9 @@
 
 (defn move-cursor
   [state direction]
-  (let [[player-x
-         player-y]    (rp/player-xy state)
+  (let [;; player cusror and target in screenspace
+        [player-x
+         player-y]    (rv/world-xy->screen-xy state (rp/player-xy state))
         {cursor-x :x
          cursor-y :y} (get-in state [:world :cursor])
         target-x      (+ cursor-x (case direction
@@ -2984,7 +2985,8 @@
         state (reduce
                 (fn [state npc]
                   ;; only update npcs that are in the current place and have an :energy value.
-                  (if (contains? npc :energy)
+                  (if (and (contains? npc :energy)
+                           (not (rnpc/has-status? npc :stunned)))
                     (let [npc-keys (rnpc/npc->keys state npc)
                           ;; add speed value to energy.
                           ;_ (trace "adding speed to" (select-keys npc [:race :place :pos :speed :energy]))

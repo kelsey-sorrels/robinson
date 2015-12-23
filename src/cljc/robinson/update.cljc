@@ -1712,7 +1712,7 @@
 
 (defn find-trap
   [state x y]
-  (if (and (rt/is-trap-type? (rw/get-cell-type state x y))
+  (if (and (rw/is-trap-type? (rw/get-cell-type state x y))
            (< 1 (rr/uniform-int 10)))
     (rw/assoc-cell state  x y :trap-found true)
     state))
@@ -2125,28 +2125,19 @@
                                     (assoc item :rot-time (inc (rw/get-time state)))
                                     item))))
           (rp/dec-item-count state (get item :id)))
+      (contains? obj :trap)
+        ;; remove item and trigger trap
+        (-> state
+          free-cursor
+          (rc/append-log "You throw it at the trap.")
+          (rt/trigger-if-trap [target-x target-y])
+          (rp/dec-item-count (get item :id)))
       :else
         ;; didn't hit anything, drop into cell at max-distance
         (-> state
           (free-cursor)
           (rw/conj-cell-items target-x target-y item)
           (rp/dec-item-count (get item :id))))))
-
-(defn throw-left
-  [state]
-  (throw-selected-inventory state :left))
-
-(defn throw-right
-  [state]
-  (throw-selected-inventory state :right))
-
-(defn throw-up
-  [state]
-  (throw-selected-inventory state :up))
-
-(defn throw-down
-  [state]
-  (throw-selected-inventory state :down))
 
 (defn craft-weapon
   [state]
@@ -3598,6 +3589,10 @@
                            :down-left  [move-cursor-down-left  identity         false]
                            :down-right [move-cursor-down-right identity         false]
                            \t          [throw-selected-inventory
+                                                               :normal          false]
+                           :enter      [throw-selected-inventory
+                                                               :normal          false]
+                           :space      [throw-selected-inventory
                                                                :normal          false]
                            :else       [free-cursor            :normal          false]}
                :talking   {:escape     [stop-talking           :normal          false]

@@ -322,10 +322,6 @@
                 state
                 snake-src-xys)))))
 
-(defn is-trap-type?
-  [cell-type]
-  (contains? #{:crushing-wall-trigger :wall-darts-trigger :poisonous-gas-trigger :spike-pit :snakes-trigger} cell-type))
-
 (defn trigger-if-trap
   [state [x y]]
   (let [cell (rw/get-cell state x y)]

@@ -382,3 +382,18 @@
         ;(time (log/info "cells" cells))
         cells))))
 
+(defn assoc-cursor-pos
+  [state pos]
+  (assoc-in state [:world :cursor] pos))
+
+(defn get-cursor-pos
+  [state]
+  (get-in state [:world :cursor]))
+
+(defn get-cursor-world-xy
+  [state]
+  (let [{cx :x
+         cy :y}    (get-cursor-pos state)
+        [vx vy]    (viewport-xy state)]
+    [(+ vx cx) (+ vy cy)]))
+

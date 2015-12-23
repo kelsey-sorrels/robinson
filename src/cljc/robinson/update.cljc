@@ -1883,18 +1883,7 @@
     (if (and (= (rw/current-state state) :select-throw-target)
              (rc/farther-than? player-x player-y target-x target-y (* 5 (rp/player-dexterity state))))
       (rc/ui-hint state "You can't throw that far.")
-      (assoc-in state [:world :cursor] cursor-pos))))
-
-(defn get-cursor-pos
-  [state]
-  (get-in state [:world :cursor]))
-
-(defn get-cursor-world-xy
-  [state]
-  (let [{cx :x
-         cy :y}    (get-cursor-pos state)
-        [vx vy]    (rv/viewport-xy state)]
-    [(+ vx cx) (+ vy cy)]))
+      (rv/assoc-cursor-pos state cursor-pos))))
 
 (defn move-cursor-left
   "Move the cursor pos one space to the left keeping in mind the bounds of the current place."
@@ -1940,7 +1929,7 @@
   "Add to the log, a message describing the scene at the cell indicated by the
    cursor's position."
   [state]
-  (let [[x y]      (get-cursor-world-xy state)]
+  (let [[x y]      (rv/get-cursor-world-xy state)]
     (-> state
       (rc/append-log (rdesc/describe-cell-at-xy state x y))
       (free-cursor))))
@@ -2104,10 +2093,10 @@
 
 (defn throw-selected-inventory
   [state]
-  {:pre  [(get-cursor-pos state)]}
+  {:pre  [(rv/get-cursor-pos state)]}
   (let [item           (get-throw-item state)
         [target-x
-         target-y]     (get-cursor-world-xy state)
+         target-y]     (rv/get-cursor-world-xy state)
         obj            (rw/first-collidable-object state (rlos/target->cellsxy state target-x target-y))]
     (cond
       (contains? obj :npc)

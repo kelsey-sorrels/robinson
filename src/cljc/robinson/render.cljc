@@ -646,10 +646,12 @@
                         {:x x :y y :c ch :fg [90 90 90] :bg [0 0 0]}))))
 
 (defn render-poisonous-gas
-  [screen trap]
-  (doseq [[x y] (keys (get trap :locations))]
-    (let [bg (color->rgb (rand-nth [:beige :temple-beige :light-brown]))]
-    (set-bg screen x y bg))))
+  [screen state trap]
+  (let [current-time (rw/get-time state)]
+    (doseq [[x y] (keys (get trap :locations))]
+      (when (= (get (rw/get-cell state x y) :discovered) current-time)
+        (let [bg (color->rgb (rand-nth [:beige :temple-beige :light-brown]))]
+          (set-bg screen x y bg))))))
 
 (defn render-traps
   [state]
@@ -660,7 +662,7 @@
           :crushing-wall
             (render-crushing-wall screen trap)
           :poisonous-gas
-            (render-poisonous-gas screen trap)
+            (render-poisonous-gas screen state trap)
           nil)))))
 
 (def image-cache (atom {}))

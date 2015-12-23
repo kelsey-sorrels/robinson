@@ -1260,6 +1260,7 @@
                                                               :fishing-pole    ["/"]
                                                               :match           ["/"]
                                                               :flashlight      [","]
+                                                              :bandage         ["&"]
                                                               :saw             [","]
                                                               :tarp            [","]
                                                               :spellbook       ["+"]

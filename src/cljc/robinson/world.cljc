@@ -13,6 +13,11 @@
   #?(:clj
      (:import [java.io DataInputStream DataOutputStream])))
 
+
+(defn is-trap-type?
+  [cell-type]
+  (contains? #{:crushing-wall-trigger :wall-darts-trigger :poisonous-gas-trigger :spike-pit :snakes-trigger} cell-type))
+
 (defn distance-from-player
   "Calculate the distance between the player and pos."
   [state pos]
@@ -664,6 +669,8 @@
             {:npc npc :pos (rc/xy->pos x y)}
           (collide? state x y false)
             {:cell cell :pos (rc/xy->pos x y) :prev-pos (rc/xy->pos px py)}
+          (is-trap-type? (get cell :type))
+            {:trap cell :pos (rc/xy->pos x y)}
           (empty? xs)
             {}
           :else

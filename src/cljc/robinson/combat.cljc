@@ -473,6 +473,12 @@
             (log-with-line state "9")
             (ce/on-hit defender state)
             (log-with-line state "10")
+            ;; some thrown items can stun npcs
+            (if (and (= attack-type :thrown-item)
+                     hit
+                     (ig/id-can-stun? (get thrown-item :id)))
+              (update-in state (conj defender-path :status) (fn [state] (conj state :stunned)))
+              state)
             (if (contains? (set attacker-or-path) :player)
               (rp/update-npc-attacked state defender attack)
               state))

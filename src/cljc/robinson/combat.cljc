@@ -224,7 +224,7 @@
   :ancient-spear 20
   :blowgun 10
   ;; traps
-  :poisonous-gas 4
+  :poisonous-gas 2
   #?(:clj
      (throw (Exception. (format "No value specified for %s" (name attack))))
      :cljs

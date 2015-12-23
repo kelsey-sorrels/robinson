@@ -1531,18 +1531,23 @@
                                         :white :black)
       nil)
     ;; draw ranged-attack line
-    (when (contains? {:select-ranged-target :throw-inventory} (= (current-state state)))
-      (let [target-ranged-index (get-in state [:world :target-ranged-index])
-            target-ranged-pos-coll (get-in state [:world :target-ranged-pos-coll])
-            target-pos             (nth target-ranged-pos-coll target-ranged-index)
-            [target-x target-y] (rc/pos->xy target-pos)]
-        (log/debug "target-ranged-index" target-ranged-index)
-        (log/debug "target-ranged-pos-coll" (get-in state [:world :target-ranged-pos-coll]))
-        (log/debug "target-pos" target-pos)
-        (log/debug "target-x" target-x "target-y" target-y)
-        (doseq [xy (rlos/line-segment-fast-without-endpoints [player-x player-y] [target-x target-y])]
-          (let [[sx sy] (rv/world-xy->screen-xy state xy)]
-            (put-string screen sx sy "\u25CF" :green :black)))))
+    (when (contains? #{:select-ranged-target :select-throw-target} (current-state state))
+      (let [[target-sx
+             target-sy] (case (current-state state)
+                          :select-ranged-target
+                            (let [target-ranged-index (get-in state [:world :target-ranged-index])
+                                  target-ranged-pos-coll (get-in state [:world :target-ranged-pos-coll])
+                                  target-pos             (nth target-ranged-pos-coll target-ranged-index)]
+                              (log/debug "target-ranged-index" target-ranged-index)
+                              (log/debug "target-ranged-pos-coll" (get-in state [:world :target-ranged-pos-coll]))
+                              (log/debug "target-pos" target-pos)
+                              (rv/world-xy->screen-xy state (rc/pos->xy target-pos)))
+                          :select-throw-target
+                            (rc/pos->xy (rv/get-cursor-pos state)))]
+        (log/debug "target-sx" target-sx "target-y" target-sy)
+        (doseq [[sx sy] (rlos/line-segment-fast-without-endpoints (rv/world-xy->screen-xy state [player-x player-y])
+                                                                  [target-sx target-sy])]
+            (put-string screen sx sy "\u25CF" :green :black))))
       
     ;; draw npcs
     (let [place-npcs (npcs-in-viewport state)

@@ -1354,7 +1354,8 @@
                                                                                                      "an"
                                                                                                      "a")
                                                                                                   (get % :name)))
-                                                                              harvest-items))))))))
+                                                                              harvest-items))))
+        (rw/assoc-current-state :normal)))))
 
 (defn harvest-left [state]
   (harvest state :left))
@@ -1470,12 +1471,12 @@
           (rw/assoc-current-state :normal))
       (= (count directions) 1)
         (-> state
-          (close-door (first directions))
+            (close-door (first directions))
           (rw/assoc-current-state :normal))
       :else
         (rw/assoc-current-state state :close))))
 
-(defn action-select
+(defn directions-to-actions
   [state]
   (let [pickup-directions (pickup-directions state)
         _ (log/info "pickup directions" (vec pickup-directions))
@@ -1502,51 +1503,114 @@
                     (conj actions {:state-id :close
                                    :name "Close"})
                     actions))
-        directions {:pickup-directions  pickup-directions
-                    :harvest-directions harvest-directions
-                    :open-directions    open-directions
-                    :close-directions   close-directions}]
+        ;; direction->#{set of actions}
+        directions (reduce-kv (fn [directions action action-directions]
+                             (merge-with clojure.set/union directions (zipmap action-directions (repeat #{action}))))
+                           {}
+                           {:pickup  pickup-directions
+                            :harvest harvest-directions
+                            :open    open-directions
+                            :close   close-directions})]
       (log/info "num pickup-directions" (count pickup-directions)
                 "num harvest-directions" (count harvest-directions)
                 "num open-directions" (count open-directions)
                 "num close-directions" (count close-directions))
+    directions))
+
+(defn action-select
+  [state]
+  (let [directions (directions-to-actions state)]
     (cond
-      (every? (comp zero? count second) directions)
+      (empty? directions)
         (-> state
           (rc/append-log "No available actions.")
           (rw/assoc-current-state :normal))
-      (every? (comp zero? count second) (dissoc directions :pickup-directions))
-        (smart-pickup state)
-      (every? (comp zero? count second) (dissoc directions :harvest-directions))
-        (smart-harvest state)
-      (every? (comp zero? count second) (dissoc directions :open-directions))
-        (smart-open state)
-      (every? (comp zero? count second) (dissoc directions :close-directions))
-        (smart-close state)
-      :else
+      ;; only one direction and one action?
+      (and (= (count directions) 1)
+           (= (count (-> directions first second)) 1))
+        ;; then just do the action
+        (case (-> directions first second first)
+          :pickup
+            (smart-pickup state)
+          :harvest
+            (smart-harvest state)
+          :open
+            (smart-open state)
+          :close
+            (smart-close state))
+      ;; only one direction but multiple actions?
+      (= (count directions) 1)
+        ;; let the player choose the action
         (-> state
           (assoc-in [:world :action-select]
                     (map (fn [action hotkey]
-                           (assoc action :hotkey hotkey))
-                         actions
+                           {:name (name action) :hotkey hotkey :direction (ffirst directions) :action action})
+                         (-> directions first second)
                          rc/hotkeys))
-          (rw/assoc-current-state :action-select)))))
+          (rw/assoc-current-state :action-select))
+      ;; multiple directions
+      :else
+        ;; let the player choose the direction
+        (-> state
+          (rw/assoc-current-state :direction-select)
+          (rc/ui-hint "Pick a direction.")))))
 
+(defn do-selected-direction
+  [state keyin]
+  (let [direction  keyin
+        directions (directions-to-actions state)]
+    (log/info "keyin" keyin "directions" directions)
+    (if (contains? directions direction)
+      ;; If there is just one action in that direction
+      (if (= (count (get directions keyin)) 1)
+        ;; Just do the action
+        (let [action (-> directions direction first)]
+          (log/info "doing action" action)
+          (case action
+            :pickup
+              (assoc-pickup-target state direction)
+            :harvest
+              (harvest state direction)
+            :open
+              (open-door state direction)
+            :close
+              (close-door state direction)))
+        ;; let the player choose the action
+        (-> state
+          (assoc-in [:world :action-select]
+                    (map (fn [action hotkey]
+                           {:name (name action) :hotkey hotkey :direction direction :action action})
+                         (get directions direction)
+                         rc/hotkeys))
+          (rw/assoc-current-state :action-select)))
+      ;; player chose an invalid direction, keep waiting
+      state)))
+        
+  
 (defn do-selected-action
   [state keyin]
-  (if-let [action (get (first (filter (fn [{:keys [state-id hotkey]}]
-                                   (= hotkey keyin))
-                                 (get-in state [:world :action-select])))
-                       :state-id)]
-    (case action
+  (log/info "action-select" (vec (get-in state [:world :action-select])))
+  (if-let [action (first (filter (fn [{:keys [state-id hotkey]}]
+                              (= hotkey keyin))
+                            (get-in state [:world :action-select])))]
+    (do (log/info "action" action)
+    (case (get action :action)
       :pickup
-        (smart-pickup state)
+        (if (contains? action :direction)
+          (assoc-pickup-target state (get action :direction))
+          (smart-pickup state))
       :harvest
-        (smart-harvest state)
+        (if (contains? action :direction)
+          (harvest state (get action :direction))
+          (smart-harvest state))
       :open
-        (smart-open state)
+        (if (contains? action :direction)
+          (open-door state (get action :direction))
+          (smart-open state))
       :close
-        (smart-close state))
+        (if (contains? action :direction)
+          (close-door state (get action :direction))
+          (smart-close state))))
     state))
 
 (defn quaff-only-adjacent-cell
@@ -3464,6 +3528,9 @@
                                           state)
                                                                :normal          false]
                            :escape     [identity               :quit?           false]}
+               :direction-select
+                          {:escape     [identity               :normal          false]
+                           :else       [do-selected-direction  identity         false]}
                :action-select
                           {:escape     [identity               :normal          false]
                            :else       [do-selected-action     identity         false]}
@@ -3705,6 +3772,7 @@
     :pickup
     :harvest
     :magic-direction
+    :direction-select
     :close})
 
 (defn update-state

@@ -1517,6 +1517,18 @@
                 "num close-directions" (count close-directions))
     directions))
 
+(defn direction->unicode-char
+  [direction]
+  (case direction
+    :up         \↑ 
+    :down       \↓
+    :left       \←
+    :right      \→
+    :up-left    \↖
+    :up-right   \↗
+    :down-left  \↙
+    :down-right \↘))
+
 (defn action-select
   [state]
   (let [directions (directions-to-actions state)]
@@ -1553,7 +1565,7 @@
         ;; let the player choose the direction
         (-> state
           (rw/assoc-current-state :direction-select)
-          (rc/ui-hint "Pick a direction.")))))
+          (rc/ui-hint (format "Pick a direction. (<color fg=\"highlight\">%s</color>)" (apply str (map direction->unicode-char (keys directions)))))))))
 
 (defn do-selected-direction
   [state keyin]

@@ -125,11 +125,21 @@
            :white-upper-right-2    "a pale ornate corner"
            :white-bottom-left-2    "a pale ornate corner"
            :white-bottom-right-2   "a pale ornate corner"
-           :crushing-wall-trigger  "TODO"
-           :wall-darts-trigger     "TODO"
-           :poisonous-gas-trigger  "TODO"
-           :spike-pit              "TODO"
-           :snakes-trigger         "TODO"))
+           :crushing-wall-trigger  (if (get cell :trap-found)
+                                     "a spiked wall trap trigger"
+                                     (describe-cell-type (assoc cell :type :floor)))
+           :wall-darts-trigger     (if (get cell :trap-found)
+                                     "a dart trap trigger"
+                                     (describe-cell-type (assoc cell :type :floor)))
+           :poisonous-gas-trigger  (if (get cell :trap-found)
+                                     "a poisonous gas trap trigger"
+                                     (describe-cell-type (assoc cell :type :floor)))
+           :spike-pit              (if (get cell :trap-found)
+                                     "a spike pit"
+                                     (describe-cell-type (assoc cell :type :floor)))
+           :snakes-trigger         (if (get cell :trap-found)
+                                     "a snake trap trigger"
+                                     (describe-cell-type (assoc cell :type :floor)))))
     "strange land"))
 
 (defn describe-npc

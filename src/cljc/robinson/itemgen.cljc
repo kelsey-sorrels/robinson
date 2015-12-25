@@ -128,7 +128,7 @@
    {:id  :plant-fiber             :name  "plant fiber"                :name-plural "plant fibers" :fuel 50}
    {:id  :leaves                  :name  "leaves"                     :name-plural "leaves" :fuel 10}
    {:id  :unhusked-coconut        :name  "unhusked coconut"           :name-plural "husked coconuts"}
-   {:id  :coconut                 :name  "coconut"                    :name-plural "coconuts" :thirst 30}
+   {:id  :coconut                 :name  "coconut (full)"             :name-plural "coconuts (full)" :thirst 30}
    {:id  :coconut-empty           :name  "coconut (empty)"            :name-plural "coconuts (empty)" :hunger 30}
    {:id  :coconut-shell           :name  "coconut shell"              :name-plural "coconut shells" :fuel 30}
    {:id  :red-fruit               :name  "red fruit"                  :name-plural "red fruits" :hunger 30}

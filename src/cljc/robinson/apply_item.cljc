@@ -99,6 +99,7 @@
     (rp/player-update-thirst inc)
     (rp/dec-item-utility :fire-plough)
     (start-fire direction)))
+
 (defn apply-hand-drill
   "Light something on fire, creating chaos."
   [state direction]
@@ -176,6 +177,23 @@
       (rp/dec-item-count (get item :id))
       (rp/add-to-inventory [(ig/gen-item :sharpened-stick)]))
     state))
+
+(defn apply-rock
+  "Apply a rock to the inventory item."
+  [state item]
+  (log/info "applying rock to" item)
+  (case (get item :id)
+    :unhusked-coconut
+    (if (>= (+ (rp/player-hunger state) 30) (rp/player-max-hunger state))
+      (rc/append-log state "You're too hungry to do this.")
+      (-> state
+        (rp/dec-item-count (get item :id))
+        (rp/dec-item-count :rock)
+        (rp/player-update-hunger (partial + 30))
+        (rp/add-to-inventory [(ig/gen-item :coconut)])
+        (rc/append-log "You bash the husk off the coconut.")))
+    state))
+
 (defn apply-fruit-to-skin
   "Apply fruit to the skin. If it is poisonous, display a message in the future."
   [state item]
@@ -259,6 +277,11 @@
                                        (rw/assoc-current-state :normal))
       [:flint           :*         ] (if-let [item (rp/inventory-hotkey->item state keyin)]
                                        (apply-flint state item)
+                                       state)
+      [:rock            :*         ] (if-let [item (rp/inventory-hotkey->item state keyin)]
+                                       (-> state
+                                         (apply-rock item)
+                                         (rw/assoc-current-state :normal))
                                        state)
       [:flint-and-steel trans->dir?] (-> state
                                        (start-fire (translate-directions keyin))

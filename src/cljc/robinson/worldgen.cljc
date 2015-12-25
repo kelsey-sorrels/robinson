@@ -319,7 +319,7 @@
                         (= (rr/uniform-int 0 50) 0))
                    (and (= :palm-tree (get cell :type))
                         (= :jungle biome)
-                        (= (rr/uniform-int 0 50) 0))
+                        (= (rr/uniform-int 0 30) 0))
                    (and (contains? #{:gravel :tree :palm-tree :tall-grass} (get cell :type))
                         (= (rr/uniform-int 0 200) 0)))
              (assoc cell :harvestable true)

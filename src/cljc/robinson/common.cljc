@@ -118,6 +118,19 @@
 (defn bound [min-v v max-v]
   (min max-v (max min-v v)))
 
+(def directions-ext
+  #{:left :right :down :up :up-left :up-right :down-left :down-right :center})
+
+(defn is-direction?
+  [keyin]
+  (contains? #{:left :down :up :right} keyin))
+
+(defn is-direction-ext?
+  [keyin]
+  (or (is-direction? keyin)
+      (contains? #{:up-left :up-right :down-left :down-right} keyin)))
+
+
 #_#?(:clj
 (t/ann fill-missing (t/All [x y] [(t/Pred x)
                                    (t/IFn [x y -> x])

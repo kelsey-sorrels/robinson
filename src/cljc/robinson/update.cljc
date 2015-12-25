@@ -633,7 +633,8 @@
           (log/debug (rw/get-cell state target-x target-y))
           (-> state
             (rc/append-log "The door creaks open")
-            (rw/assoc-cell target-x target-y :type :open-door)))
+            (rw/assoc-cell target-x target-y :type :open-door)
+            (rw/assoc-current-state :normal)))
         state))))
 
 (defn open-left
@@ -666,9 +667,17 @@
     (let [target-cell (rw/get-cell state target-x target-y)]
       (log/debug "target-cell" target-cell)
       (if (and (not (nil? target-cell)) (= (target-cell :type) :open-door))
-        (-> state
-          (rc/append-log "The door closes")
-          (rw/assoc-cell target-x target-y :type :close-door))
+        (as-> state state
+          (cond
+            (seq (get target-cell :items []))
+              (rc/append-log state "Cannot close door. There are items in the way.")
+            (rw/npc-at-xy state target-x target-y)
+              (rc/append-log state "Cannot close door. There is a creature in the way.")
+            :else
+            (-> state
+              (rc/append-log "The door closes")
+              (rw/assoc-cell target-x target-y :type :close-door)))
+          (rw/assoc-current-state state :normal))
         state))))
 
 (defn close-left
@@ -1235,6 +1244,7 @@
 (defn direction->unicode-char
   [direction]
   (case direction
+    :center     \·
     :up         \↑ 
     :down       \↓
     :left       \←
@@ -2912,7 +2922,7 @@
                       num-harvestable (get @harvestable-counts place-id 0)]
                   (if (< (rr/uniform-int 0 10000)
                          (/ (case cell-type
-                              :palm-tree 20
+                              :palm-tree 10
                               :tree 25
                               :tall-grass 2
                               :gravel 20

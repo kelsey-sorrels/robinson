@@ -506,7 +506,11 @@
                     items)))
               (rc/append-log (gen-attack-message attacker
                                               defender
-                                              attack
+                                              (case attack-type
+                                                :melee attack
+                                                :ranged (get ranged-weapon :id)
+                                                :thrown-item (get thrown-item :id)
+                                                (assert false (format "Unknown attack type %s" (name attack-type))))
                                               defender-body-part
                                               :dead)
                           :white))

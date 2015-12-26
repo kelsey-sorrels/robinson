@@ -1944,7 +1944,7 @@
 ;;                                                                                         "days"
 ;;                                                                                          "day")
 ;;                                                                                      points)))
-          (put-string (state :screen) 1 (+ idx 3) (format "%d. %-20s (%d points)" (inc idx) player-name points) (if (and (= player-name (get-in state [:world :player :name]))
+          (put-string (state :screen) 1 (+ idx 3) (format "%2d.%-20s (%d points)" (inc idx) player-name points) (if (and (= player-name (get-in state [:world :player :name]))
                                                                                                                          (= points (get state :points)))
                                                                                                                   :highlight
                                                                                                                   :white)

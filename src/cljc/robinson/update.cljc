@@ -302,38 +302,22 @@
   {:pre  [(not (nil? state))]
    :post [(not (nil? %))]}
   (log/info "move-outside-safe-zone")
-  (let [[player-cell x y] (rw/player-cellxy state)
+  (let [[player-cell x y]    (rw/player-cellxy state)
         [target-x
-         target-y] (rw/player-adjacent-xy state direction)
-        target-place      (rv/xy->place-id state target-x target-y)
+         target-y]           (rw/player-adjacent-xy state direction)
+        target-place         (rv/xy->place-id state target-x target-y)
         rv/visible-place-ids (rv/visible-place-ids state target-x target-y)
         _ (log/info "target-x" target-x "target-y" target-y)
         _ (log/info "target-place" target-place)
-       vp-pos             (apply rc/xy->pos
-                            (rv/+xy (rc/pos->xy (get-in state [:world :viewport :pos]))
-                                 (rv/-xy [target-x target-y] [x y])))
-       ;;dest-place        (-> state :world :places dest-place-id)
+       vp-pos                (apply rc/xy->pos
+                               (rv/+xy (rc/pos->xy (get-in state [:world :viewport :pos]))
+                                    (rv/-xy [target-x target-y] [x y])))
        {width :width
         height :height}  (get-in state [:world :viewport])]
       (log/debug "viewport-pos" vp-pos)
-      ;#+clj
-      #_(log/debug "npcs" (with-out-str (clojure.pprint/pprint (-> state :world :npcs))))
       (-> state
         (assoc-in [:world :viewport :pos] vp-pos)
         (rworldgen/load-unload-places))))
-      ;(-> state
-      ;  (tx/when-> on-raft 
-      ;    (dec-cell-item-count :raft))
-      ;  (assoc-in [:world :viewport :pos] vp-pos) 
-        ;; unload the current place
-        ;;(dissoc-in [:world :places orig-place-id])
-        ;; change the place
-        ;;(assoc-in [:world :current-place] dest-place-id)
-        ;;(assoc-in [:world :places dest-place-id] dest-place)
-        ;; move player
-      ;  (assoc-in [:world :player :pos] {:x target-x :y target-y})
-      ;  (tx/when-> on-raft
-      ;    (conj-in-cell-items (ig/id->item :raft) target-x target-y)))))
 
 (defn move
   "Move the player one space provided her/she is able. Else do combat. Else swap positions
@@ -353,23 +337,25 @@
     (log/info "not collide?" (not (rw/collide? state target-x target-y {:include-npcs? false})))
     (log/info "not mounted-on-raft?" (not (rw/player-mounted-on-raft? state)))
     (cond
+      ;; Don't move paralyzed player
       (rp/player-paralyzed? state)
         (-> state
           (rc/append-log "You can not move (paralyzed).")
           inc-time)
+      ;; Open space (may include npc) and not on raft?
       (and (not (rw/collide? state target-x target-y {:include-npcs? false}))
            (not (rw/player-mounted-on-raft? state)))
         (as-> state state
-          (if (and (not (rv/xy-in-safe-zone? state target-x target-y))
-                   (not= :fixed (get-in state [:world :places (rw/current-place-id state) :movement])))
-            (move-outside-safe-zone state direction)
-            state)
           (if (rw/npc-at-xy state target-x target-y)
             ;; collided with npc. Engage in combat.
             (let [npc (rw/npc-at-xy state target-x target-y)]
               (log/info "npc" npc)
               (rcombat/attack state [:world :player] (rnpc/npc->keys state npc)))
             (as-> state state
+              (if (and (not (rv/xy-in-safe-zone? state target-x target-y))
+                       (not= :fixed (get-in state [:world :places (rw/current-place-id state) :movement])))
+                (move-outside-safe-zone state direction)
+                state)
               (assoc-in state [:world :player :pos :x] target-x)
               (assoc-in state [:world :player :pos :y] target-y)
               (let [cell  (rw/get-cell state target-x target-y)
@@ -378,6 +364,7 @@
                   (rdesc/search state)
                   state))))
           (inc-time state))
+      ;; Swap places with party members
       (= (get (rw/npc-at-xy state target-x target-y) :in-party?) true)
         (-> state
           (assoc-in [:world :player :pos :x] target-x)
@@ -391,6 +378,7 @@
                                      (assoc-in [:pos :x] player-x)
                                      (assoc-in [:pos :y] player-y))
                                  npc))))
+      ;; Passable water terrain and on raft?
       (and (not (rw/collide-in-water? state target-x target-y))
            (rw/player-mounted-on-raft? state))
         (as-> state state

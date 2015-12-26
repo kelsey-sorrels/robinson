@@ -673,6 +673,8 @@
               (rc/append-log state "Cannot close door. There are items in the way.")
             (rw/npc-at-xy state target-x target-y)
               (rc/append-log state "Cannot close door. There is a creature in the way.")
+            (= (rp/player-xy state) [target-x target-y])
+              (rc/append-log state "Cannot close door. You're in the way.")
             :else
             (-> state
               (rc/append-log "The door closes")

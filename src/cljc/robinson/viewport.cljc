@@ -50,7 +50,7 @@
          {v-x :x v-y :y} :pos}
         (get-in state [:world :viewport])
         ;; safe zone size
-        s 5]
+        s 8]
         
     (xy-in-rect? x y (+ v-x s) (+ v-y s)
                      (- v-width (* 2 s)) (- v-height (* 2 s)))))

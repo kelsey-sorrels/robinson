@@ -1905,6 +1905,7 @@
 (defn cp437->unicode
   [c]
   (case (int c)
+      0 \ 
       3 \u2665
     179 \u2502
     219 \u2588

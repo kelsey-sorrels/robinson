@@ -3,8 +3,10 @@
   (:require 
             [taoensso.timbre :as log]
             [robinson.random :as rr]
+            [robinson.math :as rmath]
             [robinson.scores :as rs]
             [robinson.startgame :as sg]
+            [robinson.popover :as rpop]
             [robinson.itemgen :as ig]
             [robinson.common :as rc :refer [farther-than?
                                             wrap-line
@@ -236,16 +238,16 @@
 
 (defn put-string
   ([^robinson.aterminal.ATerminal screen x y string]
-     (put-string screen x y string :white :black #{}))
+     (put-string screen (int (rmath/ceil x)) (int (rmath/ceil y)) string :white :black #{}))
   ([^robinson.aterminal.ATerminal screen x y string fg bg]
-     (put-string screen x y string fg bg #{}))
+     (put-string screen (int (rmath/ceil x)) (int (rmath/ceil y)) string fg bg #{}))
   ([^robinson.aterminal.ATerminal screen x y string fg bg styles]
    {:pre [(clojure.set/superset? #{:underline :bold} styles)]}
    (let [fg        (color->rgb fg)
          bg        (color->rgb bg)]
      (rat/put-string screen
-                     x
-                     y
+                     (int (rmath/ceil x))
+                     (int (rmath/ceil y))
                      string
                      fg
                      bg
@@ -354,7 +356,8 @@
                    #{})]
     #_(log/info "put-string" (format "\"%s\"" line) "width" width)
     #_(put-string screen x y s fg bg style)
-    (put-chars screen (markup->chars x y s fg bg style))))
+    (let [characters (markup->chars (int (rmath/ceil x)) (int (rmath/ceil y)) s fg bg style)]
+      (put-chars screen characters))))
 
 (def single-border
   {:horizontal   "\u2500"
@@ -1160,6 +1163,27 @@
          {:s "  Press <color fg=\"highlight\">any key</color> to continue and <color fg=\"highlight\">?</color> to view help." :fg :black :bg :white :style #{}}]))
     (render-rect-double-border screen 15 4 (inc width) 6 :black :white)))
 
+(defn render-popover [state]
+  (let [screen     (state :screen)
+        message    (rpop/get-popover-message state)
+        lines      (clojure.string/split-lines message)
+        width      (reduce max 27 (map markup->length lines))
+        height     (count lines)
+        [v-width
+         v-height] (rv/viewport-wh state)
+        popover-x  (- (/ v-width 2) (/ width 2))
+        popover-y  (- (/ v-height 2) (/ height 2))]
+    (render-list screen popover-x popover-y width (+ 4 height)
+      (concat
+        [{:s "" :fg :black :bg :white :style #{}}]
+        (map
+          (fn [line] {:s line :fg :black :bg :white :style #{:center}})
+          (remove empty? lines))
+        [{:s "" :fg :black :bg :white :style #{}}
+         {:s "  Press <color fg=\"highlight\">space</color> to continue." :fg :black :bg :white :style #{:center}}]))
+    (render-rect-double-border screen (dec popover-x) popover-y (inc width) (+ 4 height) :black :white)))
+
+
 (defn render-dead-text [state]
   (let [screen         (state :screen)
         hp             (get-in state [:world :player :hp])
@@ -1691,6 +1715,7 @@
       :wield                (render-wield state)
       :wield-ranged         (render-wield-ranged state)
       :start-text           (render-start-text state)
+      :popover              (render-popover state)
       :dead                 (render-dead-text state)
       :rescued              (render-rescued-text state)
       nil)

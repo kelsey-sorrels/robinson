@@ -16,6 +16,7 @@
             [robinson.monstergen :as mg]
             [robinson.apply-item :as rai]
             [robinson.startgame :as sg]
+            [robinson.popover :as rpop]
             [clojure.string :refer [lower-case]]
             ;[robinson.dialog :refer []]
             [robinson.npc :as rnpc]
@@ -2062,12 +2063,16 @@
       (let [new-hunger (get-in state [:world :player :hunger])]
         (log/info "hunger" hunger "new-hunger" new-hunger)
         (if (< hunger 80 new-hunger)
-          (rc/append-log state "You need to eat now." :yellow)
+          (-> state
+            (rc/append-log "You need to eat now." :yellow)
+            (rpop/show-popover "You need to eat now."))
           state))
       (let [new-thirst (get-in state [:world :player :thirst])]
         (log/info "thirst" thirst "new-thirst" new-thirst)
         (if (< thirst 80 new-thirst)
-          (rc/append-log state "You need to drink something now." :blue)
+          (-> state
+            (rc/append-log "You need to drink something now." :blue)
+            (rpop/show-popover "You need to drink something now."))
           state)))))
 
 (defn get-rescued
@@ -3095,17 +3100,17 @@
   ;;         state         symbol      fn                     state            time?
   (let [table {:start     {:space      [identity               :enter-name      false]
                            \c          [identity               :configure       false]
-                           :else       [pass-state             identity         false]}
+                           :else       [pass-state             rw/current-state false]}
                :configure
                           {\f          [identity               :configure-font  false]
                            :escape     [identity               :start           false]
-                           :else       [pass-state             identity         false]}
+                           :else       [pass-state             rw/current-state false]}
                :configure-font
                           {\n          [next-font              :configure-font  false]
                            \p          [previous-font          :configure-font  false]
                            \s          [save-and-apply-font    :configure-font  false]
                            :escape     [identity               :configure       false]
-                           :else       [pass-state             identity         false]}
+                           :else       [pass-state             rw/current-state false]}
                :enter-name
                           {:enter      [identity               :start-inventory false]
                            :backspace  [backspace-name         :enter-name      false]
@@ -3122,7 +3127,7 @@
                                           (do-rest state))     :normal          true]}
                :normal    {\i          [identity               :inventory       false]
                            \d          [identity               :drop            false]
-                           \,          [smart-pickup            identity        false]
+                           \,          [smart-pickup           rw/current-state false]
                            \e          [identity               :eat             false]
                            \o          [identity               :open            false]
                            \c          [identity               :close           false]
@@ -3138,14 +3143,14 @@
                            :down-right [move-down-right        :normal          false]
                            \>          [use-stairs             :normal          false]
                            \<          [use-stairs             :normal          false]
-                           :space      [action-select          identity         false]
-                           \q          [quaff-select           identity         false]
+                           :space      [action-select          rw/current-state false]
+                           \q          [quaff-select           rw/current-state false]
                            \w          [identity               :wield           false]
                            \W          [identity               :wield-ranged    false]
                            \f          [init-select-ranged-target
-                                                               identity         false]
+                                                               rw/current-state false]
                            \r          [reload-ranged-weapon   :normal          false]
-                           \x          [smart-harvest          identity         false]
+                           \x          [smart-harvest          rw/current-state false]
                            \a          [identity               :apply           false]
                            \;          [init-cursor            :describe        false]
                            \S          [identity               :sleep           false]
@@ -3165,7 +3170,7 @@
                            \?          [identity               :help-controls   false]
                            \/          [scroll-log-up          :normal          false]
                            \*          [scroll-log-down        :normal          false]
-                           \R          [repeat-commands        identity         false]
+                           \R          [repeat-commands        rw/current-state false]
                            #_#_\0          [(fn [state]
                                           (if (get-in state [:world :dev-mode])
                                             (-> state
@@ -3197,7 +3202,7 @@
                                           (if (get-in state [:world :dev-mode])
                                             (rw/assoc-current-state state :dead)
                                             state))
-                                                                       identity true]
+                                                                       rw/current-state true]
                           \3           [(fn [state]
                                           (if (get-in state [:world :dev-mode])
                                             (rp/add-to-inventory state [(ig/gen-item :flint)])
@@ -3257,13 +3262,13 @@
                            :escape     [identity               :quit?           false]}
                :direction-select
                           {:escape     [identity               :normal          false]
-                           :else       [do-selected-direction  identity         false]}
+                           :else       [do-selected-direction  rw/current-state false]}
                :action-select
                           {:escape     [identity               :normal          false]
-                           :else       [do-selected-action     identity         false]}
+                           :else       [do-selected-action     rw/current-state false]}
                :inventory {:escape     [identity               :normal          false]}
                :abilities {:escape     [identity               :normal          false]
-                           :else       [use-ability            identity         true]}
+                           :else       [use-ability            rw/current-state true]}
                :player-stats
                           {:escape     [identity               :normal          false]
                            :else       [pass-state             :player-stats    false]}
@@ -3284,19 +3289,19 @@
                :drop      {:escape     [identity               :normal          false]
                            :else       [drop-item              :normal          true]}
                :apply     {:escape     [identity               :normal          false]
-                           :else       [select-apply-item      identity         false]}
+                           :else       [select-apply-item      rw/current-state false]}
                :apply-item-normal
                           {:escape     [identity               :normal          false]
                            :else       [(fn [state
                                              keyin]
                                           (rai/apply-item state translate-directions keyin))
-                                                               identity         true]}
+                                                               rw/current-state true]}
                :apply-item-inventory
                           {:escape     [identity               :normal          false]
                            :else       [(fn [state
                                              keyin]
                                           (rai/apply-item state translate-directions keyin))
-                                                               identity         true]}
+                                                               rw/current-state true]}
                :apply-item-body
                           {:escape     [identity               :normal          false]
                            \a          [(fn [state]
@@ -3305,16 +3310,16 @@
                            \b          [(fn [state]
                                         (rai/apply-item state translate-directions \b))
                                                                :normal          true]}
-               :pickup    {:left       [pickup-left            identity         false]
-                           :down       [pickup-down            identity         false]
-                           :up         [pickup-up              identity         false]
-                           :right      [pickup-right           identity         false]
-                           :up-left    [pickup-up-left         identity         false]
-                           :up-right   [pickup-up-right        identity         false]
-                           :down-left  [pickup-down-left       identity         false]
-                           :down-right [pickup-down-right      identity         false]
-                           :numpad5    [pickup-center          identity         false]
-                           \>          [pickup-center          identity         false]
+               :pickup    {:left       [pickup-left            rw/current-state false]
+                           :down       [pickup-down            rw/current-state false]
+                           :up         [pickup-up              rw/current-state false]
+                           :right      [pickup-right           rw/current-state false]
+                           :up-left    [pickup-up-left         rw/current-state false]
+                           :up-right   [pickup-up-right        rw/current-state false]
+                           :down-left  [pickup-down-left       rw/current-state false]
+                           :down-right [pickup-down-right      rw/current-state false]
+                           :numpad5    [pickup-center          rw/current-state false]
+                           \>          [pickup-center          rw/current-state false]
                            :escape     [identity               :normal          false]}
                :pickup-selection
                           {:escape     [identity               :normal          false]
@@ -3341,10 +3346,10 @@
                            :down       [open-down              :normal          true]
                            :up         [open-up                :normal          true]
                            :right      [open-right             :normal          true]}
-               :talk      {:left       [talk-left              identity         false]
-                           :down       [talk-down              identity         false]
-                           :up         [talk-up                identity         false]
-                           :right      [talk-right             identity         false]}
+               :talk      {:left       [talk-left              rw/current-state false]
+                           :down       [talk-down              rw/current-state false]
+                           :up         [talk-up                rw/current-state false]
+                           :right      [talk-right             rw/current-state false]}
                :harvest   {:left       [harvest-left           :normal          true]
                            :down       [harvest-down           :normal          true]
                            :up         [harvest-up             :normal          true]
@@ -3364,11 +3369,11 @@
                :select-ranged-target
                           {:escape     [identity               :normal          false]
                            :tab        [select-next-ranged-target
-                                                               identity         false]
+                                                               rw/current-state false]
                            \n          [select-next-ranged-target
-                                                               identity         false]
+                                                               rw/current-state false]
                            \p          [select-previous-ranged-target
-                                                               identity         false]
+                                                               rw/current-state false]
                            \f          [fire-wielded-ranged-weapon
                                                                :normal          true]}
                :throw-inventory
@@ -3377,14 +3382,14 @@
                                                                                 false]}
                :select-throw-target
                           {:escape     [free-cursor            :normal          false]
-                           :left       [move-cursor-left       identity         false]
-                           :down       [move-cursor-down       identity         false]
-                           :up         [move-cursor-up         identity         false]
-                           :right      [move-cursor-right      identity         false]
-                           :up-left    [move-cursor-up-left    identity         false]
-                           :up-right   [move-cursor-up-right   identity         false]
-                           :down-left  [move-cursor-down-left  identity         false]
-                           :down-right [move-cursor-down-right identity         false]
+                           :left       [move-cursor-left       rw/current-state false]
+                           :down       [move-cursor-down       rw/current-state false]
+                           :up         [move-cursor-up         rw/current-state false]
+                           :right      [move-cursor-right      rw/current-state false]
+                           :up-left    [move-cursor-up-left    rw/current-state false]
+                           :up-right   [move-cursor-up-right   rw/current-state false]
+                           :down-left  [move-cursor-down-left  rw/current-state false]
+                           :down-right [move-cursor-down-right rw/current-state false]
                            \t          [throw-selected-inventory
                                                                :normal          false]
                            :enter      [throw-selected-inventory
@@ -3393,7 +3398,7 @@
                                                                :normal          false]
                            :else       [free-cursor            :normal          false]}
                :talking   {:escape     [stop-talking           :normal          false]
-                           :else       [talk                   identity         true]}
+                           :else       [talk                   rw/current-state true]}
                :shopping  {\a          [identity               :buy             true]
                            \b          [identity               :sell            true]
                            :escape     [identity               :normal          false]}
@@ -3410,69 +3415,73 @@
                :craft-weapon
                           {:escape     [identity               :craft           false]
                            :enter      [craft                  :normal          true]
-                           :else       [craft-select-recipe    identity         false]}
+                           :else       [craft-select-recipe    rw/current-state false]}
                :craft-survival
                           {:escape     [identity               :craft           false]
                            :enter      [craft                  :normal          true]
-                           :else       [craft-select-recipe    identity         false]}
+                           :else       [craft-select-recipe    rw/current-state false]}
                :craft-shelter
                           {:escape     [identity               :craft           false]
                            :enter      [craft                  :normal          true]
-                           :else       [craft-select-recipe    identity         false]}
+                           :else       [craft-select-recipe    rw/current-state false]}
                :craft-transportation
                           {:escape     [identity               :craft           false]
                            :enter      [craft                  :normal          true]
-                           :else       [craft-select-recipe    identity         false]}
+                           :else       [craft-select-recipe    rw/current-state false]}
                :fishing-left
-                          {\.          [rai/do-fishing         identity         true]
+                          {\.          [rai/do-fishing         rw/current-state true]
                            :else       [pass-state             :normal          false]}
                :fishing-right
-                          {\.          [rai/do-fishing         identity         true]
+                          {\.          [rai/do-fishing         rw/current-state true]
                            :else       [pass-state             :normal          false]}
                :fishing-up
-                          {\.          [rai/do-fishing         identity         true]
+                          {\.          [rai/do-fishing         rw/current-state true]
                            :else       [pass-state             :normal          false]}
                :fishing-down
-                          {\.          [rai/do-fishing         identity         true]
+                          {\.          [rai/do-fishing         rw/current-state true]
                            :else       [pass-state             :normal          false]}
                :magic     {:escape     [identity               :normal          false]
-                           :else       [do-magic               identity         true]}
+                           :else       [do-magic               rw/current-state true]}
                :magic-direction
-                          {:left       [magic-left             identity         true]
-                           :down       [magic-down             identity         true]
-                           :up         [magic-up               identity         true]
-                           :right      [magic-right            identity         true]}
+                          {:left       [magic-left             rw/current-state true]
+                           :down       [magic-down             rw/current-state true]
+                           :up         [magic-up               rw/current-state true]
+                           :right      [magic-right            rw/current-state true]}
                :magic-inventory
                           {:escape     [identity               :normal          false]
                            :else       [magic-inventory        :normal          true]}
-               :sleep     {:else       [do-sleep               identity         true]}
+               :sleep     {:else       [do-sleep               rw/current-state true]}
                :gain-level
                           {:escape     [identity               :normal          false]
-                           :else       [choose-ability         identity         false]}
+                           :else       [choose-ability         rw/current-state false]}
                :help-controls
                           {\n          [identity               :help-ui         false]
                            \p          [identity               :help-gameplay   false]
                            :escape     [identity               :normal          false]
-                           :else       [pass-state             identity         false]}
+                           :else       [pass-state             rw/current-state false]}
                :help-ui
                           {\n          [identity               :help-gameplay   false]
                            \p          [identity               :help-controls   false]
                            :escape     [identity               :normal          false]
-                           :else       [pass-state             identity         false]}
+                           :else       [pass-state             rw/current-state false]}
                :help-gameplay
                           {\n          [identity               :help-controls   false]
                            \p          [identity               :help-ui         false]
                            :escape     [identity               :normal          false]
-                           :else       [pass-state             identity         false]}
+                           :else       [pass-state             rw/current-state false]}
                :close     {:left       [close-left             :normal          true]
                            :down       [close-down             :normal          true]
                            :up         [close-up               :normal          true]
                            :right      [close-right            :normal          true]}
                :log       {:else       [pass-state             :normal          false]}
+               :popover   {:space      [rpop/clear-popover     rpop/get-popover-next-state
+                                                                                false]
+                           :else       [pass-state             rw/current-state false]}
+                                                                 
                :rescued   {:space      [save-score             :game-over-rescued false]
-                           :else       [pass-state             identity         false]}
+                           :else       [pass-state             rw/current-state false]}
                :dead      {:space      [save-score             :game-over-dead  false]
-                           :else       [pass-state             identity         false]}
+                           :else       [pass-state             rw/current-state false]}
                :game-over-rescued
                           {\y          [identity               :start-inventory false]
                            \n          [(constantly nil)       :normal          false]
@@ -3483,7 +3492,7 @@
                            :space      [identity               :connecting      false]}
                :connecting
                           {:advance    [share-score-and-get-scores
-                                                               identity          false]
+                                                               rw/current-state  false]
                            :else       [pass-state             :connecting       false]}
                :connection-failed
                           {\y          [identity               :start-inventory false]
@@ -3567,7 +3576,7 @@
             _ (log/debug "type of npcs" (type (get-in state [:world :npcs])))
             new-state (if (keyword? new-state)
                         new-state
-                        (new-state (get-in state [:world :current-state])))
+                        (new-state state))
             _ (assert (not (nil? new-state)))
             state     (if state
                         (if-not (= keyin \r)

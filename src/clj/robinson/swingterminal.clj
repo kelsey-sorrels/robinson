@@ -286,7 +286,7 @@
                                       (let [x (+ i col)]
                                         (if (< -1 x columns)
                                           (let [character (make-terminal-character c fg-color bg-color style)]
-                                            (assoc! line (+ i col) character))
+                                            (assoc! line x character))
                                           line)))
                                     line
                                     (map-indexed vector s)))))))))

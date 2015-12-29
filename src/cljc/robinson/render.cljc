@@ -4,6 +4,7 @@
             [taoensso.timbre :as log]
             [robinson.random :as rr]
             [robinson.math :as rmath]
+            [robinson.color :as rcolor]
             [robinson.scores :as rs]
             [robinson.startgame :as sg]
             [robinson.popover :as rpop]
@@ -66,97 +67,6 @@
      :cljs
      (apply gstring/format s args)))
 
-;; RBG color definitions. 
-;; It's easier to use names than numbers.
-(def color-to-rgb-map
-  {:brown       [139 69 19]
-   :dark-brown  [70 44 9]
-   :ship-brown  [67 51 30]
-   :ship-light-brown  [131 88 32]
-   :ship-dark-brown  [33 25 15]
-   ;;:black       [0 0 0]
-   :black       [6 6 11]
-   :white       [255 255 255]
-   :gray        [128 128 128]
-   :light-gray  [64 64 64]
-   :dark-gray   [192 192 192]
-   :red         [190 38 51];(vec (tinter/hex-str-to-dec "D31C00"))
-   :dark-red    [110 18 21];(vec (tinter/hex-str-to-dec "D31C00"))
-   :orange      [235 137 49];(vec (tinter/hex-str-to-dec "D36C00"))
-   :yellow      [247 226 107];(vec (tinter/hex-str-to-dec "D3B100"))
-   ;:highlight   [229 165 8];(vec (tinter/hex-str-to-dec "D3B100"))
-   :highlight   [209 155 8];(vec (tinter/hex-str-to-dec "D3B100"))
-   :background  [6 8 12]
-   :light-green [163 206 39]
-   :green       [68 137 26];(vec (tinter/hex-str-to-dec "81D300"))
-   :dark-green  (vec (tinter/hex-str-to-dec "406900"))
-   :moss-green  [1 140 1]
-   :temple-beige [191 171 143]
-   :blue-green  [55 148 110];(vec (tinter/hex-str-to-dec "19B4D7"))
-   :blue        [0 87 132];(vec (tinter/hex-str-to-dec "00ACD3"))
-   :light-blue  [203 219 252];(vec (tinter/hex-str-to-dec "19B4D7"))
-   :dark-blue   [0 63 116]
-   :purple      (vec (tinter/hex-str-to-dec "8500D3"))
-   :fushia      (vec (tinter/hex-str-to-dec "D30094"))
-   :light-brown (vec (tinter/hex-str-to-dec "D8C474"))
-   :beige       (vec (tinter/hex-str-to-dec "C8B464"))
-   :dark-beige  (vec (tinter/hex-str-to-dec "7C612D"))})
-
-(defn limit-color
-  ([v]
-    (limit-color 0 v 255))
-  ([min-v v max-v]
-    (min (max min-v v) max-v)))
-
-(defn limit-rgb
-  [color limit]
-  (mapv (fn [c min-v]
-          (limit-color min-v c 255))
-        color
-        limit))
-
-(defn rgb->mono
-  [[r g b]]
-  (let [avg (bit-shift-right (+ (max r g b) (min r g b)) 1)]
-   (limit-rgb [avg avg avg] [6 6 11])))
-
-(defn color->rgb
-  [color]
-  {:post [(vector? %)
-          (= (count %) 3)
-          (every? number? %)]}
-  (get color-to-rgb-map color color))
-
-(defn darken-rgb
-  ([rgb]
-  (mapv #(int (/ % 10)) rgb))
-  ([rgb d]
-  (assert (vector? rgb) (str "rgb not a vector"))
-  (assert (number? (nth rgb 0)) (str (nth rgb 0) " not a number"))
-  (assert (number? (nth rgb 1)) (str (nth rgb 1) " not a number"))
-  (assert (number? (nth rgb 2)) (str (nth rgb 2) " not a number"))
-  (mapv (fn [v min-v] (int (limit-color min-v (* v d) 255))) rgb [5 5 7])))
-
-(defn night-tint
-  [[r g b] d]
-  (if (> d 4)
-    [r g b]
-    [(/ r 4) (/ g 3) (/ (max r g b) 2)]))
-
-(defn night-tint-npc
-  [[s fg bg] d]
-   [s (night-tint (color->rgb (or fg :white)) d) (color->rgb (or bg :black))])
-
-(defn target-tint-npc
-  [[s fg bg] targeted?]
-   [s fg (if targeted? (color->rgb :green) bg)])
-
-(defn color-bloodied-char
-  [bloodied? char-fg-bg]
-  (if bloodied?
-    (assoc char-fg-bg 1 :dark-red)
-    char-fg-bg))
-
 (defn move-cursor
   ([^robinson.aterminal.ATerminal screen x y]
   (log/info "moving cursor to" x y)
@@ -173,8 +83,8 @@
     (fill-put-string-color-style-defaults string fg bg #{}))
   ([string fg bg styles]
    {:pre [(clojure.set/superset? #{:underline :bold} styles)]}
-   (let [fg (color->rgb fg)
-         bg (color->rgb bg)]
+   (let [fg (rcolor/color->rgb fg)
+         bg (rcolor/color->rgb bg)]
      [string fg bg styles])))
 
 (defn zip-str [s]
@@ -200,8 +110,8 @@
      (map (fn [idx] {:c     " "
                      :x     (+ x idx)
                      :y     y
-                     :fg    (color->rgb fg)
-                     :bg    (color->rgb bg)
+                     :fg    (rcolor/color->rgb fg)
+                     :bg    (rcolor/color->rgb bg)
                      :style style})
           (range (count s)))
      (let [body    (str "<body>" s "</body>")
@@ -211,8 +121,8 @@
        (map-indexed (fn [idx c] (assoc c :c     (str (get c :c))
                                          :x     (+ x idx)
                                          :y     y
-                                         :fg    (color->rgb (get c :fg))
-                                         :bg    (color->rgb (get c :bg))
+                                         :fg    (rcolor/color->rgb (get c :fg))
+                                         :bg    (rcolor/color->rgb (get c :bg))
                                          :style style))
                     (reduce (fn [characters v]
                               (cond
@@ -243,8 +153,8 @@
      (put-string screen (int (rmath/ceil x)) (int (rmath/ceil y)) string fg bg #{}))
   ([^robinson.aterminal.ATerminal screen x y string fg bg styles]
    {:pre [(clojure.set/superset? #{:underline :bold} styles)]}
-   (let [fg        (color->rgb fg)
-         bg        (color->rgb bg)]
+   (let [fg        (rcolor/color->rgb fg)
+         bg        (rcolor/color->rgb bg)]
      (rat/put-string screen
                      (int (rmath/ceil x))
                      (int (rmath/ceil y))
@@ -281,7 +191,7 @@
   "Convert a class to a color characters of that type should be drawn."
   [pc-class]
   ;(log/debug "class->color" pc-class)
-  (color->rgb
+  (rcolor/color->rgb
     (case pc-class
       :cleric    :white
       :barbarian :red
@@ -439,8 +349,8 @@
                     {:c " "
                      :x (+ x ox)
                      :y (+ y oy)
-                     :fg (color->rgb fg)
-                     :bg (color->rgb bg)})))
+                     :fg (rcolor/color->rgb fg)
+                     :bg (rcolor/color->rgb bg)})))
         (let [[word & words] words
                              ;; would putting this word exceed the width?
               characters     (if (> (+ @nchars (count word) 1) width)
@@ -458,8 +368,8 @@
                                                           {:c " "
                                                            :x x
                                                            :y y-val
-                                                           :fg (color->rgb fg)
-                                                           :bg (color->rgb bg)}))))]
+                                                           :fg (rcolor/color->rgb fg)
+                                                           :bg (rcolor/color->rgb bg)}))))]
                                  (println "line-break padding from" (+ x nchars-val -1) "to" (+ x width))
                                  (swap! line inc)
                                  (reset! nchars 0)
@@ -477,8 +387,8 @@
                                      [{:c " "
                                        :x (+ @nchars (count word) x)
                                        :y @line
-                                       :fg (color->rgb fg)
-                                       :bg (color->rgb bg)
+                                       :fg (rcolor/color->rgb fg)
+                                       :bg (rcolor/color->rgb bg)
                                        :style style}])
              ;; update counters
              _               (swap! nchars (partial + (count word) 1))]
@@ -653,7 +563,7 @@
   (let [current-time (rw/get-time state)]
     (doseq [[x y] (keys (get trap :locations))]
       (when (= (get (rw/get-cell state x y) :discovered) current-time)
-        (let [bg (color->rgb (rand-nth [:beige :temple-beige :light-brown]))]
+        (let [bg (rcolor/color->rgb (rand-nth [:beige :temple-beige :light-brown]))]
           (set-bg screen x y bg))))))
 
 (defn render-traps
@@ -1260,7 +1170,7 @@
                                      (let [cell-items (cell :items)
                                            ;_ (println "render-cell" (str cell) vx vy wx wy)
                                            out-char (apply fill-put-string-color-style-defaults
-                                                      (color-bloodied-char 
+                                                      (rcolor/color-bloodied-char 
                                                         (< current-time (get cell :bloodied 0))
                                                         (if (and cell-items
                                                                  (seq cell-items)
@@ -1492,17 +1402,17 @@
                                            shaded-out-char (cond
                                                              (not= (cell :discovered) current-time)
                                                                (-> out-char
-                                                                 (update-in [1] (fn [c] (rgb->mono (darken-rgb c 0.15))))
-                                                                 (update-in [2] (fn [c] (rgb->mono (darken-rgb c 0.15)))))
+                                                                 (update-in [1] (fn [c] (rcolor/rgb->mono (rcolor/darken-rgb c 0.15))))
+                                                                 (update-in [2] (fn [c] (rcolor/rgb->mono (rcolor/darken-rgb c 0.15)))))
                                                              (contains? cell :harvestable)
                                                                (let [[chr fg bg] out-char]
-                                                                 [chr bg (night-tint (color->rgb fg) d)])
+                                                                 [chr bg (rcolor/night-tint (rcolor/color->rgb fg) d)])
                                                              (contains? (set (map :id cell-items)) :raft)
                                                                (let [[chr fg bg] out-char]
                                                                  (log/info "raft-cell" out-char cell-items)
                                                                  (if (> (count cell-items) 1)
-                                                                   [chr fg (color->rgb :brown)]
-                                                                   ["\u01c1" (color->rgb :black) (color->rgb :brown)]))
+                                                                   [chr fg (rcolor/color->rgb :brown)]
+                                                                   ["\u01c1" (rcolor/color->rgb :black) (rcolor/color->rgb :brown)]))
                                                              :else
                                                                out-char)
                                            shaded-out-char (if (and (= (get cell :discovered) current-time)
@@ -1510,7 +1420,7 @@
                                                              (update-in shaded-out-char
                                                                         [1]
                                                                         (fn [c]
-                                                                          (darken-rgb (night-tint c d)
+                                                                          (rcolor/darken-rgb (rcolor/night-tint c d)
                                                                                       (min 1 (/ 2 (max 1 (distance-from-player state
                                                                                                                                (xy->pos wx wy))))))))
                                                              shaded-out-char)]
@@ -1600,9 +1510,9 @@
                         (apply put-string screen
                                             vx
                                             vy
-                                            (target-tint-npc
-                                              (night-tint-npc
-                                                (color-bloodied-char 
+                                            (rcolor/target-tint-npc
+                                              (rcolor/night-tint-npc
+                                                (rcolor/color-bloodied-char 
                                                   (< current-time (get npc :bloodied 0))
                                                   (case (get npc :race)
                                                     :rat             ["r"]
@@ -1674,7 +1584,7 @@
                                {:message "" :time 0 :color :black} 
                                (nth (reverse (get-in state [:world :log])) log-idx))
             darken-factor    (inc  (* (/ -1 5) (- current-time (message :time))))
-            log-color        (darken-rgb (color->rgb (get message :color)) darken-factor)
+            log-color        (rcolor/darken-rgb (rcolor/color->rgb (get message :color)) darken-factor)
             characters       (markup->chars 0 0 (format "%s%s %s" (if msg-above?
                                                                     (str "<color fg=\"highlight\">/</color>-<color fg=\"" (name up-arrow-color) "\">" up-arrow-char "</color>")
                                                                     "   ")
@@ -1919,13 +1829,13 @@
   (let [group-size (get histogram "group-size")]
   ;; render x-axis
   (doseq [i (range 8)]
-    (put-chars (state :screen) [{:c (get single-border :horizontal) :x (+ x i 1) :y (+ y 8) :fg (color->rgb :white) :bg (color->rgb :black) :style #{}}]))
+    (put-chars (state :screen) [{:c (get single-border :horizontal) :x (+ x i 1) :y (+ y 8) :fg (rcolor/color->rgb :white) :bg (rcolor/color->rgb :black) :style #{}}]))
   ;; put caret
-  (put-chars (state :screen) [{:c "^"  :x (+ x (int (/ value group-size)) 1) :y (+ y 8) :fg (color->rgb :highlight) :bg (color->rgb :black) :style #{}}])
+  (put-chars (state :screen) [{:c "^"  :x (+ x (int (/ value group-size)) 1) :y (+ y 8) :fg (rcolor/color->rgb :highlight) :bg (rcolor/color->rgb :black) :style #{}}])
   ;; render y-axis
   (doseq [i (range 7)]
-    (put-chars (state :screen) [{:c (get single-border :vertical)  :x x :y (+ y i 1) :fg (color->rgb :white) :bg (color->rgb :black) :style #{}}]))
-  (put-chars (state :screen) [{:c (get single-border :bottom-left)  :x x :y (+ y 8) :fg (color->rgb :white) :bg (color->rgb :black) :style #{}}])
+    (put-chars (state :screen) [{:c (get single-border :vertical)  :x x :y (+ y i 1) :fg (rcolor/color->rgb :white) :bg (rcolor/color->rgb :black) :style #{}}]))
+  (put-chars (state :screen) [{:c (get single-border :bottom-left)  :x x :y (+ y 8) :fg (rcolor/color->rgb :white) :bg (rcolor/color->rgb :black) :style #{}}])
   ;; print title
   (put-chars (state :screen) (markup->chars x y title))
   ;; print bars
@@ -1938,7 +1848,7 @@
             :when (get data "group")
             :let [group (get data "group")
                   x (+ x 1 (/ group group-size))
-                  fg (color->rgb
+                  fg (rcolor/color->rgb
                        (if (< group (inc value) (+ group group-size 1))
                          :highlight
                          :dark-gray))]]
@@ -1947,7 +1857,7 @@
             to   (+ y 7)]
         (log/debug "from" from "to" to "x" x)
       (doseq [y (range from to)]
-        (put-chars (state :screen) [{:c (-> 219 cp437->unicode str)#_"*" :x x :y (inc y) :fg fg :bg (color->rgb :black) :style #{}}])))))))
+        (put-chars (state :screen) [{:c (-> 219 cp437->unicode str)#_"*" :x x :y (inc y) :fg fg :bg (rcolor/color->rgb :black) :style #{}}])))))))
 
 (defn render-share-score
   [state]

@@ -578,6 +578,46 @@
             (render-poisonous-gas screen state trap)
           nil)))))
 
+(def rain-cache (atom nil))
+
+(defn render-rain
+  [screen state]
+  (let [[vw vh] (rv/viewport-wh state)]
+    ;; create empty rain values if not present
+    (swap! rain-cache (fn [rain]
+                        (if (nil? rain)
+                          (repeat vh (vec (repeat vw nil)))
+                          rain)))
+    ;; update rain
+    (swap! rain-cache (fn [rain]
+                        (cons (vec (repeatedly vw (fn [] (when (> (rand) 0.9)
+                                                           :drop))))
+                              (map (fn [line]
+                                     (map (fn [cell]
+                                            (cond
+                                              (and (= cell :drop)
+                                                   (> (rand) 0.95))
+                                                :splash
+                                              (= cell :splash)
+                                                nil
+                                              :else
+                                              cell))
+                                          line))
+                                   (butlast rain)))))
+    #_(put-chars screen
+               (for [[y line] (map-indexed vector @rain-cache)
+                     [x cell] (map-indexed vector line)
+                     :when    (not= nil cell)]
+                 {:c (case cell
+                       :drop "|"
+                       :splash "o")
+                  :x  x
+                  :y  y
+                  :fg (rcolor/color->rgb :blue)
+                  :bg (rcolor/color->rgb :black)}))))
+      
+    
+
 (def image-cache (atom {}))
 
 (def get-image
@@ -1430,6 +1470,7 @@
     (clear (state :screen))
     #_(log/info "putting chars" characters)
     (put-chars screen characters)
+    (render-rain screen state)
     ;; draw character
     ;(log/debug (-> state :world :player))
     (let [[vx vy] (rv/viewport-xy state)

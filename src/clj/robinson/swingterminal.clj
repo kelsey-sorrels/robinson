@@ -161,6 +161,12 @@
                                            x         (long (* col char-width))
                                            y         (long (- (* (inc row) char-height) (.getDescent font-metrics)))
                                            highlight (= @cursor-xy [col row])
+                                           ;; apply any fx
+                                           c          (-> c
+                                                        (assoc :character (or (get c :fx-character) (get c :character))
+                                                               :fg-color  (or (get c :fx-fg-color)  (get c :fg-color))
+                                                               :bg-color  (or (get c :fx-bg-color)  (get c :bg-color)))
+                                                        (dissoc :fx-character :fx-fg-color :fx-bg-color))
                                            char-img  (glyph-cache this font-metrics highlight char-width char-height c)]
                                        (.drawImage graphics char-img x (+ (- y char-height) 5) this)))
                                    (.dispose graphics-2d))))
@@ -339,7 +345,18 @@
           (SwingUtilities/invokeLater
             (fn refresh-fn [] (.repaint terminal-renderer))))
         (clear [this]
-          (reset! character-map character-map-cleared))))))
+          (reset! character-map character-map-cleared))
+        (set-fx-fg! [this x y fg]
+          (let [fg-color  (when fg (Color. (long (fg 0)) (long (fg 1)) (long (fg 2))))]
+            (swap! character-map
+                   (fn [cm] (assoc-in cm [y x :fx-fg-color] fg-color)))))
+        (set-fx-bg! [this x y bg]
+          (let [bg-color  (when bg (Color. (long (bg 0)) (long (bg 1)) (long (bg 2))))]
+            (swap! character-map
+                   (fn [cm] (assoc-in cm [y x :fx-bg-color] bg-color)))))
+        (set-fx-char! [this x y c]
+          (swap! character-map
+                 (fn [cm] (assoc-in cm [y x :fx-character] c))))))))
 
 
 (defn -main

@@ -111,18 +111,40 @@
   
 (defn make-rain-effect
   [terminal]
-  (let [[vw vh] (rat/get-size terminal)]
+  (let [[vw vh] (rat/get-size terminal)
+        mask    (atom (repeat vh (repeat vw true)))]
     (reify AEffect
-      (has-mask? [this] false)
-      (swap-mask! [this f] this)
-      (reset-mask! [this mask] this)
+      (id=? [this id]
+        (= :rain id))
+      (has-mask? [this] true)
+      (swap-mask! [this f]
+        (swap! mask f)
+        (println "=====================")
+        (doseq [line @mask]
+          (println (mapv (fn [v] (if v 1 0)) line)))
+        this)
+      (reset-mask! [this new-mask]
+        (reset! mask new-mask)
+        this)
       (apply-effect! [this terminal]
         (dosync
           (step-rain! vw vh)
-          (doseq [[y line] (map-indexed vector @rain-cache)
-                  [x cell] (map-indexed vector line)]
+          (doseq [[y line mask-line] (map vector (range) @rain-cache @mask)
+                  [x cell mask?] (map vector (range) line mask-line)
+                  :when mask?]
             (render-rain-cell terminal x y cell)))))))
-      
+
+(defn swap-rain-mask! [terminal f]
+  (raat/swap-matching-effect! terminal
+                              (fn [fx] (raat/id=? fx :rain))
+                              (fn [rain-fx] (raat/swap-mask! rain-fx f))))
+
+(defn reset-rain-mask! [terminal v]
+  (raat/swap-matching-effect! terminal
+                              (fn [fx] (raat/id=? fx :rain))
+                              (fn [rain-fx]
+                                (let [[columns rows] (rat/get-size terminal)]
+                                  (raat/reset-mask! rain-fx (repeat rows (repeat columns v)))))))
 
 (defn wrap-terminal
   ([terminal & effects-gen-fns]

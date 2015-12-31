@@ -2,6 +2,7 @@
 (ns robinson.aanimatedterminal)
 
 (defprotocol AEffect
+  (id=? [this is])
   (has-mask? [this])
   (swap-mask! [this f])
   (reset-mask! [this mask])

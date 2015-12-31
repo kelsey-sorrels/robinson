@@ -13,7 +13,10 @@
   (apply-font [this windows-font else-font size antialias])
   (set-cursor [this xy])
   (refresh [this])
-  (clear [this]))
+  (clear [this])
+  (set-fx-fg! [this x y fg])
+  (set-fx-bg! [this x y bg])
+  (set-fx-char! [this x y c]))
 
 ;; namespace with only a protocol gets optimized out, causing missing dependencies.
 ;; add a dummp def to prevent this ns from being optimized away.

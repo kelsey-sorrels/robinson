@@ -10,6 +10,8 @@
             [robinson.monstergen :as mg]
             [robinson.render :as rrender]
             [robinson.aterminal :as aterminal]
+            [robinson.aanimatedterminal :as raat]
+            [robinson.animation :as ranimation]
             #?@(:clj (
                 [taoensso.timbre :as log]
                 [robinson.swingterminal :as swingterminal]
@@ -93,10 +95,10 @@
            (catch Throwable e (log/error e))
            :cljs
            (catch js/Error e (log/error e))))
-      (recur (async/alt!
+      (recur (async/<! render-chan) #_(async/alt!
                (async/timeout 600) nil
                render-chan ([v] v))))
-    (recur (async/alt!
+    (recur (async/<! render-chan) #_(async/alt!
              (async/timeout 600) nil
              render-chan ([v] v)))))
 
@@ -287,14 +289,17 @@
                          (webglterminal/make-terminal 80 24 [255 255 255] [0 0 0] nil
                                                   (get font :windows-font)
                                                   (get font :else-font)
-                                                  (get font :font-size))))]
+                                                  (get font :font-size))))
+        animated-terminal (ranimation/wrap-terminal terminal
+                                                    ranimation/make-rain-effect)]
+    (raat/start! animated-terminal 15)
     (log/info "Loaded data:" (keys data))
     ;; set log level
     (log/set-level! (get settings :log-level))
     ;; tick once to render frame
     #?(:clj
        (let [state {:world world
-                   :screen terminal
+                   :screen animated-terminal
                    :quests {} #_quest-map
                    :dialog {} #_dialog
                    :feedback-participant feedback-participant

@@ -283,19 +283,20 @@
                   bg-color (Color. (long (bg 0)) (long (bg 1)) (long (bg 2)))
                   s ^String string
                   string-length (.length s)
-                  line           (transient (get @character-map row))]
+                  line          (transient (get @character-map row))
+                  new-line      (persistent!
+                                     (reduce
+                                       (fn [line [i c]]
+                                         (let [x (+ i col)]
+                                           (if (< -1 x columns)
+                                             (let [character (make-terminal-character c fg-color bg-color style)]
+                                               (assoc! line x character))
+                                             line)))
+                                       line
+                                       (map-indexed vector s)))]
               (swap! character-map
                 (fn [cm]
-                  (assoc cm row (persistent!
-                                  (reduce
-                                    (fn [line [i c]]
-                                      (let [x (+ i col)]
-                                        (if (< -1 x columns)
-                                          (let [character (make-terminal-character c fg-color bg-color style)]
-                                            (assoc! line x character))
-                                          line)))
-                                    line
-                                    (map-indexed vector s)))))))))
+                  (assoc cm row new-line))))))
         (put-chars [this characters]
           (swap! character-map
             (fn [cm]

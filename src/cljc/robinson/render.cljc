@@ -40,6 +40,8 @@
                                            npcs-in-viewport]]
             [robinson.traps :as rt]
             [robinson.aterminal :as rat]
+            [robinson.aanimatedterminal :as raat]
+            [robinson.animation :as ranimation]
             [tinter.core :as tinter]
             clojure.set
             [clojure.xml :as xml]
@@ -152,16 +154,48 @@
   ([^robinson.aterminal.ATerminal screen x y string fg bg]
      (put-string screen (int (rmath/ceil x)) (int (rmath/ceil y)) string fg bg #{}))
   ([^robinson.aterminal.ATerminal screen x y string fg bg styles]
+     (put-string screen (int (rmath/ceil x)) (int (rmath/ceil y)) string fg bg #{} {}))
+  ([^robinson.aterminal.ATerminal screen x y string fg bg styles mask-opts]
    {:pre [(clojure.set/superset? #{:underline :bold} styles)]}
-   (let [fg        (rcolor/color->rgb fg)
-         bg        (rcolor/color->rgb bg)]
+   (let [fg   (rcolor/color->rgb fg)
+         bg   (rcolor/color->rgb bg)
+         {:keys [mask unmask] :or {mask #{} unmask #{}}} mask-opts]
      (rat/put-string screen
                      (int (rmath/ceil x))
                      (int (rmath/ceil y))
                      string
                      fg
                      bg
-                     styles))))
+                     styles)
+     ;; apply mask
+     (doseq [mask-id mask]
+       (raat/swap-matching-effect! screen
+                                   (fn [fx] (raat/id=? fx mask-id))
+                                   (fn [effect]
+                                     (raat/swap-mask! effect
+                                                      (fn [mask]
+                                                        (println "applying mask id" mask-id "x" x "string" string)
+                                                        (update (vec mask)
+                                                                y
+                                                                (fn [line]
+                                                                  (concat
+                                                                    (take x line)
+                                                                    (repeat (count string) false)
+                                                                    (take-last (- (count line) (count string) x) line)))))))))
+     ;; apply unmask
+     (doseq [mask-id unmask]
+       (raat/swap-matching-effect! screen
+                                   (fn [fx] (raat/id=? fx mask-id))
+                                   (fn [effect]
+                                     (raat/swap-mask! effect
+                                                      (fn [mask]
+                                                        (update (vec mask)
+                                                                y
+                                                                (fn [line]
+                                                                  (concat
+                                                                    (take x line)
+                                                                    (repeat (count string) true)
+                                                                    (take-last (- (count line) (count string) x) line))))))))))))
       
 (defn put-chars
   [^robinson.aterminal.ATerminal screen characters]
@@ -496,8 +530,8 @@
       (put-string screen (+ x i) y       "\u2584" (if (contains? #{0 6} i)
                                                     :black
                                                     (nth column 0))
-                                                  :black #{:underline})
-      (put-string screen (+ x i) (inc y) "\u2584" (nth column 2) (nth column 1) #{:underline}))))
+                                                  :black #{:underline} {:mask #{:rain}})
+      (put-string screen (+ x i) (inc y) "\u2584" (nth column 2) (nth column 1) #{:underline} {:mask #{:rain}}))))
 
 (defn render-hud
   [state]
@@ -505,15 +539,15 @@
     (render-atmo state 37 21)
     ;; render statuses
     (let [screen (state :screen)]
-      (put-string screen 37 23 " "      :black :gray)
-      (put-string screen 38 23 "\u2665" (if (player-wounded? state) :red :black) :gray)
-      (put-string screen 39 23 " "      :black :gray)
-      (put-string screen 40 23 "\u2665" (if (player-poisoned? state) :green :black) :gray)
-      (put-string screen 41 23 " "      :black :gray)
-      (put-string screen 42 23 "\u2665" (if (player-infected? state) :yellow :black) :gray)
-      (put-string screen 43 23 " "      :black :gray)
+      (put-string screen 37 23 " "      :black :gray #{} {:mask #{:rain}})
+      (put-string screen 38 23 "\u2665" (if (player-wounded? state) :red :black) :gray #{} {:mask #{:rain}})
+      (put-string screen 39 23 " "      :black :gray #{} {:mask #{:rain}})
+      (put-string screen 40 23 "\u2665" (if (player-poisoned? state) :green :black) :gray #{} {:mask #{:rain}})
+      (put-string screen 41 23 " "      :black :gray #{} {:mask #{:rain}})
+      (put-string screen 42 23 "\u2665" (if (player-infected? state) :yellow :black) :gray #{} {:mask #{:rain}})
+      (put-string screen 43 23 " "      :black :gray #{} {:mask #{:rain}})
       (when (= (current-state state) :sleep)
-        (put-string screen 38 20 (format "Zzz%s" (apply str (repeat (mod (get-time state) 3) "." )))))
+        (put-string screen 38 20 (format "Zzz%s" (apply str (repeat (mod (get-time state) 3) "." ))) #{} {:mask #{:rain}}))
       ;; render will to live and hp
       (let [wtl        (get-in state [:world :player :will-to-live])
             max-wtl    (get-in state [:world :player :max-will-to-live])
@@ -532,7 +566,8 @@
                                                   (/ hp max-hp))
                                              :black
                                              :red)
-                                           #{:underline}))
+                                           #{:underline}
+                                           {:mask #{:rain}}))
         (doseq [x (range (- 80 43))]
           (put-string screen (+ 44 x) 23 "\u2584"
                                            (if (> (/ x (- 80 44))
@@ -543,7 +578,8 @@
                                                   (/ thirst max-thirst))
                                              :black
                                              :blue)
-                                           #{:underline})))))
+                                           #{:underline}
+                                           {:mask #{:rain}})))))
     ;    (int (-> state :world :player :hp))
     ;    (-> state :world :player :max-hp)
     ;    (apply str (interpose " " (-> state :world :player :status)))
@@ -577,46 +613,6 @@
           :poisonous-gas
             (render-poisonous-gas screen state trap)
           nil)))))
-
-(def rain-cache (atom nil))
-
-(defn render-rain
-  [screen state]
-  (let [[vw vh] (rv/viewport-wh state)]
-    ;; create empty rain values if not present
-    (swap! rain-cache (fn [rain]
-                        (if (nil? rain)
-                          (repeat vh (vec (repeat vw nil)))
-                          rain)))
-    ;; update rain
-    (swap! rain-cache (fn [rain]
-                        (cons (vec (repeatedly vw (fn [] (when (> (rand) 0.9)
-                                                           :drop))))
-                              (map (fn [line]
-                                     (map (fn [cell]
-                                            (cond
-                                              (and (= cell :drop)
-                                                   (> (rand) 0.95))
-                                                :splash
-                                              (= cell :splash)
-                                                nil
-                                              :else
-                                              cell))
-                                          line))
-                                   (butlast rain)))))
-    #_(put-chars screen
-               (for [[y line] (map-indexed vector @rain-cache)
-                     [x cell] (map-indexed vector line)
-                     :when    (not= nil cell)]
-                 {:c (case cell
-                       :drop "|"
-                       :splash "o")
-                  :x  x
-                  :y  y
-                  :fg (rcolor/color->rgb :blue)
-                  :bg (rcolor/color->rgb :black)}))))
-      
-    
 
 (def image-cache (atom {}))
 
@@ -1467,10 +1463,11 @@
                                          (conj! characters {:x vx :y vy :c (get shaded-out-char 0) :fg (get shaded-out-char 1) :bg (get shaded-out-char 2)}))))
                                     (transient [])
                                     cells))]
-    (clear (state :screen))
+    (clear screen)
+    ;; set rain mask to all true
+    (ranimation/reset-rain-mask! screen true)
     #_(log/info "putting chars" characters)
     (put-chars screen characters)
-    (render-rain screen state)
     ;; draw character
     ;(log/debug (-> state :world :player))
     (let [[vx vy] (rv/viewport-xy state)

@@ -26,8 +26,6 @@
 #?(:clj
 (set! *warn-on-reflection* true))
 
-;(def rain-cache (atom nil))
-
 (def ^:dynamic *rain-rate* 0.96)
 
 (defn rain-transition
@@ -91,11 +89,6 @@
 
 (defn step-rain!
   [rain-state vw vh]
-  ;; create empty rain values if not present
-  ;(swap! rain-state (fn [rain]
-  ;                    (if (nil? rain)
-  ;                      (repeat vh (vec (repeat vw nil)))
-  ;                      rain)))
   ;; update rain
   ;(println "------------------------------------------------------")
   (swap! rain-state (fn [rain]
@@ -140,33 +133,6 @@
       (set-cell-opts! [this opts]
         ;; nop
         this))))
-  
-  
-;(defn make-rain-effect
-;  [terminal]
-;  (let [[vw vh] (rat/get-size terminal)
-;        mask    (atom (repeat vh (repeat vw true)))]
-;    (reify AEffect
-;      (id=? [this id]
-;        (= :rain id))
-;      (apply-effect! [this terminal]
-;        (dosync
-;          (step-rain! vw vh)
-;          (doseq [[y line mask-line] (map vector (range) @rain-cache @mask)
-;                  [x cell mask?] (map vector (range) line mask-line)
-;                  :when mask?]
-;            (render-rain-cell terminal x y cell))))
-;      AMask
-;      (swap-mask! [this f]
-;        (swap! mask f)
-;        ;(println "=====================")
-;        ;(doseq [line @mask]
-;        ;  (println (mapv (fn [v] (if v 1 0)) line)))
-;        this)
-;      (reset-mask! [this new-mask]
-;        (reset! mask new-mask)
-;        this))))
-
   
 (defrecord RainEffect
   [terminal mask rain-state]

@@ -119,9 +119,9 @@
       (has-mask? [this] true)
       (swap-mask! [this f]
         (swap! mask f)
-        (println "=====================")
-        (doseq [line @mask]
-          (println (mapv (fn [v] (if v 1 0)) line)))
+        ;(println "=====================")
+        ;(doseq [line @mask]
+        ;  (println (mapv (fn [v] (if v 1 0)) line)))
         this)
       (reset-mask! [this new-mask]
         (reset! mask new-mask)
@@ -187,5 +187,23 @@
                                 (raat/apply-effect! effect terminal))
                               (rat/refresh terminal))
                             schedule-pool ))))))))
-                                                                           
+
+(defn set-mask! [terminal mask-ids xys v]                                                                           
+  {:pre [(set? mask-ids)
+         (coll? xys)
+         (contains? #{true false} v)]}
+  (doseq [mask-id mask-ids]
+         (raat/swap-matching-effect! terminal
+                                     (fn [fx] (raat/id=? fx mask-id))
+                                     (fn [effect]
+                                       (raat/swap-mask! effect
+                                                        (fn [mask]
+                                                          (reduce (fn [mask [y xys]]
+                                                                    (update mask y (fn [line]
+                                                                                     (apply assoc (vec line) (interleave (map first xys)
+                                                                                                                         (repeat v))))))
+                                                                  (vec mask)
+                                                                  (group-by second xys))))))))
+                                                                             
+
 

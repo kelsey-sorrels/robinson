@@ -17,13 +17,16 @@
   #?(:clj
      (:import  robinson.aterminal.ATerminal
                robinson.aanimatedterminal.AAnimatedTerminal
-               robinson.aanimatedterminal.AEffect)))
+               robinson.aanimatedterminal.AEffect
+               robinson.aanimatedterminal.AMask
+               robinson.aanimatedterminal.ACellOpts
+               robinson.aanimatedterminal.APalette)))
 
 
 #?(:clj
 (set! *warn-on-reflection* true))
 
-(def rain-cache (atom nil))
+;(def rain-cache (atom nil))
 
 (def ^:dynamic *rain-rate* 0.96)
 
@@ -87,15 +90,15 @@
         (rat/set-fx-bg! terminal x y nil))))
 
 (defn step-rain!
-  [vw vh]
+  [rain-state vw vh]
   ;; create empty rain values if not present
-  (swap! rain-cache (fn [rain]
-                      (if (nil? rain)
-                        (repeat vh (vec (repeat vw nil)))
-                        rain)))
+  ;(swap! rain-state (fn [rain]
+  ;                    (if (nil? rain)
+  ;                      (repeat vh (vec (repeat vw nil)))
+  ;                      rain)))
   ;; update rain
   ;(println "------------------------------------------------------")
-  (swap! rain-cache (fn [rain]
+  (swap! rain-state (fn [rain]
                      (vec  (for [[y advanced-line old-line] (map vector (range)
                                                                         (concat [(repeat vw nil)] (butlast rain))
                                                                         rain)]
@@ -108,15 +111,22 @@
                               :drop
                               nil)
                             (rain-transition advanced-cell old-cell))))))))))
-  
-(defn make-rain-effect
+
+(defn make-rand-fg-effect
   [terminal]
   (let [[vw vh] (rat/get-size terminal)
-        mask    (atom (repeat vh (repeat vw true)))]
+        mask    (atom (repeat vh (repeat vw true)))
+        palette (atom {})]
     (reify AEffect
       (id=? [this id]
-        (= :rain id))
-      (has-mask? [this] true)
+        (= :rand-fg id))
+      (apply-effect! [this terminal]
+        nil
+        #_(doseq [[y line mask-line] (map vector (range) @rain-cache @mask)
+                [x cell mask?] (map vector (range) line mask-line)
+                :when mask?]
+          (render-rain-cell terminal x y cell)))
+      AMask
       (swap-mask! [this f]
         (swap! mask f)
         ;(println "=====================")
@@ -126,13 +136,68 @@
       (reset-mask! [this new-mask]
         (reset! mask new-mask)
         this)
-      (apply-effect! [this terminal]
-        (dosync
-          (step-rain! vw vh)
-          (doseq [[y line mask-line] (map vector (range) @rain-cache @mask)
-                  [x cell mask?] (map vector (range) line mask-line)
-                  :when mask?]
-            (render-rain-cell terminal x y cell)))))))
+      ACellOpts
+      (set-cell-opts! [this opts]
+        ;; nop
+        this))))
+  
+  
+;(defn make-rain-effect
+;  [terminal]
+;  (let [[vw vh] (rat/get-size terminal)
+;        mask    (atom (repeat vh (repeat vw true)))]
+;    (reify AEffect
+;      (id=? [this id]
+;        (= :rain id))
+;      (apply-effect! [this terminal]
+;        (dosync
+;          (step-rain! vw vh)
+;          (doseq [[y line mask-line] (map vector (range) @rain-cache @mask)
+;                  [x cell mask?] (map vector (range) line mask-line)
+;                  :when mask?]
+;            (render-rain-cell terminal x y cell))))
+;      AMask
+;      (swap-mask! [this f]
+;        (swap! mask f)
+;        ;(println "=====================")
+;        ;(doseq [line @mask]
+;        ;  (println (mapv (fn [v] (if v 1 0)) line)))
+;        this)
+;      (reset-mask! [this new-mask]
+;        (reset! mask new-mask)
+;        this))))
+
+  
+(defrecord RainEffect
+  [terminal mask rain-state]
+  AEffect
+  (id=? [this id]
+    (= :rain id))
+  (apply-effect! [this terminal]
+    (let [[vw vh]    (rat/get-size terminal)]
+      (dosync
+        (step-rain! rain-state vw vh)
+        (doseq [[y line mask-line] (map vector (range) @rain-state @mask)
+                [x cell mask?] (map vector (range) line mask-line)
+                :when mask?]
+          (render-rain-cell terminal x y cell)))))
+  AMask
+  (swap-mask! [this f]
+    (swap! mask f)
+    ;(println "=====================")
+    ;(doseq [line @mask]
+    ;  (println (mapv (fn [v] (if v 1 0)) line)))
+    this)
+  (reset-mask! [this new-mask]
+    (reset! mask new-mask)
+    this))
+
+(defn make-rain-effect
+  [terminal]
+  (let [[vw vh]    (rat/get-size terminal)
+        mask       (atom (repeat vh (repeat vw true)))
+        rain-state (atom (repeat vh (vec (repeat vw nil))))]
+    (RainEffect. terminal mask rain-state)))
 
 (defn swap-rain-mask! [terminal f]
   (raat/swap-matching-effect! terminal
@@ -186,7 +251,7 @@
                               (doseq [effect @effects]
                                 (raat/apply-effect! effect terminal))
                               (rat/refresh terminal))
-                            schedule-pool ))))))))
+                            schedule-pool))))))))
 
 (defn set-mask! [terminal mask-ids xys v]                                                                           
   {:pre [(set? mask-ids)
@@ -194,7 +259,11 @@
          (contains? #{true false} v)]}
   (doseq [mask-id mask-ids]
          (raat/swap-matching-effect! terminal
-                                     (fn [fx] (raat/id=? fx mask-id))
+                                     (fn [fx]
+                                              (log/info "fx type" (type fx))
+                                              (log/info "fx" fx)
+                                              (and (instance? AMask fx)
+                                                   (raat/id=? fx mask-id)))
                                      (fn [effect]
                                        (raat/swap-mask! effect
                                                         (fn [mask]

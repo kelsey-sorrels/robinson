@@ -3,10 +3,18 @@
 
 (defprotocol AEffect
   (id=? [this is])
-  (has-mask? [this])
-  (swap-mask! [this f])
-  (reset-mask! [this mask])
   (apply-effect! [this terminal]))
+
+(defprotocol AMask
+  (swap-mask! [this f])
+  (reset-mask! [this mask]))
+
+(defprotocol ACellOpts
+  ;; cell opts is a collection of elements, each of which has at least {:x int :y int} keys.
+  (set-cell-opts! [this opts]))
+
+(defprotocol APalette
+  (update-palette [this f]))
 
 (defprotocol AAnimatedTerminal
   (swap-effect-seq! [this f])

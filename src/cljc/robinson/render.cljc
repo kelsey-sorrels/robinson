@@ -168,34 +168,9 @@
                      bg
                      styles)
      ;; apply mask
-     (doseq [mask-id mask]
-       (raat/swap-matching-effect! screen
-                                   (fn [fx] (raat/id=? fx mask-id))
-                                   (fn [effect]
-                                     (raat/swap-mask! effect
-                                                      (fn [mask]
-                                                        (println "applying mask id" mask-id "x" x "string" string)
-                                                        (update (vec mask)
-                                                                y
-                                                                (fn [line]
-                                                                  (concat
-                                                                    (take x line)
-                                                                    (repeat (count string) false)
-                                                                    (take-last (- (count line) (count string) x) line)))))))))
+     (ranimation/set-mask! screen mask (map vector (range x (+ x (count string))) (repeat y)) false)
      ;; apply unmask
-     (doseq [mask-id unmask]
-       (raat/swap-matching-effect! screen
-                                   (fn [fx] (raat/id=? fx mask-id))
-                                   (fn [effect]
-                                     (raat/swap-mask! effect
-                                                      (fn [mask]
-                                                        (update (vec mask)
-                                                                y
-                                                                (fn [line]
-                                                                  (concat
-                                                                    (take x line)
-                                                                    (repeat (count string) true)
-                                                                    (take-last (- (count line) (count string) x) line))))))))))))
+     (ranimation/set-mask! screen unmask (map vector (range x (+ x (count string))) (repeat y)) true))))
       
 (defn put-chars
   [^robinson.aterminal.ATerminal screen characters]
@@ -281,8 +256,11 @@
       "")))
 
 (defn render-line
-  [screen x y width line fg bg {:keys [underline center invert]
-                                :or   {:underline false :center false :invert false}}]
+  ([screen x y width line fg bg style]
+    (render-line screen x y width line fg bg style {}))
+  ([screen x y width line fg bg {:keys [underline center invert]
+                                :or   {:underline false :center false :invert false}}
+                                mask-opts]
   (let [width    (if (= width :auto)
                    (count line)
                    width)
@@ -301,7 +279,9 @@
     #_(log/info "put-string" (format "\"%s\"" line) "width" width)
     #_(put-string screen x y s fg bg style)
     (let [characters (markup->chars (int (rmath/ceil x)) (int (rmath/ceil y)) s fg bg style)]
-      (put-chars screen characters))))
+      (put-chars screen characters)
+      ;; apply mask
+      (ranimation/set-mask! screen #{:rain} (map rc/pos->xy characters) false)))))
 
 (def single-border
   {:horizontal   "\u2500"
@@ -329,17 +309,17 @@
                 bottom-right]} characters]
     ;; render top and bottom
     (doseq [dx (range (dec width))]
-      (put-string screen (+ x dx 1) y horizontal fg bg #{})
-      (put-string screen (+ x dx 1) (+ y height) horizontal fg bg #{}))
+      (put-string screen (+ x dx 1) y horizontal fg bg #{} {:mask #{:rain}})
+      (put-string screen (+ x dx 1) (+ y height) horizontal fg bg #{} {:mask #{:rain}}))
     ;; render left and right
     (doseq [dy (range (dec height))]
-      (put-string screen x (+ y dy 1) vertical fg bg #{})
-      (put-string screen (+ x width) (+ y dy 1) vertical fg bg #{}))
+      (put-string screen x (+ y dy 1) vertical fg bg #{} {:mask #{:rain}})
+      (put-string screen (+ x width) (+ y dy 1) vertical fg bg #{} {:mask #{:rain}}))
     ;; render tl, tr, bl, br
-    (put-string screen x y top-left fg bg #{})
-    (put-string screen (+ x width) y top-right fg bg #{})
-    (put-string screen x (+ y height) bottom-left fg bg #{})
-    (put-string screen (+ x width) (+ y height) bottom-right fg bg #{})))
+    (put-string screen x y top-left fg bg #{} {:mask #{:rain}})
+    (put-string screen (+ x width) y top-right fg bg #{} {:mask #{:rain}})
+    (put-string screen x (+ y height) bottom-left fg bg #{} {:mask #{:rain}})
+    (put-string screen (+ x width) (+ y height) bottom-right fg bg #{} {:mask #{:rain}})))
 
 (defn render-rect-single-border
   [screen x y width height fg bg]
@@ -352,7 +332,7 @@
 (defn render-vertical-border
   [screen x y height fg bg]
   (doseq [dy (range (dec height))]
-    (put-string screen x (+ y dy) "\u2502" fg bg #{})))
+    (put-string screen x (+ y dy) "\u2502" fg bg #{} {:mask #{:rain}})))
 
 (defn render-list
   "Render a sequence of lines padding to height if necessary.
@@ -361,8 +341,8 @@
   (doseq [i (range height)]
     (if (< i (count items))
       (let [item (nth items i)]
-        (render-line screen x (+ y i) width (get item :s) (get item :fg) (get item :bg) (get item :style)))
-      (render-line screen x (+ y i) (dec width) " " :white :white #{}))))
+        (render-line screen x (+ y i) width (get item :s) (get item :fg) (get item :bg) (get item :style) {:mask #{:rain}}))
+      (render-line screen x (+ y i) (dec width) " " :white :white #{} {:mask #{:rain}}))))
 
 (defn wrap-chars [x y width height characters fg bg style]
   (let [words  (take-nth 2 (partition-by (fn [ch] (= " " (get ch :c))) characters))

@@ -69,6 +69,30 @@
      :cljs
      (apply gstring/format s args)))
 
+(def cell-type-palette
+  {:fire                   [:red :orange]
+   :water                  [:blue :dark-blue]
+   :surf                   [:white :sea-foam :blue-green]
+   :shallow-water          [:white :sea-foam :blue-green]
+   :swamp                  [:white :sea-foam :blue-green]
+   :lava                   [:red :orange :yellow]
+   :bamboo-water-collector [:blue :light-blue :dark-blue]
+   :solar-still            [:blue :light-blue :dark-blue]
+   :freshwater-hole        [:blue :light-blue :dark-blue]
+   :saltwater-hole         [:blue :light-blue :dark-blue]})
+
+(defn cell-type->color
+  [cell-type]
+  (rand-nth (get cell-type-palette cell-type)))
+
+(defn has-palette?
+  [cell-type]
+  (contains? #{:fire :water 
+               :surf :shallow-water 
+               :swamp :lava 
+               :bamboo-water-collector :solar-still 
+               :freshwater-hole :saltwater-hole} cell-type))
+
 (defn move-cursor
   ([^robinson.aterminal.ATerminal screen x y]
   (log/info "moving cursor to" x y)
@@ -85,9 +109,13 @@
     (fill-put-string-color-style-defaults string fg bg #{}))
   ([string fg bg styles]
    {:pre [(clojure.set/superset? #{:underline :bold} styles)]}
-   (let [fg (rcolor/color->rgb fg)
-         bg (rcolor/color->rgb bg)]
-     [string fg bg styles])))
+   (let [new-fg (rcolor/color->rgb (if (has-palette? fg)
+                                     (cell-type->color fg)
+                                     fg))
+         bg     (rcolor/color->rgb bg)]
+     (if (has-palette? fg)
+       [string new-fg bg styles {:palette fg}]
+       [string new-fg bg styles {}]))))
 
 (defn zip-str [s]
   (zip/xml-zip 
@@ -1275,22 +1303,22 @@
                                                            :down-stairs     [">"] 
                                                            :up-stairs       ["<"] 
                                                            :fire            ["\u2240" (if (= (cell :discovered) current-time)
-                                                                                        (rand-nth [:red :orange])
+                                                                                        :fire
                                                                                         :red) :black] ;; ≀ 
                                                            :water           ["\u2248" (if (= (cell :discovered) current-time)
-                                                                                        (rand-nth [:blue :dark-blue])
+                                                                                        :water
                                                                                         :blue) :black] ;; ≈ 
                                                            :surf            ["~" (if (= (cell :discovered) current-time)
-                                                                                   (rand-nth [:white :light-blue :blue-green])
+                                                                                   :surf
                                                                                    :light-blue) :black]
                                                            :shallow-water   ["~" (if (= (cell :discovered) current-time)
-                                                                                   (rand-nth [:white :light-blue :blue-green])
+                                                                                   :shallow-water
                                                                                    :light-blue) :black]
                                                            :swamp           ["~" (if (= (cell :discovered) current-time)
-                                                                                   (rand-nth [:white :light-blue :blue-green])
+                                                                                   :swamp
                                                                                    :light-blue) :black]
                                                            :lava            ["~" (if (= (cell :discovered) current-time)
-                                                                                   (rand-nth [:red :orange :yellow])
+                                                                                   :lava
                                                                                    :light-blue) :black]
                                                            :mountain        ["\u2206" :gray :black] ;; ∆
                                                            :sand            ["·"  :beige      :black]
@@ -1309,19 +1337,19 @@
                                                            :campfire        ["^" :brown :black]
                                                            :bamboo-water-collector
                                                                             (if (< 10 (get cell :water 0))
-                                                                              ["O" (rand-nth [:blue :light-blue :dark-blue]) :black]
+                                                                              ["O" :bamboo-water-collector :black]
                                                                               ["O"])
                                                            :solar-still
                                                                             (if (< 10 (get cell :water 0))
-                                                                              ["O" (rand-nth [:blue :light-blue :dark-blue]) :black]
+                                                                              ["O" :solar-still :black]
                                                                               ["O"])
                                                            :palm-tree       ["7"  :dark-green :black]
                                                            :fruit-tree      ["\u2648"  :light-green :black] ;; ♈
                                                            :freshwater-hole (if (< 10 (get cell :water 0))
-                                                                              ["~" (rand-nth [:blue :light-blue :dark-blue]) :black]
+                                                                              ["~" :freshwater-hole :black]
                                                                               ["O"])
                                                            :saltwater-hole  (if (< 10 (get cell :water 0))
-                                                                              ["~" (rand-nth [:blue :light-blue :dark-blue]) :black]
+                                                                              ["~" :saltwater-hole :black]
                                                                               ["O"])
                                                            :dry-hole        ["O"]
                                                            ;; pirate ship cell types
@@ -1415,6 +1443,7 @@
                                               
                                                            (do (log/info (format "unknown type: %s %s" (str (get cell :type)) (str cell)))
                                                            ["?"])))))
+                                           ;; shade character based on visibility, harvestableness, raft
                                            shaded-out-char (cond
                                                              (not= (cell :discovered) current-time)
                                                                (-> out-char
@@ -1431,21 +1460,30 @@
                                                                    ["\u01c1" (rcolor/color->rgb :black) (rcolor/color->rgb :brown)]))
                                                              :else
                                                                out-char)
+                                           ;; shade fg based on distance from player
                                            shaded-out-char (if (and (= (get cell :discovered) current-time)
                                                                     (not (contains? #{:fire :lava} (get cell :type))))
                                                              (update-in shaded-out-char
                                                                         [1]
                                                                         (fn [c]
+                                                                          (println "fg" c)
                                                                           (rcolor/darken-rgb (rcolor/night-tint c d)
                                                                                       (min 1 (/ 2 (max 1 (distance-from-player state
                                                                                                                                (xy->pos wx wy))))))))
                                                              shaded-out-char)]
-                                         (conj! characters {:x vx :y vy :c (get shaded-out-char 0) :fg (get shaded-out-char 1) :bg (get shaded-out-char 2)}))))
+                                         (conj! characters {:x    vx
+                                                            :y    vy
+                                                            :c    (get shaded-out-char 0)
+                                                            :fg   (get shaded-out-char 1)
+                                                            :bg   (get shaded-out-char 2)
+                                                            :opts (get shaded-out-char 4)}))))
                                     (transient [])
                                     cells))]
     (clear screen)
     ;; set rain mask to all true
     (ranimation/reset-rain-mask! screen true)
+    ;; set palette
+    (ranimation/set-palette! screen cell-type-palette)
     #_(log/info "putting chars" characters)
     (put-chars screen characters)
     ;; draw character

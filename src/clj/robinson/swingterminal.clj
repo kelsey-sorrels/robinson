@@ -357,7 +357,17 @@
                    (fn [cm] (assoc-in cm [y x :fx-bg-color] bg-color)))))
         (set-fx-char! [this x y c]
           (swap! character-map
-                 (fn [cm] (assoc-in cm [y x :fx-character] c))))))))
+                 (fn [cm] (assoc-in cm [y x :fx-character] c))))
+        (clear-fx! [this]
+          (swap! character-map
+            (fn [cm]
+              (mapv (fn [line]
+                        (mapv (fn [c]
+                                (assoc c :fx-fg-color nil
+                                         :fx-bg-color nil
+                                       :fx-character nil))
+                              line))
+                     cm))))))))
 
 
 (defn -main

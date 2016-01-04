@@ -291,6 +291,7 @@
                                                   (get font :else-font)
                                                   (get font :font-size))))
         animated-terminal (ranimation/wrap-terminal terminal
+                                                    ranimation/make-rand-fg-effect
                                                     ranimation/make-rain-effect)]
     (raat/start! animated-terminal 15)
     (log/info "Loaded data:" (keys data))

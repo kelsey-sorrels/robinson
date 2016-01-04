@@ -124,7 +124,7 @@
         screen ^robinson.aterminal.ATerminal (get state :screen)]
     (when-not (= current-font (get (rc/get-settings state) :font))
       ;; send new settings to screen
-      (rat/apply-font screen
+      (rat/apply-font! screen
                        (get font :windows-font)
                        (get font :else-font)
                        (get font :font-size)

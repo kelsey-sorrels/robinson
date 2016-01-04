@@ -138,6 +138,34 @@
         palette   (atom {})]
     (RandFgEffect. terminal mask cell-opts palette)))
 
+#_(defrecord ColorFilter
+  [terminal mask]
+  AEffect
+  (id [this]
+    :rain)
+  (apply-effect! [this terminal]
+    (let [[vw vh]    (rat/get-size terminal)]
+      (dosync
+        (step-rain! rain-state vw vh)
+        (doseq [[y line mask-line] (map vector (range) @rain-state @mask)
+                [x cell mask?] (map vector (range) line mask-line)
+                :when mask?]
+          (render-rain-cell terminal x y cell)))))
+  AMask
+  (swap-mask! [this f]
+    (swap! mask f)
+    ;(println "=====================")
+    ;(doseq [line @mask]
+    ;  (println (mapv (fn [v] (if v 1 0)) line)))
+    this)
+  (reset-mask! [this new-mask]
+    (reset! mask new-mask)
+    this))
+
+#_(defn make-vignette-effect
+  [terminal]
+  (VignetteEffect. terminal))
+
 (defrecord RainEffect
   [terminal mask rain-state]
   AEffect
@@ -187,71 +215,74 @@
     (fn [cell-opts]
       (update cell-opts y (fn [line] (apply assoc (vec line) (interleave (range x (+ x (count string)))
                                                                                    (repeat {}))))))))
-  
+(defrecord AnimatedTerminal
+  [terminal started cell-opts effects schedule-pool]
+  ATerminal
+    ;; pass ATerminal methods through to terminal
+    (get-size [this] (rat/get-size terminal))
+    (put-string! [this x y string]
+      (put-string-clear-cell-opts cell-opts x y string)
+      (rat/put-string! terminal x y string))
+    (put-string! [this x y string fg bg]
+      (put-string-clear-cell-opts cell-opts x y string)
+      (rat/put-string! terminal x y string fg bg))
+    (put-string! [this x y string fg bg style]
+      (put-string-clear-cell-opts cell-opts x y string)
+      (rat/put-string! terminal x y string fg bg style))
+    (put-chars! [this characters]
+      (swap! cell-opts
+             (fn [cell-opts]
+               (reduce (fn [cell-opts [y y-characters]]
+                         (update cell-opts y (fn [line]
+                                               (apply assoc (vec line) (interleave (map :x y-characters)
+                                                                                   (map :opts y-characters))))))
+                       (vec cell-opts)
+                       (group-by :y characters))))
+      (rat/put-chars! terminal characters))
+    (get-key-chan [this] (rat/get-key-chan terminal))
+    (set-fg! [this x y fg] (rat/set-fg! terminal x y fg))
+    (set-bg! [this x y bg] (rat/set-bg! terminal x y bg))
+    (apply-font! [this windows-font else-font size antialias]
+       (rat/apply-font! terminal windows-font else-font size antialias))
+    (set-cursor! [this xy] (rat/set-cursor! terminal xy))
+    (clear! [this]
+      (reset! cell-opts (nil-grid terminal))
+      (rat/clear! terminal))
+    (refresh! [this]
+      (reset! frame-count 0)
+      (rat/clear-fx! terminal)
+      (doseq [effect @effects]
+        (raat/apply-effect! effect terminal))
+      (rat/refresh! terminal))
+    AAnimatedTerminal
+    (swap-effect-seq! [this f] (swap! effects f))
+    (swap-matching-effect! [this p f] (swap! effects (fn [effects]
+                                                       (reduce (fn [effects effect]
+                                                                 (conj effects (if (p effect)
+                                                                                 (f effect)
+                                                                                 effect)))
+                                                               []
+                                                               effects))))
+    (start! [this fps]
+      (dosync
+        (when-not @started
+          (reset! started true)
+          (atat/every (/ 1000 fps)
+                      (fn []
+                        (swap! frame-count inc)
+                        (rat/clear-fx! terminal)
+                        (doseq [effect @effects]
+                          (raat/apply-effect! effect terminal))
+                        (rat/refresh! terminal))
+                      schedule-pool)))))
+
 (defn wrap-terminal
-  ([terminal & effects-gen-fns]
-    (let [started       (atom false)
-          cell-opts     (atom (nil-grid terminal))
-          effects       (atom (mapv (fn [effect-gen-fn] (effect-gen-fn terminal cell-opts)) effects-gen-fns))
-          schedule-pool (atat/mk-pool)]
-      (reify ATerminal
-          ;; pass ATerminal methods through to terminal
-          (get-size [this] (rat/get-size terminal))
-          (put-string [this x y string]
-            (put-string-clear-cell-opts cell-opts x y string)
-            (rat/put-string terminal x y string))
-          (put-string [this x y string fg bg]
-            (put-string-clear-cell-opts cell-opts x y string)
-            (rat/put-string terminal x y string fg bg))
-          (put-string [this x y string fg bg style]
-            (put-string-clear-cell-opts cell-opts x y string)
-            (rat/put-string terminal x y string fg bg style))
-          (put-chars [this characters]
-            (swap! cell-opts
-                   (fn [cell-opts]
-                     (reduce (fn [cell-opts [y y-characters]]
-                               (update cell-opts y (fn [line]
-                                                     (apply assoc (vec line) (interleave (map :x y-characters)
-                                                                                         (map :opts y-characters))))))
-                             (vec cell-opts)
-                             (group-by :y characters))))
-            (rat/put-chars terminal characters))
-          (set-fg [this x y fg] (rat/set-fg terminal x y fg))
-          (set-bg [this x y bg] (rat/set-bg terminal x y bg))
-          (get-key-chan [this] (rat/get-key-chan terminal))
-          (apply-font [this windows-font else-font size antialias] (rat/apply-font terminal windows-font else-font size antialias))
-          (set-cursor [this xy] (rat/set-cursor terminal xy))
-          (clear [this]
-            (reset! cell-opts (nil-grid terminal))
-            (rat/clear terminal))
-          ;; override refresh
-          (refresh [this]
-            (reset! frame-count 0)
-            (rat/clear-fx! terminal)
-            (doseq [effect @effects]
-              (raat/apply-effect! effect terminal))
-            (rat/refresh terminal))
-          AAnimatedTerminal
-          (swap-effect-seq! [this f] (swap! effects f))
-          (swap-matching-effect! [this p f] (swap! effects (fn [effects]
-                                                             (reduce (fn [effects effect]
-                                                                       (conj effects (if (p effect)
-                                                                                       (f effect)
-                                                                                       effect)))
-                                                                     []
-                                                                     effects))))
-          (start! [this fps]
-            (dosync
-              (when-not @started
-                (reset! started true)
-                (atat/every (/ 1000 fps)
-                            (fn []
-                              (swap! frame-count inc)
-                              (rat/clear-fx! terminal)
-                              (doseq [effect @effects]
-                                (raat/apply-effect! effect terminal))
-                              (rat/refresh terminal))
-                            schedule-pool))))))))
+  [terminal & effects-gen-fns]
+  (let [started       (atom false)
+        cell-opts     (atom (nil-grid terminal))
+        effects       (atom (mapv (fn [effect-gen-fn] (effect-gen-fn terminal cell-opts)) effects-gen-fns))
+        schedule-pool (atat/mk-pool)]
+    (AnimatedTerminal. terminal started cell-opts effects schedule-pool)))
 
 (defn set-mask! [terminal mask-ids xys v] 
   {:pre [(set? mask-ids)

@@ -96,9 +96,9 @@
 (defn move-cursor
   ([^robinson.aterminal.ATerminal screen x y]
   (log/info "moving cursor to" x y)
-  (rat/set-cursor screen [x y]))
+  (rat/set-cursor! screen [x y]))
   ([^robinson.aterminal.ATerminal screen o]
-  (rat/set-cursor screen o)))
+  (rat/set-cursor! screen o)))
 
 (defn fill-put-string-color-style-defaults
   ([string]
@@ -188,13 +188,13 @@
    (let [fg   (rcolor/color->rgb fg)
          bg   (rcolor/color->rgb bg)
          {:keys [mask unmask] :or {mask #{} unmask #{}}} mask-opts]
-     (rat/put-string screen
-                     (int (rmath/ceil x))
-                     (int (rmath/ceil y))
-                     string
-                     fg
-                     bg
-                     styles)
+     (rat/put-string! screen
+                      (int (rmath/ceil x))
+                      (int (rmath/ceil y))
+                      string
+                      fg
+                      bg
+                      styles)
      ;; apply mask
      (ranimation/set-mask! screen mask (map vector (range x (+ x (count string))) (repeat y)) false)
      ;; apply unmask
@@ -202,15 +202,15 @@
       
 (defn put-chars
   [^robinson.aterminal.ATerminal screen characters]
-  (rat/put-chars screen characters))
+  (rat/put-chars! screen characters))
 
 (defn set-fg
   [^robinson.aterminal.ATerminal screen x y fg]
-  (rat/set-fg screen x y fg))
+  (rat/set-fg! screen x y fg))
 
 (defn set-bg
   [^robinson.aterminal.ATerminal screen x y bg]
-  (rat/set-bg screen x y bg))
+  (rat/set-bg! screen x y bg))
 
 (defn get-size
   [^robinson.aterminal.ATerminal screen]
@@ -218,11 +218,11 @@
 
 (defn refresh
   [^robinson.aterminal.ATerminal screen]
-  (rat/refresh screen))
+  (rat/refresh! screen))
 
 (defn clear
   [^robinson.aterminal.ATerminal screen]
-  (rat/clear screen))
+  (rat/clear! screen))
 
 (defn class->rgb
   "Convert a class to a color characters of that type should be drawn."

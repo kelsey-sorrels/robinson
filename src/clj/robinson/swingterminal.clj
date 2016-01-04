@@ -273,11 +273,11 @@
       (reify ATerminal
         (get-size [this]
           [columns rows])
-        (put-string [this col row string]
-          (.put-string this col row string [255 255 255] [0 0 0] #{}))
-        (put-string [this col row string fg bg]
-          (.put-string this col row string fg bg #{}))
-        (put-string [this col row string fg bg style]
+        (put-string! [this col row string]
+          (.put-string! this col row string [255 255 255] [0 0 0] #{}))
+        (put-string! [this col row string fg bg]
+          (.put-string! this col row string fg bg #{}))
+        (put-string! [this col row string fg bg style]
           (when (< -1 row rows)
             (let [fg-color (Color. (long (fg 0)) (long (fg 1)) (long (fg 2)))
                   bg-color (Color. (long (bg 0)) (long (bg 1)) (long (bg 2)))
@@ -295,8 +295,8 @@
                                        line
                                        (map-indexed vector s)))
                   characters (map-indexed  (fn [i c] {:c (str c) :fg fg :bg bg :x (+ col i) :y row}) string)]
-              (put-chars this characters))))
-        (put-chars [this characters]
+              (put-chars! this characters))))
+        (put-chars! [this characters]
           (swap! character-map
             (fn [cm]
               (reduce (fn [cm [row row-characters]]
@@ -319,17 +319,17 @@
                           cm))
                       cm
                       (group-by :y characters)))))
-        (set-fg [this x y fg]
+        (set-fg! [this x y fg]
           (let [fg-color  (Color. (long (fg 0)) (long (fg 1)) (long (fg 2)))]
             (swap! character-map
                    (fn [cm] (assoc-in cm [y x :fg-color] fg-color)))))
-        (set-bg [this x y bg]
+        (set-bg! [this x y bg]
           (let [bg-color  (Color. (long (bg 0)) (long (bg 1)) (long (bg 2)))]
             (swap! character-map
                    (fn [cm] (assoc-in cm [y x :bg-color] bg-color)))))
         (get-key-chan [this]
           key-chan)
-        (apply-font [this windows-font else-font size smooth]
+        (apply-font! [this windows-font else-font size smooth]
           (reset! normal-font
                   (if is-windows
                     (make-font windows-font Font/PLAIN size)
@@ -339,12 +339,12 @@
             .doLayout
             .pack)
           nil)
-        (set-cursor [this xy]
+        (set-cursor! [this xy]
           (reset! cursor-xy xy))
-        (refresh [this]
+        (refresh! [this]
           (SwingUtilities/invokeLater
             (fn refresh-fn [] (.repaint terminal-renderer))))
-        (clear [this]
+        (clear! [this]
           (reset! character-map character-map-cleared))
         (set-fx-fg! [this x y fg]
           (let [fg-color  (when fg (Color. (long (fg 0)) (long (fg 1)) (long (fg 2))))]

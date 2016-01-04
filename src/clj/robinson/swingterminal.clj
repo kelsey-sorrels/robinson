@@ -293,10 +293,9 @@
                                                (assoc! line x character))
                                              line)))
                                        line
-                                       (map-indexed vector s)))]
-              (swap! character-map
-                (fn [cm]
-                  (assoc cm row new-line))))))
+                                       (map-indexed vector s)))
+                  characters (map-indexed  (fn [i c] {:c (str c) :fg fg :bg bg :x (+ col i) :y row}) string)]
+              (put-chars this characters))))
         (put-chars [this characters]
           (swap! character-map
             (fn [cm]

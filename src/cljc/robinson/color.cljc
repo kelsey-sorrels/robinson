@@ -22,6 +22,7 @@
    ;:highlight   [229 165 8];(vec (tinter/hex-str-to-dec "D3B100"))
    :highlight   [209 155 8];(vec (tinter/hex-str-to-dec "D3B100"))
    :background  [6 8 12]
+   :sea-foam    [144 213 184]
    :light-green [163 206 39]
    :green       [68 137 26];(vec (tinter/hex-str-to-dec "81D300"))
    :dark-green  (vec (tinter/hex-str-to-dec "406900"))

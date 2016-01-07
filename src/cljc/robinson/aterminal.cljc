@@ -3,9 +3,6 @@
 
 (defprotocol ATerminal
   (get-size [this])
-  (put-string! [this x y string]
-               [this x y string fg bg]
-               [this x y string fg bg style])
   (put-chars! [this characters])
   (set-fg! [this x y fg])
   (set-bg! [this x y bg])

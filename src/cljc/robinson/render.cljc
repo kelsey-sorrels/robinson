@@ -1460,8 +1460,21 @@
                                                                    ["\u01c1" (rcolor/color->rgb :black) (rcolor/color->rgb :brown)]))
                                                              :else
                                                                out-char)
-                                           ;; shade fg based on distance from player
+                                           ;; add character opts to indicate distance from player
                                            shaded-out-char (if (and (= (get cell :discovered) current-time)
+                                                                    (not (contains? #{:fire :lava} (get cell :type)))
+                                                                    (get shaded-out-char 4))
+                                                             (do (println shaded-out-char)
+                                                             (update shaded-out-char
+                                                                     4 ;; opts index
+                                                                     (fn [opts]
+                                                                       (assoc opts
+                                                                              :distance-from-player
+                                                                              (distance-from-player state (xy->pos wx wy))))))
+                                                             shaded-out-char)
+                                           _ (println shaded-out-char)
+                                           ;; shade fg based on distance from player
+                                           #_#_shaded-out-char (if (and (= (get cell :discovered) current-time)
                                                                     (not (contains? #{:fire :lava} (get cell :type))))
                                                              (update-in shaded-out-char
                                                                         [1]

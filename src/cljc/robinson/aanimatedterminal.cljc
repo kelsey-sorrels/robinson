@@ -1,9 +1,17 @@
 ;; Functions for rendering animated state to screen
 (ns robinson.aanimatedterminal)
 
+(defprotocol AId
+  (id [this]))
+
 (defprotocol AEffect
-  (id [this])
   (apply-effect! [this terminal]))
+
+(defprotocol AFilter
+  (transform-fg [this opts x y fg])
+  (transform-bg [this opts x y bg])
+  (transform-fx-fg [this opts x y fx-fg])
+  (transform-fx-bg [this opts x y fx-bg]))
 
 (defprotocol AMask
   (swap-mask! [this f])
@@ -14,7 +22,8 @@
 
 (defprotocol AAnimatedTerminal
   (swap-effect-seq! [this f])
-  (swap-matching-effect! [this p f])
+  (swap-matching-effect-or-filter! [this p f])
+  (reset-state! [this state])
   (start! [this fps]))
 
 ;; namespace with only a protocol gets optimized out, causing missing dependencies.

@@ -247,26 +247,11 @@
 
 ;;; Animated Terminal
 
-(defn put-string-clear-opts
-  [opts x y string]
-  (swap! opts
-    (fn [opts]
-      (update opts y (fn [line] (apply assoc (vec line) (interleave (range x (+ x (count string)))
-                                                                    (repeat {}))))))))
 (defrecord AnimatedTerminal
   [terminal started opts effects filters schedule-pool]
   ATerminal
     ;; pass ATerminal methods through to terminal
     (get-size [this] (rat/get-size terminal))
-    (put-string! [this x y string]
-      (put-string-clear-opts opts x y string)
-      (rat/put-string! terminal x y string))
-    (put-string! [this x y string fg bg]
-      (put-string-clear-opts opts x y string)
-      (rat/put-string! terminal x y string fg bg))
-    (put-string! [this x y string fg bg style]
-      (put-string-clear-opts opts x y string)
-      (rat/put-string! terminal x y string fg bg style))
     (put-chars! [this characters]
       (swap! opts
              (fn [opts]

@@ -187,14 +187,15 @@
    {:pre [(clojure.set/superset? #{:underline :bold} styles)]}
    (let [fg   (rcolor/color->rgb fg)
          bg   (rcolor/color->rgb bg)
-         {:keys [mask unmask] :or {mask #{} unmask #{}}} mask-opts]
-     (rat/put-string! screen
-                      (int (rmath/ceil x))
-                      (int (rmath/ceil y))
-                      string
-                      fg
-                      bg
-                      styles)
+         {:keys [mask unmask] :or {mask #{} unmask #{}}} mask-opts
+         characters (map-indexed (fn [i c] {:c  (str c)
+                                            :fg fg
+                                            :bg bg
+                                            :x  (+ x i)
+                                            :y  y
+                                            :opts {}})
+                                 string)]
+     (rat/put-chars! screen characters)
      ;; apply mask
      (ranimation/set-mask! screen mask (map vector (range x (+ x (count string))) (repeat y)) false)
      ;; apply unmask

@@ -273,29 +273,6 @@
       (reify ATerminal
         (get-size [this]
           [columns rows])
-        (put-string! [this col row string]
-          (.put-string! this col row string [255 255 255] [0 0 0] #{}))
-        (put-string! [this col row string fg bg]
-          (.put-string! this col row string fg bg #{}))
-        (put-string! [this col row string fg bg style]
-          (when (< -1 row rows)
-            (let [fg-color (Color. (long (fg 0)) (long (fg 1)) (long (fg 2)))
-                  bg-color (Color. (long (bg 0)) (long (bg 1)) (long (bg 2)))
-                  s ^String string
-                  string-length (.length s)
-                  line          (transient (get @character-map row))
-                  new-line      (persistent!
-                                     (reduce
-                                       (fn [line [i c]]
-                                         (let [x (+ i col)]
-                                           (if (< -1 x columns)
-                                             (let [character (make-terminal-character c fg-color bg-color style)]
-                                               (assoc! line x character))
-                                             line)))
-                                       line
-                                       (map-indexed vector s)))
-                  characters (map-indexed  (fn [i c] {:c (str c) :fg fg :bg bg :x (+ col i) :y row}) string)]
-              (put-chars! this characters))))
         (put-chars! [this characters]
           (swap! character-map
             (fn [cm]

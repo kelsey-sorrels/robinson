@@ -236,12 +236,12 @@
 
 (defn apply-filters [cell-opts ch fx-filters]
   (reduce (fn [ch fx-filter]
-            (log/info "applying filter" (raat/id fx-filter) "ch" ch)
+            ;;(log/info "applying filter" (raat/id fx-filter) "ch" ch)
             (let [{x :x y :y} ch]
               (-> ch
                 (update :fg (partial raat/transform-fg fx-filter cell-opts x y))
                 (update :bg (partial raat/transform-bg fx-filter cell-opts x y))
-                ((fn [ch] (log/info "ch" ch) ch)))))
+                #_((fn [ch] (log/info "ch" ch) ch)))))
           ch
           fx-filters))
 
@@ -302,11 +302,12 @@
           (reset! started true)
           (atat/every (/ 1000 fps)
                       (fn []
-                        (swap! frame-count inc)
-                        (rat/clear-fx! terminal)
-                        (doseq [effect @effects]
-                          (raat/apply-effect! effect terminal))
-                        (rat/refresh! terminal))
+                        (dosync
+                          (swap! frame-count inc)
+                          (rat/clear-fx! terminal)
+                          (doseq [effect @effects]
+                            (raat/apply-effect! effect terminal))
+                          (rat/refresh! terminal))
                       schedule-pool)))))
 
 (defn wrap-terminal

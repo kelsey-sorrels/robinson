@@ -90,7 +90,7 @@
           default-fg-color (Color. (long default-fg-color-r) (long default-fg-color-g) (long default-fg-color-b))
           default-bg-color (Color. (long default-bg-color-g) (long default-bg-color-g) (long default-bg-color-b))
           character-map-cleared (vec (repeat rows (vec (repeat columns (make-terminal-character \space default-fg-color default-bg-color #{})))))
-          character-map    (atom character-map-cleared)
+          character-map    (ref character-map-cleared)
           cursor-xy        (atom nil)
           ;; draws a character to an image and returns the image. 
           glyph-cache      (clojure.core.memoize/memo (fn [component font-metrics highlight char-width char-height c]
@@ -274,7 +274,7 @@
         (get-size [this]
           [columns rows])
         (put-chars! [this characters]
-          (swap! character-map
+          (alter character-map
             (fn [cm]
               (reduce (fn [cm [row row-characters]]
                         (if (< -1 row rows)
@@ -298,11 +298,11 @@
                       (group-by :y characters)))))
         (set-fg! [this x y fg]
           (let [fg-color  (Color. (long (fg 0)) (long (fg 1)) (long (fg 2)))]
-            (swap! character-map
+            (alter character-map
                    (fn [cm] (assoc-in cm [y x :fg-color] fg-color)))))
         (set-bg! [this x y bg]
           (let [bg-color  (Color. (long (bg 0)) (long (bg 1)) (long (bg 2)))]
-            (swap! character-map
+            (alter character-map
                    (fn [cm] (assoc-in cm [y x :bg-color] bg-color)))))
         (get-key-chan [this]
           key-chan)
@@ -322,20 +322,20 @@
           (SwingUtilities/invokeLater
             (fn refresh-fn [] (.repaint terminal-renderer))))
         (clear! [this]
-          (reset! character-map character-map-cleared))
+          (ref-set character-map character-map-cleared))
         (set-fx-fg! [this x y fg]
           (let [fg-color  (when fg (Color. (long (fg 0)) (long (fg 1)) (long (fg 2))))]
-            (swap! character-map
+            (alter character-map
                    (fn [cm] (assoc-in cm [y x :fx-fg-color] fg-color)))))
         (set-fx-bg! [this x y bg]
           (let [bg-color  (when bg (Color. (long (bg 0)) (long (bg 1)) (long (bg 2))))]
-            (swap! character-map
+            (alter character-map
                    (fn [cm] (assoc-in cm [y x :fx-bg-color] bg-color)))))
         (set-fx-char! [this x y c]
-          (swap! character-map
+          (alter character-map
                  (fn [cm] (assoc-in cm [y x :fx-character] c))))
         (clear-fx! [this]
-          (swap! character-map
+          (alter character-map
             (fn [cm]
               (mapv (fn [line]
                         (mapv (fn [c]

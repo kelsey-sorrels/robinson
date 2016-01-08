@@ -1465,22 +1465,19 @@
                                            shaded-out-char (if (and (= (get cell :discovered) current-time)
                                                                     (not (contains? #{:fire :lava} (get cell :type)))
                                                                     (get shaded-out-char 4))
-                                                             (do (println shaded-out-char)
                                                              (update shaded-out-char
                                                                      4 ;; opts index
                                                                      (fn [opts]
                                                                        (assoc opts
                                                                               :distance-from-player
-                                                                              (distance-from-player state (xy->pos wx wy))))))
+                                                                              (distance-from-player state (xy->pos wx wy)))))
                                                              shaded-out-char)
-                                           _ (println shaded-out-char)
                                            ;; shade fg based on distance from player
                                            #_#_shaded-out-char (if (and (= (get cell :discovered) current-time)
                                                                     (not (contains? #{:fire :lava} (get cell :type))))
                                                              (update-in shaded-out-char
                                                                         [1]
                                                                         (fn [c]
-                                                                          (println "fg" c)
                                                                           (rcolor/darken-rgb (rcolor/night-tint c d)
                                                                                       (min 1 (/ 2 (max 1 (distance-from-player state
                                                                                                                                (xy->pos wx wy))))))))
@@ -2028,6 +2025,7 @@
    of the player."
   [state]
   (log/info "render current-state" (current-state state))
+  (dosync
   (cond
     (= (current-state state) :start)
       (render-start state)
@@ -2061,6 +2059,6 @@
       (render-gameplay-help state)
     (= (get-in state [:world :current-state]) :log)
       (render-full-log state)
-    :else (render-map state)))
+    :else (render-map state))))
 
 

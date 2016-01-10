@@ -43,6 +43,11 @@
                          (min 1 (/ 2 (max 1 distance)))))
     fg))
 
+(defn night-tint [opts x y fg]
+  (if-let [day? (get opts :night-tint)]
+    (rcolor/night-tint fg day?)
+    fg))
+
 (defn no-op-filter [_ _ _ bg] bg)
 
 
@@ -127,7 +132,7 @@
         i         (int (/ @frame-count 10))
         n         (mod (Math/abs (hash (+ x (* 13 y) (* 17 i)))) (count color-ids))
         color-id  (nth color-ids n)
-        fg-rgb    (vignette cell-opts x y (rcolor/color->rgb color-id))]
+        fg-rgb    (night-tint cell-opts x y (vignette cell-opts x y (rcolor/color->rgb color-id)))]
     (rat/set-fx-fg! terminal x y fg-rgb)))
 
 (defrecord RandFgEffect
@@ -224,15 +229,13 @@
                    no-op-filter
                    (atom (nil-grid terminal))))
 
-(defn make-night-filter [terminal]
-  (let [fg-f (fn [opts x y fg] fg)
-        bg-f (fn [_ _ _ bg] bg)]
-    (FunctionFilter. :night-tint-filter
-                     fg-f
-                     no-op-filter
-                     fg-f
-                     no-op-filter
-                     (atom (nil-grid terminal)))))
+(defn make-night-tint-filter [terminal]
+  (FunctionFilter. :night-tint-filter
+                   night-tint
+                   no-op-filter
+                   night-tint
+                   no-op-filter
+                   (atom (nil-grid terminal))))
 
 (defn apply-filters [cell-opts ch fx-filters]
   (reduce (fn [ch fx-filter]
@@ -307,7 +310,7 @@
                           (rat/clear-fx! terminal)
                           (doseq [effect @effects]
                             (raat/apply-effect! effect terminal))
-                          (rat/refresh! terminal))
+                          (rat/refresh! terminal)))
                       schedule-pool)))))
 
 (defn wrap-terminal

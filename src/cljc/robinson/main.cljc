@@ -293,7 +293,8 @@
         animated-terminal (ranimation/wrap-terminal terminal
                                                     [ranimation/make-rand-fg-effect
                                                      ranimation/make-rain-effect]
-                                                    [(ranimation/make-vignette-filter terminal)])]
+                                                    [(ranimation/make-vignette-filter terminal)
+                                                     (ranimation/make-night-tint-filter terminal)])]
     (raat/start! animated-terminal 15)
     (log/info "Loaded data:" (keys data))
     ;; set log level

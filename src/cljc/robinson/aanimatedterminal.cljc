@@ -23,7 +23,6 @@
 (defprotocol AAnimatedTerminal
   (swap-effect-seq! [this f])
   (swap-matching-effect-or-filter! [this p f])
-  (reset-state! [this state])
   (start! [this fps]))
 
 ;; namespace with only a protocol gets optimized out, causing missing dependencies.

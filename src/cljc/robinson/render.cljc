@@ -1470,17 +1470,9 @@
                                                                      (fn [opts]
                                                                        (assoc opts
                                                                               :distance-from-player
-                                                                              (distance-from-player state (xy->pos wx wy)))))
-                                                             shaded-out-char)
-                                           ;; shade fg based on distance from player
-                                           #_#_shaded-out-char (if (and (= (get cell :discovered) current-time)
-                                                                    (not (contains? #{:fire :lava} (get cell :type))))
-                                                             (update-in shaded-out-char
-                                                                        [1]
-                                                                        (fn [c]
-                                                                          (rcolor/darken-rgb (rcolor/night-tint c d)
-                                                                                      (min 1 (/ 2 (max 1 (distance-from-player state
-                                                                                                                               (xy->pos wx wy))))))))
+                                                                                (distance-from-player state (xy->pos wx wy))
+                                                                              :night-tint
+                                                                                d)))
                                                              shaded-out-char)]
                                          (conj! characters {:x    vx
                                                             :y    vy

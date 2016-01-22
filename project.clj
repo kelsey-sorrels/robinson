@@ -25,6 +25,7 @@
                  [org.clojure/tools.namespace "0.2.11"]
                  ;[org.clojure/clojurescript "0.0-3030"]
                  [org.clojure/clojurescript "1.7.10"]
+                 [hello_lwjgl/lwjgl "2.9.1"]
                  [clj-http "2.0.0"]
                  [clj-audio "0.1.0"]
                  [org.clojars.automata/jl "1.0.0"]

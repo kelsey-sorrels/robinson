@@ -9,7 +9,6 @@
             [clojure-watch.core :as cwc]
             [clojure.core.async :as async])
   (:import
-    (javax.imageio ImageIO)
     (java.lang.reflect Field)
     (java.awt Color
               BorderLayout
@@ -17,18 +16,17 @@
               Color
               Font
               FontMetrics
-              Graphics2D
               Graphics
               RenderingHints Toolkit)
     (java.awt.event InputEvent
                     KeyListener
                     KeyEvent)
-    (javax.swing JFrame)
     (org.lwjgl BufferUtils)
     (java.nio FloatBuffer ByteBuffer)
     (org.lwjgl.opengl Display ContextAttribs
                       PixelFormat DisplayMode
-                      GL11 GL12 GL13 GL15 GL20 GL21)
+                      GL11 GL12 GL13 GL15 GL20)
+    (org.lwjgl.input Keyboard)
     (org.lwjgl.util.vector Matrix4f Vector3f)
     (java.io File)
     (java.awt.image BufferedImage DataBufferByte)
@@ -38,6 +36,7 @@
 (def char-height 16)
 
 (set! *warn-on-reflection* true)
+(set! *unchecked-math* true)
 
 (defn convert-key-code [e on-key-fn]
   (let [numpad? (= (.getKeyLocation e) KeyEvent/KEY_LOCATION_NUMPAD)]
@@ -330,7 +329,7 @@
                                             0.0, vy  0.0
                                             vx   0.0 0.0
                                             0.0  0.0 0.0,])
-        texture-coords        (float-array [0.0 1.0
+        texture-coords        (float-array [1.0 1.0
                                             0.0 1.0
                                             1.0 0.0
                                             0.0 0.0])
@@ -368,10 +367,10 @@
    :bg-color  bg-color
    :style     style})
 
-(defrecord OpenGlTerminal [columns
-                           rows
-                           texture-columns
-                           texture-rows
+(defrecord OpenGlTerminal [^int columns
+                           ^int rows
+                           ^int texture-columns
+                           ^int texture-rows
                            character-map-cleared
                            character-map
                            cursor-xy
@@ -417,8 +416,14 @@
            program-id :program-id
            {:keys [u-MVMatrix u-PMatrix u-font u-glyphs u-fg u-bg font-size term-dim font-tex-dim
             font-texture-width font-texture-height glyph-tex-dim glyph-texture-width glyph-texture-height ]} :uniforms
-           {:keys [glyph-image-data fg-image-data bg-image-data vertex-pos-data vertex-texture-coords-data]} :data
-           :keys [p-matrix-buffer mv-matrix-buffer]} gl]
+           {:keys [^ByteBuffer glyph-image-data
+                   ^ByteBuffer fg-image-data
+                   ^ByteBuffer bg-image-data]} :data
+           :keys [p-matrix-buffer mv-matrix-buffer]} gl
+          glyph-image-data glyph-image-data
+          fg-image-data fg-image-data
+          bg-image-data bg-image-data]
+
       (GL20/glUseProgram program-id)
       (GL20/glUniformMatrix4 u-PMatrix false p-matrix-buffer)
       (GL20/glUniformMatrix4 u-MVMatrix false mv-matrix-buffer)
@@ -463,6 +468,9 @@
       #_#_fg-data          (.-data fg-image-data)
       #_#_bg-data          (.-data bg-image-data)
       ;; Update glyph texture in memory
+      (.clear glyph-image-data)
+      (.clear fg-image-data)
+      (.clear bg-image-data)
       (doseq [row (range rows)
               col (range columns)]
         (let [c         (get-in @character-map [row col])
@@ -479,18 +487,28 @@
               i         (* 4 (+ (* texture-columns row) col))
               [x y]     (get character->col-row [chr (contains? style :underline)])]
           ;(log/info "Drawing at col row" col row "character from atlas col row" x y c "(index=" i ")")
-          (.put glyph-image-data (+ i 0) x)
-          (.put glyph-image-data (+ i 1) y)
-          (.put glyph-image-data (+ i 2) 0)
-          (.put glyph-image-data (+ i 3) 0)
-          (.put fg-image-data    (+ i 0) fg-r)
-          (.put fg-image-data    (+ i 1) fg-g)
-          (.put fg-image-data    (+ i 2) fg-b)
-          (.put fg-image-data    (+ i 3) 0)
-          (.put bg-image-data    (+ i 0) bg-r)
-          (.put bg-image-data    (+ i 1) bg-g)
-          (.put bg-image-data    (+ i 2) bg-b)
-          (.put bg-image-data    (+ i 3) 0)))
+          (when (zero? col)
+            (.position glyph-image-data i)
+            (.position fg-image-data i)
+            (.position bg-image-data i))
+          (.put glyph-image-data (unchecked-byte x))
+          (.put glyph-image-data (unchecked-byte y))
+          (.put glyph-image-data (unchecked-byte 0))
+          (.put glyph-image-data (unchecked-byte 0))
+          (.put fg-image-data    (unchecked-byte fg-r))
+          (.put fg-image-data    (unchecked-byte fg-g))
+          (.put fg-image-data    (unchecked-byte fg-b))
+          (.put fg-image-data    (unchecked-byte 0))
+          (.put bg-image-data    (unchecked-byte bg-r))
+          (.put bg-image-data    (unchecked-byte bg-g))
+          (.put bg-image-data    (unchecked-byte bg-b))
+          (.put bg-image-data    (unchecked-byte 0))))
+      (.position glyph-image-data (.limit glyph-image-data))
+      (.position fg-image-data (.limit fg-image-data))
+      (.position bg-image-data (.limit bg-image-data))
+      (.flip glyph-image-data)
+      (.flip fg-image-data)
+      (.flip bg-image-data)
       ; Send updated glyph texture to gl
       (GL13/glActiveTexture GL13/GL_TEXTURE1)
       (GL11/glBindTexture GL11/GL_TEXTURE_2D glyph-texture)
@@ -574,10 +592,10 @@
                                (.setIgnoreRepaint true))
           pixel-format       (PixelFormat.)
           context-attributes (ContextAttribs. 2 1)
-          _                  (Display/setDisplayMode (DisplayMode. screen-width screen-height));
+          _                  (Display/setDisplayMode (DisplayMode. screen-width screen-height))
           _                  (Display/setTitle title)
           _                  (Display/create pixel-format context-attributes)
-          _                  (GL11/glViewport 0 0 screen-width screen-height);
+          _                  (GL11/glViewport 0 0 screen-width screen-height)
 
           #_#__                (doto (JFrame. title)
                              (.. (getContentPane) (setLayout (BorderLayout.)))
@@ -650,6 +668,13 @@
                                      (reset! normal-font
                                              (make-font filename Font/PLAIN font-size)))
                          :options {:recursive true}}])
+      ;; Poll keyboard in background thread and offer input to key-chan
+      (future (go-loop []
+                (Display/processMessages)
+                (when (Keyboard/next)
+                  (when (Keyboard/getEventKeyState)
+                    (async/>! key-chan (Keyboard/getEventCharacter))))
+                (recur)))
       ;; Create and return terminal
       (OpenGlTerminal. columns
                        rows
@@ -659,7 +684,7 @@
                        character-map
                        cursor-xy
                        {:p-matrix-buffer (ortho-matrix-buffer screen-width screen-height)
-                        :mv-matrix-buffer (position-matrix-buffer [0 0 -1.0 0.0])
+                        :mv-matrix-buffer (position-matrix-buffer [(- (/ screen-width 2)) (- (/ screen-height 2)) -1.0 0.0])
                         :buffers {:vao-id vao-id
                                   :vertices-vbo-id vertices-vbo-id
                                   :vertices-count vertices-count
@@ -724,7 +749,7 @@
         (rat/refresh! terminal)
         (recur terminal))
       (when (not (Display/isCloseRequested))
-        (let [key-in \n #_(async/<!! (rat/get-key-chan terminal))]
+        (let [key-in (async/<!! (rat/get-key-chan terminal))]
         ;(let [key-in (rat/wait-for-key terminal)]
           (log/info "got key" key-in)
           (rat/clear! terminal)
@@ -735,7 +760,6 @@
           (put-string terminal 60 19 "Hello world 0 19")
           (put-string terminal 5 10 (str key-in))
           (rat/refresh! terminal)
-          (Display/processMessages)
           (recur terminal)))))
   (Display/destroy)
   (System/exit 0))

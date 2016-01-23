@@ -526,7 +526,7 @@
       (GL11/glDrawArrays GL11/GL_TRIANGLE_STRIP 0 vertices-count)
       (except-gl-errors "bg color texture data")
       (except-gl-errors "end of refresh")
-      (Display/sync 60)
+      ;(Display/sync 60)
       (Display/update)))
   (clear! [_]
     (reset! character-map character-map-cleared)))
@@ -741,17 +741,17 @@
     (Thread/sleep 1000)
     (when (pos? i)
       (recur (dec i))))
-  (loop [terminal nil]
-    (if (nil? terminal)
-      (let [terminal (make-terminal 80 20)]
-        (rat/clear! terminal)
-        (put-string terminal 5 5 "Hello world")
-        (rat/refresh! terminal)
-        (recur terminal))
+  (let [terminal (make-terminal 80 24)
+        last-key (atom nil)]
+    (future (go-loop []
+              (reset! last-key (async/<! (rat/get-key-chan terminal)))
+              (log/info "got key" @last-key)
+              (recur)))
+
+    (loop []
       (when (not (Display/isCloseRequested))
-        (let [key-in (async/<!! (rat/get-key-chan terminal))]
+        (let [key-in (or @last-key \?)]
         ;(let [key-in (rat/wait-for-key terminal)]
-          (log/info "got key" key-in)
           (rat/clear! terminal)
           (put-string terminal 0 0 "Hello world 0 0")
           (put-string terminal 0 1 "abcdefghijklmno")
@@ -760,7 +760,7 @@
           (put-string terminal 60 19 "Hello world 0 19")
           (put-string terminal 5 10 (str key-in))
           (rat/refresh! terminal)
-          (recur terminal)))))
+          (recur)))))
   (Display/destroy)
   (System/exit 0))
 

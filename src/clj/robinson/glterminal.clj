@@ -11,17 +11,15 @@
   (:import
     (java.lang.reflect Field)
     (java.awt Color
-              BorderLayout
               Canvas
               Color
               Font
               FontMetrics
               Graphics
-              RenderingHints Toolkit)
-    (java.awt.event InputEvent
-                    KeyListener
-                    KeyEvent)
-    (org.lwjgl BufferUtils)
+              Image
+              RenderingHints)
+    (java.awt.event KeyEvent)
+    (org.lwjgl BufferUtils LWJGLUtil)
     (java.nio FloatBuffer ByteBuffer)
     (org.lwjgl.opengl Display ContextAttribs
                       PixelFormat DisplayMode
@@ -30,10 +28,9 @@
     (org.lwjgl.util.vector Matrix4f Vector3f)
     (java.io File)
     (java.awt.image BufferedImage DataBufferByte)
-    (robinson.aterminal ATerminal)))
-
-(def char-width 9)
-(def char-height 16)
+    (javax.imageio ImageIO)
+    (robinson.aterminal ATerminal))
+  (:gen-class))
 
 (set! *warn-on-reflection* true)
 (set! *unchecked-math* true)
@@ -160,13 +157,14 @@
           character-idxs))
 
 (defn make-glyph-image
-  [normal-font]
+  [char-width char-height normal-font]
   ;; Adjust canvas to fit character atlas size
   (let [cwidth  (next-pow-2 (* char-width (int (inc (Math/sqrt (count characters))))))
         cheight (next-pow-2 (* char-height (int (inc (Math/sqrt (count characters))))))
         width   (max cwidth cheight)
         height  (max cwidth cheight)
-        antialias true]
+        antialias true
+        font-metrics  ^FontMetrics (.getFontMetrics (Canvas.) @normal-font)]
     (log/info "glyph image width" width "height" height)
     (let [texture-image    (BufferedImage. width height BufferedImage/TYPE_4BYTE_ABGR)
           texture-graphics ^Graphics (.getGraphics texture-image)
@@ -184,14 +182,14 @@
       (doseq [[[s underline?] col row]  character-idxs]
         (let [x ^int (* col char-width)
               y ^int (* (inc row) char-height)
-              #_#_cx (+ 0 x)
-              #_#_cy (+ 12 y)]
+              cx (+ 1 x)
+              cy (- y (.getDescent font-metrics))]
           ;(log/info s x y)
         (when (not= s " ")
           ;(println "drawing" s "@" x y "underline?" underline?)
           (doto texture-graphics
             (.setColor white)
-            (.drawString (str s) x y)))
+            (.drawString (str s) cx cy)))
         (when underline?
           (let [y (dec y)]
             (doto texture-graphics
@@ -207,30 +205,36 @@
        :font-texture-height height
        :font-texture-image texture-image})))
 
+
+(defn- buffered-image-byte-buffer [buffered-image]
+  (let [width          (.getWidth buffered-image)
+        height         (.getHeight buffered-image)
+        texture-buffer (BufferUtils/createByteBuffer (* width height 4))
+        data (-> buffered-image
+                 (.getRaster)
+                 (.getDataBuffer)
+                 (as-> db (cast DataBufferByte db))
+                 (.getData))]
+    (.put texture-buffer data 0 (alength data))
+    (.flip texture-buffer)
+    texture-buffer))
+
 (defn- texture-id
   ([buffered-image]
   (let [width (.getWidth buffered-image)
-        height (.getHeight buffered-image)
-        texture-buffer (BufferUtils/createByteBuffer (* width height 4))
-        data (-> buffered-image
-               (.getRaster)
-               (.getDataBuffer)
-               (as-> db (cast DataBufferByte db))
-               (.getData))]
-    (.put texture-buffer data 0 (alength data))
-    (.flip texture-buffer)
-    (texture-id width height texture-buffer)))
+        height (.getHeight buffered-image)]
+    (texture-id width height (buffered-image-byte-buffer buffered-image))))
   ([width height]
    (texture-id width height (BufferUtils/createByteBuffer (* width height 4))))
   ([^long width ^long height ^ByteBuffer texture-buffer]
    (let [texture-id (GL11/glGenTextures)]
-      ;;(.order texture-buffer (ByteOrder/nativeOrder))
-      (GL11/glBindTexture GL11/GL_TEXTURE_2D texture-id)
-      (GL11/glPixelStorei GL11/GL_UNPACK_ALIGNMENT 1)
-      (GL11/glTexParameteri GL11/GL_TEXTURE_2D GL11/GL_TEXTURE_MIN_FILTER GL11/GL_NEAREST)
-      (GL11/glTexParameteri GL11/GL_TEXTURE_2D GL11/GL_TEXTURE_MAG_FILTER GL11/GL_NEAREST)
-      (GL11/glTexImage2D GL11/GL_TEXTURE_2D 0 GL11/GL_RGBA width height 0 GL11/GL_RGBA GL11/GL_UNSIGNED_BYTE texture-buffer)
-      texture-id)))
+     ;;(.order texture-buffer (ByteOrder/nativeOrder))
+     (GL11/glBindTexture GL11/GL_TEXTURE_2D texture-id)
+     (GL11/glPixelStorei GL11/GL_UNPACK_ALIGNMENT 1)
+     (GL11/glTexParameteri GL11/GL_TEXTURE_2D GL11/GL_TEXTURE_MIN_FILTER GL11/GL_NEAREST)
+     (GL11/glTexParameteri GL11/GL_TEXTURE_2D GL11/GL_TEXTURE_MAG_FILTER GL11/GL_NEAREST)
+     (GL11/glTexImage2D GL11/GL_TEXTURE_2D 0 GL11/GL_RGBA width height 0 GL11/GL_RGBA GL11/GL_UNSIGNED_BYTE texture-buffer)
+     texture-id)))
 
 (defn- get-fields [#^Class static-class]
   (. static-class getFields))
@@ -251,6 +255,33 @@
                           (gl-enum-name error) ": " msg)]
     (if (not (zero? error))
       (throw (Exception. error-string)))))
+
+(defn scale-image [buffered-image width height]
+  (let [toolkit-image (.getScaledInstance buffered-image width height Image/SCALE_SMOOTH)
+        width         (.getWidth toolkit-image nil)
+        height        (.getHeight toolkit-image nil)
+        scaled-image  (BufferedImage. width height BufferedImage/TYPE_4BYTE_ABGR)
+        g             (.getGraphics scaled-image)]
+    (.drawImage g toolkit-image 0, 0, nil)
+    (.dispose g)
+    scaled-image))
+
+(defn- init-display [title screen-width screen-height]
+  (let [pixel-format       (PixelFormat.)
+        context-attributes (ContextAttribs. 2 1)
+        icon-image         (ImageIO/read (File. "images/icon.png"))
+        icon-image-16      (scale-image icon-image 16,  -1)
+        icon-image-32      (scale-image icon-image 32,  -1)
+        icon-image-128     (scale-image icon-image 128, -1)
+        icon-array         (make-array ByteBuffer 3)]
+     (aset icon-array 0 (buffered-image-byte-buffer icon-image-16))
+     (aset icon-array 1 (buffered-image-byte-buffer icon-image-32))
+     (aset icon-array 2 (buffered-image-byte-buffer icon-image-128))
+     (Display/setDisplayMode (DisplayMode. screen-width screen-height))
+     (Display/setTitle title)
+     (Display/create pixel-format context-attributes)
+     (Display/setIcon icon-array)
+     (GL11/glViewport 0 0 screen-width screen-height)))
 
 (defn- load-shader
   [^String shader-str ^Integer shader-type]
@@ -360,17 +391,24 @@
 ;; Normally this would be a record, but until http://dev.clojure.org/jira/browse/CLJ-1224 is fixed
 ;; it is not performant to memoize records because hashCode values are not cached and are recalculated
 ;; each time.
+
+(defrecord GLCharacter [character fg-color bg-color style fx-character fx-fg-color fg-bg-color])
 (defn make-terminal-character
-  [character fg-color bg-color style]
-  {:character character
+  ([character fg-color bg-color style]
+   (make-terminal-character character fg-color bg-color style nil nil nil))
+  ([character fg-color bg-color style fx-character fx-fg-color fg-bg-color]
+   (GLCharacter. character fg-color bg-color style fx-character fx-fg-color fg-bg-color)))
+  #_{:character character
    :fg-color  fg-color
    :bg-color  bg-color
-   :style     style})
+   :style     style}
 
 (defrecord OpenGlTerminal [^int columns
                            ^int rows
                            ^int texture-columns
                            ^int texture-rows
+                           normal-font
+                           antialias
                            character-map-cleared
                            character-map
                            cursor-xy
@@ -382,7 +420,7 @@
   ;; characters is a list of {:c \character :x col :y row :fg [r g b] :bg [r g b]}
   (put-chars! [_ characters]
     #_(log/info "characters" (str characters))
-    (swap! character-map
+    (alter character-map
            (fn [cm]
              (reduce (fn [cm [row row-characters]]
                        (if (< -1 row rows)
@@ -405,157 +443,190 @@
                      cm
                      (group-by :y characters))))
     #_(log/info "character-map" (str @character-map)))
+  (set-fg! [_ x y fg]
+    (let [fg-color  (Color. (long (fg 0)) (long (fg 1)) (long (fg 2)))]
+      (alter character-map
+             (fn [cm] (assoc-in cm [y x :fg-color] fg-color)))))
+  (set-bg! [_ x y bg]
+    (let [bg-color  (Color. (long (bg 0)) (long (bg 1)) (long (bg 2)))]
+      (alter character-map
+             (fn [cm] (assoc-in cm [y x :bg-color] bg-color)))))
   (get-key-chan [_]
     key-chan)
+  (apply-font! [_ windows-font else-font size smooth]
+    (reset! normal-font
+            (if (= (LWJGLUtil/getPlatform) LWJGLUtil/PLATFORM_WINDOWS)
+              (make-font windows-font Font/PLAIN size)
+              (make-font else-font Font/PLAIN size)))
+    (reset! antialias smooth))
   (set-cursor! [_ xy]
     (reset! cursor-xy xy))
-  (refresh! [_]
-    (GL11/glClearColor 0.0 0.0 1.0 1.0)
-    (let [{{:keys [vao-id vertices-vbo-id vertices-count texture-coords-vbo-id]} :buffers
-           {:keys [font-texture glyph-texture fg-texture bg-texture]} :textures
-           program-id :program-id
-           {:keys [u-MVMatrix u-PMatrix u-font u-glyphs u-fg u-bg font-size term-dim font-tex-dim
-            font-texture-width font-texture-height glyph-tex-dim glyph-texture-width glyph-texture-height ]} :uniforms
-           {:keys [^ByteBuffer glyph-image-data
-                   ^ByteBuffer fg-image-data
-                   ^ByteBuffer bg-image-data]} :data
-           :keys [p-matrix-buffer mv-matrix-buffer]} gl
-          glyph-image-data glyph-image-data
-          fg-image-data fg-image-data
-          bg-image-data bg-image-data]
+  (refresh! [this]
+    (locking this
+      (Display/makeCurrent)
+      (GL11/glClearColor 0.0 0.0 1.0 1.0)
+      (GL11/glClear (bit-or GL11/GL_COLOR_BUFFER_BIT GL11/GL_DEPTH_BUFFER_BIT))
+      (let [{{:keys [vertices-vbo-id vertices-count texture-coords-vbo-id]} :buffers
+             {:keys [font-texture glyph-texture fg-texture bg-texture]} :textures
+             program-id :program-id
+             {:keys [u-MVMatrix u-PMatrix u-font u-glyphs u-fg u-bg font-size term-dim font-tex-dim
+              font-texture-width font-texture-height glyph-tex-dim glyph-texture-width glyph-texture-height]} :uniforms
+             {:keys [^ByteBuffer glyph-image-data
+                     ^ByteBuffer fg-image-data
+                     ^ByteBuffer bg-image-data]} :data
+             :keys [p-matrix-buffer mv-matrix-buffer char-width char-height]} gl
+            glyph-image-data glyph-image-data
+            fg-image-data fg-image-data
+            bg-image-data bg-image-data]
 
-      (GL20/glUseProgram program-id)
-      (GL20/glUniformMatrix4 u-PMatrix false p-matrix-buffer)
-      (GL20/glUniformMatrix4 u-MVMatrix false mv-matrix-buffer)
-      ; Setup vertex buffer
-      (GL15/glBindBuffer GL15/GL_ARRAY_BUFFER, vertices-vbo-id)
-      (except-gl-errors (str "vbo bind - glBindBuffer" vertices-vbo-id))
-      (GL20/glEnableVertexAttribArray 0);pos-vertex-attribute)
-      (except-gl-errors "vbo bind - glEnableVertexAttribArray")
-      (GL20/glVertexAttribPointer 0 3 GL11/GL_FLOAT false 0 0)
-      (except-gl-errors "vbo bind - glVertexAttribPointer")
-      ; Setup uv buffer
-      (GL15/glBindBuffer GL15/GL_ARRAY_BUFFER, texture-coords-vbo-id)
-      (GL20/glEnableVertexAttribArray 1);texture-coords-vertex-attribute)
-      (GL20/glVertexAttribPointer 1 2 GL11/GL_FLOAT false 0 0)
-      (except-gl-errors "texture coords bind")
-      ; Setup font texture
-      (GL13/glActiveTexture GL13/GL_TEXTURE0)
-      (GL11/glBindTexture GL11/GL_TEXTURE_2D font-texture)
-      (GL20/glUniform1i u-font, 0)
-      (except-gl-errors "font texture bind")
-      ; Setup uniforms for glyph, fg, bg, textures
-      (GL20/glUniform1i u-glyphs 1)
-      (GL20/glUniform1i u-fg 2)
-      (GL20/glUniform1i u-bg 3)
-      (except-gl-errors "uniformli bind")
-      (GL20/glUniform2f font-size, char-width char-height)
-      (GL20/glUniform2f term-dim columns rows)
-      (GL20/glUniform2f font-tex-dim font-texture-width font-texture-height)
-      (GL20/glUniform2f glyph-tex-dim glyph-texture-width glyph-texture-height)
-      (except-gl-errors "uniform2f bind")
-      (GL11/glDisable GL13/GL_SAMPLE_COVERAGE)
-      (GL11/glDisable GL11/GL_BLEND)
-      (GL11/glDisable GL11/GL_CULL_FACE)
-      (GL11/glDisable GL11/GL_STENCIL_TEST)
-      (GL11/glEnable GL11/GL_DITHER)
-      (GL11/glDisable GL11/GL_SCISSOR_TEST)
-      (GL11/glDisable GL11/GL_DEPTH_TEST)
-      (GL11/glDisable GL11/GL_POLYGON_OFFSET_FILL)
-      (GL11/glDisable GL13/GL_SAMPLE_ALPHA_TO_COVERAGE)
-      (except-gl-errors "gl(en/dis)able")
-      #_#_glyph-data       (.-data glyph-image-data)
-      #_#_fg-data          (.-data fg-image-data)
-      #_#_bg-data          (.-data bg-image-data)
-      ;; Update glyph texture in memory
-      (.clear glyph-image-data)
-      (.clear fg-image-data)
-      (.clear bg-image-data)
-      (doseq [row (range rows)
-              col (range columns)]
-        (let [c         (get-in @character-map [row col])
-              chr       (get c :character)
-              highlight (= @cursor-xy [col row])
-              [fg-r fg-g fg-b] (if highlight
-                                 (get c :bg-color)
-                                 (get c :fg-color))
-              [bg-r bg-g bg-b] (if highlight
-                                 (get c :fg-color)
-                                 (get c :bg-color))
-              ;s         (str (get c :character))
-              style     (get c :style)
-              i         (* 4 (+ (* texture-columns row) col))
-              [x y]     (get character->col-row [chr (contains? style :underline)])]
-          ;(log/info "Drawing at col row" col row "character from atlas col row" x y c "(index=" i ")")
-          (when (zero? col)
-            (.position glyph-image-data i)
-            (.position fg-image-data i)
-            (.position bg-image-data i))
-          (.put glyph-image-data (unchecked-byte x))
-          (.put glyph-image-data (unchecked-byte y))
-          (.put glyph-image-data (unchecked-byte 0))
-          (.put glyph-image-data (unchecked-byte 0))
-          (.put fg-image-data    (unchecked-byte fg-r))
-          (.put fg-image-data    (unchecked-byte fg-g))
-          (.put fg-image-data    (unchecked-byte fg-b))
-          (.put fg-image-data    (unchecked-byte 0))
-          (.put bg-image-data    (unchecked-byte bg-r))
-          (.put bg-image-data    (unchecked-byte bg-g))
-          (.put bg-image-data    (unchecked-byte bg-b))
-          (.put bg-image-data    (unchecked-byte 0))))
-      (.position glyph-image-data (.limit glyph-image-data))
-      (.position fg-image-data (.limit fg-image-data))
-      (.position bg-image-data (.limit bg-image-data))
-      (.flip glyph-image-data)
-      (.flip fg-image-data)
-      (.flip bg-image-data)
-      ; Send updated glyph texture to gl
-      (GL13/glActiveTexture GL13/GL_TEXTURE1)
-      (GL11/glBindTexture GL11/GL_TEXTURE_2D glyph-texture)
-      (GL11/glTexImage2D GL11/GL_TEXTURE_2D 0 GL11/GL_RGBA texture-columns texture-rows 0 GL11/GL_RGBA GL11/GL_UNSIGNED_BYTE glyph-image-data)
-      (except-gl-errors "glyph texture data")
-      ; Send updated fg texture to gl
-      (GL13/glActiveTexture GL13/GL_TEXTURE2)
-      (GL11/glBindTexture GL11/GL_TEXTURE_2D fg-texture)
-      (GL11/glTexImage2D GL11/GL_TEXTURE_2D 0 GL11/GL_RGBA texture-columns texture-rows 0 GL11/GL_RGBA GL11/GL_UNSIGNED_BYTE fg-image-data)
-      (except-gl-errors "fg color texture data")
-      ; Send updated bg texture to gl
-      (GL13/glActiveTexture GL13/GL_TEXTURE3)
-      (GL11/glBindTexture GL11/GL_TEXTURE_2D bg-texture)
-      (GL11/glTexImage2D GL11/GL_TEXTURE_2D 0 GL11/GL_RGBA texture-columns texture-rows 0 GL11/GL_RGBA GL11/GL_UNSIGNED_BYTE bg-image-data)
-      (GL11/glDrawArrays GL11/GL_TRIANGLE_STRIP 0 vertices-count)
-      (except-gl-errors "bg color texture data")
-      (except-gl-errors "end of refresh")
-      ;(Display/sync 60)
-      (Display/update)))
+        (GL20/glUseProgram program-id)
+        (GL20/glUniformMatrix4 u-PMatrix false p-matrix-buffer)
+        (GL20/glUniformMatrix4 u-MVMatrix false mv-matrix-buffer)
+        ; Setup vertex buffer
+        (GL15/glBindBuffer GL15/GL_ARRAY_BUFFER, vertices-vbo-id)
+        (except-gl-errors (str "vbo bind - glBindBuffer" vertices-vbo-id))
+        (GL20/glEnableVertexAttribArray 0);pos-vertex-attribute)
+        (except-gl-errors "vbo bind - glEnableVertexAttribArray")
+        (GL20/glVertexAttribPointer 0 3 GL11/GL_FLOAT false 0 0)
+        (except-gl-errors "vbo bind - glVertexAttribPointer")
+        ; Setup uv buffer
+        (GL15/glBindBuffer GL15/GL_ARRAY_BUFFER, texture-coords-vbo-id)
+        (GL20/glEnableVertexAttribArray 1);texture-coords-vertex-attribute)
+        (GL20/glVertexAttribPointer 1 2 GL11/GL_FLOAT false 0 0)
+        (except-gl-errors "texture coords bind")
+        ; Setup font texture
+        (GL13/glActiveTexture GL13/GL_TEXTURE0)
+        (GL11/glBindTexture GL11/GL_TEXTURE_2D font-texture)
+        (GL20/glUniform1i u-font, 0)
+        (except-gl-errors "font texture bind")
+        ; Setup uniforms for glyph, fg, bg, textures
+        (GL20/glUniform1i u-glyphs 1)
+        (GL20/glUniform1i u-fg 2)
+        (GL20/glUniform1i u-bg 3)
+        (except-gl-errors "uniformli bind")
+        (GL20/glUniform2f font-size, char-width char-height)
+        (GL20/glUniform2f term-dim columns rows)
+        (GL20/glUniform2f font-tex-dim font-texture-width font-texture-height)
+        (GL20/glUniform2f glyph-tex-dim glyph-texture-width glyph-texture-height)
+        (except-gl-errors "uniform2f bind")
+        (except-gl-errors "gl(en/dis)able")
+        #_#_glyph-data       (.-data glyph-image-data)
+        #_#_fg-data          (.-data fg-image-data)
+        #_#_bg-data          (.-data bg-image-data)
+        ;; Update glyph texture in memory
+        (.clear glyph-image-data)
+        (.clear fg-image-data)
+        (.clear bg-image-data)
+        (doseq [[row line] (map-indexed vector @character-map)
+                [col c] (map-indexed vector line)]
+          (let [;c         (get-in @character-map [row col])
+                chr       (get c :character)
+                highlight (= @cursor-xy [col row])
+                [fg-r fg-g fg-b] (if highlight
+                                   (get c :bg-color)
+                                   (get c :fg-color))
+                [bg-r bg-g bg-b] (if highlight
+                                   (get c :fg-color)
+                                   (get c :bg-color))
+                ;s         (str (get c :character))
+                style     (get c :style)
+                i         (* 4 (+ (* texture-columns row) col))
+                [x y]     (get character->col-row [chr (contains? style :underline)])]
+            ;(log/info "Drawing at col row" col row "character from atlas col row" x y c "(index=" i ")")
+            (when (zero? col)
+              (.position glyph-image-data i)
+              (.position fg-image-data i)
+              (.position bg-image-data i))
+            (.put glyph-image-data (unchecked-byte x))
+            (.put glyph-image-data (unchecked-byte y))
+            (.put glyph-image-data (unchecked-byte 0))
+            (.put glyph-image-data (unchecked-byte 0))
+            (.put fg-image-data    (unchecked-byte fg-r))
+            (.put fg-image-data    (unchecked-byte fg-g))
+            (.put fg-image-data    (unchecked-byte fg-b))
+            (.put fg-image-data    (unchecked-byte 0))
+            (.put bg-image-data    (unchecked-byte bg-r))
+            (.put bg-image-data    (unchecked-byte bg-g))
+            (.put bg-image-data    (unchecked-byte bg-b))
+            (.put bg-image-data    (unchecked-byte 0))))
+        (.position glyph-image-data (.limit glyph-image-data))
+        (.position fg-image-data (.limit fg-image-data))
+        (.position bg-image-data (.limit bg-image-data))
+        (.flip glyph-image-data)
+        (.flip fg-image-data)
+        (.flip bg-image-data)
+        ; Send updated glyph texture to gl
+        (GL13/glActiveTexture GL13/GL_TEXTURE1)
+        (GL11/glBindTexture GL11/GL_TEXTURE_2D glyph-texture)
+        (GL11/glTexImage2D GL11/GL_TEXTURE_2D 0 GL11/GL_RGBA texture-columns texture-rows 0 GL11/GL_RGBA GL11/GL_UNSIGNED_BYTE glyph-image-data)
+        (except-gl-errors "glyph texture data")
+        ; Send updated fg texture to gl
+        (GL13/glActiveTexture GL13/GL_TEXTURE2)
+        (GL11/glBindTexture GL11/GL_TEXTURE_2D fg-texture)
+        (GL11/glTexImage2D GL11/GL_TEXTURE_2D 0 GL11/GL_RGBA texture-columns texture-rows 0 GL11/GL_RGBA GL11/GL_UNSIGNED_BYTE fg-image-data)
+        (except-gl-errors "fg color texture data")
+        ; Send updated bg texture to gl
+        (GL13/glActiveTexture GL13/GL_TEXTURE3)
+        (GL11/glBindTexture GL11/GL_TEXTURE_2D bg-texture)
+        (GL11/glTexImage2D GL11/GL_TEXTURE_2D 0 GL11/GL_RGBA texture-columns texture-rows 0 GL11/GL_RGBA GL11/GL_UNSIGNED_BYTE bg-image-data)
+        (GL11/glDrawArrays GL11/GL_TRIANGLE_STRIP 0 vertices-count)
+        (except-gl-errors "bg color texture data")
+        (except-gl-errors "end of refresh")
+        ;(Display/sync 60)
+        (Display/update)
+        (Display/releaseContext))))
   (clear! [_]
-    (reset! character-map character-map-cleared)))
+    (ref-set character-map character-map-cleared))
+  (set-fx-fg! [_ x y fg]
+    (let [fg-color  (when fg (Color. (long (fg 0)) (long (fg 1)) (long (fg 2))))]
+      (alter character-map
+             (fn [cm] (assoc-in cm [y x :fx-fg-color] fg-color)))))
+  (set-fx-bg! [_ x y bg]
+    (let [bg-color  (when bg (Color. (long (bg 0)) (long (bg 1)) (long (bg 2))))]
+      (alter character-map
+             (fn [cm] (assoc-in cm [y x :fx-bg-color] bg-color)))))
+  (set-fx-char! [_ x y c]
+    (alter character-map
+           (fn [cm] (assoc-in cm [y x :fx-character] c))))
+  (clear-fx! [_]
+    (alter character-map
+           (fn [cm]
+             (mapv (fn [line]
+                     (mapv (fn [c]
+                             (assoc c :fx-fg-color nil
+                                      :fx-bg-color nil
+                                      :fx-character nil))
+                           line))
+                   cm)))))
 
 (defn make-terminal
   ([]
-    (make-terminal 80 24))
-  ([columns rows]
-   (make-terminal columns rows nil))
-  ([columns rows  on-key-fn]
-    (make-terminal columns rows on-key-fn "Courier New" "Monospaced" 14))
-  ([columns rows on-key-fn windows-font else-font font-size]
-    (let [title            "Robinson"
-          is-windows       (>= (.. System (getProperty "os.name" "") (toLowerCase) (indexOf "win")) 0)
+    (make-terminal "" 80 24))
+  ([title columns rows]
+   (make-terminal title columns rows [255 255 255] [0 0 0]))
+  ([title columns rows default-fg-color default-bg-color]
+   (make-terminal title columns rows default-fg-color default-bg-color nil))
+  ([title columns rows default-fg-color default-bg-color on-key-fn]
+    (make-terminal title columns rows default-fg-color default-bg-color on-key-fn "Courier New" "Monospaced" 16 true))
+  ([title columns rows default-fg-color  default-bg-color on-key-fn windows-font else-font font-size antialias]
+    (let [is-windows       (>= (.. System (getProperty "os.name" "") (toLowerCase) (indexOf "win")) 0)
           normal-font      (atom (if is-windows
                                    (make-font windows-font Font/PLAIN font-size)
                                    (make-font else-font Font/PLAIN font-size)))
           _                    (log/info "Using font" normal-font)
+
+          antialias        (atom antialias)
           default-bg-color     [(long 0) (long 0) (long 0)]
           ;; create texture atlas
-          character-map-cleared (vec (repeat rows (vec (repeat columns (make-terminal-character \space default-bg-color default-bg-color #{})))))
-          character-map         (atom character-map-cleared)
+          character-map-cleared (vec (repeat rows (vec (repeat columns (make-terminal-character \space default-fg-color default-bg-color #{})))))
+          character-map         (ref character-map-cleared)
           cursor-xy             (atom nil)
 
           key-chan         (async/chan)
-          on-key-fn        (or on-key-fn
+          #_#_on-key-fn        (or on-key-fn
                                (fn default-on-key-fn [k]
                                  (async/put! key-chan k)))
-          keyListener      (reify KeyListener
+          #_#_keyListener      (reify KeyListener
                              (keyPressed [_ e]
                                ;(println "keyPressed keyCode" (.getKeyCode e) "escape" KeyEvent/VK_ESCAPE "escape?" (= (.getKeyCode e) KeyEvent/VK_ESCAPE))
                                (convert-key-code e on-key-fn))
@@ -572,51 +643,18 @@
                                    (if ctrlDown
                                      (on-key-fn (char (+ (int \a) -1 (int character))))
                                      (on-key-fn character))))))
-          icon            (.getImage (Toolkit/getDefaultToolkit) "images/icon.png")
-
-          terminal-renderer (proxy [Canvas] []
-                              (addNotify []
-                                (proxy-super addNotify)
-                                #_(Display/setParent this)
-                                #_(Display/create (PixelFormat.)))
-                              (removeNotify []
-                                (Display/destroy)
-                                (proxy-super removeNotify)))
-          font-metrics  ^FontMetrics (.getFontMetrics terminal-renderer @normal-font)
-          screen-width               (* columns (.charWidth font-metrics \M))
-          screen-height              (* rows (.getHeight font-metrics))
+          font-metrics  ^FontMetrics (.getFontMetrics (Canvas.) @normal-font)
+          char-width                 (.charWidth font-metrics \M)
+          char-height                (.getHeight font-metrics)
+          screen-width               (* columns char-width)
+          screen-height              (* rows char-height)
           _                  (log/info "screen size" screen-width "x" screen-height)
-          _                  (doto terminal-renderer
-                               (.setSize screen-width screen-height)
-                               (.setVisible true)
-                               (.setIgnoreRepaint true))
-          pixel-format       (PixelFormat.)
-          context-attributes (ContextAttribs. 2 1)
-          _                  (Display/setDisplayMode (DisplayMode. screen-width screen-height))
-          _                  (Display/setTitle title)
-          _                  (Display/create pixel-format context-attributes)
-          _                  (GL11/glViewport 0 0 screen-width screen-height)
-
-          #_#__                (doto (JFrame. title)
-                             (.. (getContentPane) (setLayout (BorderLayout.)))
-                             (.addKeyListener keyListener)
-                             (.setDefaultCloseOperation JFrame/EXIT_ON_CLOSE)
-                             (.setLocationByPlatform true)
-                             (.setLocationRelativeTo nil)
-                             (.setAlwaysOnTop true)
-                             (.setAlwaysOnTop false)
-                             (.setVisible true)
-                             (.setIconImage icon)
-                             (.setFocusTraversalKeysEnabled false)
-                             (.setResizable false)
-                             (.setSize screen-width screen-height)
-                             (.. (getContentPane) (add terminal-renderer BorderLayout/CENTER))
-                             (.pack))
+          _                  (init-display title screen-width screen-height)
 
           ;; create texture atlas as gl texture
           {:keys [font-texture-width
                   font-texture-height
-                  font-texture-image]} (make-glyph-image normal-font)
+                  font-texture-image]} (make-glyph-image char-width char-height normal-font)
           font-texture          (texture-id font-texture-image)
                                                       ;:image character-canvas-dom
                                                       ;:parameters {texture-parameter-name/texture-mag-filter texture-filter/nearest
@@ -641,14 +679,12 @@
           texture-coords-vertex-attribute (GL20/glGetAttribLocation pgm-id "aTextureCoord")
 
           ;; We just need one vertex buffer, a texture-mapped quad will suffice for drawing the terminal.
-          vx                  (* columns char-width)
-          vy                  (* rows char-height)
 
           {:keys [vao-id
                   vertices-vbo-id
                   vertices-count
                   texture-coords-vbo-id]}
-                           (init-buffers vx vy)
+                           (init-buffers screen-width screen-height)
           u-MVMatrix                (GL20/glGetUniformLocation pgm-id "uMVMatrix")
           u-PMatrix                 (GL20/glGetUniformLocation pgm-id "uPMatrix")
           u-font                    (GL20/glGetUniformLocation pgm-id "uFont")
@@ -675,16 +711,22 @@
                   (when (Keyboard/getEventKeyState)
                     (async/>! key-chan (Keyboard/getEventCharacter))))
                 (recur)))
+      ;; Access to terminal will be multi threaded. Release context so that other threads can access it
+      (Display/releaseContext)
       ;; Create and return terminal
       (OpenGlTerminal. columns
                        rows
                        next-pow-2-columns
                        next-pow-2-rows
+                       normal-font
+                       antialias
                        character-map-cleared
                        character-map
                        cursor-xy
                        {:p-matrix-buffer (ortho-matrix-buffer screen-width screen-height)
                         :mv-matrix-buffer (position-matrix-buffer [(- (/ screen-width 2)) (- (/ screen-height 2)) -1.0 0.0])
+                        :char-width char-width
+                        :char-height char-height
                         :buffers {:vao-id vao-id
                                   :vertices-vbo-id vertices-vbo-id
                                   :vertices-count vertices-count
@@ -721,7 +763,7 @@
   ([^ATerminal screen x y string fg bg]
    (put-string screen (int (rmath/ceil x)) (int (rmath/ceil y)) string fg bg #{}))
   ([^ATerminal screen x y string fg bg styles]
-   (put-string screen (int (rmath/ceil x)) (int (rmath/ceil y)) string fg bg #{} {}))
+   (put-string screen (int (rmath/ceil x)) (int (rmath/ceil y)) string fg bg styles {}))
   ([^ATerminal screen x y string fg bg styles mask-opts]
    {:pre [(clojure.set/superset? #{:underline :bold} styles)]}
    (let [characters (map-indexed (fn [i c] {:c  (str c)
@@ -729,19 +771,19 @@
                                             :bg bg
                                             :x  (+ x i)
                                             :y  y
-                                            :opts {}})
+                                            :opts mask-opts})
                                  string)]
      (rat/put-chars! screen characters))))
 
-(defn -main
+(defn single-thread-main
   "Show a terminal and echo input."
-  [& args]
+  [& _]
   #_(loop [i 30]
     (log/info "Starting in " i)
     (Thread/sleep 1000)
     (when (pos? i)
       (recur (dec i))))
-  (let [terminal (make-terminal 80 24)
+  (let [terminal (make-terminal "glterminal.main" 80 24)
         last-key (atom nil)]
     (future (go-loop []
               (reset! last-key (async/<! (rat/get-key-chan terminal)))
@@ -752,15 +794,50 @@
       (when (not (Display/isCloseRequested))
         (let [key-in (or @last-key \?)]
         ;(let [key-in (rat/wait-for-key terminal)]
-          (rat/clear! terminal)
-          (put-string terminal 0 0 "Hello world 0 0")
-          (put-string terminal 0 1 "abcdefghijklmno")
-          (put-string terminal 60 0 "Hello world 60 0")
-          (put-string terminal 0 19 "Hello world 60 19")
-          (put-string terminal 60 19 "Hello world 0 19")
-          (put-string terminal 5 10 (str key-in))
-          (rat/refresh! terminal)
+          (dosync
+            (rat/clear! terminal)
+            (put-string terminal 0 0 "Hello world 0 0")
+            (put-string terminal 0 1 "abcdefghijklmno")
+            (put-string terminal 60 0 "Hello world 60 0" [128 0 0] [0 0 128])
+            (put-string terminal 0 19 "Hello world 60 19" [0 128 0] [128 0 0])
+            (put-string terminal 60 19 "Hello world 0 19" [0 0 128] [0 128 0])
+            (put-string terminal 5 10 (str key-in))
+            (rat/refresh! terminal))
           (recur)))))
   (Display/destroy)
   (System/exit 0))
 
+;; multi-thread main
+(defn -main
+  "Show a terminal and echo input."
+  [& _]
+  ;; render in background thread
+  (let [terminal (make-terminal (format "Robinson - %s@%s" "demo" "glterminal")
+                                80 24 [255 255 255] [5 5 8] nil
+                                "Courier New" "fonts/Boxy/Boxy.ttf" 16 true)
+        last-key (atom nil)]
+    (future (go-loop []
+              (let [key-in (or @last-key \?)]
+                (dosync
+                  (rat/clear! terminal)
+                  (put-string terminal 0 0 "Hello world 0 0")
+                  (put-string terminal 0 1 "abcdefghijklmno")
+                  (doseq [[i c] (take 23 (map-indexed (fn [i c] [i (char c)]) (range (int \a) (int \z))))]
+                    (put-string terminal 0 i (str c) [128 (+ i 100) 0] [0 0 50]))
+                  (put-string terminal 60 0 "Hello world 60 0" [128 0 0] [0 0 128])
+                  (put-string terminal 0 19 "Hello world 60 19" [0 128 0] [128 0 0])
+                  (put-string terminal 60 19 "Hello world 0 19" [0 0 128] [0 128 0])
+                  (put-string terminal 5 10 (str key-in))
+                  (rat/refresh! terminal)))
+              (recur)))
+    (future (go-loop []
+              (reset! last-key (async/<!! (rat/get-key-chan terminal)))
+              (log/info "got key" @last-key)
+              (recur)))
+    ;; get key presses in fg thread
+    (loop []
+      (when (not (Display/isCloseRequested))
+        (Thread/sleep 10)
+        (recur))))
+  (Display/destroy)
+  (System/exit 0))

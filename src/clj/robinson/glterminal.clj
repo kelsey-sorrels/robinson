@@ -19,9 +19,10 @@
               RenderingHints)
     (org.lwjgl BufferUtils LWJGLUtil)
     (java.nio FloatBuffer ByteBuffer)
+    (java.nio.charset Charset)
     (org.lwjgl.opengl Display ContextAttribs
-                      PixelFormat DisplayMode
-                      GL11 GL12 GL13 GL15 GL20)
+                      PixelFormat DisplayMode Util
+                      GL11 GL12 GL13 GL15 GL20 GL30)
     (org.lwjgl.input Keyboard)
     (org.lwjgl.util.vector Matrix4f Vector3f)
     (java.io File)
@@ -236,13 +237,14 @@
     "NONE"
     (.getName #^Field (some
                        #(if (= enum-value (.get #^Field % nil)) % nil)
-                       (mapcat get-fields [GL11 GL12 GL13 GL15 GL20])))))
+                       (mapcat get-fields [GL11 GL12 GL13 GL15 GL20 GL30])))))
 
 (defn- except-gl-errors
   [msg]
   (let [error (GL11/glGetError)
         error-string (str "OpenGL Error(" error "):"
-                          (gl-enum-name error) ": " msg)]
+                          (gl-enum-name error) ": " msg " - "
+                          (Util/translateGLErrorString error))]
     (if (not (zero? error))
       (throw (Exception. error-string)))))
 
@@ -258,7 +260,7 @@
 
 (defn- init-display [title screen-width screen-height]
   (let [pixel-format       (PixelFormat.)
-        context-attributes (ContextAttribs. 2 1)
+        context-attributes (ContextAttribs. 3 0)
         icon-image         (ImageIO/read (File. "images/icon.png"))
         icon-image-16      (scale-image icon-image 16,  -1)
         icon-image-32      (scale-image icon-image 32,  -1)
@@ -790,7 +792,7 @@
   ;; render in background thread
   (let [terminal (make-terminal (format "Robinson - %s@%s" "demo" "glterminal")
                                 80 24 [255 255 255] [5 5 8] nil
-                                "Courier New" "fonts/Boxy/Boxy.ttf" 16 true)
+                                "Courier New" "fonts/Boxy/Boxy.ttf" 6 true)
         last-key (atom nil)
           input-chan (go-loop []
                        (reset! last-key (async/<!! (rat/get-key-chan terminal)))

@@ -233,7 +233,7 @@
     (GL11/glBindTexture GL11/GL_TEXTURE_2D texture-id)
     (GL11/glTexParameteri GL11/GL_TEXTURE_2D GL11/GL_TEXTURE_MIN_FILTER GL11/GL_NEAREST)
     (GL11/glTexParameteri GL11/GL_TEXTURE_2D GL11/GL_TEXTURE_MAG_FILTER GL11/GL_NEAREST)
-    (GL11/glTexImage2D GL11/GL_TEXTURE_2D 0 GL30/GL_RGBA8UI width height 0 GL30/GL_RGBA_INTEGER GL11/GL_UNSIGNED_BYTE texture-buffer)
+    (GL11/glTexImage2D GL11/GL_TEXTURE_2D 0 GL30/GL_RGBA8UI width height 0 GL30/GL_RGBA_INTEGER GL11/GL_INT texture-buffer)
     texture-id))
 
 (defn- get-fields [#^Class static-class]
@@ -576,7 +576,7 @@
           ; Send updated glyph texture to gl
           (GL13/glActiveTexture GL13/GL_TEXTURE1)
           (GL11/glBindTexture GL11/GL_TEXTURE_2D glyph-texture)
-          (GL11/glTexImage2D GL11/GL_TEXTURE_2D 0 GL11/GL_RGBA texture-columns texture-rows 0 GL11/GL_RGBA GL11/GL_UNSIGNED_BYTE glyph-image-data)
+          (GL11/glTexImage2D GL11/GL_TEXTURE_2D 0 GL30/GL_RGBA8UI texture-columns texture-rows 0 GL30/GL_RGBA_INTEGER GL11/GL_UNSIGNED_BYTE glyph-image-data)
           (except-gl-errors "glyph texture data")
           ; Send updated fg texture to gl
           (GL13/glActiveTexture GL13/GL_TEXTURE2)

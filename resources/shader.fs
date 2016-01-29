@@ -23,8 +23,6 @@ void main(void) {
   // fontIndex.x = font index 
   uvec2 fontIndex = texelFetch(uGlyphs, termXY, 0).xy;
   ivec2 fontXY = ivec2(int(fontIndex.x) * charSize.x, int(fontIndex.y) * charSize.y);
-  fontXY.x = 0;
-  fontXY.y = 0;
   // That green and red channel mingling? Yeah that's because some
   // mobile devices have less than 8 bits per channel
   //float gp = floor(glyph.r * 256.0 + floor((glyph.g * 16.0) * 256.0)) / 16.0;
@@ -46,7 +44,7 @@ void main(void) {
   //vec4 bg  = texture2D(uBg, vec2(termu, termv));
   //outcolor = vec4(charXY.x, charXY.y, 0, 0);
 
-  //outcolor = vec4(fontIndex.x, fontIndex.y, 0, 0) / 512.0;
+  //outcolor = vec4(fontIndex.x, fontIndex.y, 0, 0) / 5120000000.0;
   //outcolor = (vec4(fontIndex.x, fontIndex.y, 0, 0) + vec4(charXY.x, charXY.y, 0, 0)) / 512.0;
   //outcolor = fg;
 

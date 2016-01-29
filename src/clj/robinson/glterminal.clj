@@ -227,6 +227,15 @@
      (GL11/glTexImage2D GL11/GL_TEXTURE_2D 0 GL11/GL_RGBA width height 0 GL11/GL_RGBA GL11/GL_UNSIGNED_BYTE texture-buffer)
      texture-id)))
 
+(defn- xy-texture-id [^long width ^long height ^ByteBuffer texture-buffer]
+  (let [texture-id (GL11/glGenTextures)]
+    ;;(.order texture-buffer (ByteOrder/nativeOrder))
+    (GL11/glBindTexture GL11/GL_TEXTURE_2D texture-id)
+    (GL11/glTexParameteri GL11/GL_TEXTURE_2D GL11/GL_TEXTURE_MIN_FILTER GL11/GL_NEAREST)
+    (GL11/glTexParameteri GL11/GL_TEXTURE_2D GL11/GL_TEXTURE_MAG_FILTER GL11/GL_NEAREST)
+    (GL11/glTexImage2D GL11/GL_TEXTURE_2D 0 GL30/GL_RGBA8UI width height 0 GL30/GL_RGBA_INTEGER GL11/GL_UNSIGNED_BYTE texture-buffer)
+    texture-id))
+
 (defn- get-fields [#^Class static-class]
   (. static-class getFields))
 
@@ -275,6 +284,18 @@
      (Display/setIcon icon-array)
      (GL11/glViewport 0 0 screen-width screen-height)))
 
+(defn- shader-error-str [shader-id]
+  (let [infoLogLength (BufferUtils/createIntBuffer 1)
+        _             (GL20/glGetShader shader-id GL20/GL_INFO_LOG_LENGTH, infoLogLength)
+        log-length    (.get infoLogLength 0)
+        infoLog ^ByteBuffer        (BufferUtils/createByteBuffer log-length)
+        _              (.clear infoLogLength)
+        _              (GL20/glGetShaderInfoLog shader-id, infoLogLength, infoLog)
+        infoLogBytes   (byte-array log-length)
+        _              (.get infoLog infoLogBytes, 0, log-length)]
+    (log/info "info length" log-length)
+    (String. infoLogBytes (Charset/forName "UTF-8"))))
+
 (defn- load-shader
   [^String shader-str ^Integer shader-type]
   (let [shader-id         (GL20/glCreateShader shader-type)
@@ -289,6 +310,7 @@
       (println "ERROR: Loading a Shader:")
       (println (GL20/glGetShaderInfoLog shader-id 10000)))
     [gl-compile-status shader-id]))
+
 
 (defn- init-shaders
   []
@@ -648,7 +670,7 @@
           glyph-image-data (BufferUtils/createByteBuffer (* next-pow-2-columns next-pow-2-rows 4))
           fg-image-data    (BufferUtils/createByteBuffer (* next-pow-2-columns next-pow-2-rows 4))
           bg-image-data    (BufferUtils/createByteBuffer (* next-pow-2-columns next-pow-2-rows 4))
-          glyph-texture    (texture-id next-pow-2-columns next-pow-2-rows glyph-image-data)
+          glyph-texture    (xy-texture-id next-pow-2-columns next-pow-2-rows glyph-image-data)
           fg-texture       (texture-id next-pow-2-columns next-pow-2-rows fg-image-data)
           bg-texture       (texture-id next-pow-2-columns next-pow-2-rows bg-image-data)
           ;; init shaders
@@ -792,7 +814,7 @@
   ;; render in background thread
   (let [terminal (make-terminal (format "Robinson - %s@%s" "demo" "glterminal")
                                 80 24 [255 255 255] [5 5 8] nil
-                                "Courier New" "fonts/Boxy/Boxy.ttf" 6 true)
+                                "Courier New" "fonts/Boxy/Boxy.ttf" 24 true)
         last-key (atom nil)
           input-chan (go-loop []
                        (reset! last-key (async/<!! (rat/get-key-chan terminal)))

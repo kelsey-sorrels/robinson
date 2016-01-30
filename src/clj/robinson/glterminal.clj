@@ -638,7 +638,6 @@
           _                    (log/info "Using font" normal-font)
 
           antialias        (atom antialias)
-          default-bg-color     [(long 0) (long 0) (long 0)]
           ;; create texture atlas
           character-map-cleared (vec (repeat rows (vec (repeat columns (make-terminal-character \space default-fg-color default-bg-color #{})))))
           character-map         (ref character-map-cleared)

@@ -93,6 +93,7 @@
             "abcdefghijklmnopqrstuvwxyz"
             "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
             " ~!@#$%^&*()_-+=[]{}|:;,./<>?'\""
+            "\u005C"
             "\u00A7"
             "\u00B7"
             "\u01C1"
@@ -120,7 +121,8 @@
             "\u2551"
             "\u2554"
             "\u2557"
-            "\u00B0")
+            "\u00B0"
+            "\u2191")
        c (concat (map vector c (repeat false))
                  (map vector c (repeat true)))]
     c))
@@ -173,7 +175,7 @@
       (doseq [[[s underline?] col row]  character-idxs]
         (let [x ^int (* col char-width)
               y ^int (* (inc row) char-height)
-              cx (+ 1 x)
+              cx (+ 0 x)
               cy (- y (.getDescent font-metrics))]
           ;(log/info s x y)
         (when (not= s " ")
@@ -494,105 +496,105 @@
           glyph-image-data glyph-image-data
           fg-image-data fg-image-data
           bg-image-data bg-image-data]
-      ;; Update glyph texture in buffers
-      (.clear glyph-image-data)
-      (.clear fg-image-data)
-      (.clear bg-image-data)
-      (doseq [[row line] (map-indexed vector (reverse @character-map))
-              [col c]    (map-indexed vector line)]
-        ;;(log/info "row" row "col" col "c" c)
-        (let [chr        (or (get c :fx-character) (get c :character))
-              highlight  (= @cursor-xy [col row])
-              [fg-r fg-g fg-b] (if highlight
-                                 (or (get c :fx-bg-color)  (get c :bg-color))
-                                 (or (get c :fx-fg-color)  (get c :fg-color)))
-              [bg-r bg-g bg-b] (if highlight
-                                 (or (get c :fx-fg-color)  (get c :fg-color))
-                                 (or (get c :fx-bg-color)  (get c :bg-color)))
-              ;s         (str (get c :character))
-              style     (get c :style)
-              i         (* 4 (+ (* texture-columns row) col))
-              [x y]     (get character->col-row [chr (contains? style :underline)])]
-          ;(log/info "Drawing at col row" col row "character from atlas col row" x y c "(index=" i ")")
-          (when (zero? col)
-            (.position glyph-image-data i)
-            (.position fg-image-data i)
-            (.position bg-image-data i))
-          (assert (or (not (nil? x)) (not (nil? y))) (format "X/Y nil - glyph not found for character %s %s" (or (str chr) "nil") (or (format "%x" (int chr)) "nil")))
-          (.put glyph-image-data (unchecked-byte x))
-          (.put glyph-image-data (unchecked-byte y))
-          (.put glyph-image-data (unchecked-byte 0))
-          (.put glyph-image-data (unchecked-byte 0))
-          (.put fg-image-data    (unchecked-byte fg-r))
-          (.put fg-image-data    (unchecked-byte fg-g))
-          (.put fg-image-data    (unchecked-byte fg-b))
-          (.put fg-image-data    (unchecked-byte 0))
-          (.put bg-image-data    (unchecked-byte bg-r))
-          (.put bg-image-data    (unchecked-byte bg-g))
-          (.put bg-image-data    (unchecked-byte bg-b))
-          (.put bg-image-data    (unchecked-byte 0))))
-      (.position glyph-image-data (.limit glyph-image-data))
-      (.position fg-image-data (.limit fg-image-data))
-      (.position bg-image-data (.limit bg-image-data))
-      (.flip glyph-image-data)
-      (.flip fg-image-data)
-      (.flip bg-image-data)
       (locking this
+        ;; Update glyph texture in buffers
+        (.clear glyph-image-data)
+        (.clear fg-image-data)
+        (.clear bg-image-data)
+        (doseq [[row line] (map-indexed vector (reverse @character-map))
+                [col c]    (map-indexed vector line)]
+          ;;(log/info "row" row "col" col "c" c)
+          (let [chr        (or (get c :fx-character) (get c :character))
+                highlight  (= @cursor-xy [col row])
+                [fg-r fg-g fg-b] (if highlight
+                                   (or (get c :fx-bg-color)  (get c :bg-color))
+                                   (or (get c :fx-fg-color)  (get c :fg-color)))
+                [bg-r bg-g bg-b] (if highlight
+                                   (or (get c :fx-fg-color)  (get c :fg-color))
+                                   (or (get c :fx-bg-color)  (get c :bg-color)))
+                ;s         (str (get c :character))
+                style     (get c :style)
+                i         (* 4 (+ (* texture-columns row) col))
+                [x y]     (get character->col-row [chr (contains? style :underline)])]
+            ;(log/info "Drawing at col row" col row "character from atlas col row" x y c "(index=" i ")")
+            (when (zero? col)
+              (.position glyph-image-data i)
+              (.position fg-image-data i)
+              (.position bg-image-data i))
+            (assert (or (not (nil? x)) (not (nil? y))) (format "X/Y nil - glyph not found for character %s %s" (or (str chr) "nil") (or (format "%x" (int chr)) "nil")))
+            (.put glyph-image-data (unchecked-byte x))
+            (.put glyph-image-data (unchecked-byte y))
+            (.put glyph-image-data (unchecked-byte 0))
+            (.put glyph-image-data (unchecked-byte 0))
+            (.put fg-image-data    (unchecked-byte fg-r))
+            (.put fg-image-data    (unchecked-byte fg-g))
+            (.put fg-image-data    (unchecked-byte fg-b))
+            (.put fg-image-data    (unchecked-byte 0))
+            (.put bg-image-data    (unchecked-byte bg-r))
+            (.put bg-image-data    (unchecked-byte bg-g))
+            (.put bg-image-data    (unchecked-byte bg-b))
+            (.put bg-image-data    (unchecked-byte 0))))
+        (.position glyph-image-data (.limit glyph-image-data))
+        (.position fg-image-data (.limit fg-image-data))
+        (.position bg-image-data (.limit bg-image-data))
+        (.flip glyph-image-data)
+        (.flip fg-image-data)
+        (.flip bg-image-data)
         (Display/makeCurrent)
         (GL11/glClearColor 0.0 0.0 1.0 1.0)
         (GL11/glClear (bit-or GL11/GL_COLOR_BUFFER_BIT GL11/GL_DEPTH_BUFFER_BIT))
 
-          (GL20/glUseProgram program-id)
-          (GL20/glUniformMatrix4 u-PMatrix false p-matrix-buffer)
-          (GL20/glUniformMatrix4 u-MVMatrix false mv-matrix-buffer)
-          ; Setup vertex buffer
-          ;(GL15/glBindBuffer GL15/GL_ARRAY_BUFFER, vertices-vbo-id)
-          (except-gl-errors (str "vbo bind - glBindBuffer" vertices-vbo-id))
-          (GL20/glEnableVertexAttribArray 0);pos-vertex-attribute)
-          (except-gl-errors "vbo bind - glEnableVertexAttribArray")
-          ;;(GL20/glVertexAttribPointer 0 3 GL11/GL_FLOAT false 0 0)
-          (except-gl-errors "vbo bind - glVertexAttribPointer")
-          ; Setup uv buffer
-          ;(GL15/glBindBuffer GL15/GL_ARRAY_BUFFER, texture-coords-vbo-id)
-          (GL20/glEnableVertexAttribArray 1);texture-coords-vertex-attribute)
-          ;;(GL20/glVertexAttribPointer 1 2 GL11/GL_FLOAT false 0 0)
-          (except-gl-errors "texture coords bind")
-          ; Setup font texture
-          (GL13/glActiveTexture GL13/GL_TEXTURE0)
-          (GL11/glBindTexture GL11/GL_TEXTURE_2D font-texture)
-          (GL20/glUniform1i u-font, 0)
-          (except-gl-errors "font texture bind")
-          ; Setup uniforms for glyph, fg, bg, textures
-          (GL20/glUniform1i u-glyphs 1)
-          (GL20/glUniform1i u-fg 2)
-          (GL20/glUniform1i u-bg 3)
-          (except-gl-errors "uniformli bind")
-          (GL20/glUniform2f font-size, char-width char-height)
-          (GL20/glUniform2f term-dim columns rows)
-          (GL20/glUniform2f font-tex-dim font-texture-width font-texture-height)
-          (GL20/glUniform2f glyph-tex-dim glyph-texture-width glyph-texture-height)
-          (except-gl-errors "uniform2f bind")
-          (except-gl-errors "gl(en/dis)able")
-          ; Send updated glyph texture to gl
-          (GL13/glActiveTexture GL13/GL_TEXTURE1)
-          (GL11/glBindTexture GL11/GL_TEXTURE_2D glyph-texture)
-          (GL11/glTexImage2D GL11/GL_TEXTURE_2D 0 GL30/GL_RGBA8UI texture-columns texture-rows 0 GL30/GL_RGBA_INTEGER GL11/GL_UNSIGNED_BYTE glyph-image-data)
-          (except-gl-errors "glyph texture data")
-          ; Send updated fg texture to gl
-          (GL13/glActiveTexture GL13/GL_TEXTURE2)
-          (GL11/glBindTexture GL11/GL_TEXTURE_2D fg-texture)
-          (GL11/glTexImage2D GL11/GL_TEXTURE_2D 0 GL11/GL_RGBA texture-columns texture-rows 0 GL11/GL_RGBA GL11/GL_UNSIGNED_BYTE fg-image-data)
-          (except-gl-errors "fg color texture data")
-          ; Send updated bg texture to gl
-          (GL13/glActiveTexture GL13/GL_TEXTURE3)
-          (GL11/glBindTexture GL11/GL_TEXTURE_2D bg-texture)
-          (GL11/glTexImage2D GL11/GL_TEXTURE_2D 0 GL11/GL_RGBA texture-columns texture-rows 0 GL11/GL_RGBA GL11/GL_UNSIGNED_BYTE bg-image-data)
-          (GL11/glDrawArrays GL11/GL_QUADS 0 vertices-count)
-          (except-gl-errors "bg color texture data")
-          (except-gl-errors "end of refresh")
-          ;(Display/sync 60)
-          (Display/update)
-          (Display/releaseContext))))
+        (GL20/glUseProgram program-id)
+        (GL20/glUniformMatrix4 u-PMatrix false p-matrix-buffer)
+        (GL20/glUniformMatrix4 u-MVMatrix false mv-matrix-buffer)
+        ; Setup vertex buffer
+        ;(GL15/glBindBuffer GL15/GL_ARRAY_BUFFER, vertices-vbo-id)
+        (except-gl-errors (str "vbo bind - glBindBuffer" vertices-vbo-id))
+        (GL20/glEnableVertexAttribArray 0);pos-vertex-attribute)
+        (except-gl-errors "vbo bind - glEnableVertexAttribArray")
+        ;;(GL20/glVertexAttribPointer 0 3 GL11/GL_FLOAT false 0 0)
+        (except-gl-errors "vbo bind - glVertexAttribPointer")
+        ; Setup uv buffer
+        ;(GL15/glBindBuffer GL15/GL_ARRAY_BUFFER, texture-coords-vbo-id)
+        (GL20/glEnableVertexAttribArray 1);texture-coords-vertex-attribute)
+        ;;(GL20/glVertexAttribPointer 1 2 GL11/GL_FLOAT false 0 0)
+        (except-gl-errors "texture coords bind")
+        ; Setup font texture
+        (GL13/glActiveTexture GL13/GL_TEXTURE0)
+        (GL11/glBindTexture GL11/GL_TEXTURE_2D font-texture)
+        (GL20/glUniform1i u-font, 0)
+        (except-gl-errors "font texture bind")
+        ; Setup uniforms for glyph, fg, bg, textures
+        (GL20/glUniform1i u-glyphs 1)
+        (GL20/glUniform1i u-fg 2)
+        (GL20/glUniform1i u-bg 3)
+        (except-gl-errors "uniformli bind")
+        (GL20/glUniform2f font-size, char-width char-height)
+        (GL20/glUniform2f term-dim columns rows)
+        (GL20/glUniform2f font-tex-dim font-texture-width font-texture-height)
+        (GL20/glUniform2f glyph-tex-dim glyph-texture-width glyph-texture-height)
+        (except-gl-errors "uniform2f bind")
+        (except-gl-errors "gl(en/dis)able")
+        ; Send updated glyph texture to gl
+        (GL13/glActiveTexture GL13/GL_TEXTURE1)
+        (GL11/glBindTexture GL11/GL_TEXTURE_2D glyph-texture)
+        (GL11/glTexImage2D GL11/GL_TEXTURE_2D 0 GL30/GL_RGBA8UI texture-columns texture-rows 0 GL30/GL_RGBA_INTEGER GL11/GL_UNSIGNED_BYTE glyph-image-data)
+        (except-gl-errors "glyph texture data")
+        ; Send updated fg texture to gl
+        (GL13/glActiveTexture GL13/GL_TEXTURE2)
+        (GL11/glBindTexture GL11/GL_TEXTURE_2D fg-texture)
+        (GL11/glTexImage2D GL11/GL_TEXTURE_2D 0 GL11/GL_RGBA texture-columns texture-rows 0 GL11/GL_RGBA GL11/GL_UNSIGNED_BYTE fg-image-data)
+        (except-gl-errors "fg color texture data")
+        ; Send updated bg texture to gl
+        (GL13/glActiveTexture GL13/GL_TEXTURE3)
+        (GL11/glBindTexture GL11/GL_TEXTURE_2D bg-texture)
+        (GL11/glTexImage2D GL11/GL_TEXTURE_2D 0 GL11/GL_RGBA texture-columns texture-rows 0 GL11/GL_RGBA GL11/GL_UNSIGNED_BYTE bg-image-data)
+        (GL11/glDrawArrays GL11/GL_QUADS 0 vertices-count)
+        (except-gl-errors "bg color texture data")
+        (except-gl-errors "end of refresh")
+        ;(Display/sync 60)
+        (Display/update)
+        (Display/releaseContext))))
   (clear! [_]
     (ref-set character-map character-map-cleared))
   (set-fx-fg! [_ x y fg]
@@ -693,9 +695,54 @@
           font-size                 (GL20/glGetUniformLocation pgm-id "fontSize")
           term-dim                  (GL20/glGetUniformLocation pgm-id "termDimensions")
           font-tex-dim              (GL20/glGetUniformLocation pgm-id "fontTextureDimensions")
-          glyph-tex-dim             (GL20/glGetUniformLocation pgm-id "glyphTextureDimensions")]
+          glyph-tex-dim             (GL20/glGetUniformLocation pgm-id "glyphTextureDimensions")
+          terminal
+          ;; Create and return terminal
+          (OpenGlTerminal. columns
+                           rows
+                           next-pow-2-columns
+                           next-pow-2-rows
+                           normal-font
+                           antialias
+                           character-map-cleared
+                           character-map
+                           cursor-xy
+                           {:p-matrix-buffer (ortho-matrix-buffer screen-width screen-height)
+                            :mv-matrix-buffer (position-matrix-buffer [(- (/ screen-width 2)) (- (/ screen-height 2)) -1.0 0.0])
+                            :char-width char-width
+                            :char-height char-height
+                            :buffers {:vertices-vbo-id vertices-vbo-id
+                                      :vertices-count vertices-count
+                                      :texture-coords-vbo-id texture-coords-vbo-id}
+                            :textures {:glyph-texture glyph-texture
+                                       :font-texture font-texture
+                                       :fg-texture fg-texture
+                                       :bg-texture bg-texture}
+                            :attributes {:pos-vertex-attribute pos-vertex-attribute
+                                         :texture-coords-vertex-attribute texture-coords-vertex-attribute}
+                            :program-id pgm-id
+                            :uniforms {:u-MVMatrix u-MVMatrix
+                                       :u-PMatrix u-PMatrix
+                                       :u-font u-font
+                                       :u-glyphs u-glyphs
+                                       :u-fg u-fg
+                                       :u-bg u-bg
+                                       :font-size font-size
+                                       :term-dim term-dim
+                                       :font-tex-dim font-tex-dim
+                                       :font-texture-width font-texture-width
+                                       :font-texture-height font-texture-height
+                                       :glyph-tex-dim glyph-tex-dim
+                                       :glyph-texture-width glyph-texture-width
+                                       :glyph-texture-height glyph-texture-height}
+                            :data {:glyph-image-data glyph-image-data
+                                   :fg-image-data fg-image-data
+                                   :bg-image-data bg-image-data}}
+                           key-chan)]
+      ;; Access to terminal will be multi threaded. Release context so that other threads can access it)))
+      (Display/releaseContext)
       ;; Start font file change listener thread
-      (cwc/start-watch [{:path "./fonts"
+      #_(cwc/start-watch [{:path "./fonts"
                          :event-types [:modify]
                          :bootstrap (fn [path] (println "Starting to watch " path))
                          :callback (fn [_ filename]
@@ -705,57 +752,18 @@
                          :options {:recursive true}}])
       ;; Poll keyboard in background thread and offer input to key-chan
       (future (go-loop []
-                (Display/processMessages)
-                (when (Keyboard/next)
-                  (when (Keyboard/getEventKeyState)
-                    (let [character (Keyboard/getEventCharacter)
-                          key       (Keyboard/getEventKey)]
-                      (convert-key-code character key on-key-fn))))
+                (locking terminal
+                  (Display/processMessages)
+                  (loop []
+                    (when (Keyboard/next)
+                      (when (Keyboard/getEventKeyState)
+                        (let [character (Keyboard/getEventCharacter)
+                              key       (Keyboard/getEventKey)]
+                          (convert-key-code character key on-key-fn)))
+                      (recur))))
+                (Thread/sleep 1)
                 (recur)))
-      ;; Access to terminal will be multi threaded. Release context so that other threads can access it
-      (Display/releaseContext)
-      ;; Create and return terminal
-      (OpenGlTerminal. columns
-                       rows
-                       next-pow-2-columns
-                       next-pow-2-rows
-                       normal-font
-                       antialias
-                       character-map-cleared
-                       character-map
-                       cursor-xy
-                       {:p-matrix-buffer (ortho-matrix-buffer screen-width screen-height)
-                        :mv-matrix-buffer (position-matrix-buffer [(- (/ screen-width 2)) (- (/ screen-height 2)) -1.0 0.0])
-                        :char-width char-width
-                        :char-height char-height
-                        :buffers {:vertices-vbo-id vertices-vbo-id
-                                  :vertices-count vertices-count
-                                  :texture-coords-vbo-id texture-coords-vbo-id}
-                        :textures {:glyph-texture glyph-texture
-                                   :font-texture font-texture
-                                   :fg-texture fg-texture
-                                   :bg-texture bg-texture}
-                        :attributes {:pos-vertex-attribute pos-vertex-attribute
-                                     :texture-coords-vertex-attribute texture-coords-vertex-attribute}
-                        :program-id pgm-id
-                        :uniforms {:u-MVMatrix u-MVMatrix
-                                   :u-PMatrix u-PMatrix
-                                   :u-font u-font
-                                   :u-glyphs u-glyphs
-                                   :u-fg u-fg
-                                   :u-bg u-bg
-                                   :font-size font-size
-                                   :term-dim term-dim
-                                   :font-tex-dim font-tex-dim
-                                   :font-texture-width font-texture-width
-                                   :font-texture-height font-texture-height
-                                   :glyph-tex-dim glyph-tex-dim
-                                   :glyph-texture-width glyph-texture-width
-                                   :glyph-texture-height glyph-texture-height}
-                        :data {:glyph-image-data glyph-image-data
-                               :fg-image-data fg-image-data
-                               :bg-image-data bg-image-data}}
-                       key-chan))))
+      terminal)))
 
 (defn- put-string
   ([^ATerminal screen x y string]

@@ -36,7 +36,7 @@ void main(void) {
   vec4 fnt = texelFetch(uFont, fontXY + charXY, 0);
 
   vec4 fg  = texelFetch(uFg, termXY, 0);
-  vec4 bg  = texture2D(uBg, termXY, 0);
+  vec4 bg  = texelFetch(uBg, termXY, 0);
 
   outcolor = mix(bg, fg, fnt.r);
 

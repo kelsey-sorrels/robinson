@@ -25,7 +25,8 @@
                       GL11 GL12 GL13 GL15 GL20 GL30)
     (org.lwjgl.input Keyboard)
     (org.lwjgl.util.vector Matrix4f Vector3f)
-    (java.io File)
+    (de.matthiasmann.twl.utils PNGDecoder PNGDecoder$Format)
+    (java.io File FileInputStream)
     (java.awt.image BufferedImage DataBufferByte)
     (javax.imageio ImageIO)
     (robinson.aterminal ATerminal))
@@ -212,6 +213,29 @@
     (.flip texture-buffer)
     texture-buffer))
 
+(defn- buffered-image-rgba-byte-buffer [^BufferedImage buffered-image]
+  (let [width          (.getWidth buffered-image)
+        height         (.getHeight buffered-image)
+        texture-buffer ^ByteBuffer (BufferUtils/createByteBuffer (* width height 4))
+        channel        (.getChannel (java.io.FileOutputStream. (File. (format "bytes-%dx%d.raw.data" width height)) false))]
+    (log/info "Gettting bytes for image with type" (.getType buffered-image))
+    (doseq [y (range height)
+            x (range width)
+            :let [abgr   (.getRGB buffered-image x y)
+                  g      (unsigned-bit-shift-right (bit-and 0x000000FF abgr) 0)
+                  b      (unsigned-bit-shift-right (bit-and 0x0000FF00 abgr) 8)
+                  a      (unsigned-bit-shift-right (bit-and 0x00FF0000 abgr) 16)
+                  r      (unsigned-bit-shift-right (bit-and 0xFF000000 abgr) 24)
+                  i ^int (int (+ (bit-shift-left r 24)
+                                 (bit-shift-left g 16)
+                                 (bit-shift-left b 8)
+                                 (bit-shift-left a 0)))]]
+      (.putInt texture-buffer i))
+    (.flip texture-buffer)
+    (.write channel texture-buffer)
+    (.close channel)
+    texture-buffer))
+
 (defn- texture-id
   ([buffered-image]
   (let [width (.getWidth buffered-image)
@@ -259,31 +283,40 @@
     (if (not (zero? error))
       (throw (Exception. error-string)))))
 
-(defn scale-image [buffered-image width height]
-  (let [toolkit-image (.getScaledInstance buffered-image width height Image/SCALE_SMOOTH)
-        width         (.getWidth toolkit-image nil)
-        height        (.getHeight toolkit-image nil)
-        scaled-image  (BufferedImage. width height BufferedImage/TYPE_4BYTE_ABGR)
-        g             (.getGraphics scaled-image)]
-    (.drawImage g toolkit-image 0, 0, nil)
-    (.dispose g)
-    scaled-image))
+(defn png-bytes [path]
+  (let [input-stream (FileInputStream. (str path))
+        decoder (PNGDecoder. input-stream)
+        width (.getWidth decoder)
+        height (.getHeight decoder)
+        bytebuf (ByteBuffer/allocateDirect (* width height 4))]
+    (.decode decoder bytebuf (* width 4) PNGDecoder$Format/RGBA)
+    (.flip bytebuf)
+    (.close input-stream)
+    bytebuf))
 
 (defn- init-display [title screen-width screen-height]
   (let [pixel-format       (PixelFormat.)
         context-attributes (ContextAttribs. 3 0)
-        icon-image         (ImageIO/read (File. "images/icon.png"))
-        icon-image-16      (scale-image icon-image 16,  -1)
-        icon-image-32      (scale-image icon-image 32,  -1)
-        icon-image-128     (scale-image icon-image 128, -1)
-        icon-array         (make-array ByteBuffer 3)]
-     (aset icon-array 0 (buffered-image-byte-buffer icon-image-16))
-     (aset icon-array 1 (buffered-image-byte-buffer icon-image-32))
-     (aset icon-array 2 (buffered-image-byte-buffer icon-image-128))
+        icon-image-16      (ImageIO/read (File. "images/icon-16x16.png"))
+        icon-image-32      (ImageIO/read (File. "images/icon-32x32.png"))
+        icon-image-128     (ImageIO/read (File. "images/icon-128x128.png"))
+        icon-array         (condp = (LWJGLUtil/getPlatform)
+                             LWJGLUtil/PLATFORM_LINUX (let [icon-array (make-array ByteBuffer 1)]
+                                                        ;(aset icon-array 0 (buffered-image-rgba-byte-buffer icon-image-32))
+                                                        (aset icon-array 0 (png-bytes "images/icon-32x32.png"))
+                                                        icon-array)
+                             LWJGLUtil/PLATFORM_MACOSX  (let [icon-array (make-array ByteBuffer 1)]
+                                                          (aset icon-array 0 (buffered-image-rgba-byte-buffer icon-image-128))
+                                                          icon-array)
+                             LWJGLUtil/PLATFORM_WINDOWS (let [icon-array (make-array ByteBuffer 2)]
+                                                          (aset icon-array 0 (buffered-image-rgba-byte-buffer icon-image-16))
+                                                          (aset icon-array 1 (buffered-image-rgba-byte-buffer icon-image-32))
+                                                          icon-array))]
      (Display/setDisplayMode (DisplayMode. screen-width screen-height))
      (Display/setTitle title)
-     (Display/create pixel-format context-attributes)
      (Display/setIcon icon-array)
+     (Display/create pixel-format context-attributes)
+     (log/info "byte-buffer" icon-array)
      (GL11/glViewport 0 0 screen-width screen-height)))
 
 (defn- shader-error-str [shader-id]
@@ -753,6 +786,8 @@
       (future (go-loop []
                 (locking terminal
                   (Display/processMessages)
+                  (when (Display/isCloseRequested)
+                    (System/exit 0))
                   (loop []
                     (when (Keyboard/next)
                       (when (Keyboard/getEventKeyState)

@@ -15,7 +15,6 @@
               Font
               FontMetrics
               Graphics
-              Image
               RenderingHints)
     (org.lwjgl BufferUtils LWJGLUtil)
     (java.nio FloatBuffer ByteBuffer)
@@ -26,7 +25,7 @@
     (org.lwjgl.input Keyboard)
     (org.lwjgl.util.vector Matrix4f Vector3f)
     (de.matthiasmann.twl.utils PNGDecoder PNGDecoder$Format)
-    (java.io File FileInputStream)
+    (java.io File FileInputStream FileOutputStream)
     (java.awt.image BufferedImage DataBufferByte)
     (javax.imageio ImageIO)
     (robinson.aterminal ATerminal))
@@ -75,6 +74,8 @@
                      nil))]
     (log/info "key" key)
     (on-key-fn key)))
+
+(defn font-key [font] [(.getName font) (.getSize font)])
 
 (defn make-font
   [name-or-path style size]
@@ -151,21 +152,21 @@
           character-idxs))
 
 (defn make-glyph-image
-  [char-width char-height normal-font]
+  [char-width char-height font]
   ;; Adjust canvas to fit character atlas size
   (let [cwidth  (next-pow-2 (* char-width (int (inc (Math/sqrt (count characters))))))
         cheight (next-pow-2 (* char-height (int (inc (Math/sqrt (count characters))))))
         width   (max cwidth cheight)
         height  (max cwidth cheight)
         antialias true
-        font-metrics  ^FontMetrics (.getFontMetrics (Canvas.) @normal-font)]
+        font-metrics  ^FontMetrics (.getFontMetrics (Canvas.) font)]
     (log/info "glyph image width" width "height" height)
     (let [texture-image    (BufferedImage. width height BufferedImage/TYPE_4BYTE_ABGR)
           texture-graphics ^Graphics (.getGraphics texture-image)
           white            (Color. 255 255 255 255)]
       ;; Create and clear graphics
       (doto texture-graphics
-        (.setFont @normal-font)
+        (.setFont font)
         (.setRenderingHint RenderingHints/KEY_TEXT_ANTIALIASING (if antialias
                                                                   RenderingHints/VALUE_TEXT_ANTIALIAS_GASP
                                                                   RenderingHints/VALUE_TEXT_ANTIALIAS_OFF))
@@ -217,7 +218,7 @@
   (let [width          (.getWidth buffered-image)
         height         (.getHeight buffered-image)
         texture-buffer ^ByteBuffer (BufferUtils/createByteBuffer (* width height 4))
-        channel        (.getChannel (java.io.FileOutputStream. (File. (format "bytes-%dx%d.raw.data" width height)) false))]
+        channel        (.getChannel (FileOutputStream. (File. (format "bytes-%dx%d.raw.data" width height)) false))]
     (log/info "Gettting bytes for image with type" (.getType buffered-image))
     (doseq [y (range height)
             x (range width)
@@ -373,42 +374,46 @@
         pgm-id)
       (log/error "Error loading shaders"))))
 
-(defn ortho-matrix-buffer [viewport-width viewport-height]
-  (let [ortho-matrix (doto (Matrix4f.)
-                       (.setIdentity))
-        matrix-buffer (BufferUtils/createFloatBuffer 16)
-        zNear   10
-        zFar   -10
-        m00     (/ 2 viewport-width)
-        m11     (/ 2 viewport-height)
-        m22     (/ -2 (- zFar zNear))
-        m23     (/ (- (+ zFar zNear)) (- zFar zNear))
-        m33     1]
-    (set! (.m00 ortho-matrix) m00)
-    (set! (.m11 ortho-matrix) m11)
-    (set! (.m22 ortho-matrix) m22)
-    (set! (.m23 ortho-matrix) m23)
-    (set! (.m33 ortho-matrix) m33)
-    (.store ortho-matrix matrix-buffer)
-    (.flip matrix-buffer)
-    (log/info "Using ortho matrix" ortho-matrix)
-    matrix-buffer))
+(defn ortho-matrix-buffer
+  ([viewport-width viewport-height]
+    (ortho-matrix-buffer viewport-width viewport-height (BufferUtils/createFloatBuffer 16)))
+  ([viewport-width viewport-height matrix-buffer]
+    (let [ortho-matrix (doto (Matrix4f.)
+                         (.setIdentity))
+          matrix-buffer (BufferUtils/createFloatBuffer 16)
+          zNear   10
+          zFar   -10
+          m00     (/ 2 viewport-width)
+          m11     (/ 2 viewport-height)
+          m22     (/ -2 (- zFar zNear))
+          m23     (/ (- (+ zFar zNear)) (- zFar zNear))
+          m33     1]
+      (set! (.m00 ortho-matrix) m00)
+      (set! (.m11 ortho-matrix) m11)
+      (set! (.m22 ortho-matrix) m22)
+      (set! (.m23 ortho-matrix) m23)
+      (set! (.m33 ortho-matrix) m33)
+      (.store ortho-matrix matrix-buffer)
+      (.flip matrix-buffer)
+      matrix-buffer)))
 
-(defn position-matrix-buffer [v]
-  (let [matrix (doto (Matrix4f.)
-                       (.setIdentity))
-        matrix-buffer (BufferUtils/createFloatBuffer 16)]
-    (.translate matrix (Vector3f. (get v 0) (get v 1) (get v 2)))
-    (.store matrix matrix-buffer)
-    (.flip matrix-buffer)
-    (log/info "Using position matrix" matrix)
-    matrix-buffer))
+(defn position-matrix-buffer
+  ([v s]
+   (position-matrix-buffer v s (BufferUtils/createFloatBuffer 16)))
+  ([v s matrix-buffer]
+    (let [matrix (doto (Matrix4f.)
+                         (.setIdentity))]
+      (.translate matrix (Vector3f. (get v 0) (get v 1) (get v 2)))
+      (.scale matrix (Vector3f. (get s 0) (get s 1) (get s 2)))
+      (.store matrix matrix-buffer)
+      (.flip matrix-buffer)
+      matrix-buffer)))
 
-(defn- init-buffers [vx vy]
-  (let [vertices              (float-array [vx   vy  0.0,
-                                            0.0  vy  0.0
+(defn- init-buffers []
+  (let [vertices              (float-array [1.0   1.0  0.0,
+                                            0.0  1.0  0.0
                                             0.0, 0.0 0.0
-                                            vx   0.0 0.0])
+                                            1.0   0.0 0.0])
         texture-coords        (float-array [1.0 1.0
                                             0.0 1.0
                                             0.0 0.0
@@ -460,6 +465,7 @@
                            ^int rows
                            ^int texture-columns
                            ^int texture-rows
+                           font-textures
                            normal-font
                            antialias
                            character-map-cleared
@@ -508,28 +514,53 @@
              (fn [cm] (assoc-in cm [y x :bg-color] bg))))
   (get-key-chan [_]
     key-chan)
-  (apply-font! [_ windows-font else-font size smooth]
-    (reset! normal-font
-            (if (= (LWJGLUtil/getPlatform) LWJGLUtil/PLATFORM_WINDOWS)
-              (make-font windows-font Font/PLAIN size)
-              (make-font else-font Font/PLAIN size)))
-    (reset! antialias smooth))
+  (apply-font! [this windows-font else-font size smooth]
+    (locking this
+      (reset! normal-font
+              (if (= (LWJGLUtil/getPlatform) LWJGLUtil/PLATFORM_WINDOWS)
+                (make-font windows-font Font/PLAIN size)
+                (make-font else-font Font/PLAIN size)))
+      (let [{:keys [screen-width
+                    screen-height
+                    character-width
+                    character-height
+                    font-texture-width
+                    font-texture-height
+                    font-texture-image]} (get @font-textures (font-key @normal-font))]
+      (log/info "screen size" screen-width "x" screen-height)
+        (Display/makeCurrent)
+        (Display/setDisplayMode (DisplayMode. screen-width screen-height))
+        (swap! font-textures update (font-key @normal-font) (fn [m] (assoc m :font-texture (texture-id font-texture-image))))
+        (Display/releaseContext))
+      (reset! antialias smooth))
+      ;TODO: resize screen (and bind texture?)
+      )
   (set-cursor! [_ xy]
     (reset! cursor-xy xy))
   (refresh! [this]
-    (let [{{:keys [vertices-vbo-id vertices-count texture-coords-vbo-id]} :buffers
-           {:keys [font-texture glyph-texture fg-texture bg-texture]} :textures
-           program-id :program-id
-           {:keys [u-MVMatrix u-PMatrix u-font u-glyphs u-fg u-bg font-size term-dim font-tex-dim
-                   font-texture-width font-texture-height glyph-tex-dim glyph-texture-width glyph-texture-height]} :uniforms
-           {:keys [^ByteBuffer glyph-image-data
-                   ^ByteBuffer fg-image-data
-                   ^ByteBuffer bg-image-data]} :data
-           :keys [p-matrix-buffer mv-matrix-buffer char-width char-height]} gl
-          glyph-image-data glyph-image-data
-          fg-image-data fg-image-data
-          bg-image-data bg-image-data]
-      (locking this
+    (locking this
+      (let [{{:keys [vertices-vbo-id vertices-count texture-coords-vbo-id]} :buffers
+             {:keys [font-texture glyph-texture fg-texture bg-texture]} :textures
+             program-id :program-id
+             {:keys [u-MVMatrix u-PMatrix u-font u-glyphs u-fg u-bg font-size term-dim font-tex-dim
+                     font-texture-width font-texture-height glyph-tex-dim glyph-texture-width glyph-texture-height]} :uniforms
+             {:keys [^ByteBuffer glyph-image-data
+                     ^ByteBuffer fg-image-data
+                     ^ByteBuffer bg-image-data]} :data
+             :keys [p-matrix-buffer mv-matrix-buffer character-width character-height]} gl
+            glyph-image-data glyph-image-data
+            fg-image-data fg-image-data
+            bg-image-data bg-image-data
+            {:keys [screen-width
+                    screen-height
+                    character-width
+                    character-height
+                    font-texture-width
+                    font-texture-height
+                    font-texture]} (get @font-textures (font-key @normal-font))]
+        (assert (not (nil? font-texture-width)) "font-texture-width nil")
+        (assert (not (nil? font-texture-height)) "font-texture-height")
+        (assert (not (nil? font-texture)) "font-texture nil")
         ;; Update glyph texture in buffers
         (.clear glyph-image-data)
         (.clear fg-image-data)
@@ -574,12 +605,14 @@
         (.flip fg-image-data)
         (.flip bg-image-data)
         (Display/makeCurrent)
+        (GL11/glViewport 0 0 screen-width screen-height)
         (GL11/glClearColor 0.0 0.0 1.0 1.0)
         (GL11/glClear (bit-or GL11/GL_COLOR_BUFFER_BIT GL11/GL_DEPTH_BUFFER_BIT))
-
         (GL20/glUseProgram program-id)
-        (GL20/glUniformMatrix4 u-PMatrix false p-matrix-buffer)
-        (GL20/glUniformMatrix4 u-MVMatrix false mv-matrix-buffer)
+        (GL20/glUniformMatrix4 u-PMatrix false (ortho-matrix-buffer screen-width screen-height p-matrix-buffer))
+        (GL20/glUniformMatrix4 u-MVMatrix false (position-matrix-buffer [(- (/ screen-width 2)) (- (/ screen-height 2)) -1.0 0.0]
+                                                                        [screen-width screen-height 1.0]
+                                                                        mv-matrix-buffer))
         ; Setup vertex buffer
         ;(GL15/glBindBuffer GL15/GL_ARRAY_BUFFER, vertices-vbo-id)
         (except-gl-errors (str "vbo bind - glBindBuffer" vertices-vbo-id))
@@ -602,7 +635,7 @@
         (GL20/glUniform1i u-fg 2)
         (GL20/glUniform1i u-bg 3)
         (except-gl-errors "uniformli bind")
-        (GL20/glUniform2f font-size, char-width char-height)
+        (GL20/glUniform2f font-size, character-width character-height)
         (GL20/glUniform2f term-dim columns rows)
         (GL20/glUniform2f font-tex-dim font-texture-width font-texture-height)
         (GL20/glUniform2f glyph-tex-dim glyph-texture-width glyph-texture-height)
@@ -654,6 +687,7 @@
                            line))
                    cm)))))
 
+
 (defn make-terminal
   ([]
     (make-terminal "" 80 24))
@@ -665,12 +699,48 @@
     (make-terminal title columns rows default-fg-color default-bg-color on-key-fn "Courier New" "Monospaced" 16 true))
   ([title columns rows default-fg-color  default-bg-color on-key-fn windows-font else-font font-size antialias]
     (let [is-windows       (>= (.. System (getProperty "os.name" "") (toLowerCase) (indexOf "win")) 0)
-          normal-font      (atom (if is-windows
-                                   (make-font windows-font Font/PLAIN font-size)
-                                   (make-font else-font Font/PLAIN font-size)))
-          _                    (log/info "Using font" normal-font)
-
+          normal-font      (atom nil)
+          _                (log/info "Using font" normal-font)
+          font-textures    (atom {})
           antialias        (atom antialias)
+          _                (add-watch
+                             normal-font
+                             :font-watcher
+                             (fn [_ _ _ new-font]
+                               (let [font-metrics  ^FontMetrics (.getFontMetrics (Canvas.) new-font)
+                                     char-width                 (.charWidth font-metrics \M)
+                                     char-height                (.getHeight font-metrics)
+                                     screen-width               (* columns char-width)
+                                     screen-height              (* rows char-height)
+                                     ;; create texture atlas as gl texture
+                                     {:keys [font-texture-width
+                                             font-texture-height
+                                             font-texture-image]} (make-glyph-image char-width char-height new-font)]
+                                 (log/info "Created font texture. screen-width" screen-width "screen-height" screen-height)
+                                 (swap! font-textures assoc
+                                                     (font-key new-font)
+                                                     {:screen-width screen-width
+                                                      :screen-height screen-height
+                                                      :character-width char-width
+                                                      :character-height char-height
+                                                      :font-texture-width font-texture-width
+                                                      :font-texture-height font-texture-height
+                                                      :font-texture-image font-texture-image}))))
+          _                  (reset! normal-font (if is-windows
+                                                   (make-font windows-font Font/PLAIN font-size)
+                                                   (make-font else-font Font/PLAIN font-size)))
+          {:keys [screen-width
+                  screen-height
+                  character-width
+                  character-height
+                  font-texture-width
+                  font-texture-height
+                  font-texture-image]} (get @font-textures (font-key @normal-font))
+          _                  (log/info "screen size" screen-width "x" screen-height)
+          _                  (init-display title screen-width screen-height)
+
+          font-texture       (texture-id font-texture-image)
+          _                  (swap! font-textures update (font-key @normal-font) (fn [m] (assoc m :font-texture font-texture)))
           ;; create texture atlas
           character-map-cleared (vec (repeat rows (vec (repeat columns (make-terminal-character \space default-fg-color default-bg-color #{})))))
           character-map         (ref character-map-cleared)
@@ -680,19 +750,7 @@
           on-key-fn        (or on-key-fn
                                (fn default-on-key-fn [k]
                                  (async/put! key-chan k)))
-          font-metrics  ^FontMetrics (.getFontMetrics (Canvas.) @normal-font)
-          char-width                 (.charWidth font-metrics \M)
-          char-height                (.getHeight font-metrics)
-          screen-width               (* columns char-width)
-          screen-height              (* rows char-height)
-          _                  (log/info "screen size" screen-width "x" screen-height)
-          _                  (init-display title screen-width screen-height)
 
-          ;; create texture atlas as gl texture
-          {:keys [font-texture-width
-                  font-texture-height
-                  font-texture-image]} (make-glyph-image char-width char-height normal-font)
-          font-texture          (texture-id font-texture-image)
           ;; create width*height texture that gets updated each frame that determines which character to draw in each cell
           _ (log/info "Creating glyph array")
           next-pow-2-columns (next-pow-2 columns)
@@ -716,8 +774,7 @@
 
           {:keys [vertices-vbo-id
                   vertices-count
-                  texture-coords-vbo-id]}
-                           (init-buffers screen-width screen-height)
+                  texture-coords-vbo-id]} (init-buffers)
           u-MVMatrix                (GL20/glGetUniformLocation pgm-id "uMVMatrix")
           u-PMatrix                 (GL20/glGetUniformLocation pgm-id "uPMatrix")
           u-font                    (GL20/glGetUniformLocation pgm-id "uFont")
@@ -734,15 +791,17 @@
                            rows
                            next-pow-2-columns
                            next-pow-2-rows
+                           font-textures
                            normal-font
                            antialias
                            character-map-cleared
                            character-map
                            cursor-xy
                            {:p-matrix-buffer (ortho-matrix-buffer screen-width screen-height)
-                            :mv-matrix-buffer (position-matrix-buffer [(- (/ screen-width 2)) (- (/ screen-height 2)) -1.0 0.0])
-                            :char-width char-width
-                            :char-height char-height
+                            :mv-matrix-buffer (position-matrix-buffer [(- (/ screen-width 2)) (- (/ screen-height 2)) -1.0 0.0]
+                                                                      [screen-width screen-height 1.0])
+                            :character-width character-width
+                            :character-height character-height
                             :buffers {:vertices-vbo-id vertices-vbo-id
                                       :vertices-count vertices-count
                                       :texture-coords-vbo-id texture-coords-vbo-id}
@@ -856,11 +915,16 @@
   ;; render in background thread
   (let [terminal (make-terminal (format "Robinson - %s@%s" "demo" "glterminal")
                                 80 24 [255 255 255] [5 5 8] nil
-                                "Courier New" "fonts/Boxy/Boxy.ttf" 24 true)
+                                "Courier New" "fonts/Boxy/Boxy.ttf" 18 false)
         last-key (atom nil)
           input-chan (go-loop []
                        (reset! last-key (async/<!! (rat/get-key-chan terminal)))
                        (log/info "got key" (or (str @last-key) "nil"))
+                       (case @last-key
+                         \s (rat/apply-font! terminal "fonts/Boxy/Boxy.ttf" "fonts/Boxy/Boxy.ttf" 12 false)
+                         \m (rat/apply-font! terminal "fonts/Boxy/Boxy.ttf" "fonts/Boxy/Boxy.ttf" 18 false)
+                         \l (rat/apply-font! terminal "fonts/Boxy/Boxy.ttf" "fonts/Boxy/Boxy.ttf" 24 false)
+                         nil)
                        (recur))]
     ;; get key presses in fg thread
     (loop []

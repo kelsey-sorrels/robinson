@@ -90,47 +90,14 @@
   (int (Math/pow 2 (inc (Math/floor (/ (Math/log v) (Math/log 2)))))))
 
 ;; A sequence of [character underline?]
-(def characters
-  (let [c (concat
-            "abcdefghijklmnopqrstuvwxyz"
-            "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-            " ~!@#$%^&*()_-+=[]{}|:;,./<>?'\""
-            "\u005C"
-            "\u00A7"
-            "\u00B7"
-            "\u01C1"
-            "\u039B"
-            "\u03B1"
-            "\u03C2"
-            "\u2206"
-            "\u2225"
-            "\u2240"
-            "\u2248"
-            "\u2500"
-            "\u2502"
-            "\u250C"
-            "\u2514"
-            "\u2518"
-            "\u2534"
-            "\u2584"
-            "\u2592"
-            "\u2648"
-            "\u2665"
-            "\u1D16"
-            "\u255a"
-            "\u2550"
-            "\u255d"
-            "\u2551"
-            "\u2554"
-            "\u2557"
-            "\u00B0"
-            "\u2191")
-       c (concat (map vector c (repeat false))
-                 (map vector c (repeat true)))]
-    c))
+(defn displayable-characters [font]
+  (let [chars (map char (filter (fn [c] (.canDisplay font (char c))) (range 0x0000 0xFFFF)))]
+    (concat (map vector chars (repeat false))
+            (map vector chars (repeat true)))))
 
 ;; A sequence of [[\character underline?] x y] where [x y] is the column,row in the character atlas.
-(def character-idxs
+(defn character-idxs
+  [characters]
   ;(let [character-matrix (partition-all (int (inc (Math/sqrt (count characters)))) characters)]
   (let [characters-per-line (int (inc (Math/sqrt (count characters))))
         character-matrix    (partition-all characters-per-line characters)]
@@ -142,25 +109,28 @@
                                 line))
                  character-matrix))))
 
-(log/info "character-layout" (str (vec character-idxs)))
 
 ;; Map [\character underline?] to [col row]
 (def character->col-row
-  (reduce (fn [m [c-underline? x y]]
-            (assoc m c-underline? [x y]))
-          {}
-          character-idxs))
+  (memoize (fn [character-idxs]
+             (reduce (fn [m [c-underline? x y]]
+                       (assoc m c-underline? [x y]))
+                     {}
+                     character-idxs))))
 
 (defn make-glyph-image
   [char-width char-height font]
   ;; Adjust canvas to fit character atlas size
-  (let [cwidth  (next-pow-2 (* char-width (int (inc (Math/sqrt (count characters))))))
-        cheight (next-pow-2 (* char-height (int (inc (Math/sqrt (count characters))))))
-        width   (max cwidth cheight)
-        height  (max cwidth cheight)
-        antialias true
+  (let [characters (displayable-characters font)
+        cwidth     (next-pow-2 (* char-width (int (inc (Math/sqrt (count characters))))))
+        cheight    (next-pow-2 (* char-height (int (inc (Math/sqrt (count characters))))))
+        width      (max cwidth cheight)
+        height     (max cwidth cheight)
+        antialias  true
         font-metrics  ^FontMetrics (.getFontMetrics (Canvas.) font)]
     (log/info "glyph image width" width "height" height)
+    (log/info "characters" (vec characters))
+    (log/info "character-idxs" (vec (character-idxs characters)))
     (let [texture-image    (BufferedImage. width height BufferedImage/TYPE_4BYTE_ABGR)
           texture-graphics ^Graphics (.getGraphics texture-image)
           white            (Color. 255 255 255 255)]
@@ -174,7 +144,7 @@
         (.setColor (Color. 0 0 0 0))
         (.fillRect 0 0 width height))
       ;; Loop through each character, drawing it
-      (doseq [[[s underline?] col row]  character-idxs]
+      (doseq [[[s underline?] col row]  (character-idxs characters)]
         (let [x ^int (* col char-width)
               y ^int (* (inc row) char-height)
               cx (+ 0 x)
@@ -411,8 +381,8 @@
 
 (defn- init-buffers []
   (let [vertices              (float-array [1.0   1.0  0.0,
-                                            0.0  1.0  0.0
-                                            0.0, 0.0 0.0
+                                            0.0   1.0  0.0
+                                            0.0,  0.0 0.0
                                             1.0   0.0 0.0])
         texture-coords        (float-array [1.0 1.0
                                             0.0 1.0
@@ -456,10 +426,6 @@
    (make-terminal-character character fg-color bg-color style nil nil nil))
   ([character fg-color bg-color style fx-character fx-fg-color fg-bg-color]
    (GLCharacter. character fg-color bg-color style fx-character fx-fg-color fg-bg-color)))
-  #_{:character character
-   :fg-color  fg-color
-   :bg-color  bg-color
-   :style     style}
 
 (defrecord OpenGlTerminal [^int columns
                            ^int rows
@@ -547,7 +513,7 @@
              {:keys [^ByteBuffer glyph-image-data
                      ^ByteBuffer fg-image-data
                      ^ByteBuffer bg-image-data]} :data
-             :keys [p-matrix-buffer mv-matrix-buffer character-width character-height]} gl
+             :keys [p-matrix-buffer mv-matrix-buffer character-width character-height character->col-row]} gl
             glyph-image-data glyph-image-data
             fg-image-data fg-image-data
             bg-image-data bg-image-data
@@ -701,6 +667,7 @@
     (let [is-windows       (>= (.. System (getProperty "os.name" "") (toLowerCase) (indexOf "win")) 0)
           normal-font      (atom nil)
           _                (log/info "Using font" normal-font)
+          boxy-font        (make-font "fonts/Boxy/Boxy.ttf" Font/PLAIN 24)
           font-textures    (atom {})
           antialias        (atom antialias)
           _                (add-watch
@@ -771,7 +738,6 @@
           texture-coords-vertex-attribute (GL20/glGetAttribLocation pgm-id "aTextureCoord")
 
           ;; We just need one vertex buffer, a texture-mapped quad will suffice for drawing the terminal.
-
           {:keys [vertices-vbo-id
                   vertices-count
                   texture-coords-vbo-id]} (init-buffers)
@@ -802,6 +768,7 @@
                                                                       [screen-width screen-height 1.0])
                             :character-width character-width
                             :character-height character-height
+                            :character->col-row (character->col-row (character-idxs (displayable-characters boxy-font)))
                             :buffers {:vertices-vbo-id vertices-vbo-id
                                       :vertices-count vertices-count
                                       :texture-coords-vbo-id texture-coords-vbo-id}

@@ -15,6 +15,7 @@
             #?@(:clj (
                 [taoensso.timbre :as log]
                 [robinson.swingterminal :as swingterminal]
+                [robinson.glterminal :as glterminal]
                 [robinson.macros :as rm]
                 [rockpick.core :as rpc]
                 [clojure.stacktrace :as st]
@@ -279,12 +280,18 @@
         _         (log/info "Using font settings" font)
         terminal  (or screen
                       #?(:clj
-                         (swingterminal/make-terminal (format "Robinson - %s@%s" user-id version)
-                                                      80 24 [255 255 255] [5 5 8] nil
-                                                      (get font :windows-font)
-                                                      (get font :else-font)
-                                                      (get font :font-size)
-                                                      (get font :antialias))
+                         (or (glterminal/make-terminal (format "Robinson - %s@%s" user-id version)
+                                                       80 24 [255 255 255] [5 5 8] nil
+                                                       (get font :windows-font)
+                                                       (get font :else-font)
+                                                       (get font :font-size)
+                                                       (get font :antialias))
+                             (swingterminal/make-terminal (format "Robinson - %s@%s" user-id version)
+                                                          80 24 [255 255 255] [5 5 8] nil
+                                                          (get font :windows-font)
+                                                          (get font :else-font)
+                                                          (get font :font-size)
+                                                          (get font :antialias)))
                          :cljs
                          (webglterminal/make-terminal 80 24 [255 255 255] [0 0 0] nil
                                                   (get font :windows-font)

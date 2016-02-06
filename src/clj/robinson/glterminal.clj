@@ -154,6 +154,7 @@
           ;(println "drawing" s "@" x y "underline?" underline?)
           (doto texture-graphics
             (.setColor white)
+            (.setClip cx (+ (- cy char-height) (.getDescent font-metrics)) char-width char-height)
             (.drawString (str s) cx cy)))
         (when underline?
           (let [y (dec y)]
@@ -164,7 +165,7 @@
                          (+ x char-width)
                          y))))))
       ;; cleanup texture resource
-      ;(ImageIO/write texture-image "jpg", (File. "glyph-texture.jpg"))
+      (ImageIO/write texture-image "jpg", (File. "glyph-texture.jpg"))
       (.dispose texture-graphics)
       {:font-texture-width width
        :font-texture-height height

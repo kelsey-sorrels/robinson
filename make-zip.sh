@@ -41,6 +41,8 @@ cp -R data   target/robinson-$VERSION/
 cp -R fonts  target/robinson-$VERSION/
 cp -R images target/robinson-$VERSION/
 cp -R quests target/robinson-$VERSION/
+cp -R resources target/robinson-$VERSION/
+cp -R target/native target/robinson-$VERSION/natives
 mkdir     target/robinson-$VERSION/log
 mkdir     target/robinson-$VERSION/save
 

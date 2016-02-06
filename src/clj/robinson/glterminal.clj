@@ -34,6 +34,19 @@
 (set! *warn-on-reflection* true)
 (set! *unchecked-math* true)
 
+(defmacro with-gl-context
+  "Executes exprs in an implicit do, while holding the monitor of x and aquiring/releasing the OpenGL context.
+  Will release the monitor of x in all circumstances."
+  [x & body]
+  `(let [lockee# ~x]
+     (try
+       (monitor-enter lockee#)
+       (Display/makeCurrent)
+       ~@body
+       (finally
+         (Display/releaseContext)
+         (monitor-exit lockee#)))))
+
 (defn convert-key-code [event-char event-key on-key-fn]
   ;; Cond instead of case. For an unknown reason, case does not match event-key to Keyboard/* constants.
   ;; Instead it always drops to the default case
@@ -266,6 +279,23 @@
     (.close input-stream)
     bytebuf))
 
+;; Extract native libs and setup system properties
+(defn init-natives []
+  ;(System/setProperty "java.library.path", (.getAbsolutePath (File. "natives")))
+  (condp = [(LWJGLUtil/getPlatform) (.endsWith (System/getProperty "os.arch") "64")]
+    [LWJGLUtil/PLATFORM_LINUX false]
+      (System/setProperty "org.lwjgl.librarypath", (.getAbsolutePath (File. "natives/linux/x86")))
+      [LWJGLUtil/PLATFORM_LINUX true]
+      (System/setProperty "org.lwjgl.librarypath", (.getAbsolutePath (File. "natives/linux/x86_64")))
+    [LWJGLUtil/PLATFORM_MACOSX false]
+      (System/setProperty "org.lwjgl.librarypath", (.getAbsolutePath (File. "natives/macosx/x86")))
+    [LWJGLUtil/PLATFORM_MACOSX false]
+      (System/setProperty "org.lwjgl.librarypath", (.getAbsolutePath (File. "natives/macosx/x86_64")))
+    [LWJGLUtil/PLATFORM_WINDOWS false]
+      (System/setProperty "org.lwjgl.librarypath", (.getAbsolutePath (File. "natives/windows/x86")))
+    [LWJGLUtil/PLATFORM_WINDOWS true]
+      (System/setProperty "org.lwjgl.librarypath", (.getAbsolutePath (File. "natives/windows/x86_64")))))
+
 (defn- init-display [title screen-width screen-height]
   (let [pixel-format       (PixelFormat.)
         context-attributes (ContextAttribs. 3 0)
@@ -284,6 +314,8 @@
                                                           (aset icon-array 0 (buffered-image-rgba-byte-buffer icon-image-16))
                                                           (aset icon-array 1 (buffered-image-rgba-byte-buffer icon-image-32))
                                                           icon-array))]
+    ;; init-natives must be called before the Display is created
+     (init-natives)
      (Display/setDisplayMode (DisplayMode. screen-width screen-height))
      (Display/setTitle title)
      (Display/setIcon icon-array)
@@ -351,7 +383,7 @@
   ([viewport-width viewport-height matrix-buffer]
     (let [ortho-matrix (doto (Matrix4f.)
                          (.setIdentity))
-          matrix-buffer (BufferUtils/createFloatBuffer 16)
+          matrix-buffer matrix-buffer
           zNear   10
           zFar   -10
           m00     (/ 2 viewport-width)
@@ -482,7 +514,7 @@
   (get-key-chan [_]
     key-chan)
   (apply-font! [this windows-font else-font size smooth]
-    (locking this
+    (with-gl-context this
       (reset! normal-font
               (if (= (LWJGLUtil/getPlatform) LWJGLUtil/PLATFORM_WINDOWS)
                 (make-font windows-font Font/PLAIN size)
@@ -494,18 +526,17 @@
                     font-texture-width
                     font-texture-height
                     font-texture-image]} (get @font-textures (font-key @normal-font))]
-      (log/info "screen size" screen-width "x" screen-height)
-        (Display/makeCurrent)
-        (Display/setDisplayMode (DisplayMode. screen-width screen-height))
-        (swap! font-textures update (font-key @normal-font) (fn [m] (assoc m :font-texture (texture-id font-texture-image))))
-        (Display/releaseContext))
-      (reset! antialias smooth))
-      ;TODO: resize screen (and bind texture?)
-      )
+        (log/info "screen size" screen-width "x" screen-height)
+        (try
+          (Display/setDisplayMode (DisplayMode. screen-width screen-height))
+          (swap! font-textures update (font-key @normal-font) (fn [m] (assoc m :font-texture (texture-id font-texture-image))))
+          (catch Throwable t
+            (log/error "Eror changing font" t))))
+      (reset! antialias smooth)))
   (set-cursor! [_ xy]
     (reset! cursor-xy xy))
   (refresh! [this]
-    (locking this
+    (with-gl-context this
       (let [{{:keys [vertices-vbo-id vertices-count texture-coords-vbo-id]} :buffers
              {:keys [font-texture glyph-texture fg-texture bg-texture]} :textures
              program-id :program-id
@@ -571,63 +602,70 @@
         (.flip glyph-image-data)
         (.flip fg-image-data)
         (.flip bg-image-data)
-        (Display/makeCurrent)
-        (GL11/glViewport 0 0 screen-width screen-height)
-        (GL11/glClearColor 0.0 0.0 1.0 1.0)
-        (GL11/glClear (bit-or GL11/GL_COLOR_BUFFER_BIT GL11/GL_DEPTH_BUFFER_BIT))
-        (GL20/glUseProgram program-id)
-        (GL20/glUniformMatrix4 u-PMatrix false (ortho-matrix-buffer screen-width screen-height p-matrix-buffer))
-        (GL20/glUniformMatrix4 u-MVMatrix false (position-matrix-buffer [(- (/ screen-width 2)) (- (/ screen-height 2)) -1.0 0.0]
-                                                                        [screen-width screen-height 1.0]
-                                                                        mv-matrix-buffer))
-        ; Setup vertex buffer
-        ;(GL15/glBindBuffer GL15/GL_ARRAY_BUFFER, vertices-vbo-id)
-        (except-gl-errors (str "vbo bind - glBindBuffer" vertices-vbo-id))
-        (GL20/glEnableVertexAttribArray 0);pos-vertex-attribute)
-        (except-gl-errors "vbo bind - glEnableVertexAttribArray")
-        ;;(GL20/glVertexAttribPointer 0 3 GL11/GL_FLOAT false 0 0)
-        (except-gl-errors "vbo bind - glVertexAttribPointer")
-        ; Setup uv buffer
-        ;(GL15/glBindBuffer GL15/GL_ARRAY_BUFFER, texture-coords-vbo-id)
-        (GL20/glEnableVertexAttribArray 1);texture-coords-vertex-attribute)
-        ;;(GL20/glVertexAttribPointer 1 2 GL11/GL_FLOAT false 0 0)
-        (except-gl-errors "texture coords bind")
-        ; Setup font texture
-        (GL13/glActiveTexture GL13/GL_TEXTURE0)
-        (GL11/glBindTexture GL11/GL_TEXTURE_2D font-texture)
-        (GL20/glUniform1i u-font, 0)
-        (except-gl-errors "font texture bind")
-        ; Setup uniforms for glyph, fg, bg, textures
-        (GL20/glUniform1i u-glyphs 1)
-        (GL20/glUniform1i u-fg 2)
-        (GL20/glUniform1i u-bg 3)
-        (except-gl-errors "uniformli bind")
-        (GL20/glUniform2f font-size, character-width character-height)
-        (GL20/glUniform2f term-dim columns rows)
-        (GL20/glUniform2f font-tex-dim font-texture-width font-texture-height)
-        (GL20/glUniform2f glyph-tex-dim glyph-texture-width glyph-texture-height)
-        (except-gl-errors "uniform2f bind")
-        (except-gl-errors "gl(en/dis)able")
-        ; Send updated glyph texture to gl
-        (GL13/glActiveTexture GL13/GL_TEXTURE1)
-        (GL11/glBindTexture GL11/GL_TEXTURE_2D glyph-texture)
-        (GL11/glTexImage2D GL11/GL_TEXTURE_2D 0 GL30/GL_RGBA8UI texture-columns texture-rows 0 GL30/GL_RGBA_INTEGER GL11/GL_UNSIGNED_BYTE glyph-image-data)
-        (except-gl-errors "glyph texture data")
-        ; Send updated fg texture to gl
-        (GL13/glActiveTexture GL13/GL_TEXTURE2)
-        (GL11/glBindTexture GL11/GL_TEXTURE_2D fg-texture)
-        (GL11/glTexImage2D GL11/GL_TEXTURE_2D 0 GL11/GL_RGBA texture-columns texture-rows 0 GL11/GL_RGBA GL11/GL_UNSIGNED_BYTE fg-image-data)
-        (except-gl-errors "fg color texture data")
-        ; Send updated bg texture to gl
-        (GL13/glActiveTexture GL13/GL_TEXTURE3)
-        (GL11/glBindTexture GL11/GL_TEXTURE_2D bg-texture)
-        (GL11/glTexImage2D GL11/GL_TEXTURE_2D 0 GL11/GL_RGBA texture-columns texture-rows 0 GL11/GL_RGBA GL11/GL_UNSIGNED_BYTE bg-image-data)
-        (GL11/glDrawArrays GL11/GL_QUADS 0 vertices-count)
-        (except-gl-errors "bg color texture data")
-        (except-gl-errors "end of refresh")
-        ;(Display/sync 60)
-        (Display/update)
-        (Display/releaseContext))))
+        (try
+          (GL11/glViewport 0 0 screen-width screen-height)
+          (except-gl-errors (str "glViewport " screen-width screen-height))
+          (GL11/glClearColor 0.0 0.0 1.0 1.0)
+          (except-gl-errors (str "glClearColor  " 0.0 0.0 1.0 1.0))
+          (GL11/glClear (bit-or GL11/GL_COLOR_BUFFER_BIT GL11/GL_DEPTH_BUFFER_BIT))
+          (except-gl-errors (str "glClear  " (bit-or GL11/GL_COLOR_BUFFER_BIT GL11/GL_DEPTH_BUFFER_BIT)))
+          (GL20/glUseProgram program-id)
+          (GL20/glUniformMatrix4 u-PMatrix false (ortho-matrix-buffer screen-width screen-height p-matrix-buffer))
+          (except-gl-errors (str "u-PMatrix - glUniformMatrix4  " u-PMatrix))
+          (GL20/glUniformMatrix4 u-MVMatrix false (position-matrix-buffer [(- (/ screen-width 2)) (- (/ screen-height 2)) -1.0 0.0]
+                                                                          [screen-width screen-height 1.0]
+                                                                          mv-matrix-buffer))
+          (except-gl-errors (str "u-MVMatrix - glUniformMatrix4  " u-MVMatrix))
+          ; Setup vertex buffer
+          ;(GL15/glBindBuffer GL15/GL_ARRAY_BUFFER, vertices-vbo-id)
+          (except-gl-errors (str "vbo bind - glBindBuffer " vertices-vbo-id))
+          (GL20/glEnableVertexAttribArray 0);pos-vertex-attribute)
+          (except-gl-errors "vbo bind - glEnableVertexAttribArray")
+          ;;(GL20/glVertexAttribPointer 0 3 GL11/GL_FLOAT false 0 0)
+          (except-gl-errors "vbo bind - glVertexAttribPointer")
+          ; Setup uv buffer
+          ;(GL15/glBindBuffer GL15/GL_ARRAY_BUFFER, texture-coords-vbo-id)
+          (GL20/glEnableVertexAttribArray 1);texture-coords-vertex-attribute)
+          ;;(GL20/glVertexAttribPointer 1 2 GL11/GL_FLOAT false 0 0)
+          (except-gl-errors "texture coords bind")
+          ; Setup font texture
+          (GL13/glActiveTexture GL13/GL_TEXTURE0)
+          (GL11/glBindTexture GL11/GL_TEXTURE_2D font-texture)
+          (GL20/glUniform1i u-font, 0)
+          (except-gl-errors "font texture bind")
+          ; Setup uniforms for glyph, fg, bg, textures
+          (GL20/glUniform1i u-glyphs 1)
+          (GL20/glUniform1i u-fg 2)
+          (GL20/glUniform1i u-bg 3)
+          (except-gl-errors "uniformli bind")
+          (GL20/glUniform2f font-size, character-width character-height)
+          (GL20/glUniform2f term-dim columns rows)
+          (GL20/glUniform2f font-tex-dim font-texture-width font-texture-height)
+          (GL20/glUniform2f glyph-tex-dim glyph-texture-width glyph-texture-height)
+          (except-gl-errors "uniform2f bind")
+          (except-gl-errors "gl(en/dis)able")
+          ; Send updated glyph texture to gl
+          (GL13/glActiveTexture GL13/GL_TEXTURE1)
+          (GL11/glBindTexture GL11/GL_TEXTURE_2D glyph-texture)
+          (GL11/glTexImage2D GL11/GL_TEXTURE_2D 0 GL30/GL_RGBA8UI texture-columns texture-rows 0 GL30/GL_RGBA_INTEGER GL11/GL_UNSIGNED_BYTE glyph-image-data)
+          (except-gl-errors "glyph texture data")
+          ; Send updated fg texture to gl
+          (GL13/glActiveTexture GL13/GL_TEXTURE2)
+          (GL11/glBindTexture GL11/GL_TEXTURE_2D fg-texture)
+          (GL11/glTexImage2D GL11/GL_TEXTURE_2D 0 GL11/GL_RGBA texture-columns texture-rows 0 GL11/GL_RGBA GL11/GL_UNSIGNED_BYTE fg-image-data)
+          (except-gl-errors "fg color texture data")
+          ; Send updated bg texture to gl
+          (GL13/glActiveTexture GL13/GL_TEXTURE3)
+          (GL11/glBindTexture GL11/GL_TEXTURE_2D bg-texture)
+          (GL11/glTexImage2D GL11/GL_TEXTURE_2D 0 GL11/GL_RGBA texture-columns texture-rows 0 GL11/GL_RGBA GL11/GL_UNSIGNED_BYTE bg-image-data)
+          (GL11/glDrawArrays GL11/GL_QUADS 0 vertices-count)
+          (except-gl-errors "bg color texture data")
+          (except-gl-errors "end of refresh")
+          ;(Display/sync 60)
+          (Display/update)
+          (except-gl-errors "end of update")
+          (catch Error e
+            (log/error "OpenGL error:" e))))))
   (clear! [_]
     (ref-set character-map character-map-cleared))
   (set-fx-fg! [_ x y fg]
@@ -811,17 +849,21 @@
                          :options {:recursive true}}])
       ;; Poll keyboard in background thread and offer input to key-chan
       (future (go-loop []
-                (locking terminal
-                  (Display/processMessages)
-                  (when (Display/isCloseRequested)
-                    (System/exit 0))
-                  (loop []
-                    (when (Keyboard/next)
-                      (when (Keyboard/getEventKeyState)
-                        (let [character (Keyboard/getEventCharacter)
-                              key       (Keyboard/getEventKey)]
-                          (convert-key-code character key on-key-fn)))
-                      (recur))))
+                (with-gl-context terminal
+                  (try
+                    (Display/processMessages)
+                    (when (Display/isCloseRequested)
+                      (Display/destroy)
+                      (System/exit 0))
+                    (loop []
+                      (when (Keyboard/next)
+                        (when (Keyboard/getEventKeyState)
+                          (let [character (Keyboard/getEventCharacter)
+                                key       (Keyboard/getEventKey)]
+                            (convert-key-code character key on-key-fn)))
+                        (recur)))
+                    (catch Exception e
+                      (log/error "Error getting keyboard input" e))))
                 (Thread/sleep 1)
                 (recur)))
       terminal)))

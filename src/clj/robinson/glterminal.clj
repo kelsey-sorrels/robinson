@@ -848,7 +848,7 @@
                                              (make-font filename Font/PLAIN font-size)))
                          :options {:recursive true}}])
       ;; Poll keyboard in background thread and offer input to key-chan
-      (future (go-loop []
+      (go-loop []
                 (with-gl-context terminal
                   (try
                     (Display/processMessages)
@@ -865,7 +865,7 @@
                     (catch Exception e
                       (log/error "Error getting keyboard input" e))))
                 (Thread/sleep 1)
-                (recur)))
+                (recur))
       terminal)))
 
 (defn- put-string

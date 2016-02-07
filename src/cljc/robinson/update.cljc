@@ -2442,7 +2442,7 @@
           player-pos-vec         [(-> player :pos :x) (-> player :pos :y)]
           width                  (get-in state [:world :width])
           height                 (get-in state [:world :height])
-          bounds                 [(- width) (- height) width height]
+          bounds                 (vec (mapcat (fn [t] (map (partial + t) npc-pos-vec)) [(- threshold) threshold]))
           _ (log/info "pathfinding bounds" bounds)
           get-type               (memoize (fn [x y] (do
                                                       ;(log/debug "traversable?" x y "type" (get-in place [y x :type]))

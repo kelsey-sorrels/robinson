@@ -281,6 +281,8 @@
       (doseq [effect @effects]
         (raat/apply-effect! effect terminal))
       (rat/refresh! terminal))
+    (process-messages [this]
+      (rat/process-messages terminal))
     AAnimatedTerminal
     (swap-effect-seq! [this f] (swap! effects f))
     (swap-matching-effect-or-filter!

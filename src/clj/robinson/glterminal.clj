@@ -22,7 +22,7 @@
     (org.lwjgl.opengl Display ContextAttribs
                       PixelFormat DisplayMode Util
                       GL11 GL12 GL13 GL15 GL20 GL30)
-    (org.lwjgl.input Keyboard)
+    (org.lwjgl.input Keyboard Mouse)
     (org.lwjgl.util.vector Matrix4f Vector3f)
     (de.matthiasmann.twl.utils PNGDecoder PNGDecoder$Format)
     (java.io File FileInputStream FileOutputStream)
@@ -281,6 +281,7 @@
 
 ;; Extract native libs and setup system properties
 (defn init-natives []
+  (when (.exists (File. "natives"))
   ;(System/setProperty "java.library.path", (.getAbsolutePath (File. "natives")))
   (condp = [(LWJGLUtil/getPlatform) (.endsWith (System/getProperty "os.arch") "64")]
     [LWJGLUtil/PLATFORM_LINUX false]
@@ -294,25 +295,21 @@
     [LWJGLUtil/PLATFORM_WINDOWS false]
       (System/setProperty "org.lwjgl.librarypath", (.getAbsolutePath (File. "natives/windows/x86")))
     [LWJGLUtil/PLATFORM_WINDOWS true]
-      (System/setProperty "org.lwjgl.librarypath", (.getAbsolutePath (File. "natives/windows/x86_64")))))
+      (System/setProperty "org.lwjgl.librarypath", (.getAbsolutePath (File. "natives/windows/x86_64"))))))
 
 (defn- init-display [title screen-width screen-height]
   (let [pixel-format       (PixelFormat.)
         context-attributes (ContextAttribs. 3 0)
-        icon-image-16      (ImageIO/read (File. "images/icon-16x16.png"))
-        icon-image-32      (ImageIO/read (File. "images/icon-32x32.png"))
-        icon-image-128     (ImageIO/read (File. "images/icon-128x128.png"))
         icon-array         (condp = (LWJGLUtil/getPlatform)
                              LWJGLUtil/PLATFORM_LINUX (let [icon-array (make-array ByteBuffer 1)]
-                                                        ;(aset icon-array 0 (buffered-image-rgba-byte-buffer icon-image-32))
                                                         (aset icon-array 0 (png-bytes "images/icon-32x32.png"))
                                                         icon-array)
                              LWJGLUtil/PLATFORM_MACOSX  (let [icon-array (make-array ByteBuffer 1)]
-                                                          (aset icon-array 0 (buffered-image-rgba-byte-buffer icon-image-128))
+                                                          (aset icon-array 0 (png-bytes "images/icon-128x128.png"))
                                                           icon-array)
                              LWJGLUtil/PLATFORM_WINDOWS (let [icon-array (make-array ByteBuffer 2)]
-                                                          (aset icon-array 0 (buffered-image-rgba-byte-buffer icon-image-16))
-                                                          (aset icon-array 1 (buffered-image-rgba-byte-buffer icon-image-32))
+                                                          (aset icon-array 0 (png-bytes "images/icon-16x16.png"))
+                                                          (aset icon-array 1 (png-bytes "images/icon-32x32.png"))
                                                           icon-array))]
     ;; init-natives must be called before the Display is created
      (init-natives)
@@ -320,6 +317,8 @@
      (Display/setTitle title)
      (Display/setIcon icon-array)
      (Display/create pixel-format context-attributes)
+     (Keyboard/create)
+     (Mouse/create)
      (log/info "byte-buffer" icon-array)
      (GL11/glViewport 0 0 screen-width screen-height)))
 
@@ -662,7 +661,7 @@
           (except-gl-errors "bg color texture data")
           (except-gl-errors "end of refresh")
           ;(Display/sync 60)
-          (Display/update)
+          (Display/update false)
           (except-gl-errors "end of update")
           (catch Error e
             (log/error "OpenGL error:" e))))))
@@ -690,7 +689,17 @@
                                       :fx-bg-color nil
                                       :fx-character nil))
                            line))
-                   cm)))))
+                   cm))))
+  (process-messages [this]
+    (with-gl-context this
+    ; Process messages in the main thread rather than the input go-loop due to Windows only allowing
+    ; input on the thread that created the window
+    (Display/processMessages)
+    (when (Display/isCloseRequested)
+      (log/info "Destroying display")
+      (future (Display/destroy))
+      (log/info "Exiting")
+      (System/exit 0)))))
 
 
 (defn make-terminal
@@ -851,10 +860,6 @@
       (go-loop []
                 (with-gl-context terminal
                   (try
-                    (Display/processMessages)
-                    (when (Display/isCloseRequested)
-                      (Display/destroy)
-                      (System/exit 0))
                     (loop []
                       (when (Keyboard/next)
                         (when (Keyboard/getEventKeyState)

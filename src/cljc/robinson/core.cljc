@@ -41,19 +41,18 @@
   ; start with initial state from setup-fn
   (main/setup
     (fn [state]
-      (go-loop [state state]
+      (loop [state state]
         (reset! state-ref state)
         (if (nil? state)
           (do
             (log/info "Got nil state. Exiting.")
             #?@(:clj (
-                (async/>! done-chan true)
+                (async/>!! done-chan true)
                 (System/exit 0))
                 :cljs (
                 nil)))
           ; tick the old state through the tick-fn to get the new state
           (let [state (try
-                        (log/info "Core current-state" (rw/current-state state))
                         (let [keyin (cond
                                       (= (rw/current-state state) :sleep)
                                       (do
@@ -63,12 +62,22 @@
                                         :advance
                                       :else
                                         (let [key-chan (aterminal/get-key-chan (state :screen))]
-                                          (log/info  "waiting for key-chan")
-                                          (async/<! key-chan)))]
-                             (log/info "Core got key" keyin)
-                             (if keyin
-                               (main/tick state keyin)
-                               state))
+                                          ;(log/info  "waiting for key-chan")
+                                          (first
+                                            (async/alts!!
+                                              [(async/timeout 10)
+                                               key-chan]))))]
+                          (if keyin
+                            (do
+                              (log/info "Core current-state" (rw/current-state state))
+                              (log/info "Core got key" keyin)
+                              (let [new-state (main/tick state keyin)]
+                                (log/info "End of game loop")
+                                new-state))
+                            (do
+                              ;(log/info "Processing messages in thread:" (.getName (Thread/currentThread)))
+                              (aterminal/process-messages (state :screen))
+                              state)))
                         #?(:clj
                            (catch Throwable ex
                              (log/error ex)
@@ -78,7 +87,6 @@
                           (catch js/Error ex
                              (log/error (str ex))
                              state)))]
-            (log/info "End of game loop")
             (recur state))))
                
       ;#?(:clj

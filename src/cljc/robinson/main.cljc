@@ -303,6 +303,7 @@
                                                     [(ranimation/make-vignette-filter terminal)
                                                      (ranimation/make-night-tint-filter terminal)])]
     (raat/start! animated-terminal 15)
+    (log/info "Creating terminal in thread:" (.getName (Thread/currentThread)))
     (log/info "Loaded data:" (keys data))
     ;; set log level
     (log/set-level! (get settings :log-level))

@@ -566,7 +566,7 @@
                 [col c]    (map-indexed vector line)]
           ;;(log/info "row" row "col" col "c" c)
           (let [chr        (or (get c :fx-character) (get c :character))
-                highlight  (= @cursor-xy [col row])
+                highlight  (= @cursor-xy [col (- rows row 1)])
                 [fg-r fg-g fg-b] (if highlight
                                    (or (get c :fx-bg-color)  (get c :bg-color))
                                    (or (get c :fx-fg-color)  (get c :fg-color)))

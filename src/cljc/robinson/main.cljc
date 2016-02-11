@@ -135,9 +135,9 @@
               _ (log/info "update-state-fn" update-state-fn)
               new-state       (rm/log-time "update-state" (update-state-fn state keyin))]
           (when new-state
-            (do
+            (ranimation/reset-state! (get state :screen) new-state)
             (render-state new-state)
-            (save-state new-state)))
+            (save-state new-state))
           ;(async/thread (spit "save/world.edn" (with-out-str (pprint (new-state :world)))))
           new-state))
       #?(:clj
@@ -299,6 +299,8 @@
                                                   (get font :font-size))))
         animated-terminal (ranimation/wrap-terminal terminal
                                                     [ranimation/make-rand-fg-effect
+                                                     ranimation/make-blink-effect
+                                                     #_ranimation/make-transform-effect
                                                      #_ranimation/make-rain-effect]
                                                     [(ranimation/make-vignette-filter terminal)
                                                      (ranimation/make-night-tint-filter terminal)])]

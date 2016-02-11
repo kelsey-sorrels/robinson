@@ -65,7 +65,7 @@
                                           ;(log/info  "waiting for key-chan")
                                           (first
                                             (async/alts!!
-                                              [(async/timeout 10)
+                                              [(async/timeout 1)
                                                key-chan]))))]
                           (if keyin
                             (do

@@ -17,6 +17,9 @@
   (swap-mask! [this f])
   (reset-mask! [this mask]))
 
+(defprotocol ARequiresState
+  (reset-state! [this state]))
+
 (defprotocol APalette
   (update-palette! [this f]))
 

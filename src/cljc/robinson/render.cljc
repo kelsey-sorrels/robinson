@@ -5,6 +5,7 @@
             [robinson.random :as rr]
             [robinson.math :as rmath]
             [robinson.color :as rcolor]
+            [robinson.renderutil :as rutil]
             [robinson.scores :as rs]
             [robinson.startgame :as sg]
             [robinson.popover :as rpop]
@@ -310,7 +311,7 @@
     (let [characters (markup->chars (int (rmath/ceil x)) (int (rmath/ceil y)) s fg bg style)]
       (put-chars screen characters)
       ;; apply mask
-      (ranimation/set-mask! screen #{:rain} (map rc/pos->xy characters) false)))))
+      (ranimation/set-mask! screen #{:rain :transform} (map rc/pos->xy characters) false)))))
 
 (def single-border
   {:horizontal   "\u2500"
@@ -338,17 +339,17 @@
                 bottom-right]} characters]
     ;; render top and bottom
     (doseq [dx (range (dec width))]
-      (put-string screen (+ x dx 1) y horizontal fg bg #{} {:mask #{:rain}})
-      (put-string screen (+ x dx 1) (+ y height) horizontal fg bg #{} {:mask #{:rain}}))
+      (put-string screen (+ x dx 1) y horizontal fg bg #{} {:mask #{:rain :transform}})
+      (put-string screen (+ x dx 1) (+ y height) horizontal fg bg #{} {:mask #{:rain :transform}}))
     ;; render left and right
     (doseq [dy (range (dec height))]
-      (put-string screen x (+ y dy 1) vertical fg bg #{} {:mask #{:rain}})
-      (put-string screen (+ x width) (+ y dy 1) vertical fg bg #{} {:mask #{:rain}}))
+      (put-string screen x (+ y dy 1) vertical fg bg #{} {:mask #{:rain :transform}})
+      (put-string screen (+ x width) (+ y dy 1) vertical fg bg #{} {:mask #{:rain :transform}}))
     ;; render tl, tr, bl, br
-    (put-string screen x y top-left fg bg #{} {:mask #{:rain}})
-    (put-string screen (+ x width) y top-right fg bg #{} {:mask #{:rain}})
-    (put-string screen x (+ y height) bottom-left fg bg #{} {:mask #{:rain}})
-    (put-string screen (+ x width) (+ y height) bottom-right fg bg #{} {:mask #{:rain}})))
+    (put-string screen x y top-left fg bg #{} {:mask #{:rain :transform}})
+    (put-string screen (+ x width) y top-right fg bg #{} {:mask #{:rain :transform}})
+    (put-string screen x (+ y height) bottom-left fg bg #{} {:mask #{:rain :transform}})
+    (put-string screen (+ x width) (+ y height) bottom-right fg bg #{} {:mask #{:rain :transform}})))
 
 (defn render-rect-single-border
   [screen x y width height fg bg]
@@ -361,7 +362,7 @@
 (defn render-vertical-border
   [screen x y height fg bg]
   (doseq [dy (range (dec height))]
-    (put-string screen x (+ y dy) "\u2502" fg bg #{} {:mask #{:rain}})))
+    (put-string screen x (+ y dy) "\u2502" fg bg #{} {:mask #{:rain :transform}})))
 
 (defn render-list
   "Render a sequence of lines padding to height if necessary.
@@ -370,8 +371,8 @@
   (doseq [i (range height)]
     (if (< i (count items))
       (let [item (nth items i)]
-        (render-line screen x (+ y i) width (get item :s) (get item :fg) (get item :bg) (get item :style) {:mask #{:rain}}))
-      (render-line screen x (+ y i) (dec width) " " :white :white #{} {:mask #{:rain}}))))
+        (render-line screen x (+ y i) width (get item :s) (get item :fg) (get item :bg) (get item :style) {:mask #{:rain :transform}}))
+      (render-line screen x (+ y i) (dec width) " " :white :white #{} {:mask #{:rain :transform}}))))
 
 (defn wrap-chars [x y width height characters fg bg style]
   (let [words  (take-nth 2 (partition-by (fn [ch] (= " " (get ch :c))) characters))
@@ -539,8 +540,8 @@
       (put-string screen (+ x i) y       "\u2584" (if (contains? #{0 6} i)
                                                     :black
                                                     (nth column 0))
-                                                  :black #{:underline} {:mask #{:rain}})
-      (put-string screen (+ x i) (inc y) "\u2584" (nth column 2) (nth column 1) #{:underline} {:mask #{:rain}}))))
+                                                  :black #{:underline} {:mask #{:rain :transform}})
+      (put-string screen (+ x i) (inc y) "\u2584" (nth column 2) (nth column 1) #{:underline} {:mask #{:rain :transform}}))))
 
 (defn render-hud
   [state]
@@ -548,15 +549,15 @@
     (render-atmo state 37 21)
     ;; render statuses
     (let [screen (state :screen)]
-      (put-string screen 37 23 " "      :black :gray #{} {:mask #{:rain}})
-      (put-string screen 38 23 "\u2665" (if (player-wounded? state) :red :black) :gray #{} {:mask #{:rain}})
-      (put-string screen 39 23 " "      :black :gray #{} {:mask #{:rain}})
-      (put-string screen 40 23 "\u2665" (if (player-poisoned? state) :green :black) :gray #{} {:mask #{:rain}})
-      (put-string screen 41 23 " "      :black :gray #{} {:mask #{:rain}})
-      (put-string screen 42 23 "\u2665" (if (player-infected? state) :yellow :black) :gray #{} {:mask #{:rain}})
-      (put-string screen 43 23 " "      :black :gray #{} {:mask #{:rain}})
+      (put-string screen 37 23 " "      :black :gray #{} {:mask #{:rain :transform}})
+      (put-string screen 38 23 "\u2665" (if (player-wounded? state) :red :black) :gray #{} {:mask #{:rain :transform}})
+      (put-string screen 39 23 " "      :black :gray #{} {:mask #{:rain :transform}})
+      (put-string screen 40 23 "\u2665" (if (player-poisoned? state) :green :black) :gray #{} {:mask #{:rain :transform}})
+      (put-string screen 41 23 " "      :black :gray #{} {:mask #{:rain :transform}})
+      (put-string screen 42 23 "\u2665" (if (player-infected? state) :yellow :black) :gray #{} {:mask #{:rain :transform}})
+      (put-string screen 43 23 " "      :black :gray #{} {:mask #{:rain :transform}})
       (when (= (current-state state) :sleep)
-        (put-string screen 38 20 (format "Zzz%s" (apply str (repeat (mod (get-time state) 3) "." ))) #{} {:mask #{:rain}}))
+        (put-string screen 38 20 (format "Zzz%s" (apply str (repeat (mod (get-time state) 3) "." ))) #{} {:mask #{:rain :transform}}))
       ;; render will to live and hp
       (let [wtl        (get-in state [:world :player :will-to-live])
             max-wtl    (get-in state [:world :player :max-will-to-live])
@@ -576,7 +577,7 @@
                                              :black
                                              :red)
                                            #{:underline}
-                                           {:mask #{:rain}}))
+                                           {:mask #{:rain :transform}}))
         (doseq [x (range (- 80 43))]
           (put-string screen (+ 44 x) 23 "\u2584"
                                            (if (> (/ x (- 80 44))
@@ -588,7 +589,7 @@
                                              :black
                                              :blue)
                                            #{:underline}
-                                           {:mask #{:rain}})))))
+                                           {:mask #{:rain :transform}})))))
     ;    (int (-> state :world :player :hp))
     ;    (-> state :world :player :max-hp)
     ;    (apply str (interpose " " (-> state :world :player :status)))
@@ -1222,80 +1223,9 @@
                                                                  (= (cell :discovered) current-time))
                                                           (if (contains? #{:chest :artifact-chest} (get cell :type))
                                                             ["■" :dark-beige :black]
-                                                            (case (or (-> cell-items first :type)
-                                                                      (-> cell-items first :id))
-                                                              :knife           [")"]
-                                                              :obsidian-knife  [")"]
-                                                              :obsidian-axe    [")"]
-                                                              :obsidian-spear  [")"]
-                                                              :flint-knife     [")"]
-                                                              :flint-axe       [")"]
-                                                              :flint-spear     [")"]
-                                                              :sharpened-stick [")"]
-                                                              :plant-fiber     [","]
-                                                              :sword           [")"]
-                                                              :armor           ["["]
-                                                              :shoes           ["!"]
-                                                              :fishing-pole    ["/"]
-                                                              :match           ["/"]
-                                                              :flashlight      [","]
-                                                              :bandage         ["&"]
-                                                              :saw             [","]
-                                                              :tarp            [","]
-                                                              :spellbook       ["+"]
-                                                              :scroll          ["?"]
-                                                              :rock            ["*"]
-                                                              :obsidian        ["*"]
-                                                              :coconut         ["*" :brown :black]
-                                                              :unhusked-coconut
-                                                                               ["*" :brown  :black]
-                                                              :empty-coconut   ["*" :brown  :black]
-                                                              :red-fruit       ["*" :red    :black]
-                                                              :orange-fruit    ["*" :orange :black]
-                                                              :yellow-fruit    ["*" :yellow :black]
-                                                              :green-fruit     ["*" :green  :black]
-                                                              :blue-fruit      ["*" :blue   :black]
-                                                              :purple-fruit    ["*" :purple :black]
-                                                              :white-fruit     ["*" :white  :black]
-                                                              :black-fruit     ["*" :gray   :black]
-                                                              :bamboo          ["/" :light-green  :black]
-                                                              :stick           ["/" :brown  :black]
-                                                              :grass           ["/" :green  :black]
-                                                              :rope            ["," :green  :black]
-                                                              :log             ["/" :brown  :black #{:bold}]
-                                                              :bedroll         ["_" :white :black]
-                                                              :$               ["$"  :yellow :black #{:bold}]
-                                                              :amulet          ["\"" :blue   :black #{:bold}]
-                                                              :food            ["%"]
-                                                              :fire-plough     [","]
-                                                              :hand-drill      [","]
-                                                              :bow-drill       [","]
-                                                              :jack-o-lantern  ["☻" :orange :black]
-                                                              ;; pirate ship items
-                                                              :spices          ["^"]
-                                                              :sail            ["#"]
-                                                              :dice            ["&"]
-                                                              :blanket         ["#"]
-                                                              :cup             ["&"]
-                                                              :silver-bar      ["$"]
-                                                              :bowl            ["&"]
-                                                              :fork            ["/"]
-                                                              :spoon           ["/"]
-                                                              :rag             ["#"]
-                                                              :cutlass         [")"]
-                                                              :pistol          [")"]
-                                                              :paper-cartridge ["&"]
-                                                              :ale             ["!"]
-                                                              :pirate-clothes  ["["]
-                                                              :navy-uniform    ["["]
-                                                              ;; ruined temple items
-                                                              :jewlery          ["\""]
-                                                              :statue           ["&"]
-                                                              :human-skull      ["☻" :white :black]
-                                                              :gong             ["&"]
-                                                              :stone-tablet     ["&"]
-                                                              :codex            ["&"]
-                                                              ["?"]))
+                                                            [(rutil/item->char (first cell-items))
+                                                             (rutil/item->fg   (first cell-items))
+                                                             :black])
                                                           (case (cell :type)
                                                            :floor           ["·"]
                                                            :open-door       ["-"  :brown  :black #{:bold}]

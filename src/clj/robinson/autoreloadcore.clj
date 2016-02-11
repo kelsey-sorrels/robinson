@@ -66,11 +66,17 @@
                                                   :advance
                                                 :else
                                                 (let [key-chan (aterminal/get-key-chan (state :screen))]
-                                                  (log/info  "waiting for key-chan")
-                                                  (async/<! key-chan)))]
+                                                  ;;(log/info  "waiting for key-chan")
+                                                  (first
+                                                    (async/alts!
+                                                      [(async/timeout 1)
+                                                       key-chan]))))]
                                      (if keyin
                                        ((get-tick-fn) state keyin)
-                                       state))
+                                       (do
+                                         ;(log/info "Processing messages in thread:" (.getName (Thread/currentThread)))
+                                         (aterminal/process-messages (state :screen))
+                                         state)))
                                   (catch Throwable e
                                     (log/error e)
                                     state))]

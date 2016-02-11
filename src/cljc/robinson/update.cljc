@@ -26,6 +26,7 @@
                                     magic-up magic-right magic-inventory]]
             [robinson.worldgen :as rworldgen]
             [robinson.lineofsight :as rlos]
+            [robinson.renderutil :as rutil]
             [robinson.feedback :as rf]
             robinson.macros
             #?@(:clj (
@@ -96,6 +97,30 @@
   (log/info "inc-time = false")
   (rc/dissoc-in state [:world :inc-time]))
 
+(defn conj-fx-transform
+  [state from to item]
+  {:pre [(vector? from)
+         (vector? to)
+         (= (count from) (count to) 2)]}
+  (let [new-state (rc/conj-in state [:fx :transform] {:from-xy from
+                                      :to-xy   to
+                                      :ch      (rutil/item->char item)
+                                      :fg      (rutil/item->fg item)})]
+    (log/info "conj-fx-transform" (keys new-state) (get new-state :fx))
+    new-state))
+
+(defn clear-fx-transform
+  [state]
+  (assoc-in state [:fx :transform] []))
+
+(defn conj-fx-blink [state xy]
+  (rc/conj-in state [:fx :blink] {:xy xy}))
+
+(defn clear-fx-blink
+  [state]
+  (assoc-in state [:fx :blink] []))
+
+
 (defn next-font
   [state]
   (let [fonts           (sort-by :name (get state :fonts))
@@ -136,10 +161,11 @@
 
 (defn backspace-name
   [state]
-  (update-in state
-             [:world :player :name]
-             (fn [player-name]
-               (clojure.string/join (butlast player-name)))))
+  (update-in
+    state
+    [:world :player :name]
+    (fn [player-name]
+      (clojure.string/join (butlast player-name)))))
 
 (defn append-name
   [state key-in]
@@ -150,15 +176,16 @@
                    key-in
                  :else nil)]
     (if key-in
-      (update-in state
-                 [:world :player :name]
-                 (fn [player-name]
-                   (if (and (< (count player-name) 20)
-                            (or (<= (int \A) (int key-in) (int \Z))
-                            (<= (int \a) (int key-in) (int \z))
-                            (contains? #{\- \ } key-in)))
-                      (str player-name key-in)
-                      player-name)))
+      (update-in
+        state
+        [:world :player :name]
+        (fn [player-name]
+          (if (and (< (count player-name) 20)
+                   (or (<= (int \A) (int key-in) (int \Z))
+                   (<= (int \a) (int key-in) (int \z))
+                   (contains? #{\- \ } key-in)))
+             (str player-name key-in)
+             player-name)))
       state)))
 
 (defn toggle-hotkey
@@ -1897,7 +1924,8 @@
           (free-cursor)
           (rcombat/attack [:world :player] (rnpc/npc->keys state (get obj :npc)) item)
           (rw/conj-cell-items (get-in obj [:pos :x]) (get-in obj [:pos :y]) item)
-          (rp/dec-item-count (get item :id)))
+          (rp/dec-item-count (get item :id))
+          (conj-fx-transform (rp/player-xy state) [target-x target-y] item))
       (contains? obj :cell)
         ;; drop item into cell before hitting colliding cell
         (as-> state state
@@ -1910,7 +1938,8 @@
                                   y
                                   (if (get item :rot-time)
                                     (assoc item :rot-time (inc (rw/get-time state)))
-                                    item))))
+                                    item))
+              (conj-fx-transform (rp/player-xy state) [x y] item)))
           (rp/dec-item-count state (get item :id)))
       (contains? obj :trap)
         ;; remove item and trigger trap
@@ -1918,13 +1947,15 @@
           free-cursor
           (rc/append-log "You throw it at the trap.")
           (rt/trigger-if-trap [target-x target-y])
-          (rp/dec-item-count (get item :id)))
+          (rp/dec-item-count (get item :id))
+          (conj-fx-transform (rp/player-xy state) [target-x target-y] item))
       :else
         ;; didn't hit anything, drop into cell at max-distance
         (-> state
           (free-cursor)
           (rw/conj-cell-items target-x target-y item)
-          (rp/dec-item-count (get item :id))))))
+          (rp/dec-item-count (get item :id))
+          (conj-fx-transform (rp/player-xy state) [target-x target-y] item)))))
 
 (defn craft-weapon
   [state]
@@ -3556,8 +3587,16 @@
             command-seq (get-in state [:world :command-seq] [])
             _ (log/debug "type of npcs" (type (get-in state [:world :npcs])))
             new-time  (inc (get-in state [:world :time]))
-            state     (rc/clear-ui-hint state)
+            state     (-> state
+                        rc/clear-ui-hint
+                        clear-fx-transform
+                        clear-fx-blink)
+                            
             state     (transition-fn state)
+            ;; apply effect on :enter-name state
+            state     (if (= (rw/current-state state) :enter-name)
+                        (conj-fx-blink state [(+ 25 (count (get-in state [:world :player :name]))) 7])
+                        state)
             ;; some states conditionally advance time by calling (advance-time state)
             ;; check to see if this has occurred if advance-time was not set in the state transition entry
             advance-time (if-not advance-time

@@ -12,6 +12,7 @@
             [robinson.color :as rcolor]
             [robinson.viewport :as rv :refer [cells-in-viewport]]
             [robinson.world :as rw]
+            [robinson.lineofsight :as rlos]
             [robinson.aterminal :as rat]
             [robinson.aanimatedterminal :as raat]
             [overtone.at-at :as atat])
@@ -22,6 +23,7 @@
                robinson.aanimatedterminal.AEffect
                robinson.aanimatedterminal.AFilter
                robinson.aanimatedterminal.AMask
+               robinson.aanimatedterminal.ARequiresState
                robinson.aanimatedterminal.APalette)))
 
 
@@ -199,10 +201,91 @@
 
 (defn reset-rain-mask! [terminal v]
   (raat/swap-matching-effect-or-filter! terminal
-                              (fn [fx] (= (raat/id fx) :rain))
+                              (fn [fx] (log/info "testing" fx) (= (raat/id fx) :rain))
                               (fn [rain-fx]
                                 (let [[columns rows] (rat/get-size terminal)]
                                   (raat/reset-mask! rain-fx (repeat rows (repeat columns v)))))))
+
+(defn transform [terminal mask state transforms]
+  (log/info (format "drawing %d transforms" (count transforms)))
+  (doseq [transform transforms]
+    (let [path (rlos/line-segment-fast-without-endpoints (get transform :from-xy) (get transform :to-xy))
+          n    (int (/ @frame-count 15))]
+      (when (< n (count path))
+        (log/info "n" n "count path" (count path))
+        (let [[vx vy] (rv/world-xy->screen-xy state (nth path n))]
+          (when (or true (get-in mask [vy vx]))
+            (log/info "drawing * @ " vx vy)
+            (rat/set-fx-char! terminal vx vy \*)
+            (rat/set-fx-fg! terminal vx vy (rcolor/color->rgb :white))
+            (rat/set-fx-bg! terminal vx vy (rcolor/color->rgb :black))))))))
+  
+(defrecord TransformEffect
+  [terminal mask state]
+  AId
+  (id [this]
+    :transform)
+  AEffect
+  (apply-effect! [this terminal]
+    (dosync 
+      (when-let [state @state]
+        (transform terminal @mask state (get-in state [:fx :transform])))))
+  AMask
+  (swap-mask! [this f]
+    (swap! mask f)
+    ;(println "=====================")
+    ;(doseq [line @mask]
+    ;  (println (mapv (fn [v] (if v 1 0)) line)))
+    this)
+  (reset-mask! [this new-mask]
+    (reset! mask new-mask)
+    this)
+  ARequiresState
+  (reset-state! [this new-state]
+    (reset! state new-state)
+    this)
+  Object
+  (toString [this]
+    (format "TransformEffect terminal, mask, state")))
+
+(defn make-transform-effect
+  [terminal cell-opts]
+  (let [[vw vh]    (rat/get-size terminal)
+        mask       (atom (repeat vh (repeat vw true)))]
+    (TransformEffect. terminal mask (atom nil))))
+
+(defn blink [terminal state blinks]
+  (log/info (format "drawing %d blinks" (count blinks)))
+  (doseq [blink blinks]
+    (log/info @frame-count (mod @frame-count 15))
+    (when (< (mod @frame-count 15) 7)
+      (let [[vx vy] (get blink :xy)]
+          (log/info "drawing * @ " vx vy)
+          (rat/set-fx-char! terminal vx vy \space)))))
+  
+
+(defrecord BlinkEffect
+  [terminal state]
+  AId
+  (id [this]
+    :blink)
+  AEffect
+  (apply-effect! [this terminal]
+    (dosync 
+      (when-let [state @state]
+        (blink terminal state (get-in state [:fx :blink])))))
+  ARequiresState
+  (reset-state! [this new-state]
+    (reset! state new-state)
+    this)
+  Object
+  (toString [this]
+    (format "BlinkEffect terminal, state")))
+
+(defn make-blink-effect
+  [terminal cell-opts]
+  (let [[vw vh]    (rat/get-size terminal)]
+    (BlinkEffect. terminal (atom nil))))
 
 ;;; Filters
 
@@ -279,7 +362,9 @@
       (reset! frame-count 0)
       (rat/clear-fx! terminal)
       (doseq [effect @effects]
+        (log/info "applying effect" effect)
         (raat/apply-effect! effect terminal))
+      (log/info "done applying effects")
       (rat/refresh! terminal))
     (process-messages [this]
       (rat/process-messages terminal))
@@ -346,8 +431,19 @@
 
 (defn set-palette! [terminal new-palette]
   {:pre [(map? new-palette)]}
-  (raat/swap-matching-effect-or-filter! terminal
-                              (fn [fx] (instance? APalette fx))
-                              (fn [effect]
-                                (raat/update-palette! effect (fn [palette] new-palette)))))
+  (raat/swap-matching-effect-or-filter!
+    terminal
+    (fn [fx] (instance? APalette fx))
+    (fn [effect]
+      (raat/update-palette! effect (fn [palette] new-palette)))))
+
+(defn reset-state! [terminal new-state]
+  {:pre [(get new-state :fx)]}
+  (raat/swap-matching-effect-or-filter!
+    terminal
+    (fn [fx] (instance? ARequiresState fx))
+    (fn [effect]
+      (log/info "reset-state!" effect (get new-state :fx))
+      (raat/reset-state! effect new-state))))
+  
   

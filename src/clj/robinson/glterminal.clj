@@ -290,7 +290,7 @@
       (System/setProperty "org.lwjgl.librarypath", (.getAbsolutePath (File. "natives/linux/x86_64")))
     [LWJGLUtil/PLATFORM_MACOSX false]
       (System/setProperty "org.lwjgl.librarypath", (.getAbsolutePath (File. "natives/macosx/x86")))
-    [LWJGLUtil/PLATFORM_MACOSX false]
+    [LWJGLUtil/PLATFORM_MACOSX true]
       (System/setProperty "org.lwjgl.librarypath", (.getAbsolutePath (File. "natives/macosx/x86_64")))
     [LWJGLUtil/PLATFORM_WINDOWS false]
       (System/setProperty "org.lwjgl.librarypath", (.getAbsolutePath (File. "natives/windows/x86")))

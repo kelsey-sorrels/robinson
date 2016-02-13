@@ -300,6 +300,7 @@
         animated-terminal (ranimation/wrap-terminal terminal
                                                     [ranimation/make-rand-fg-effect
                                                      ranimation/make-blink-effect
+                                                     ranimation/make-blip-effect
                                                      #_ranimation/make-transform-effect
                                                      #_ranimation/make-rain-effect]
                                                     [(ranimation/make-vignette-filter terminal)

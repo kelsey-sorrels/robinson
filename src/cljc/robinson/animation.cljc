@@ -255,14 +255,13 @@
     (TransformEffect. terminal mask (atom nil))))
 
 (defn blink [terminal state blinks]
-  (log/info (format "drawing %d blinks" (count blinks)))
+  ;(log/info (format "drawing %d blinks" (count blinks)))
   (doseq [blink blinks]
     (log/info @frame-count (mod @frame-count 15))
     (when (< (mod @frame-count 15) 7)
       (let [[vx vy] (get blink :xy)]
           (log/info "drawing * @ " vx vy)
           (rat/set-fx-char! terminal vx vy \space)))))
-  
 
 (defrecord BlinkEffect
   [terminal state]
@@ -286,6 +285,48 @@
   [terminal cell-opts]
   (let [[vw vh]    (rat/get-size terminal)]
     (BlinkEffect. terminal (atom nil))))
+
+(defn blip [terminal state blips]
+  (doseq [blip blips]
+    (let [[vx vy] (rv/world-xy->screen-xy state (get blip :xy))]
+      ;(log/info "drawing blip" blip "@" vx vy "frame-count" @frame-count)
+      ;; get the last instant before @frame-count
+      (when-let [instant (->> (get blip :instants)
+                              (filter (fn [instant]
+                                        (< (get instant :time) @frame-count)))
+                              (sort-by (fn [instant]
+                                         (get instant :time)))
+                              last)]
+        ;(log/info "drawing instant" instant)
+        (when-let [ch (get instant :ch)]
+          (rat/set-fx-char! terminal vx vy ch))
+        (when-let [fg (get instant :fg)]
+          (rat/set-fx-fg! terminal vx vy fg))
+        (when-let [bg (get instant :bg)]
+          (rat/set-fx-bg! terminal vx vy bg))))))
+    
+(defrecord BlipEffect
+  [terminal state]
+  AId
+  (id [this]
+    :blip)
+  AEffect
+  (apply-effect! [this terminal]
+    (dosync 
+      (when-let [state @state]
+        (blip terminal state (get-in state [:fx :blip])))))
+  ARequiresState
+  (reset-state! [this new-state]
+    (reset! state new-state)
+    this)
+  Object
+  (toString [this]
+    (format "BlipEffect terminal, state")))
+
+(defn make-blip-effect
+  [terminal cell-opts]
+  (let [[vw vh]    (rat/get-size terminal)]
+    (BlipEffect. terminal (atom nil))))
 
 ;;; Filters
 

@@ -10,6 +10,8 @@
             [robinson.math :as rmath]
             [robinson.characterevents :as ce]
             [robinson.dynamiccharacterproperties :as dcp]
+            [robinson.color :as rcolor]
+            [robinson.fx :as rfx]
             [taoensso.timbre :as log]
             #?@(:clj (
                 [robinson.macros :as rm]
@@ -473,6 +475,18 @@
             (log-with-line state "9")
             (ce/on-hit defender state)
             (log-with-line state "10")
+            ;; show fx
+            (if hit
+              (rfx/conj-fx-blip state (rc/pos->xy (get defender :pos))
+                                      [{:time 0
+                                        :ch \♥
+                                        :fg (rcolor/color->rgb :red)}
+                                       {:time 5}])
+              (rfx/conj-fx-blip state (rc/pos->xy (get defender :pos))
+                                      [{:time 0
+                                        :ch \/
+                                        :fg (rcolor/color->rgb :blue)}
+                                       {:time 5}]))
             ;; some thrown items can stun npcs
             (if (and (= attack-type :thrown-item)
                      hit
@@ -498,6 +512,12 @@
               ((partial ce/on-death defender))
               ;; remove defender
               (rc/remove-in (butlast defender-path) (partial = defender))
+              ;; show fx
+              (rfx/conj-fx-blip (rc/pos->xy (get defender :pos))
+                                [{:time 0
+                                  :ch \☻
+                                  :fg (rcolor/color->rgb :red)}
+                                 {:time 5}])
               ;; maybe add corpse
               (rw/update-cell-items x y
                 (fn [items]

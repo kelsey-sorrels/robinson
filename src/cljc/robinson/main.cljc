@@ -9,13 +9,13 @@
             [robinson.update :as ru]
             [robinson.monstergen :as mg]
             [robinson.render :as rrender]
-            [robinson.aterminal :as aterminal]
+            [zaffre.aterminal :as aterminal]
             [robinson.aanimatedterminal :as raat]
             [robinson.animation :as ranimation]
             #?@(:clj (
                 [taoensso.timbre :as log]
                 [robinson.swingterminal :as swingterminal]
-                [robinson.glterminal :as glterminal]
+                [zaffre.glterminal :as glterminal]
                 [robinson.macros :as rm]
                 [rockpick.core :as rpc]
                 [clojure.stacktrace :as st]
@@ -71,7 +71,7 @@
        (try
          (with-open [o (io/output-stream "save/world.edn")]
            (nippy/freeze-to-out! (DataOutputStream. o) (get state :world)))
-         (catch Throwable e (log/error e)))
+         (catch Throwable e (log/error "Error saving" e)))
        :cljs
        (reset! world-storage (get state :world)))
     ;(as-> state state
@@ -93,7 +93,10 @@
         (let [render-fn (resolve 'robinson.render/render)]
           (render-fn state))
         #?(:clj
-           (catch Throwable e (log/error e))
+           (catch Throwable e
+             (log/error "Error rendering" e)
+             (st/print-stack-trace e)
+             (st/print-cause-trace e))
            :cljs
            (catch js/Error e (log/error e))))
       (recur (async/<! render-chan) #_(async/alt!
@@ -280,12 +283,17 @@
         _         (log/info "Using font settings" font)
         terminal  (or screen
                       #?(:clj
-                         (or (glterminal/make-terminal (format "Robinson - %s@%s" user-id version)
-                                                       80 24 [255 255 255] [5 5 8] nil
-                                                       (get font :windows-font)
-                                                       (get font :else-font)
-                                                       (get font :font-size)
-                                                       (get font :antialias))
+                         (or (glterminal/make-terminal (merge
+                                                         {:title (format "Robinson - %s@%s" user-id version)
+                                                          :columns 80
+                                                          :rows 24
+                                                          :default-fg-color [255 255 255]
+                                                          :default-bg-color [5 5 8]}
+                                                         (select-keys font
+                                                           [:windows-font
+                                                            :else-font
+                                                            :font-size
+                                                            :antialias])))
                              (swingterminal/make-terminal (format "Robinson - %s@%s" user-id version)
                                                           80 24 [255 255 255] [5 5 8] nil
                                                           (get font :windows-font)

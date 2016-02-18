@@ -3,7 +3,7 @@
 ;(set! *warn-on-reflection* true)
 (ns robinson.core
   (:require [robinson.main :as main]
-            [robinson.aterminal :as aterminal]
+            [zaffre.aterminal :as aterminal]
             [robinson.world :as rw]
             #?@(:clj (
                 [clojure.core.async :as async :refer [go go-loop]]
@@ -63,10 +63,7 @@
                                       :else
                                         (let [key-chan (aterminal/get-key-chan (state :screen))]
                                           ;(log/info  "waiting for key-chan")
-                                          (first
-                                            (async/alts!!
-                                              [(async/timeout 1)
-                                               key-chan]))))]
+                                          (async/<!! key-chan)))]
                           (if keyin
                             (do
                               (log/info "Core current-state" (rw/current-state state))
@@ -74,10 +71,7 @@
                               (let [new-state (main/tick state keyin)]
                                 (log/info "End of game loop")
                                 new-state))
-                            (do
-                              ;(log/info "Processing messages in thread:" (.getName (Thread/currentThread)))
-                              (aterminal/process-messages (state :screen))
-                              state)))
+                            state))
                         #?(:clj
                            (catch Throwable ex
                              (log/error ex)

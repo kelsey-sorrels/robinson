@@ -3,7 +3,7 @@
         clojure.stacktrace)
   (:require robinson.main
             [robinson.world :as rw]
-            [robinson.aterminal :as aterminal]
+            [zaffre.aterminal :as aterminal]
             [clojure.core.async :as async :refer [go go-loop]]
             [clojure.tools.nrepl.server :as nreplserver]
             [taoensso.timbre :as log]))
@@ -67,16 +67,10 @@
                                                 :else
                                                 (let [key-chan (aterminal/get-key-chan (state :screen))]
                                                   ;;(log/info  "waiting for key-chan")
-                                                  (first
-                                                    (async/alts!
-                                                      [(async/timeout 1)
-                                                       key-chan]))))]
+                                                  (async/<!! key-chan)))]
                                      (if keyin
                                        ((get-tick-fn) state keyin)
-                                       (do
-                                         ;(log/info "Processing messages in thread:" (.getName (Thread/currentThread)))
-                                         (aterminal/process-messages (state :screen))
-                                         state)))
+                                       state))
                                   (catch Throwable e
                                     (log/error e)
                                     state))]

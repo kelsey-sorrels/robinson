@@ -13,11 +13,11 @@
             [robinson.viewport :as rv :refer [cells-in-viewport]]
             [robinson.world :as rw]
             [robinson.lineofsight :as rlos]
-            [robinson.aterminal :as rat]
+            [zaffre.aterminal :as zat]
             [robinson.aanimatedterminal :as raat]
             [overtone.at-at :as atat])
   #?(:clj
-     (:import  robinson.aterminal.ATerminal
+     (:import  zaffre.aterminal.ATerminal
                robinson.aanimatedterminal.AAnimatedTerminal
                robinson.aanimatedterminal.AId
                robinson.aanimatedterminal.AEffect
@@ -35,7 +35,7 @@
 
 ;; util/helper fns
 (defn nil-grid [terminal]
-  (let [[vw vh]    (rat/get-size terminal)]
+  (let [[vw vh]    (zat/get-size terminal)]
     (repeat vh (vec (repeat vw nil)))))
 
 (defn vignette [opts x y fg]
@@ -85,29 +85,29 @@
   (case cell
     :drop
       (do
-        (rat/set-fx-char! terminal x y \|)
-        (rat/set-fx-fg! terminal x y (rcolor/color->rgb :blue))
-        (rat/set-fx-bg! terminal x y (rcolor/color->rgb :black)))
+        (zat/set-fx-char! terminal x y \|)
+        (zat/set-fx-fg! terminal x y (rcolor/color->rgb :blue))
+        (zat/set-fx-bg! terminal x y (rcolor/color->rgb :black)))
     :splash1
       (do
-        (rat/set-fx-char! terminal x y \*)
-        (rat/set-fx-fg! terminal x y (rcolor/color->rgb :blue))
-        (rat/set-fx-bg! terminal x y (rcolor/color->rgb :black)))
+        (zat/set-fx-char! terminal x y \*)
+        (zat/set-fx-fg! terminal x y (rcolor/color->rgb :blue))
+        (zat/set-fx-bg! terminal x y (rcolor/color->rgb :black)))
     :splash2
       (do
-        (rat/set-fx-char! terminal x y \o)
-        (rat/set-fx-fg! terminal x y (rcolor/color->rgb :blue))
-        (rat/set-fx-bg! terminal x y (rcolor/color->rgb :black)))
+        (zat/set-fx-char! terminal x y \o)
+        (zat/set-fx-fg! terminal x y (rcolor/color->rgb :blue))
+        (zat/set-fx-bg! terminal x y (rcolor/color->rgb :black)))
     :splash3
       (do
-        (rat/set-fx-char! terminal x y \°)
-        (rat/set-fx-fg! terminal x y (rcolor/color->rgb :blue))
-        (rat/set-fx-bg! terminal x y (rcolor/color->rgb :black)))
+        (zat/set-fx-char! terminal x y \°)
+        (zat/set-fx-fg! terminal x y (rcolor/color->rgb :blue))
+        (zat/set-fx-bg! terminal x y (rcolor/color->rgb :black)))
     :splash4
       (do
-        (rat/set-fx-char! terminal x y \·)
-        (rat/set-fx-fg! terminal x y (rcolor/color->rgb :blue))
-        (rat/set-fx-bg! terminal x y (rcolor/color->rgb :black)))
+        (zat/set-fx-char! terminal x y \·)
+        (zat/set-fx-fg! terminal x y (rcolor/color->rgb :blue))
+        (zat/set-fx-bg! terminal x y (rcolor/color->rgb :black)))
     nil))
 
 (defn step-rain!
@@ -135,7 +135,7 @@
         n         (mod (Math/abs (hash (+ x (* 13 y) (* 17 i)))) (count color-ids))
         color-id  (nth color-ids n)
         fg-rgb    (night-tint cell-opts x y (vignette cell-opts x y (rcolor/color->rgb color-id)))]
-    (rat/set-fx-fg! terminal x y fg-rgb)))
+    (zat/set-fx-fg! terminal x y fg-rgb)))
 
 (defrecord RandFgEffect
   [terminal mask opts palette]
@@ -144,7 +144,7 @@
     :rand-fg)
   AEffect
   (apply-effect! [this terminal]
-    (let [[vw vh]    (rat/get-size terminal)]
+    (let [[vw vh]    (zat/get-size terminal)]
       (doseq [[y line mask-line] (map vector (range) @opts @mask)
               [x cell-opts mask?] (map vector (range) line mask-line)
               :let               [cell-palette  (get cell-opts :palette)]
@@ -157,7 +157,7 @@
 
 (defn make-rand-fg-effect
   [terminal opts]
-  (let [[vw vh]   (rat/get-size terminal)
+  (let [[vw vh]   (zat/get-size terminal)
         mask      (atom (repeat vh (repeat vw true)))
         palette   (atom {})]
     (RandFgEffect. terminal mask opts palette)))
@@ -169,7 +169,7 @@
     :rain)
   AEffect
   (apply-effect! [this terminal]
-    (let [[vw vh]    (rat/get-size terminal)]
+    (let [[vw vh]    (zat/get-size terminal)]
       (dosync
         (step-rain! rain-state vw vh)
         (doseq [[y line mask-line] (map vector (range) @rain-state @mask)
@@ -189,7 +189,7 @@
 
 (defn make-rain-effect
   [terminal cell-opts]
-  (let [[vw vh]    (rat/get-size terminal)
+  (let [[vw vh]    (zat/get-size terminal)
         mask       (atom (repeat vh (repeat vw true)))
         rain-state (atom (repeat vh (vec (repeat vw nil))))]
     (RainEffect. terminal mask rain-state)))
@@ -201,9 +201,9 @@
 
 (defn reset-rain-mask! [terminal v]
   (raat/swap-matching-effect-or-filter! terminal
-                              (fn [fx] (log/info "testing" fx) (= (raat/id fx) :rain))
+                              (fn [fx] (= (raat/id fx) :rain))
                               (fn [rain-fx]
-                                (let [[columns rows] (rat/get-size terminal)]
+                                (let [[columns rows] (zat/get-size terminal)]
                                   (raat/reset-mask! rain-fx (repeat rows (repeat columns v)))))))
 
 (defn transform [terminal mask state transforms]
@@ -216,9 +216,9 @@
         (let [[vx vy] (rv/world-xy->screen-xy state (nth path n))]
           (when (or true (get-in mask [vy vx]))
             (log/info "drawing * @ " vx vy)
-            (rat/set-fx-char! terminal vx vy \*)
-            (rat/set-fx-fg! terminal vx vy (rcolor/color->rgb :white))
-            (rat/set-fx-bg! terminal vx vy (rcolor/color->rgb :black))))))))
+            (zat/set-fx-char! terminal vx vy \*)
+            (zat/set-fx-fg! terminal vx vy (rcolor/color->rgb :white))
+            (zat/set-fx-bg! terminal vx vy (rcolor/color->rgb :black))))))))
   
 (defrecord TransformEffect
   [terminal mask state]
@@ -250,7 +250,7 @@
 
 (defn make-transform-effect
   [terminal cell-opts]
-  (let [[vw vh]    (rat/get-size terminal)
+  (let [[vw vh]    (zat/get-size terminal)
         mask       (atom (repeat vh (repeat vw true)))]
     (TransformEffect. terminal mask (atom nil))))
 
@@ -261,7 +261,7 @@
     (when (< (mod @frame-count 15) 7)
       (let [[vx vy] (get blink :xy)]
           (log/info "drawing * @ " vx vy)
-          (rat/set-fx-char! terminal vx vy \space)))))
+          (zat/set-fx-char! terminal vx vy \space)))))
 
 (defrecord BlinkEffect
   [terminal state]
@@ -283,7 +283,7 @@
 
 (defn make-blink-effect
   [terminal cell-opts]
-  (let [[vw vh]    (rat/get-size terminal)]
+  (let [[vw vh]    (zat/get-size terminal)]
     (BlinkEffect. terminal (atom nil))))
 
 (defn blip [terminal state blips]
@@ -299,11 +299,11 @@
                               last)]
         ;(log/info "drawing instant" instant)
         (when-let [ch (get instant :ch)]
-          (rat/set-fx-char! terminal vx vy ch))
+          (zat/set-fx-char! terminal vx vy ch))
         (when-let [fg (get instant :fg)]
-          (rat/set-fx-fg! terminal vx vy fg))
+          (zat/set-fx-fg! terminal vx vy fg))
         (when-let [bg (get instant :bg)]
-          (rat/set-fx-bg! terminal vx vy bg))))))
+          (zat/set-fx-bg! terminal vx vy bg))))))
     
 (defrecord BlipEffect
   [terminal state]
@@ -325,7 +325,7 @@
 
 (defn make-blip-effect
   [terminal cell-opts]
-  (let [[vw vh]    (rat/get-size terminal)]
+  (let [[vw vh]    (zat/get-size terminal)]
     (BlipEffect. terminal (atom nil))))
 
 ;;; Filters
@@ -378,7 +378,7 @@
   [terminal started opts effects filters schedule-pool]
   ATerminal
     ;; pass ATerminal methods through to terminal
-    (get-size [this] (rat/get-size terminal))
+    (get-size [this] (zat/get-size terminal))
     (put-chars! [this characters]
       (swap! opts
              (fn [opts]
@@ -389,26 +389,23 @@
                        (vec opts)
                        (group-by :y characters))))
       (let [characters (mapv (fn [ch] (apply-filters (get ch :opts {})  ch @filters)) characters)]
-        (rat/put-chars! terminal characters)))
-    (get-key-chan [this] (rat/get-key-chan terminal))
-    (set-fg! [this x y fg] (rat/set-fg! terminal x y fg))
-    (set-bg! [this x y bg] (rat/set-bg! terminal x y bg))
+        (zat/put-chars! terminal characters)))
+    (get-key-chan [this] (zat/get-key-chan terminal))
+    (set-fg! [this x y fg] (zat/set-fg! terminal x y fg))
+    (set-bg! [this x y bg] (zat/set-bg! terminal x y bg))
     (apply-font! [this windows-font else-font size antialias]
-       (rat/apply-font! terminal windows-font else-font size antialias))
-    (set-cursor! [this xy] (rat/set-cursor! terminal xy))
+       (zat/apply-font! terminal windows-font else-font size antialias))
+    (set-cursor! [this x y] (zat/set-cursor! terminal x y))
     (clear! [this]
       (reset! opts (nil-grid terminal))
-      (rat/clear! terminal))
+      (zat/clear! terminal))
     (refresh! [this]
       (reset! frame-count 0)
-      (rat/clear-fx! terminal)
+      (zat/clear-fx! terminal)
       (doseq [effect @effects]
-        (log/info "applying effect" effect)
         (raat/apply-effect! effect terminal))
       (log/info "done applying effects")
-      (rat/refresh! terminal))
-    (process-messages [this]
-      (rat/process-messages terminal))
+      (zat/refresh! terminal))
     AAnimatedTerminal
     (swap-effect-seq! [this f] (swap! effects f))
     (swap-matching-effect-or-filter!
@@ -435,10 +432,10 @@
                       (fn []
                         (dosync
                           (swap! frame-count inc)
-                          (rat/clear-fx! terminal)
+                          (zat/clear-fx! terminal)
                           (doseq [effect @effects]
                             (raat/apply-effect! effect terminal))
-                          (rat/refresh! terminal)))
+                          (zat/refresh! terminal)))
                       schedule-pool)))))
 
 (defn wrap-terminal
@@ -484,7 +481,6 @@
     terminal
     (fn [fx] (instance? ARequiresState fx))
     (fn [effect]
-      (log/info "reset-state!" effect (get new-state :fx))
       (raat/reset-state! effect new-state))))
   
   

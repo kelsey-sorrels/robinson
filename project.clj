@@ -40,6 +40,7 @@
                  [rockpick "0.1.0-SNAPSHOT"]
                  [aaron-santos/tinter "0.1.1-SNAPSHOT"]
                  [aaron-santos/clj-tiny-astar "0.1.1-SNAPSHOT"]
+                 [zaffre "0.2.0-SNAPSHOT"]
                  [dorothy "0.0.6"]
                  [com.taoensso/nippy "2.9.0"]
                  [com.taoensso/timbre "4.0.2"]

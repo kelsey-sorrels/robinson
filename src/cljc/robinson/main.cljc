@@ -14,7 +14,6 @@
             [robinson.animation :as ranimation]
             #?@(:clj (
                 [taoensso.timbre :as log]
-                [robinson.swingterminal :as swingterminal]
                 [zaffre.glterminal :as glterminal]
                 [robinson.macros :as rm]
                 [rockpick.core :as rpc]
@@ -293,13 +292,7 @@
                                                            [:windows-font
                                                             :else-font
                                                             :font-size
-                                                            :antialias])))
-                             (swingterminal/make-terminal (format "Robinson - %s@%s" user-id version)
-                                                          80 24 [255 255 255] [5 5 8] nil
-                                                          (get font :windows-font)
-                                                          (get font :else-font)
-                                                          (get font :font-size)
-                                                          (get font :antialias)))
+                                                            :antialias]))))
                          :cljs
                          (webglterminal/make-terminal 80 24 [255 255 255] [0 0 0] nil
                                                   (get font :windows-font)

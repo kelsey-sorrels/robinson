@@ -6,7 +6,7 @@
             [robinson.scores :as rs]
             [robinson.world :as rw]
             [robinson.viewport :as rv]
-            [robinson.aterminal :as rat]
+            [zaffre.aterminal :as zat]
             [robinson.describe :as rdesc]
             [robinson.traps :as rt]
             [robinson.dialog :as rdiag]
@@ -51,7 +51,7 @@
                 [taoensso.timbre :as log :include-macros true]
                 [goog.string.format])))
   #?(:clj
-      (:import robinson.aterminal.ATerminal)))
+      (:import zaffre.aterminal.ATerminal)))
 
 
 (defn format [s & args]
@@ -126,7 +126,7 @@
         screen ^robinson.aterminal.ATerminal (get state :screen)]
     (when-not (= current-font (get (rc/get-settings state) :font))
       ;; send new settings to screen
-      (rat/apply-font! screen
+      (zat/apply-font! screen
                        (get font :windows-font)
                        (get font :else-font)
                        (get font :font-size)
@@ -195,18 +195,10 @@
                                                                      blocking? (rlos/cell-blocking? cell)]
                                                                  ;(log/info "cell place-id" (str (rv/xy->place-id state x y)))
                                                                  ;(log/debug "blocking?" x y cell blocking?)
-                                                                 blocking?)))
-        _ (log/info "visible-cells" visible-cells)
-        dwtl             (/ (reduce (fn [acc [x y]] (+ acc (- (dec new-time)
-                                                              (get (rw/get-cell state x y) :discovered (- new-time 10000)))))
-                                 0 visible-cells)
-                            888000)
-        _                (log/info "delta will-to-live" (float dwtl))
-        will-to-live     (min (+ will-to-live dwtl)
-                              max-will-to-live)]
+                                                                 blocking?)))]
+  (log/info "visible-cells" visible-cells)
   (as-> state state
-    (rw/assoc-cells state (zipmap visible-cells (repeat {:discovered new-time})))
-    (assoc-in state [:world :player :will-to-live] will-to-live))))
+    (rw/assoc-cells state (zipmap visible-cells (repeat {:discovered new-time}))))))
 
 (defn add-starting-inventory
   [state selected-hotkeys]
@@ -2112,7 +2104,7 @@
       (-> state
         (rp/player-update-wtl
           (fn [will-to-live]
-            (let [dwtl       0.001 ;; you've been on the island. It sucks and you want to get off.
+            (let [dwtl       0.0 ;; you've been on the island. It sucks and you want to get off.
                   ;; if it is night and the player is not within range of a fire, things are extra tough.
                   dwtl       (if (and (rw/is-night? state)
                                       (not-any? #(= (get % :type) :fire)

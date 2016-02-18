@@ -95,7 +95,7 @@
                :freshwater-hole :saltwater-hole} cell-type))
 
 (defn move-cursor
-  [^robinson.aterminal.ATerminal screen x y]
+  [^zaffre.aterminal.ATerminal screen x y]
   (log/info "moving cursor to" x y)
   (zat/set-cursor! screen x y))
 
@@ -176,13 +176,13 @@
   (count (markup->chars 0 0 s)))
 
 (defn put-string
-  ([^robinson.aterminal.ATerminal screen x y string]
+  ([^zaffre.aterminal.ATerminal screen x y string]
      (put-string screen (int (rmath/ceil x)) (int (rmath/ceil y)) string :white :black #{}))
-  ([^robinson.aterminal.ATerminal screen x y string fg bg]
+  ([^zaffre.aterminal.ATerminal screen x y string fg bg]
      (put-string screen (int (rmath/ceil x)) (int (rmath/ceil y)) string fg bg #{}))
-  ([^robinson.aterminal.ATerminal screen x y string fg bg styles]
+  ([^zaffre.aterminal.ATerminal screen x y string fg bg styles]
      (put-string screen (int (rmath/ceil x)) (int (rmath/ceil y)) string fg bg #{} {}))
-  ([^robinson.aterminal.ATerminal screen x y string fg bg styles mask-opts]
+  ([^zaffre.aterminal.ATerminal screen x y string fg bg styles mask-opts]
    {:pre [(clojure.set/superset? #{:underline :bold} styles)]}
    (let [fg   (rcolor/color->rgb fg)
          bg   (rcolor/color->rgb bg)
@@ -201,28 +201,28 @@
      (ranimation/set-mask! screen unmask (map vector (range x (+ x (count string))) (repeat y)) true))))
       
 (defn put-chars
-  [^robinson.aterminal.ATerminal screen characters]
+  [^zaffre.aterminal.ATerminal screen characters]
   {:pre [(every? (fn [ch] (char? (get ch :c))) characters)]}
   (zat/put-chars! screen characters))
 
 (defn set-fg
-  [^robinson.aterminal.ATerminal screen x y fg]
+  [^zaffre.aterminal.ATerminal screen x y fg]
   (zat/set-fg! screen x y fg))
 
 (defn set-bg
-  [^robinson.aterminal.ATerminal screen x y bg]
+  [^zaffre.aterminal.ATerminal screen x y bg]
   (zat/set-bg! screen x y bg))
 
 (defn get-size
-  [^robinson.aterminal.ATerminal screen]
+  [^zaffre.aterminal.ATerminal screen]
   (zat/get-size screen))
 
 (defn refresh
-  [^robinson.aterminal.ATerminal screen]
+  [^zaffre.aterminal.ATerminal screen]
   (zat/refresh! screen))
 
 (defn clear
-  [^robinson.aterminal.ATerminal screen]
+  [^zaffre.aterminal.ATerminal screen]
   (zat/clear! screen))
 
 (defn class->rgb

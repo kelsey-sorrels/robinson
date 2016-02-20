@@ -855,17 +855,17 @@
     (assoc-in [:world :current-state] :normal)
     (rc/append-log "You apply the bandage.")))
 
-(defn apply-flashlight
+(defn apply-lantern
   [state]
   {:pre  [(not (nil? state))]
    :post [(not (nil? %))]}
-  (let [item         (rp/inventory-id->item state :flashlight)
+  (let [item         (rp/inventory-id->item state :lantern)
         item-state   (get item :state :off)]
     (case item-state
       :on
       (-> state
-        (rp/update-inventory-item-by-id :flashlight (fn [item] (assoc item :state :off)))
-        (rc/append-log "You turn the flashlight off.")
+        (rp/update-inventory-item-by-id :lantern (fn [item] (assoc item :state :off)))
+        (rc/append-log "You turn the lantern off.")
         (inc-time)
         ;TODO: remove?
         (update-visibility)
@@ -873,8 +873,8 @@
       :off
       (if (pos? (get item :charge))
         (-> state
-          (rp/update-inventory-item-by-id :flashlight (fn [item] (assoc item :state :on)))
-          (rc/append-log "You turn the flashlight on.")
+          (rp/update-inventory-item-by-id :lantern (fn [item] (assoc item :state :on)))
+          (rc/append-log "You turn the lantern on.")
           (inc-time)
           ;TODO: remove?
           (update-visibility)
@@ -882,7 +882,7 @@
         (-> state
           ;TODO: remove?
           (inc-time)
-          (rc/append-log state "You try turning the flashlight on, but nothing happens."))))))
+          (rc/append-log state "You try turning the lantern on, but nothing happens."))))))
 
 (defn wear-clothes
   [state selected-item]
@@ -910,8 +910,8 @@
             (cond
               (= id :bandage)
                 (apply-bandage state)
-              (= id :flashlight)
-                (apply-flashlight state)
+              (= id :lantern)
+                (apply-lantern state)
               (= id :fishing-pole)
                 (-> state
                   (rw/assoc-current-state :apply-item-normal)
@@ -2350,18 +2350,18 @@
         (rc/append-log "The infection has cleared up." :yellow))
       state)))
 
-(defn decrease-flashlight-charge
+(defn decrease-lantern-charge
   [state]
   {:pre [(not (nil? state))]
    :post [(not (nil? %))]}
-  (if-let [flashlight (rp/inventory-id->item state :flashlight)]
-    (rp/update-inventory-item-by-id state :flashlight (fn [flashlight] (as-> flashlight flashlight
-                                                                         (if (= (get flashlight :state :off) :on)
-                                                                             (update-in flashlight [:charge] dec)
-                                                                             flashlight)
-                                                                         (if (neg? (get flashlight :charge))
-                                                                             (assoc flashlight :state :off)
-                                                                             flashlight))))
+  (if-let [lantern (rp/inventory-id->item state :lantern)]
+    (rp/update-inventory-item-by-id state :lantern (fn [lantern] (as-> lantern lantern
+                                                                    (if (= (get lantern :state :off) :on)
+                                                                        (update-in lantern [:charge] dec)
+                                                                        lantern)
+                                                                    (if (neg? (get lantern :charge))
+                                                                        (assoc lantern :state :off)
+                                                                        lantern))))
     state))
 
 ;; forward declaration because update-state and repeat-cmmands are mutually recursive.
@@ -3613,7 +3613,7 @@
                   ;; if poisoned, damage player, else heal
                   (if-poisoned-get-hurt)
                   (heal)
-                  (decrease-flashlight-charge)
+                  (decrease-lantern-charge)
                   (check-paralyzed)
                   (if-wounded-get-infected)
                   (if-infected-get-hurt)

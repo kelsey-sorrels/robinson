@@ -98,7 +98,6 @@
             [[quil "2.2.6"]]}
     :uberjar {:aot [robinson.update
                     robinson.render
-                    robinson.swingterminal
                     robinson.npc
                     robinson.core]
               :keep-non-project-classes true

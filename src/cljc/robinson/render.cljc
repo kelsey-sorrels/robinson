@@ -183,7 +183,10 @@
   ([^zaffre.aterminal.ATerminal screen x y string fg bg styles]
      (put-string screen (int (rmath/ceil x)) (int (rmath/ceil y)) string fg bg #{} {}))
   ([^zaffre.aterminal.ATerminal screen x y string fg bg styles mask-opts]
-   {:pre [(clojure.set/superset? #{:underline :bold} styles)]}
+   {:pre [(clojure.set/superset? #{:underline :bold} styles)
+          (integer? x)
+          (integer? y)
+          (string? string)]}
    (let [fg   (rcolor/color->rgb fg)
          bg   (rcolor/color->rgb bg)
          {:keys [mask unmask] :or {mask #{} unmask #{}}} mask-opts
@@ -330,6 +333,8 @@
 
 (defn render-rect-border
   [screen x y width height fg bg characters]
+  {:pre [(integer? x)
+         (integer? y)]}
   (let [{:keys [horizontal
                 vertical
                 top-left
@@ -1126,8 +1131,9 @@
         height     (count lines)
         [v-width
          v-height] (rv/viewport-wh state)
-        popover-x  (- (/ v-width 2) (/ width 2))
-        popover-y  (- (/ v-height 2) (/ height 2))]
+        popover-x  (int (- (/ v-width 2) (/ width 2)))
+        popover-y  (int (- (/ v-height 2) (/ height 2)))]
+    (println "rendering popover at" popover-x "," popover-y)
     (render-list screen popover-x popover-y width (+ 4 height)
       (concat
         [{:s "" :fg :black :bg :white :style #{}}]
@@ -1555,11 +1561,12 @@
                    place-npcs)))
     (render-hud state)
     (log/info "current-state" (current-state state))
+    (println "ui-hint" (get-in state [:world :ui-hint]))
     (if-not (nil? (get-in state [:world :ui-hint]))
       ;; ui-hint
       (put-chars screen (markup->chars 0 0 (get-in state [:world :ui-hint])))
       ;; draw log
-      (let [current-time     (rw/get-time state)
+      (let [current-time     (dec (rw/get-time state))
             log-idx          (get-in state [:world :log-idx] 0)
             num-logs         (count (filter #(= current-time (get % :time)) (get-in state [:world :log])))
             up-arrow-char    \u2191
@@ -1584,8 +1591,9 @@
                                                                   (if (get message :text)
                                                                     (str "<color fg=\"" (name (get message :color)) "\">" (get message :text) "</color>")
                                                                     "")))]
-        (log/info "num-log-msgs" num-logs)
-        (log/info "message" message)
+        (println "current-time" current-time)
+        (println "num-log-msgs" num-logs)
+        (println "message" message)
         (put-chars screen characters)
         (render-traps state)))
     (case (current-state state)

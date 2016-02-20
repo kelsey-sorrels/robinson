@@ -21,7 +21,7 @@
    :shoes           [\!]
    :fishing-pole    [\/]
    :match           [\/]
-   :flashlight      [\,]
+   :lantern         [\,]
    :bandage         [\&]
    :saw             [\,]
    :tarp            [\,]

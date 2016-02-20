@@ -23,7 +23,7 @@
                                 (assoc (ig/gen-item :bandage) :count 4)
                                 (assoc (ig/gen-item :fishing-line-and-hook) :count 2)
                                 (assoc (ig/gen-item :ration) :count 2)
-                                (ig/gen-item :flashlight)
+                                (ig/gen-item :lantern)
                                 (ig/gen-item :bedroll)
                                 (ig/gen-item :tarp)
                                 (ig/gen-item :saw)]

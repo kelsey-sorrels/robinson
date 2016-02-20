@@ -170,7 +170,7 @@
    {:id  :bandage                 :name  "bandage"                    :name-plural "bandages" :fuel 30}
    {:id  :fishing-line-and-hook   :name  "fishing line and hook"      :name-plural "fishing lines and hooks"}
    {:id  :ration                  :name  "ration"                     :name-plural "rations"               :type :food :hunger 100}
-   {:id  :flashlight              :name  "flashlight"                 :name-plural "flashlights"           :charge 1500}
+   {:id  :lantern                 :name  "lantern"                    :name-plural "lanterns"              :charge 1500}
    {:id  :bedroll                 :name  "bedroll"                    :name-plural "bedrolls"}
    {:id  :tarp                    :name  "tarp"                       :name-plural "tarps"}
    {:id  :saw                     :name  "saw"                        :name-plural "saws" :utility 100}

@@ -1591,9 +1591,9 @@
                                                                   (if (get message :text)
                                                                     (str "<color fg=\"" (name (get message :color)) "\">" (get message :text) "</color>")
                                                                     "")))]
-        (println "current-time" current-time)
-        (println "num-log-msgs" num-logs)
-        (println "message" message)
+        (log/info "current-time" current-time)
+        (log/info "num-log-msgs" num-logs)
+        (log/info "message" message)
         (put-chars screen characters)
         (render-traps state)))
     (case (current-state state)

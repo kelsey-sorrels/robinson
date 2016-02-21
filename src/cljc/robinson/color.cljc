@@ -74,6 +74,11 @@
   (assert (number? (nth rgb 2)) (str (nth rgb 2) " not a number"))
   (mapv (fn [v min-v] (int (limit-color min-v (* v d) 255))) rgb [5 5 7])))
 
+(defn add-rgb
+  [rgb1 rgb2]
+  {:post [(vector? %)]}
+  (mapv (fn [v1 v2] (limit-color 0 (+ v1 v2) 255)) rgb1 rgb2))
+
 (defn night-tint
   [[r g b] d]
   (if (> d 4)

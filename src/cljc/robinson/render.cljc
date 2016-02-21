@@ -1123,6 +1123,25 @@
          {:s "  Press <color fg=\"highlight\">any key</color> to continue and <color fg=\"highlight\">?</color> to view help." :fg :black :bg :white :style #{}}]))
     (render-rect-double-border screen 15 4 (inc width) 6 :black :white)))
 
+(defn render-raw-popover [state]
+  (let [screen     (state :screen)
+        message    (rpop/get-popover-message state)
+        lines      (clojure.string/split-lines message)
+        width      (reduce max 27 (map markup->length lines))
+        height     (count lines)
+        [v-width
+         v-height] (rv/viewport-wh state)
+        popover-x  (int (- (/ v-width 2) (/ width 2)))
+        popover-y  (int (- (/ v-height 2) (/ height 2)))]
+    (println "rendering popover at" popover-x "," popover-y)
+    (render-list screen popover-x popover-y width (inc height)
+      (concat
+        [{:s "" :fg :black :bg :white :style #{}}]
+        (map
+          (fn [line] {:s line :fg :black :bg :white :style #{:center}})
+          lines)))
+    (render-rect-double-border screen (dec popover-x) popover-y (inc width) (inc height) :black :white)))
+
 (defn render-popover [state]
   (let [screen     (state :screen)
         message    (rpop/get-popover-message state)
@@ -1204,6 +1223,8 @@
         {{player-x :x player-y :y} :pos :as player} (rp/get-player state)
         d                                           (rlos/sight-distance state)
         cells                                       (rv/cellsxy-in-viewport state)
+        lantern-on                                  (when-let [lantern (rp/inventory-id->item state :lantern)]
+                                                      (get lantern state :off))
         ;_ (println cells)
         ;_ (log/info "cells" (str cells))
         characters     (persistent!
@@ -1404,6 +1425,8 @@
                                                                      4 ;; opts index
                                                                      (fn [opts]
                                                                        (assoc opts
+                                                                              :visible (= (cell :discovered) current-time)
+                                                                              :lantern-flicker (and lantern-on (= (cell :discovered) current-time))
                                                                               :distance-from-player
                                                                                 (distance-from-player state (xy->pos wx wy))
                                                                               :night-tint
@@ -1624,6 +1647,7 @@
       :wield-ranged         (render-wield-ranged state)
       :start-text           (render-start-text state)
       :popover              (render-popover state)
+      :quaff-popover        (render-raw-popover state)
       :dead                 (render-dead-text state)
       :rescued              (render-rescued-text state)
       nil)

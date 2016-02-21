@@ -1354,20 +1354,36 @@
 (defn quaff-select
   "Select the next state depending on what quaffable items are available."
   [state]
-  (let [num-adjacent-quaffable-cells  (count
-                                        (filter (fn [cell] (and (not (nil? cell))
-                                                                (contains? #{:freshwater-hole :saltwater-hole} (get cell :type))
-                                                                (> (get cell :water) 10)))
-                                                (rw/player-adjacent-cells state)))
+  (let [num-adjacent-quaffable-cells (count
+                                       (filter (fn [cell] (and (not (nil? cell))
+                                                               (contains? #{:freshwater-hole :saltwater-hole} (get cell :type))
+                                                               (> (get cell :water) 10)))
+                                               (rw/player-adjacent-cells state)))
+        num-adjacent-dangerous-quaffable-cells
+                                     (count
+                                       (filter (fn [cell] (and (not (nil? cell))
+                                                               (contains? #{:water
+                                                                            :surf
+                                                                            :ocean
+                                                                            :shallow-water
+                                                                            :swamp}
+                                                                          (get cell :type))))
+                                               (rw/player-adjacent-cells state)))
         _ (log/info "player-adj-cells" (rw/player-adjacent-cells state))
         quaffable-inventory-item? (some (fn [item] (contains? item :thirst)) (rp/player-inventory state))]
     (cond
-      (and (pos? num-adjacent-quaffable-cells)
+      (and (or (pos? num-adjacent-quaffable-cells)
+               (pos? num-adjacent-dangerous-quaffable-cells))
            quaffable-inventory-item?)
         (rw/assoc-current-state state :quaff-adj-or-inv)
-      (= num-adjacent-quaffable-cells 1)
+      (and (= num-adjacent-quaffable-cells 1)
+           (zero? num-adjacent-dangerous-quaffable-cells))
         (quaff-only-adjacent-cell state)
-      (> num-adjacent-quaffable-cells 1)
+      (and (= num-adjacent-dangerous-quaffable-cells 1)
+           (zero? num-adjacent-quaffable-cells))
+        (rw/assoc-current-state state :quaff-popover)
+      (or (> num-adjacent-quaffable-cells 1)
+          (> num-adjacent-dangerous-quaffable-cells 1))
         (-> state
           (rw/assoc-current-state :quaff-adj)
           (rc/ui-hint "Pick a direction to drink."))
@@ -1379,11 +1395,25 @@
           (rw/assoc-current-state :normal)))))
 
 (defn quaff-cell-at-pos
-  [state {x :x y :y}]
-  (let [water (get (rw/get-cell state x y) :water)]
+  ([state]
+  (let [cell      (apply rw/get-cell state (rc/pos->xy (get-in state [:world :quaff-pos])))
+        cell-type (get cell :type)]
+    (-> state
+      (update-in [:world :player :thirst] (fn [thirst] (min 0 (- thirst 10))))
+      (rp/player-update-hp (fn [hp] (max (- hp 10) 0)))
+      (rw/assoc-current-state :normal))))
+  ([state {x :x y :y}]
+  (if-let [water (get (rw/get-cell state x y) :water)]
+    (do (log/info "Drinking potable water")
     (-> state
       (rw/assoc-cell state x y :water 0)
-      (update-in [:world :player :thirst] (fn [thirst] (min 0 (- thirst water)))))))
+      (update-in [:world :player :thirst] (fn [thirst] (min 0 (- thirst water))))
+      (rw/assoc-current-state :normal)))
+    (do (log/info "Drinking nonpotable water")
+    (-> state
+      (assoc-in [:world :popover-message] "This water is not potable. Are you sure?\n \n[<color fg=\"highlight\">y</color>]es [<color fg=\"highlight\">n</color>]o")
+      (assoc-in [:world :quaff-pos] (rc/xy->pos x y))
+      (rw/assoc-current-state :quaff-popover))))))
 
 (defn quaff-up
   [state]
@@ -3331,14 +3361,18 @@
                            :else       [eat                    :normal          true]}
                :quaff-adj-or-inv
                           {\i          [identity               :quaff-inv       false]
-                           :left       [quaff-left             :normal          true]
-                           :down       [quaff-down             :normal          true]
-                           :up         [quaff-up               :normal          true]
-                           :right      [quaff-right            :normal          true]}
-               :quaff-adj {:left       [quaff-left             :normal          true]
-                           :down       [quaff-down             :normal          true]
-                           :up         [quaff-up               :normal          true]
-                           :right      [quaff-right            :normal          true]}
+                           :left       [quaff-left             rw/current-state true]
+                           :down       [quaff-down             rw/current-state true]
+                           :up         [quaff-up               rw/current-state true]
+                           :right      [quaff-right            rw/current-state true]}
+               :quaff-adj {:escape     [identity               :normal          false]
+                           :left       [quaff-left             rw/current-state true]
+                           :down       [quaff-down             rw/current-state true]
+                           :up         [quaff-up               rw/current-state true]
+                           :right      [quaff-right            rw/current-state true]}
+               :quaff-popover
+                          {\y          [quaff-cell-at-pos      :normal          true]
+                           \n          [identity               :normal          false]}
                :quaff-inventory
                           {:escape     [identity               :normal          false]
                            :else       [quaff-inventory        :normal          true]}
@@ -3510,6 +3544,7 @@
     :describe
     :select-throw-target
     :quaff-adj-or-inv
+    :quaff-adj
     :open
     :talk
     :pickup

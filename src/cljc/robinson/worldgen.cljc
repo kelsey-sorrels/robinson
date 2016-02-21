@@ -310,24 +310,54 @@
            ;; drop initial harvestable items
            (if (or (and (= :gravel (get cell :type))
                         (= :rocky biome)
-                        (= (rr/uniform-int 0 50) 0))
+                        (= (rr/uniform-int 0 40) 0))
                    (and (= :tree (get cell :type))
                         (= :heavy-forest biome)
-                        (= (rr/uniform-int 0 50) 0))
+                        (= (rr/uniform-int 0 40) 0))
                    (and (= :tall-grass (get cell :type))
                         (= :meadow biome)
-                        (= (rr/uniform-int 0 50) 0))
+                        (= (rr/uniform-int 0 40) 0))
                    (and (= :palm-tree (get cell :type))
                         (= :jungle biome)
-                        (= (rr/uniform-int 0 30) 0))
+                        (= (rr/uniform-int 0 20) 0))
                    (and (contains? #{:gravel :tree :palm-tree :tall-grass} (get cell :type))
-                        (= (rr/uniform-int 0 200) 0)))
+                        (= (rr/uniform-int 0 160) 0)))
              (assoc cell :harvestable true)
              (if (and (= :gravel (get cell :type))
                       (not-every? #(rc/farther-than? x y (first %) (second %) 10) lava-xys)
-                      (= (rr/uniform-int 0 50) 0))
+                      (= (rr/uniform-int 0 40) 0))
                (assoc cell :harvestable true :near-lava true)
                cell))))))))
+
+(defn drop-fruit
+  [cells current-time]
+  {:pre [(integer? current-time)]}
+  (let [fruit-tree-xys (set
+                         (remove nil?
+                           (for [[y line] (map-indexed vector cells)
+                                 [x cell] (map-indexed vector line)]
+                             (if (= (cell :type) :fruit-tree)
+                               [x y]
+                               nil))))]
+    (vec
+      (for [[y line] (map-indexed vector cells)]
+        (vec
+          (for [[x cell] (map-indexed vector line)]
+            (if (and (zero? (rr/uniform-int 40))
+                     (not (rw/type->collide? (get cell :type))))
+              (if-let [[fruit-tree-x
+                        fruit-tree-y] (some fruit-tree-xys
+                                            (set
+                                              (shuffle
+                                                (rw/adjacent-xys-ext x y))))]
+                (let [fruit-tree-cell (get-in cells [fruit-tree-y
+                                                     fruit-tree-x])
+                      fruit (assoc (ig/id->item (get fruit-tree-cell :fruit-type))
+                                   :rot-time 
+                                   (+ current-time (rr/uniform-int 250 350)))]
+                  (update cell :items conj fruit))
+                cell)
+              cell)))))))
 
 (defn init-island
   "Create an island block. `x` and `y` denote the coordinates of the upper left cell in the block."
@@ -356,7 +386,9 @@
                             ;; don't spawn temple if every cell is ocean
                             (if (not-every? (partial = :water) (map :type (mapcat identity cells)))
                               (tg/merge-cells cells)
-                              cells)))}))
+                              cells))
+                        ;; drop initial fruit
+                        (drop-fruit cells (rw/get-time state)))}))
 
 (defn init-world
   "Create a randomly generated world.
@@ -407,7 +439,8 @@
         lava-segments          (partition 2 (apply line-segments [(first volcano-xy) (second volcano-xy) (get lava-terminal-pos :x) (get lava-terminal-pos :y)]))
         lava-points            (map first lava-segments)
         _                      (log/info "lava-points" lava-points)
-        min-state              {:world {:viewport {:width width :height height}
+        min-state              {:world {:time 25
+                                        :viewport {:width width :height height}
                                         :seed seed
                                         :volcano-pos (apply rc/xy->pos volcano-xy)
                                         :lava-points lava-points}}
@@ -436,7 +469,7 @@
            :current-place nil
            :volcano-pos (apply rc/xy->pos volcano-xy)
            :lava-points lava-points
-           :time 25
+           :time (rw/get-time min-state)
            :current-state :start
            :selected-hotkeys #{}
            :remaining-hotkeys remaining-hotkeys

@@ -2945,7 +2945,7 @@
                 (contains? harvest-types cell-type)
                 (let [place-id         (rv/xy->place-id state wx wy)
                       num-harvestable (get @harvestable-counts place-id 0)]
-                  (if (< (rr/uniform-int 0 10000)
+                  (if (< (rr/uniform-int 0 100000)
                          (/ (case cell-type
                               :palm-tree 10
                               :tree 25
@@ -2962,7 +2962,7 @@
                 ;; drop fruit
                 (contains? fruit-tree-types cell-type)
                 ;; chance of dropped a fruit
-                (if (= (rr/uniform-int 0 300) 0)
+                (if (= (rr/uniform-int 0 3000) 0)
                   ;; make the fruit item and find an adjacent free cell to drop it into
                   (let [item    (assoc (ig/id->item (get cell :fruit-type)) :rot-time (+ world-time (rr/uniform-int 25 35)))
                         adj-xys (remove (fn [[x y]] (or (not (rv/xy-in-viewport? state x y))

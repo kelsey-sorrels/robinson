@@ -304,7 +304,8 @@
                                                      ranimation/make-blip-effect
                                                      #_ranimation/make-transform-effect
                                                      #_ranimation/make-rain-effect]
-                                                    [(ranimation/make-vignette-filter terminal)
+                                                    [(ranimation/make-lantern-filter terminal)
+                                                     (ranimation/make-vignette-filter terminal)
                                                      (ranimation/make-night-tint-filter terminal)])]
     (raat/start! animated-terminal 15)
     (log/info "Creating terminal in thread:" (.getName (Thread/currentThread)))

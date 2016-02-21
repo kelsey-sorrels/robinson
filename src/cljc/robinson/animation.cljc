@@ -38,6 +38,14 @@
   (let [[vw vh]    (zat/get-size terminal)]
     (repeat vh (vec (repeat vw nil)))))
 
+(defn lantern-flicker [opts x y fg]
+  {:post [(vector? %)]}
+  (if (get opts :lantern-flicker)
+    (let [v                   (int (* 50 (/ (Math/abs (hash @frame-count)) Integer/MAX_VALUE)))
+          lantern-flicker-rgb [v v 0]]
+      (rcolor/add-rgb fg lantern-flicker-rgb))
+    fg))
+
 (defn vignette [opts x y fg]
   (if-let [distance (get opts :distance-from-player)]
     (do
@@ -134,7 +142,10 @@
         i         (int (/ @frame-count 10))
         n         (mod (Math/abs (hash (+ x (* 13 y) (* 17 i)))) (count color-ids))
         color-id  (nth color-ids n)
-        fg-rgb    (night-tint cell-opts x y (vignette cell-opts x y (rcolor/color->rgb color-id)))]
+        fg-rgb    (->> (rcolor/color->rgb color-id)
+                    (lantern-flicker cell-opts x y)
+                    (vignette cell-opts x y)
+                    (night-tint cell-opts x y))]
     (zat/set-fx-fg! terminal x y fg-rgb)))
 
 (defrecord RandFgEffect
@@ -358,6 +369,14 @@
                    night-tint
                    no-op-filter
                    night-tint
+                   no-op-filter
+                   (atom (nil-grid terminal))))
+
+(defn make-lantern-filter [terminal]
+  (FunctionFilter. :lantern-flicker-filter
+                   lantern-flicker
+                   no-op-filter
+                   lantern-flicker
                    no-op-filter
                    (atom (nil-grid terminal))))
 

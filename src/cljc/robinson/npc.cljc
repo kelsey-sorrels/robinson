@@ -271,7 +271,7 @@
   [state]
   (let [num-npcs (reduce + (vals (npc-freqs-in-player-place state)))]
     ;; higher random number = less npcs
-    (if (and (< (rr/uniform-int 180)
+    (if (and (< (rr/uniform-int 210)
                 (if (rw/is-night? state)
                    (/ 180 (inc num-npcs))
                    (/ 80 (inc num-npcs))))

@@ -68,6 +68,8 @@
                                                 (let [key-chan (aterminal/get-key-chan (state :screen))]
                                                   ;;(log/info  "waiting for key-chan")
                                                   (async/<!! key-chan)))]
+                                     (when (= keyin :exit)
+                                       (System/exit 0))
                                      (if keyin
                                        ((get-tick-fn) state keyin)
                                        state))

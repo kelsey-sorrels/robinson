@@ -97,6 +97,10 @@
   [state place-id]
   (assoc-in state [:world :current-place] place-id))
 
+(defn update-place
+  [state place-id f]
+  (update-in state [:world :places place-id] f))
+
 (defn current-state
   [state]
   (get-in state [:world :current-state]))

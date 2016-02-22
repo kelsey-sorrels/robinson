@@ -89,6 +89,14 @@
   [state]
   (apply get-place state (rp/player-xy state)))
 
+(defn +xy
+  [[x1 y1] [x2 y2]]
+  [(int (+ x1 x2)) (int (+ y1 y2))])
+
+(defn -xy
+  [[x1 y1] [x2 y2]]
+  [(- x1 x2) (- y1 y2)])
+
 (defn place-id->anchor-xy
   "For a given place-id return the world coordinates of the upper-left-hand corner of the place.
     Here
@@ -105,13 +113,13 @@
       [(* px v-width) (* py v-height)])
     [0 0]))
 
-(defn +xy
-  [[x1 y1] [x2 y2]]
-  [(+ x1 x2) (+ y1 y2)])
-
-(defn -xy
-  [[x1 y1] [x2 y2]]
-  [(- x1 x2) (- y1 y2)])
+(defn place-id->center-xy
+  [state place-id]
+  (let [{v-width     :width
+         v-height    :height}
+        (get-in state [:world :viewport])]
+    (+xy [(/ v-width 2) (/ v-height 2)]
+         (place-id->anchor-xy state place-id))))
 
 (defn visible-place-ids
   ([state]

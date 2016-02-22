@@ -314,7 +314,32 @@
       (log/debug "viewport-pos" vp-pos)
       (-> state
         (assoc-in [:world :viewport :pos] vp-pos)
-        (rworldgen/load-unload-places))))
+        (rworldgen/load-unload-places)
+        (as-> state
+          ;; discovered encounter
+          (if (let [place     (rv/player-place state)
+                    place-id  (rv/player-place-id state)
+                    [place-x
+                     place-y] (rv/place-id->center-xy state place-id)]
+              (log/info "place" (select-keys place [:discovered :discovered-message])
+                        "place-id" place-id
+                        "place-xy" place-x place-y
+                        "player-xy" x y)
+              (and (not (get place :discovered))
+                   (get place :discovered-message)
+                   (not (rc/farther-than? place-x place-y x y 80))))
+            ;; show popover
+            (let [place (rv/player-place state)
+                  place-id  (rv/player-place-id state)
+                  message (get place :discovered-message)]
+              (-> state
+                (rw/update-place place-id (fn [place] (assoc place :discovered true)))
+                (rp/player-update-wtl
+                  (fn [will-to-live] (rp/player-max-wtl state)))
+                (rpop/show-popover
+                  (rdesc/describe-encounter message))))
+            (rw/assoc-current-state state :normal))))))
+             
 
 (defn move
   "Move the player one space provided her/she is able. Else do combat. Else swap positions
@@ -347,12 +372,14 @@
             ;; collided with npc. Engage in combat.
             (let [npc (rw/npc-at-xy state target-x target-y)]
               (log/info "npc" npc)
-              (rcombat/attack state [:world :player] (rnpc/npc->keys state npc)))
+              (-> state
+                (rcombat/attack [:world :player] (rnpc/npc->keys state npc))
+                (rw/assoc-current-state :normal)))
             (as-> state state
               (if (and (not (rv/xy-in-safe-zone? state target-x target-y))
                        (not= :fixed (get-in state [:world :places (rw/current-place-id state) :movement])))
                 (move-outside-safe-zone state direction)
-                state)
+                (rw/assoc-current-state state :normal))
               (assoc-in state [:world :player :pos :x] target-x)
               (assoc-in state [:world :player :pos :y] target-y)
               (let [cell  (rw/get-cell state target-x target-y)
@@ -367,6 +394,7 @@
           (assoc-in [:world :player :pos :x] target-x)
           (assoc-in [:world :player :pos :y] target-y)
           pick-up-gold
+          (rw/assoc-current-state :normal)
           inc-time
           (rc/map-in [:world :npcs]
                      (fn [npc] (if (and (= (-> npc :pos :x) target-x)
@@ -385,6 +413,7 @@
             (move-outside-safe-zone state direction)
             state)
           (rp/assoc-player-pos state (rc/xy->pos target-x target-y))
+          (rw/assoc-current-state state :normal)
           (inc-time state)
           ;; rafting = more hunger
           (update-in state [:world :player :hunger] (partial + 0.05 ))
@@ -398,6 +427,7 @@
       (rw/type->destroyable? (get target-cell :type))
         (-> state
           (destroy-cell target-x target-y)
+          (rw/assoc-current-state :normal)
           inc-time)
       ;; collided with a wall or door, nothing to be done.
       :else
@@ -3163,14 +3193,14 @@
                            \c          [identity               :close           false]
                            \.          [do-rest                :normal          true]
                            :numpad5    [do-rest                :normal          true]
-                           :left       [move-left              :normal          false]
-                           :down       [move-down              :normal          false]
-                           :up         [move-up                :normal          false]
-                           :right      [move-right             :normal          false]
-                           :up-left    [move-up-left           :normal          false]
-                           :up-right   [move-up-right          :normal          false]
-                           :down-left  [move-down-left         :normal          false]
-                           :down-right [move-down-right        :normal          false]
+                           :left       [move-left              rw/current-state false]
+                           :down       [move-down              rw/current-state false]
+                           :up         [move-up                rw/current-state false]
+                           :right      [move-right             rw/current-state false]
+                           :up-left    [move-up-left           rw/current-state false]
+                           :up-right   [move-up-right          rw/current-state false]
+                           :down-left  [move-down-left         rw/current-state false]
+                           :down-right [move-down-right        rw/current-state false]
                            \>          [use-stairs             :normal          false]
                            \<          [use-stairs             :normal          false]
                            :space      [action-select          rw/current-state false]

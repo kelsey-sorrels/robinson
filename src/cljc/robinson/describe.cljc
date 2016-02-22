@@ -260,3 +260,11 @@
     :black-fruit-safe "the excellence of black fruit"
     :black-fruit-poisonous "the poisonousness of black fruit"
     (format "unspeakable horrors of %s" (str item))))
+
+(defn describe-encounter
+  [encounter]
+  (case encounter
+    :temple
+      (rr/rand-nth ["You come upon a temple.\nMoss covers its walls and a mist seeps\nout of its entrances."])
+    :pirate-ship
+      (rr/rand-nth ["In the clearing you see the impossible - a washed up ship.\nThat's strange."])))

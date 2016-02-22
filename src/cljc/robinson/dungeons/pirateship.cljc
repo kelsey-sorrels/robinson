@@ -223,6 +223,7 @@
                 [])]
     {:cells    cells
      :movement :fixed
+     :discovered-message :pirate-ship
      :npcs npcs}))
 
 (defn place-to-ascii

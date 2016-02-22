@@ -372,23 +372,26 @@
         encounter             (if (and starting-pos
                                        (rc/farther-than? starting-pos player-pos 30))
                                 (rand-nth [:normal :pirate-ship :temple])
-                                :normal)]
-    {:seed seed
-     :pos {:x x :y y}
-     :spawned-monsters {}
-     :cells           (as-> (gen-island-cells x y width height n volcano-pos lava-xys) cells
-                        (case encounter
-                          :normal
-                            cells
-                          :pirate-ship
-                            (psg/merge-cells cells)
-                          :temple
-                            ;; don't spawn temple if every cell is ocean
-                            (if (not-every? (partial = :water) (map :type (mapcat identity cells)))
-                              (tg/merge-cells cells)
-                              cells))
-                        ;; drop initial fruit
-                        (drop-fruit cells (rw/get-time state)))}))
+                                :normal)
+        place {:seed seed
+               :pos {:x x :y y}
+               :spawned-monsters {}
+               :cells           (as-> (gen-island-cells x y width height n volcano-pos lava-xys) cells
+                                  (case encounter
+                                    :normal
+                                      cells
+                                    :pirate-ship
+                                      (psg/merge-cells cells)
+                                    :temple
+                                      ;; don't spawn temple if every cell is ocean
+                                      (if (not-every? (partial = :water) (map :type (mapcat identity cells)))
+                                        (tg/merge-cells cells)
+                                        cells))
+                                  ;; drop initial fruit
+                                  (drop-fruit cells (rw/get-time state)))}]
+    (if (not= encounter :normal)
+      (assoc place :discovered-message encounter)
+      place)))
 
 (defn init-world
   "Create a randomly generated world.

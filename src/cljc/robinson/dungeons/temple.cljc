@@ -738,6 +738,7 @@
     ;(println (vec rooms))
     {:cells cells 
      :movement :fixed
+     :discovered-message :temple
      :npcs npcs
      #_#_:up-stairs upstairs
      #_#_:down-stairs downstairs}))

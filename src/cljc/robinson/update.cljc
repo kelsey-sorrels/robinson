@@ -1381,6 +1381,9 @@
     (log/info "player-adj-xys" (rw/player-adjacent-xys state))
     (update-in state [:world :player :thirst] (fn [thirst] (min 0 (- thirst water))))))
 
+(def quaff-popover-message
+  "This water is not potable. Are you sure?\n \n[<color fg=\"highlight\">y</color>]es [<color fg=\"highlight\">n</color>]o")
+
 (defn quaff-select
   "Select the next state depending on what quaffable items are available."
   [state]
@@ -1411,7 +1414,9 @@
         (quaff-only-adjacent-cell state)
       (and (= num-adjacent-dangerous-quaffable-cells 1)
            (zero? num-adjacent-quaffable-cells))
-        (rw/assoc-current-state state :quaff-popover)
+        (-> state
+          (assoc-in [:world :popover-message] quaff-popover-message)
+          (rw/assoc-current-state :quaff-popover))
       (or (> num-adjacent-quaffable-cells 1)
           (> num-adjacent-dangerous-quaffable-cells 1))
         (-> state
@@ -1426,12 +1431,10 @@
 
 (defn quaff-cell-at-pos
   ([state]
-  (let [cell      (apply rw/get-cell state (rc/pos->xy (get-in state [:world :quaff-pos])))
-        cell-type (get cell :type)]
-    (-> state
-      (update-in [:world :player :thirst] (fn [thirst] (min 0 (- thirst 10))))
-      (rp/player-update-hp (fn [hp] (max (- hp 10) 0)))
-      (rw/assoc-current-state :normal))))
+  (-> state
+    (update-in [:world :player :thirst] (fn [thirst] (min 0 (- thirst 10))))
+    (rp/player-update-hp (fn [hp] (max (- hp 10) 0)))
+    (rw/assoc-current-state :normal)))
   ([state {x :x y :y}]
   (if-let [water (get (rw/get-cell state x y) :water)]
     (do (log/info "Drinking potable water")
@@ -1441,7 +1444,7 @@
       (rw/assoc-current-state :normal)))
     (do (log/info "Drinking nonpotable water")
     (-> state
-      (assoc-in [:world :popover-message] "This water is not potable. Are you sure?\n \n[<color fg=\"highlight\">y</color>]es [<color fg=\"highlight\">n</color>]o")
+      (assoc-in [:world :popover-message] quaff-popover-message)
       (assoc-in [:world :quaff-pos] (rc/xy->pos x y))
       (rw/assoc-current-state :quaff-popover))))))
 

@@ -233,8 +233,8 @@
                 directions))))))
 
 (defn gen-temple-text
-  [item]
-  (case (get item :text-id)
+  [text-id]
+  (case text-id
     :secret-history "the secret histories of deathless kings"
     :mirror "a mirror that reflects incorporeal attributes"
     :cistern "a cistern of sacrificial blood"
@@ -259,7 +259,7 @@
     :white-fruit-poisonous "the inferiority of white fruit"
     :black-fruit-safe "the excellence of black fruit"
     :black-fruit-poisonous "the poisonousness of black fruit"
-    (format "unspeakable horrors of %s" (str item))))
+    "unspeakable horrors of the island"))
 
 (defn describe-encounter
   [encounter]

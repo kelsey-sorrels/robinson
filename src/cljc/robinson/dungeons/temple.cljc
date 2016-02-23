@@ -739,6 +739,7 @@
     {:cells cells 
      :movement :fixed
      :discovered-message :temple
+     :type :temple
      :npcs npcs
      #_#_:up-stairs upstairs
      #_#_:down-stairs downstairs}))

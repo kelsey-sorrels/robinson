@@ -1007,19 +1007,35 @@
                 (wear-clothes state item)
               (contains?  #{:stone-tablet :codex} id)
                 (as-> state state
-                  (if (nil? (get item :text-id))
-                    (let [text-id (ig/gen-text-id state)]
-                      (as-> state state
-                        (rp/update-inventory-item-by-id state id (fn [item] (assoc item :text-id text-id)))
-                        (if (ig/is-fruit-text-id? text-id)
-                          ;; identified fruit
-                          (rc/conj-in state [:world :fruit :identified] (ig/fruit-text-id->fruit-id text-id))
-                          state)))
-                    state)
-                  (let [item (rp/inventory-id->item state id)]
-                    (as-> state state
-                      (rc/append-log state (format "You peice together a story about %s." (rdesc/gen-temple-text item)))
-                      (rp/conj-player-status state (get item :text-id))))
+                  (if (and (= 0 (rr/uniform-int 10))
+                           (= (get (rv/player-place state) :type) :temple))
+                    ;; sometimes books act as magic-mapping
+                    (let [[width height] (rv/viewport-wh state)]
+                      (-> state
+                        (rw/assoc-cells (zipmap (for [x (range width)
+                                                      y (range height)]
+                                                  [x y])
+                                                (repeat {:discovered (rw/get-time state)})))
+                        (rc/append-log "You learn the temple's secrets.")
+                        inc-time))
+                    ;; otherwise choose between identifying fruit and flavor text
+                    (let [text-id (ig/gen-text-id state)
+                          item    (rp/inventory-id->item state id)]
+                      (if (rp/player-status-contains? state text-id)
+                        (-> state
+                          (rc/append-log "You've already read that story.")
+                          inc-time)
+                        (as-> state state
+                          (if (ig/is-fruit-text-id? text-id)
+                            ;; identified fruit
+                            (-> state
+                              (rc/conj-in [:world :fruit :identified] (ig/fruit-text-id->fruit-id text-id))
+                              (rp/conj-player-status (get item :text-id)))
+                            state)
+                          (-> state
+                           (rc/append-log (format "You peice together a story about %s." (rdesc/gen-temple-text text-id)))
+                           inc-time)))))
+                  (rp/dec-item-count state id)
                   (rw/assoc-current-state state :normal))
               ;; pirate items
               (= id :dice)
@@ -1382,7 +1398,7 @@
     (update-in state [:world :player :thirst] (fn [thirst] (min 0 (- thirst water))))))
 
 (def quaff-popover-message
-  "This water is not potable. Are you sure?\n \n[<color fg=\"highlight\">y</color>]es [<color fg=\"highlight\">n</color>]o")
+  "This water is not potable. Are you sure?\n \n[<color fg=\"highlight\">y</color>]/[<color fg=\"highlight\">n</color>]")
 
 (defn quaff-select
   "Select the next state depending on what quaffable items are available."

@@ -3220,7 +3220,7 @@
                            :up-right   [move-up-right          rw/current-state false]
                            :down-left  [move-down-left         rw/current-state false]
                            :down-right [move-down-right        rw/current-state false]
-                           \>          [use-stairs             :normal          false]
+                           \>          [use-stairs             :normal          true]
                            \<          [use-stairs             :normal          false]
                            :space      [action-select          rw/current-state false]
                            \q          [quaff-select           rw/current-state false]

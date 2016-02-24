@@ -1407,7 +1407,7 @@
                     [(rw/update-cell state x y (fn [cell] (assoc cell :water 0))) (+ water (get (rw/get-cell state x y) :water 0))]
                     [state water]))
                 [state 0]
-                (rw/player-adjacent-xys state))]
+                (rw/player-adjacent-xys-ext state))]
     (log/info "player-adj-xys" (rw/player-adjacent-xys state))
     (update-in state [:world :player :thirst] (fn [thirst] (min 0 (- thirst water))))))
 
@@ -1421,7 +1421,7 @@
                                        (filter (fn [cell] (and (not (nil? cell))
                                                                (contains? #{:freshwater-hole :saltwater-hole} (get cell :type))
                                                                (> (get cell :water) 10)))
-                                               (rw/player-adjacent-cells state)))
+                                               (rw/player-adjacent-cells-ext state)))
         num-adjacent-dangerous-quaffable-cells
                                      (count
                                        (filter (fn [cell] (and (not (nil? cell))
@@ -1431,7 +1431,7 @@
                                                                             :shallow-water
                                                                             :swamp}
                                                                           (get cell :type))))
-                                               (rw/player-adjacent-cells state)))
+                                               (rw/player-adjacent-cells-ext state)))
         _ (log/info "player-adj-cells" (rw/player-adjacent-cells state))
         quaffable-inventory-item? (some (fn [item] (contains? item :thirst)) (rp/player-inventory state))]
     (cond

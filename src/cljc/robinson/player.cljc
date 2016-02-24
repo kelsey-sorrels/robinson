@@ -726,6 +726,7 @@
     :wtl->dexterity-buff "Superior Dexterity"
     :wtl->speed-buff "Sprint"
     :wtl->toughness-buff "Defensive Stance"
+    :trap-sense "Trap Sense"
     (assert false (format "Could not find ability with id [%s]." (str ability-id)))))
 
 (defn ability-id->description
@@ -743,6 +744,7 @@
     :wtl->dexterity-buff "Increase dexterity temporarily"
     :wtl->speed-buff "Increase speed temporarility"
     :wtl->toughness-buff "Increase toughness temporarily"
+    :trap-sense "Passively search for traps"
     (assert false (format "Could not find ability with id [%s]." (str ability-id)))))
 
 (defn player-abilities
@@ -768,7 +770,8 @@
    :wtl->strength-buff #{}
    :wtl->dexterity-buff #{}
    :wtl->speed-buff #{}
-   :wtl->toughness-buff #{}})
+   :wtl->toughness-buff #{}
+   :trap-sense #{}})
 
 ;; Takes into account ability prerequisites
 (defn applicable-abilities
@@ -822,6 +825,8 @@
         (update-player-attribute state :max-hp inc)
       :speed+1
         (update-player-attribute state :speed (partial + 0.05))
+      :trap-sense
+        (conj-player-status state :trap-sense)
       (assert false (format "Ability [%s] not found" (str ability-id))))))
    
 (defn wtl->hp

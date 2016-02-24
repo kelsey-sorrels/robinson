@@ -340,6 +340,17 @@
                   (rdesc/describe-encounter message))))
             (rw/assoc-current-state state :normal))))))
              
+(defn sense-traps
+  [state difficulty]
+  (reduce (fn [state [x y]]
+            (let [trap-difficulty (get (rw/get-cell state x y) :difficulty 1)]
+              (if (< trap-difficulty difficulty)
+                (-> state
+                  (rw/assoc-cell x y :trap-found true)
+                  (rc/append-log state "You sense a trap."))
+                state)))
+          state
+          (apply rw/adjacent-xys (rp/player-xy state))))
 
 (defn move
   "Move the player one space provided her/she is able. Else do combat. Else swap positions
@@ -382,6 +393,9 @@
                 (rw/assoc-current-state state :normal))
               (assoc-in state [:world :player :pos :x] target-x)
               (assoc-in state [:world :player :pos :y] target-y)
+              (if (rp/player-status-contains? state :trap-sense)
+                (sense-traps state 0.5)
+                (sense-traps state 0.1))
               (let [cell  (rw/get-cell state target-x target-y)
                     items (get cell :items)]
                 (if (seq items)

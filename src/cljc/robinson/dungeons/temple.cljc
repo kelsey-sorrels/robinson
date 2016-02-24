@@ -157,6 +157,7 @@
                     trap-y
                     (fn [cell]
                       (assoc cell :type         :crushing-wall-trigger
+                                  :difficulty   (rr/uniform-double)
                                   :room-bounds  {:min-x min-x
                                                  :min-y min-y
                                                  :max-x max-x
@@ -209,6 +210,7 @@
                         trigger-y
                         (fn [cell]
                           (assoc cell :type    :wall-darts-trigger
+                                      :difficulty   (rr/uniform-double)
                                       ;; direction the darts are flying from->to
                                       :direction (case direction
                                                    :horizontal
@@ -232,7 +234,8 @@
                     trap-x
                     trap-y
                     (fn [cell]
-                      (assoc cell :type :spike-pit)))
+                      (assoc cell :type :spike-pit
+                                  :difficulty   (rr/uniform-double))))
     cellsxy))
 
 (defn add-rolling-boulder
@@ -247,6 +250,7 @@
                     trap-y
                     (fn [cell]
                       (assoc cell :type :snakes-trigger
+                                  :difficulty   (rr/uniform-double)
                                   :room-bounds  {:min-x min-x
                                                  :min-y min-y
                                                  :max-x max-x
@@ -261,7 +265,9 @@
                     trap-x
                     trap-y
                     (fn [cell]
-                      (assoc cell :type :poisonous-gas-trigger)))
+                      (assoc cell :type :poisonous-gas-trigger
+                                  :difficulty   (rr/uniform-double)
+)))
     cellsxy))
 
 (defn add-trap

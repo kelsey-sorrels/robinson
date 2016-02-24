@@ -1404,7 +1404,7 @@
                                            shaded-out-char (cond
                                                              (not= (cell :discovered) current-time)
                                                                (-> out-char
-                                                                 (update-in [1] (fn [c] (rcolor/rgb->mono (rcolor/darken-rgb c 0.15))))
+                                                                 (update-in [1] (fn [c] (rcolor/rgb->mono (rcolor/darken-rgb c 0.18))))
                                                                  (update-in [2] (fn [c] (rcolor/rgb->mono (rcolor/darken-rgb c 0.15)))))
                                                              (contains? cell :harvestable)
                                                                (let [[chr fg bg] out-char]

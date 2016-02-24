@@ -1412,7 +1412,7 @@
     (update-in state [:world :player :thirst] (fn [thirst] (min 0 (- thirst water))))))
 
 (def quaff-popover-message
-  "This water is not potable. Are you sure?\n \n[<color fg=\"highlight\">y</color>]/[<color fg=\"highlight\">n</color>]")
+  "This water is not potable. Are you sure?\n \n[<color fg=\"highlight\">y</color>/<color fg=\"highlight\">n</color>]")
 
 (defn quaff-select
   "Select the next state depending on what quaffable items are available."

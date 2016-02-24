@@ -316,20 +316,20 @@
       (ranimation/set-mask! screen #{:rain :transform} (map rc/pos->xy characters) false)))))
 
 (def single-border
-  {:horizontal   "\u2500"
-   :vertical     "\u2502"
-   :top-left     "\u250C"
-   :top-right    "\u2510"
-   :bottom-left  "\u2514"
-   :bottom-right "\u2518"})
+  {:horizontal   \u2500
+   :vertical     \u2502
+   :top-left     \u250C
+   :top-right    \u2510
+   :bottom-left  \u2514
+   :bottom-right \u2518})
 
 (def double-border
-  {:horizontal   "\u2550"
-   :vertical     "\u2551"
-   :top-left     "\u2554"
-   :top-right    "\u2557"
-   :bottom-left  "\u255A"
-   :bottom-right "\u255D"})
+  {:horizontal   \u2550
+   :vertical     \u2551
+   :top-left     \u2554
+   :top-right    \u2557
+   :bottom-left  \u255A
+   :bottom-right \u255D})
 
 (defn render-rect-border
   [screen x y width height fg bg characters]
@@ -343,17 +343,17 @@
                 bottom-right]} characters]
     ;; render top and bottom
     (doseq [dx (range (dec width))]
-      (put-string screen (+ x dx 1) y horizontal fg bg #{} {:mask #{:rain :transform}})
-      (put-string screen (+ x dx 1) (+ y height) horizontal fg bg #{} {:mask #{:rain :transform}}))
+      (put-string screen (+ x dx 1) y (str horizontal) fg bg #{} {:mask #{:rain :transform}})
+      (put-string screen (+ x dx 1) (+ y height) (str horizontal) fg bg #{} {:mask #{:rain :transform}}))
     ;; render left and right
     (doseq [dy (range (dec height))]
-      (put-string screen x (+ y dy 1) vertical fg bg #{} {:mask #{:rain :transform}})
-      (put-string screen (+ x width) (+ y dy 1) vertical fg bg #{} {:mask #{:rain :transform}}))
+      (put-string screen x (+ y dy 1) (str vertical) fg bg #{} {:mask #{:rain :transform}})
+      (put-string screen (+ x width) (+ y dy 1) (str vertical) fg bg #{} {:mask #{:rain :transform}}))
     ;; render tl, tr, bl, br
-    (put-string screen x y top-left fg bg #{} {:mask #{:rain :transform}})
-    (put-string screen (+ x width) y top-right fg bg #{} {:mask #{:rain :transform}})
-    (put-string screen x (+ y height) bottom-left fg bg #{} {:mask #{:rain :transform}})
-    (put-string screen (+ x width) (+ y height) bottom-right fg bg #{} {:mask #{:rain :transform}})))
+    (put-string screen x y (str top-left) fg bg #{} {:mask #{:rain :transform}})
+    (put-string screen (+ x width) y (str top-right) fg bg #{} {:mask #{:rain :transform}})
+    (put-string screen x (+ y height) (str bottom-left) fg bg #{} {:mask #{:rain :transform}})
+    (put-string screen (+ x width) (+ y height) (str bottom-right) fg bg #{} {:mask #{:rain :transform}})))
 
 (defn render-rect-single-border
   [screen x y width height fg bg]
@@ -1853,7 +1853,7 @@
   (doseq [i (range 8)]
     (put-chars (state :screen) [{:c (get single-border :horizontal) :x (+ x i 1) :y (+ y 8) :fg (rcolor/color->rgb :white) :bg (rcolor/color->rgb :black) :style #{}}]))
   ;; put caret
-  (put-chars (state :screen) [{:c "^"  :x (+ x (int (/ value group-size)) 1) :y (+ y 8) :fg (rcolor/color->rgb :highlight) :bg (rcolor/color->rgb :black) :style #{}}])
+  (put-chars (state :screen) [{:c \^ :x (+ x (int (/ value group-size)) 1) :y (+ y 8) :fg (rcolor/color->rgb :highlight) :bg (rcolor/color->rgb :black) :style #{}}])
   ;; render y-axis
   (doseq [i (range 7)]
     (put-chars (state :screen) [{:c (get single-border :vertical)  :x x :y (+ y i 1) :fg (rcolor/color->rgb :white) :bg (rcolor/color->rgb :black) :style #{}}]))
@@ -1879,7 +1879,7 @@
             to   (+ y 7)]
         (log/debug "from" from "to" to "x" x)
       (doseq [y (range from to)]
-        (put-chars (state :screen) [{:c (-> 219 cp437->unicode str)#_"*" :x x :y (inc y) :fg fg :bg (rcolor/color->rgb :black) :style #{}}])))))))
+        (put-chars (state :screen) [{:c (cp437->unicode 219)#_"*" :x x :y (inc y) :fg fg :bg (rcolor/color->rgb :black) :style #{}}])))))))
 
 (defn render-share-score
   [state]

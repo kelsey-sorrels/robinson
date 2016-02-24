@@ -1463,7 +1463,7 @@
   ([state]
   (-> state
     (update-in [:world :player :thirst] (fn [thirst] (min 0 (- thirst 10))))
-    (rp/player-update-hp (fn [hp] (max (- hp 10) 0)))
+    (rp/player-update-hp (fn [hp] (max (- hp 1) 0)))
     (rw/assoc-current-state :normal)))
   ([state {x :x y :y}]
   (if-let [water (get (rw/get-cell state x y) :water)]

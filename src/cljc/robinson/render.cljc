@@ -1928,7 +1928,7 @@
                            (log/info "line" (vec line))
                            (map-indexed (fn [x tile]
                                           ;(log/info "tile" tile x y)
-                                          {:c (str (cp437->unicode (get tile :ch)))
+                                          {:c (cp437->unicode (get tile :ch))
                                            :fg [(get-in tile [:fg :r])
                                                 (get-in tile [:fg :g])
                                                 (get-in tile [:fg :b])]

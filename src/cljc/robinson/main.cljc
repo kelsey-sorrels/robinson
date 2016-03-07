@@ -282,12 +282,23 @@
         _         (log/info "Using font settings" font)
         terminal  (or screen
                       #?(:clj
-                         (or (glterminal/make-terminal (merge
+                         (or (glterminal/make-terminal [:map
+                                                        :features
+                                                        :fx
+                                                        :ui]
+                                                       (merge
                                                          {:title (format "Robinson - %s@%s" user-id version)
                                                           :columns 80
                                                           :rows 24
                                                           :default-fg-color [255 255 255]
-                                                          :default-bg-color [5 5 8]}
+                                                          :default-bg-color [5 5 8]
+                                                          :fx-shader {:name     "retro.fs"
+                                                                      :uniforms [["time" 0.0]
+                                                                                 ["noise" 0.0016]
+                                                                                 ["colorShift" 0.00001]
+                                                                                 ["scanlineDepth" 0.94]
+                                                                                 ["brightness" 0.68]
+                                                                                 ["contrast" 2.46]]}}
                                                          (select-keys font
                                                            [:windows-font
                                                             :else-font

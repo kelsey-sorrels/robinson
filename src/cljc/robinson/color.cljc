@@ -20,7 +20,7 @@
    :orange      [235 137 49];(vec (tinter/hex-str-to-dec "D36C00"))
    :yellow      [247 226 107];(vec (tinter/hex-str-to-dec "D3B100"))
    ;:highlight   [229 165 8];(vec (tinter/hex-str-to-dec "D3B100"))
-   :highlight   [209 155 8];(vec (tinter/hex-str-to-dec "D3B100"))
+   :highlight   (mapv (partial * 0.8) [229 155 8]);(vec (tinter/hex-str-to-dec "D3B100"))
    :background  [6 8 12]
    :sea-foam    [144 213 184]
    :light-green [163 206 39]

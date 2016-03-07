@@ -176,13 +176,13 @@
   (count (markup->chars 0 0 s)))
 
 (defn put-string
-  ([^zaffre.aterminal.ATerminal screen x y string]
-     (put-string screen (int (rmath/ceil x)) (int (rmath/ceil y)) string :white :black #{}))
-  ([^zaffre.aterminal.ATerminal screen x y string fg bg]
-     (put-string screen (int (rmath/ceil x)) (int (rmath/ceil y)) string fg bg #{}))
-  ([^zaffre.aterminal.ATerminal screen x y string fg bg styles]
-     (put-string screen (int (rmath/ceil x)) (int (rmath/ceil y)) string fg bg #{} {}))
-  ([^zaffre.aterminal.ATerminal screen x y string fg bg styles mask-opts]
+  ([^zaffre.aterminal.ATerminal screen layer-id x y string]
+     (put-string screen layer-id (int (rmath/ceil x)) (int (rmath/ceil y)) string :white :black #{}))
+  ([^zaffre.aterminal.ATerminal screen layer-id x y string fg bg]
+     (put-string screen layer-id (int (rmath/ceil x)) (int (rmath/ceil y)) string fg bg #{}))
+  ([^zaffre.aterminal.ATerminal screen layer-id x y string fg bg styles]
+     (put-string screen layer-id (int (rmath/ceil x)) (int (rmath/ceil y)) string fg bg #{} {}))
+  ([^zaffre.aterminal.ATerminal screen layer-id x y string fg bg styles mask-opts]
    {:pre [(clojure.set/superset? #{:underline :bold} styles)
           (integer? x)
           (integer? y)
@@ -197,24 +197,16 @@
                                             :y  y
                                             :opts {}})
                                  string)]
-     (zat/put-chars! screen characters)
-     ;; apply mask
-     (ranimation/set-mask! screen mask (map vector (range x (+ x (count string))) (repeat y)) false)
-     ;; apply unmask
-     (ranimation/set-mask! screen unmask (map vector (range x (+ x (count string))) (repeat y)) true))))
+     (zat/put-chars! screen layer-id characters))))
       
 (defn put-chars
-  [^zaffre.aterminal.ATerminal screen characters]
+  [^zaffre.aterminal.ATerminal screen layer-id characters]
   {:pre [(every? (fn [ch] (char? (get ch :c))) characters)]}
-  (zat/put-chars! screen characters))
-
-(defn set-fg
-  [^zaffre.aterminal.ATerminal screen x y fg]
-  (zat/set-fg! screen x y fg))
-
-(defn set-bg
-  [^zaffre.aterminal.ATerminal screen x y bg]
-  (zat/set-bg! screen x y bg))
+  (zat/put-chars! screen layer-id characters))
+      
+(defn set-bg!
+  [^zaffre.aterminal.ATerminal screen layer-id x y bg]
+  (zat/set-bg! screen layer-id x y bg))
 
 (defn get-size
   [^zaffre.aterminal.ATerminal screen]
@@ -288,9 +280,9 @@
       "")))
 
 (defn render-line
-  ([screen x y width line fg bg style]
-    (render-line screen x y width line fg bg style {}))
-  ([screen x y width line fg bg {:keys [underline center invert]
+  ([screen layer-id x y width line fg bg style]
+    (render-line screen layer-id x y width line fg bg style {}))
+  ([screen layer-id x y width line fg bg {:keys [underline center invert]
                                 :or   {:underline false :center false :invert false}}
                                 mask-opts]
   (let [width    (if (= width :auto)
@@ -309,11 +301,9 @@
                    #{:underline}
                    #{})]
     #_(log/info "put-string" (format "\"%s\"" line) "width" width)
-    #_(put-string screen x y s fg bg style)
+    #_(put-string screen layer-id x y s fg bg style)
     (let [characters (markup->chars (int (rmath/ceil x)) (int (rmath/ceil y)) s fg bg style)]
-      (put-chars screen characters)
-      ;; apply mask
-      (ranimation/set-mask! screen #{:rain :transform} (map rc/pos->xy characters) false)))))
+      (put-chars screen layer-id characters)))))
 
 (def single-border
   {:horizontal   \u2500
@@ -343,17 +333,17 @@
                 bottom-right]} characters]
     ;; render top and bottom
     (doseq [dx (range (dec width))]
-      (put-string screen (+ x dx 1) y (str horizontal) fg bg #{} {:mask #{:rain :transform}})
-      (put-string screen (+ x dx 1) (+ y height) (str horizontal) fg bg #{} {:mask #{:rain :transform}}))
+      (put-string screen :ui (+ x dx 1) y (str horizontal) fg bg #{} {:mask #{:rain :transform}})
+      (put-string screen :ui (+ x dx 1) (+ y height) (str horizontal) fg bg #{} {:mask #{:rain :transform}}))
     ;; render left and right
     (doseq [dy (range (dec height))]
-      (put-string screen x (+ y dy 1) (str vertical) fg bg #{} {:mask #{:rain :transform}})
-      (put-string screen (+ x width) (+ y dy 1) (str vertical) fg bg #{} {:mask #{:rain :transform}}))
+      (put-string screen :ui x (+ y dy 1) (str vertical) fg bg #{} {:mask #{:rain :transform}})
+      (put-string screen :ui (+ x width) (+ y dy 1) (str vertical) fg bg #{} {:mask #{:rain :transform}}))
     ;; render tl, tr, bl, br
-    (put-string screen x y (str top-left) fg bg #{} {:mask #{:rain :transform}})
-    (put-string screen (+ x width) y (str top-right) fg bg #{} {:mask #{:rain :transform}})
-    (put-string screen x (+ y height) (str bottom-left) fg bg #{} {:mask #{:rain :transform}})
-    (put-string screen (+ x width) (+ y height) (str bottom-right) fg bg #{} {:mask #{:rain :transform}})))
+    (put-string screen :ui x y (str top-left) fg bg #{} {:mask #{:rain :transform}})
+    (put-string screen :ui (+ x width) y (str top-right) fg bg #{} {:mask #{:rain :transform}})
+    (put-string screen :ui x (+ y height) (str bottom-left) fg bg #{} {:mask #{:rain :transform}})
+    (put-string screen :ui (+ x width) (+ y height) (str bottom-right) fg bg #{} {:mask #{:rain :transform}})))
 
 (defn render-rect-single-border
   [screen x y width height fg bg]
@@ -371,12 +361,12 @@
 (defn render-list
   "Render a sequence of lines padding to height if necessary.
    Lines are maps containing the keys `:s :fg :bg :style`."
-  [screen x y width height items]
+  [screen layer-id x y width height items]
   (doseq [i (range height)]
     (if (< i (count items))
       (let [item (nth items i)]
-        (render-line screen x (+ y i) width (get item :s) (get item :fg) (get item :bg) (get item :style) {:mask #{:rain :transform}}))
-      (render-line screen x (+ y i) (dec width) " " :white :white #{} {:mask #{:rain :transform}}))))
+        (render-line screen layer-id x (+ y i) width (get item :s) (get item :fg) (get item :bg) (get item :style) {:mask #{:rain :transform}}))
+      (render-line screen layer-id x (+ y i) (dec width) " " :white :white #{} {:mask #{:rain :transform}}))))
 
 (defn wrap-chars [x y width height characters fg bg style]
   (let [words  (take-nth 2 (partition-by (fn [ch] (= " " (get ch :c))) characters))
@@ -529,7 +519,7 @@
                      (concat [{:s title :fg :black :bg :white :style #{:underline :bold}}]
                               items)
                      items)]
-     (render-list screen x y width height items))))
+     (render-list screen :ui x y width height items))))
 
 (defn render-atmo
   [state x y]
@@ -541,11 +531,11 @@
         indexed-colors (map vector (partition 3 frame) (range))]
     (doseq [[column i] indexed-colors]
       #_(log/info x i y column)
-      (put-string screen (+ x i) y       "\u2584" (if (contains? #{0 6} i)
-                                                    :black
-                                                    (nth column 0))
-                                                  :black #{:underline} {:mask #{:rain :transform}})
-      (put-string screen (+ x i) (inc y) "\u2584" (nth column 2) (nth column 1) #{:underline} {:mask #{:rain :transform}}))))
+      (put-string screen :ui (+ x i) y       "\u2584" (if (contains? #{0 6} i)
+                                                        :black
+                                                        (nth column 0))
+                                                      :black #{:underline} {:mask #{:rain :transform}})
+      (put-string screen :ui (+ x i) (inc y) "\u2584" (nth column 2) (nth column 1) #{:underline} {:mask #{:rain :transform}}))))
 
 (defn render-hud
   [state]
@@ -553,15 +543,15 @@
     (render-atmo state 37 21)
     ;; render statuses
     (let [screen (state :screen)]
-      (put-string screen 37 23 " "      :black :gray #{} {:mask #{:rain :transform}})
-      (put-string screen 38 23 "\u2665" (if (player-wounded? state) :red :black) :gray #{} {:mask #{:rain :transform}})
-      (put-string screen 39 23 " "      :black :gray #{} {:mask #{:rain :transform}})
-      (put-string screen 40 23 "\u2665" (if (player-poisoned? state) :green :black) :gray #{} {:mask #{:rain :transform}})
-      (put-string screen 41 23 " "      :black :gray #{} {:mask #{:rain :transform}})
-      (put-string screen 42 23 "\u2665" (if (player-infected? state) :yellow :black) :gray #{} {:mask #{:rain :transform}})
-      (put-string screen 43 23 " "      :black :gray #{} {:mask #{:rain :transform}})
+      (put-string screen :ui 37 23 " "      :gray :gray #{} {:mask #{:rain :transform}})
+      (put-string screen :ui 38 23 "\u2665" (if (player-wounded? state) :red :black) :gray #{} {:mask #{:rain :transform}})
+      (put-string screen :ui 39 23 " "      :gray :gray #{} {:mask #{:rain :transform}})
+      (put-string screen :ui 40 23 "\u2665" (if (player-poisoned? state) :green :black) :gray #{} {:mask #{:rain :transform}})
+      (put-string screen :ui 41 23 " "      :gray :gray #{} {:mask #{:rain :transform}})
+      (put-string screen :ui 42 23 "\u2665" (if (player-infected? state) :yellow :black) :gray #{} {:mask #{:rain :transform}})
+      (put-string screen :ui 43 23 " "      :gray :gray #{} {:mask #{:rain :transform}})
       (when (= (current-state state) :sleep)
-        (put-string screen 38 20 (format "Zzz%s" (apply str (repeat (mod (get-time state) 3) "." ))) #{} {:mask #{:rain :transform}}))
+        (put-string screen 38 20 :ui (format "Zzz%s" (apply str (repeat (mod (get-time state) 3) "." ))) #{} {:mask #{:rain :transform}}))
       ;; render will to live and hp
       (let [wtl        (get-in state [:world :player :will-to-live])
             max-wtl    (get-in state [:world :player :max-will-to-live])
@@ -572,28 +562,28 @@
             thirst     (get-in state [:world :player :thirst])
             max-thirst (get-in state [:world :player :max-thirst])]
         (doseq [x (range 37)]
-          (put-string screen x 23 "\u2584" (if (> (/ (- 37 x) 37)
-                                                  (/ wtl max-wtl))
-                                             :black
-                                             :green)
-                                           (if (> (/ (- 37 x) 37)
-                                                  (/ hp max-hp))
-                                             :black
-                                             :red)
-                                           #{:underline}
-                                           {:mask #{:rain :transform}}))
+          (put-string screen :ui x 23 "\u2584" (if (> (/ (- 37 x) 37)
+                                                      (/ wtl max-wtl))
+                                                 :black
+                                                 :green)
+                                               (if (> (/ (- 37 x) 37)
+                                                      (/ hp max-hp))
+                                                 :black
+                                                 :red)
+                                               #{:underline}
+                                               {:mask #{:rain :transform}}))
         (doseq [x (range (- 80 43))]
-          (put-string screen (+ 44 x) 23 "\u2584"
-                                           (if (> (/ x (- 80 44))
-                                                  (/ hunger max-hunger))
-                                             :black
-                                             :yellow)
-                                           (if (> (/ x (- 80 44))
-                                                  (/ thirst max-thirst))
-                                             :black
-                                             :blue)
-                                           #{:underline}
-                                           {:mask #{:rain :transform}})))))
+          (put-string screen :ui (+ 44 x) 23 "\u2584"
+                                             (if (> (/ x (- 80 44))
+                                                    (/ hunger max-hunger))
+                                               :black
+                                               :yellow)
+                                             (if (> (/ x (- 80 44))
+                                                    (/ thirst max-thirst))
+                                               :black
+                                               :blue)
+                                             #{:underline}
+                                             {:mask #{:rain :transform}})))))
     ;    (int (-> state :world :player :hp))
     ;    (-> state :world :player :max-hp)
     ;    (apply str (interpose " " (-> state :world :player :status)))
@@ -605,8 +595,8 @@
              :down  \╤
              :left  \╢
              :right \╟)]
-    (put-chars screen (for [[x y] (first (get trap :locations))]
-                        {:x x :y y :c ch :fg [90 90 90] :bg [0 0 0]}))))
+    (put-chars screen :features (for [[x y] (first (get trap :locations))]
+                                  {:x x :y y :c ch :fg [90 90 90] :bg [0 0 0]}))))
 
 (defn render-poisonous-gas
   [screen state trap]
@@ -614,7 +604,7 @@
     (doseq [[x y] (keys (get trap :locations))]
       (when (= (get (rw/get-cell state x y) :discovered) current-time)
         (let [bg (rcolor/color->rgb (rand-nth [:beige :temple-beige :light-brown]))]
-          (set-bg screen x y bg))))))
+          (set-bg! screen :map x y bg))))))
 
 (defn render-traps
   [state]
@@ -662,6 +652,7 @@
                          (fn [^Color c] (.getBlue c)))
                    color2)]
          (put-string (state :screen)
+                       :ui
                        (+ x px)
                        (int (+ y (/ py 2)))
                        "\u2584"
@@ -722,7 +713,7 @@
         height (if (seq abilities)
                  (+ 3 (* 3 (count abilities)))
                  4)]  
-    (render-list screen 17 4 43 height
+    (render-list screen :ui 17 4 43 height
       (if (seq abilities)
         (concat
           (mapcat
@@ -741,7 +732,7 @@
          {:s "Press <color fg=\"highlight\">Esc</color> to exit." :fg :black :bg :white :style #{}}]))
         
     (render-rect-double-border screen 16 3 43 height :black :white)
-    (put-string screen 33 3 "Abilities" :black :white)))
+    (put-string screen :ui 33 3 "Abilities" :black :white)))
 
 (defn render-ability-choices 
   "Render the player ability choice menu if the world state is `:gain-level`."
@@ -749,7 +740,7 @@
   (let [screen (get state :screen)
         abilities (get-in state [:world :ability-choices])
         height (+ 3 (* 3 (count abilities)))]
-    (render-list screen 17 4 43 height
+    (render-list screen :ui 17 4 43 height
       (concat
         (mapcat
           (fn [ability]
@@ -763,7 +754,7 @@
         [{:s "" :fg :black :bg :white :style #{}}
          {:s "Select hotkey." :fg :black :bg :white :style #{}}]))
     (render-rect-double-border screen 16 3 43 height :black :white)
-    (put-string screen 29 3 "Choose New Ability" :black :white)))
+    (put-string screen :ui 29 3 "Choose New Ability" :black :white)))
 
 (defn render-action-choices
   "Render the player action choices menu if the world state is `:action-select`."
@@ -773,7 +764,7 @@
         height (if (seq abilities)
                  (+ 3 (* 3 (count abilities)))
                  4)]  
-    (render-list screen 17 4 43 height
+    (render-list screen :ui 17 4 43 height
       (if (seq abilities)
         (concat
           (mapcat
@@ -791,7 +782,7 @@
          {:s "Press <color fg=\"highlight\">Esc</color> to exit." :fg :black :bg :white :style #{}}]))
         
     (render-rect-double-border screen 16 3 43 height :black :white)
-    (put-string screen 30 3 "Choose Action" :black :white)))
+    (put-string screen :ui 30 3 "Choose Action" :black :white)))
 
 
 (defn render-player-stats
@@ -810,7 +801,7 @@
         dexterity     (rp/get-player-attribute state :dexterity)
         toughness     (rp/get-player-attribute state :toughness)]
   
-    (render-list screen (inc x) (inc y) 43 height
+    (render-list screen :ui (inc x) (inc y) 43 height
         [{:s (format "Name:      %s" player-name) :fg :black :bg :white :style #{}}
          {:s (format "Level:     %d (%d/%d)" level xp xp-next-level) :fg :black :bg :white :style #{}}
          {:s "" :fg :black :bg :white :style #{}}
@@ -822,7 +813,7 @@
          {:s "" :fg :black :bg :white :style #{}}
          {:s "Press <color fg=\"highlight\">Esc</color> to exit." :fg :black :bg :white :style #{}}])
     (render-rect-double-border screen x y 43 height :black :white)
-    (put-string screen (+ x 16) y "Player Info" :black :white)))
+    (put-string screen :ui (+ x 16) y "Player Info" :black :white)))
 
 (defn render-describe
   "Render the describe info pane if the world state is `:describe`."
@@ -900,7 +891,7 @@
 (defn render-quit?
   "Render the pickup item menu if the world state is `:pickup`."
   [state]
-  (put-string (state :screen) 1 0 "quit? [yn]"))
+  (put-string (state :screen) :ui 1 0 "quit? [yn]"))
 
 (defn render-dialog
   "Render the dialog menu if the world state is `:talking`."
@@ -925,10 +916,10 @@
           _ (log/debug "last-response" last-response)
           response-wrapped (wrap-line (- 30 17) last-response)
           _ (log/debug "response-wrapped" response-wrapped)]
-      (put-string (state :screen) 0 16 (format "Talking to %-69s" (get npc :name)) :black :white #{:bold})
-      (doall (map (fn [y] (put-string (state :screen) 12 y "                    " :black :white #{:bold}))
+      (put-string (state :screen) :ui 0 16 (format "Talking to %-69s" (get npc :name)) :black :white #{:bold})
+      (doall (map (fn [y] (put-string (state :screen) :ui 12 y "                    " :black :white #{:bold}))
                   (range 17 (+ 17 6))))
-      (doall (map-indexed (fn [idx line] (put-string (state :screen) 13 (+ 17 idx) line :black :white #{:bold}))
+      (doall (map-indexed (fn [idx line] (put-string (state :screen) :ui 13 (+ 17 idx) line :black :white #{:bold}))
                           response-wrapped))
       (render-multi-select (state :screen) "Respond:" [] options 32 17 68 5)
       (render-img state (get npc :image-path) 0 17))))
@@ -944,10 +935,10 @@
         last-response ((or (last (get-in state [:world :dialog-log])) {:text ""}) :text)
         response-wrapped (wrap-line (- 30 17) last-response)
         style {:fg :black :bg :white :styles #{:bold}}]
-    (put-string (state :screen) 0 16 (format "Doing business with %-69s" (get npc :name)) :black :white #{:bold})
-    (doall (map (fn [y] (put-string (state :screen) 12 y "                    " :black :white #{:bold}))
+    (put-string (state :screen) :ui 0 16 (format "Doing business with %-69s" (get npc :name)) :black :white #{:bold})
+    (doall (map (fn [y] (put-string (state :screen) :ui 12 y "                    " :black :white #{:bold}))
                 (range 17 (+ 17 6))))
-    (doall (map-indexed (fn [idx line] (put-string (state :screen) 13 (+ 17 idx) line :black :white #{:bold}))
+    (doall (map-indexed (fn [idx line] (put-string (state :screen) :ui 13 (+ 17 idx) line :black :white #{:bold}))
                         response-wrapped))
     (render-multi-select (state :screen) "Option:" [] options 32 17 68 5)
     (render-img state (get npc :image-path) 0 17)))
@@ -970,10 +961,10 @@
         response-wrapped (wrap-line (- 30 17) last-response)
         _ (log/debug "response-wrapped" response-wrapped)
         style {:fg :black :bg :white :styles #{:bold}}]
-    (put-string (state :screen) 0 16 (format "Doing business with %-69s" (get npc :name)) :black :white #{:bold})
-    (doall (map (fn [y] (put-string (state :screen) 12 y "                    " :black :white #{:bold}))
+    (put-string (state :screen) :ui 0 16 (format "Doing business with %-69s" (get npc :name)) :black :white #{:bold})
+    (doall (map (fn [y] (put-string (state :screen) :ui 12 y "                    " :black :white #{:bold}))
                 (range 17 (+ 17 6))))
-    (doall (map-indexed (fn [idx line] (put-string (state :screen) 13 (+ 17 idx) line :black :white #{:bold}))
+    (doall (map-indexed (fn [idx line] (put-string (state :screen) :ui 13 (+ 17 idx) line :black :white #{:bold}))
                         response-wrapped))
     (render-multi-select (state :screen) "Buy:" [] options 32 17 68 5)
     (render-img state (get npc :image-path) 0 17)))
@@ -993,10 +984,10 @@
         response-wrapped (wrap-line (- 30 17) last-response)
         _ (log/debug "response-wrapped" response-wrapped)
         style {:fg :black :bg :white :styles #{:bold}}]
-    (put-string (state :screen) 0 16 (format "Doing business with %-69s" (get npc :name)) :black :white #{:bold})
-    (doall (map (fn [y] (put-string (state :screen) 12 y "                    " :black :white #{:bold}))
+    (put-string (state :screen) :ui 0 16 (format "Doing business with %-69s" (get npc :name)) :black :white #{:bold})
+    (doall (map (fn [y] (put-string (state :screen) :ui 12 y "                    " :black :white #{:bold}))
                 (range 17 (+ 17 6))))
-    (doall (map-indexed (fn [idx line] (put-string (state :screen) 13 (+ 17 idx) line :black :white #{:bold}))
+    (doall (map-indexed (fn [idx line] (put-string (state :screen) :ui 13 (+ 17 idx) line :black :white #{:bold}))
                         response-wrapped))
     (render-multi-select (state :screen) "Sell:" [] options 32 17 68 5)
     (render-img state (get npc :image-path) 0 17)))
@@ -1011,7 +1002,7 @@
                                         {:name "Transportation" :hotkey \t}]
                                         30 6 20 5)
     (render-rect-single-border screen 29 5 20 5 :black :white)
-    (put-string screen 37 5 "Craft" :black :white)))
+    (put-string screen :ui 37 5 "Craft" :black :white)))
 
 (defn render-craft-submenu
   "Render the craft submenu"
@@ -1025,7 +1016,7 @@
   (log/info "recipes" (get-recipes state))
   (log/info "selected recipes" recipes)
   ;; render recipes
-  (render-list screen 11 6 29 15
+  (render-list screen :ui 11 6 29 15
     (concat
       [{:s (name recipe-type) :fg :black :bg :white :style #{:underline}}]
        (map (fn [recipe]
@@ -1050,7 +1041,7 @@
           have               (get recipe :have-or [])
           inventory-id-freqs (rp/inventory-id-freqs state)]
       (log/info "exhaust" exhaust "have" have)
-      (render-list screen 41 6 29 15
+      (render-list screen :ui 41 6 29 15
       (concat
         [{:s "" :fg :black :bg :white :style #{}}
          {:s "Consumes" :fg :black :bg :white :style #{}}]
@@ -1072,12 +1063,12 @@
         (if (empty? have)
           [{:s "N/A" :fg :black :bg :white :style #{}}]
           (map (fn [id] {:s (id->name id) :fg :black :bg :white :style #{}}) have)))))
-    (render-list screen 41 6 29 15
+    (render-list screen :ui 41 6 29 15
         [{:s "Select a recipe" :fg :black :bg :white :style #{}}]))
   (render-rect-single-border screen 10 5 60 15 :black :white)
   (render-vertical-border screen 40 6 15 :black :white)
-  (put-string screen 40 20 "\u2534" :black :white)
-  (put-string screen 37 5 "Craft" :black :white)))
+  (put-string screen :ui 40 20 "\u2534" :black :white)
+  (put-string screen :ui 37 5 "Craft" :black :white)))
           
 (defn render-craft-weapon
   "Render the craft weapon menu if the world state is `:craft-weapon`."
@@ -1113,7 +1104,7 @@
   (let [screen     (state :screen)
         start-text (sg/start-text state)
         width      (reduce max (map markup->length (clojure.string/split-lines start-text)))]
-    (render-list screen 16 4 width 6
+    (render-list screen :ui 16 4 width 6
       (concat
         [{:s "" :fg :black :bg :white :style #{}}]
         (map
@@ -1134,7 +1125,7 @@
         popover-x  (int (- (/ v-width 2) (/ width 2)))
         popover-y  (int (- (/ v-height 2) (/ height 2)))]
     (println "rendering popover at" popover-x "," popover-y)
-    (render-list screen popover-x popover-y width (inc height)
+    (render-list screen :ui popover-x popover-y width (inc height)
       (concat
         [{:s "" :fg :black :bg :white :style #{}}]
         (map
@@ -1153,7 +1144,7 @@
         popover-x  (int (- (/ v-width 2) (/ width 2)))
         popover-y  (int (- (/ v-height 2) (/ height 2)))]
     (println "rendering popover at" popover-x "," popover-y)
-    (render-list screen popover-x popover-y width (+ 4 height)
+    (render-list screen :ui popover-x popover-y width (+ 4 height)
       (concat
         [{:s "" :fg :black :bg :white :style #{}}]
         (map
@@ -1182,7 +1173,7 @@
                              (<= will-to-live 0)   "just giving up on life"
                              :else                 "mysterious causes")))
         width          (max 25 (+ 7 (markup->length cause-of-death)))]
-    (render-list screen 27 4 width 6
+    (render-list screen :ui 27 4 width 6
       (concat
         [{:s "" :fg :black :bg :white :style #{}}]
         (map
@@ -1196,7 +1187,7 @@
 (defn render-rescued-text [state]
   (let [screen      (state :screen)
         rescue-mode (rendgame/rescue-mode state)]
-    (render-list screen 16 4 53 6
+    (render-list screen :ui 16 4 53 6
       (concat
         [{:s "" :fg :black :bg :white :style #{}}]
         (map
@@ -1210,7 +1201,7 @@
 (defn render-harvest
   "Render the harvest prompt if the world state is `:harvest`."
   [state]
-  (put-string (state :screen) 0 0 "Pick a direction to harvest."))
+  (put-string (state :screen) :ui 0 0 "Pick a direction to harvest."))
 
 (defn render-map
   "The big render function used during the normal game.
@@ -1446,13 +1437,14 @@
     ;; set palette
     (ranimation/set-palette! screen cell-type-palette)
     #_(log/info "putting chars" characters)
-    (put-chars screen characters)
+    (put-chars screen :map characters)
     ;; draw character
     ;(log/debug (-> state :world :player))
     (let [[vx vy] (rv/viewport-xy state)
           [x y]   (rp/player-xy state)]
       (put-string
         screen
+        :map
         (- x vx)
         (- y vy)
         "@"
@@ -1525,6 +1517,7 @@
                       ;(log/debug "npc@" x y "visible?" visible)
                       (when visible
                         (apply put-string screen
+                                          :features
                                             vx
                                             vy
                                             (map (fn [f v] (f v))
@@ -1587,7 +1580,7 @@
     (println "ui-hint" (get-in state [:world :ui-hint]))
     (if-not (nil? (get-in state [:world :ui-hint]))
       ;; ui-hint
-      (put-chars screen (markup->chars 0 0 (get-in state [:world :ui-hint])))
+      (put-chars screen :ui (markup->chars 0 0 (get-in state [:world :ui-hint])))
       ;; draw log
       (let [current-time     (dec (rw/get-time state))
             log-idx          (get-in state [:world :log-idx] 0)
@@ -1617,7 +1610,7 @@
         (log/info "current-time" current-time)
         (log/info "num-log-msgs" num-logs)
         (log/info "message" message)
-        (put-chars screen characters)
+        (put-chars screen :ui characters)
         (render-traps state)))
     (case (current-state state)
       :pickup-selection     (render-pick-up-selection state)
@@ -1670,9 +1663,9 @@
   (let [screen (state :screen)
         player-name (get-in state [:world :player :name])]
     (clear (state :screen))
-    (put-string screen 30 5 "Robinson")
-    (put-string screen 20 7 "Name:___________________")
-    (put-string screen 25 7 (str player-name "\u2592"))
+    (put-string screen :ui 30 5 "Robinson")
+    (put-string screen :ui 20 7 "Name:___________________")
+    (put-string screen :ui 25 7 (str player-name "\u2592"))
     (refresh screen)))
 
 (defn render-start [state]
@@ -1680,24 +1673,24 @@
         player-name (get-in state [:world :player :name])]
     (clear (state :screen))
     (render-img state "images/robinson-mainmenu.jpg" 0 0)
-    (put-chars screen (markup->chars 30 20 "<color bg=\"background\">Press </color><color fg=\"highlight\" bg=\"background\">space</color><color bg=\"background\"> to play</color>"))
-    (put-chars screen (markup->chars 30 22 "<color fg=\"highlight\" bg=\"background\">c</color><color bg=\"background\">-configure </color>"))
+    (put-chars screen :ui (markup->chars 30 20 "<color bg=\"background\">Press </color><color fg=\"highlight\" bg=\"background\">space</color><color bg=\"background\"> to play</color>"))
+    (put-chars screen :ui (markup->chars 30 22 "<color fg=\"highlight\" bg=\"background\">c</color><color bg=\"background\">-configure </color>"))
     (refresh screen)))
 
 (defn render-configure [state]
   (let [screen (state :screen)]
     (clear (state :screen))
-    (put-string screen 34 5 "Configure")
-    (put-chars screen (markup->chars 34 7 "<color fg=\"highlight\" bg=\"background\">f</color><color bg=\"background\">-font </color>"))
+    (put-string screen :ui 34 5 "Configure")
+    (put-chars screen :ui (markup->chars 34 7 "<color fg=\"highlight\" bg=\"background\">f</color><color bg=\"background\">-font </color>"))
     (refresh screen)))
 
 (defn render-configure-font [state]
   (let [screen (state :screen)
         font   (get-in state [:fonts (get state :new-font (get (rc/get-settings state) :font))])]
     (clear (state :screen))
-    (put-string screen 31 5 "Configure Font")
-    (put-string screen 31 7 (format "Font: %s" (get font :name)))
-    (put-chars screen (markup->chars 31 12 "<color fg=\"highlight\" bg=\"background\">n</color><color bg=\"background\">-next font </color>"))
+    (put-string screen :ui 31 5 "Configure Font")
+    (put-string screen :ui 31 7 (format "Font: %s" (get font :name)))
+    (put-chars screen :ui (markup->chars 31 12 "<color fg=\"highlight\" bg=\"background\">n</color><color bg=\"background\">-next font </color>"))
     (put-chars screen (markup->chars 31 13 "<color fg=\"highlight\" bg=\"background\">p</color><color bg=\"background\">-previous font </color>"))
     (put-chars screen (markup->chars 31 14 "<color fg=\"highlight\" bg=\"background\">s</color><color bg=\"background\">-save and apply</color>"))
     (refresh screen)))
@@ -1708,12 +1701,12 @@
         selected-hotkeys (get-in state [:world :selected-hotkeys])
         start-inventory  (sg/start-inventory)]
     (clear (state :screen))
-    (put-string screen 20 5 "Choose up to three things to take with you:")
+    (put-string screen :ui 20 5 "Choose up to three things to take with you:")
     (doseq [y         (range (count start-inventory))]
       (let [item      (nth start-inventory y)
             hotkey    (get item :hotkey)
             item-name (get item :name)]
-        (put-chars screen (markup->chars 20 (+ 7 y) (format #?(:clj  "<color fg=\"highlight\">%c</color>%c%s"
+        (put-chars screen :ui (markup->chars 20 (+ 7 y) (format #?(:clj  "<color fg=\"highlight\">%c</color>%c%s"
                                                                :cljs "<color fg=\"highlight\">%s</color>%s%s")
                                                             hotkey
                                                             (if (contains? selected-hotkeys hotkey)
@@ -1770,15 +1763,15 @@
 (defn render-connection-failed [state]
   (let [screen     (state :screen)]
     (clear screen)
-    (put-string screen 30 12 "Connection failed")
-          (put-chars (state :screen) (markup->chars 30 22 "Play again? [<color fg=\"highlight\">y</color>/<color fg=\"highlight\">n</color>]"))
+    (put-string screen 30 12 :ui "Connection failed")
+          (put-chars (state :screen) :ui (markup->chars 30 22 "Play again? [<color fg=\"highlight\">y</color>/<color fg=\"highlight\">n</color>]"))
     (refresh screen)))
 
 (def connecting-index (atom 0))
 (defn render-connecting [state]
   (let [screen     (state :screen)]
     (clear screen)
-    (put-string screen 30 12 (format "Connecting%s" (apply str (repeat (mod (swap! connecting-index inc) 4) "."))))
+    (put-string screen 30 12 :ui (format "Connecting%s" (apply str (repeat (mod (swap! connecting-index inc) 4) "."))))
     (refresh screen)))
 
 (defn render-game-over
@@ -1809,29 +1802,29 @@
                                  (<= will-to-live 0)   "just giving up on life"
                                  :else                 "mysterious causes"))]
           ;; Title
-          (put-string (state :screen) 10 1 (format "%s: %s" player-name madlib))
-          (put-string (state :screen) 10 3 (format "Survived for %d %s. (%d turns)" days-survived (if (> 1 days-survived) "days" "day") turns-survived))
-          (put-string (state :screen) 10 4 (format "Died from %s" cause-of-death))
-          (put-string (state :screen) 10 6 (format "Points: %s." points))
-          (put-string (state :screen) 10 8 "Inventory:")
+          (put-string (state :screen) :ui 10 1 (format "%s: %s" player-name madlib))
+          (put-string (state :screen) :ui 10 3 (format "Survived for %d %s. (%d turns)" days-survived (if (> 1 days-survived) "days" "day") turns-survived))
+          (put-string (state :screen) :ui 10 4 (format "Died from %s" cause-of-death))
+          (put-string (state :screen) :ui 10 6 (format "Points: %s." points))
+          (put-string (state :screen) :ui 10 8 "Inventory:")
           (doall (map-indexed
             (fn [idx item] (put-string (state :screen) 20 (+ idx 8) (format "%s%s" (if (pos? (get item :count 0))
                                                                                      (format "%dx " (get item :count))
                                                                                      "")
                                                                                     (item :name))))
             (-> state :world :player :inventory)))
-          (put-chars (state :screen) (markup->chars 10 22 "Play again? [<color fg=\"highlight\">y</color>/<color fg=\"highlight\">n</color>] <color fg=\"highlight\">space</color>-share and compare with other players")))
+          (put-chars (state :screen) :ui (markup->chars 10 22 "Play again? [<color fg=\"highlight\">y</color>/<color fg=\"highlight\">n</color>] <color fg=\"highlight\">space</color>-share and compare with other players")))
       :game-over-rescued
         (let [rescue-mode (rendgame/rescue-mode state)]
           ;; Title
-          (put-string (state :screen) 10 1 (format "%s: %s." player-name madlib))
-          (put-string (state :screen) 18 2 (format "Rescued by %s after surviving for %d days." rescue-mode days-survived))
-          (put-string (state :screen) 10 3 (format "Points: %s." points))
-          (put-string (state :screen) 10 4 "Inventory:")
+          (put-string (state :screen) :ui 10 1 (format "%s: %s." player-name madlib))
+          (put-string (state :screen) :ui 18 2 (format "Rescued by %s after surviving for %d days." rescue-mode days-survived))
+          (put-string (state :screen) :ui 10 3 (format "Points: %s." points))
+          (put-string (state :screen) :ui 10 4 "Inventory:")
           (doall (map-indexed
-            (fn [idx item] (put-string (state :screen) 18 (+ idx 5) (item :name)))
+            (fn [idx item] (put-string (state :screen) :ui 18 (+ idx 5) (item :name)))
             (-> state :world :player :inventory)))
-          (put-string (state :screen) 10 22 "Play again? [yn]")))
+          (put-string (state :screen) :ui 10 22 "Play again? [yn]")))
     (refresh (state :screen))))
 
 (defn cp437->unicode
@@ -1851,15 +1844,15 @@
   (let [group-size (get histogram "group-size")]
   ;; render x-axis
   (doseq [i (range 8)]
-    (put-chars (state :screen) [{:c (get single-border :horizontal) :x (+ x i 1) :y (+ y 8) :fg (rcolor/color->rgb :white) :bg (rcolor/color->rgb :black) :style #{}}]))
+    (put-chars (state :screen) :ui [{:c (get single-border :horizontal) :x (+ x i 1) :y (+ y 8) :fg (rcolor/color->rgb :white) :bg (rcolor/color->rgb :black) :style #{}}]))
   ;; put caret
-  (put-chars (state :screen) [{:c \^ :x (+ x (int (/ value group-size)) 1) :y (+ y 8) :fg (rcolor/color->rgb :highlight) :bg (rcolor/color->rgb :black) :style #{}}])
+  (put-chars (state :screen) :ui [{:c \^ :x (+ x (int (/ value group-size)) 1) :y (+ y 8) :fg (rcolor/color->rgb :highlight) :bg (rcolor/color->rgb :black) :style #{}}])
   ;; render y-axis
   (doseq [i (range 7)]
-    (put-chars (state :screen) [{:c (get single-border :vertical)  :x x :y (+ y i 1) :fg (rcolor/color->rgb :white) :bg (rcolor/color->rgb :black) :style #{}}]))
-  (put-chars (state :screen) [{:c (get single-border :bottom-left)  :x x :y (+ y 8) :fg (rcolor/color->rgb :white) :bg (rcolor/color->rgb :black) :style #{}}])
+    (put-chars (state :screen) :ui [{:c (get single-border :vertical)  :x x :y (+ y i 1) :fg (rcolor/color->rgb :white) :bg (rcolor/color->rgb :black) :style #{}}]))
+  (put-chars (state :screen) :ui [{:c (get single-border :bottom-left)  :x x :y (+ y 8) :fg (rcolor/color->rgb :white) :bg (rcolor/color->rgb :black) :style #{}}])
   ;; print title
-  (put-chars (state :screen) (markup->chars x y title))
+  (put-chars (state :screen) :ui (markup->chars x y title))
   ;; print bars
   (let [max-count (reduce (fn [m data](max m (get data "count"))) 0 (get histogram "data"))]
     (log/debug "data" histogram)
@@ -1879,7 +1872,7 @@
             to   (+ y 7)]
         (log/debug "from" from "to" to "x" x)
       (doseq [y (range from to)]
-        (put-chars (state :screen) [{:c (cp437->unicode 219)#_"*" :x x :y (inc y) :fg fg :bg (rcolor/color->rgb :black) :style #{}}])))))))
+        (put-chars (state :screen) :ui [{:c (cp437->unicode 219)#_"*" :x x :y (inc y) :fg fg :bg (rcolor/color->rgb :black) :style #{}}])))))))
 
 (defn render-share-score
   [state]
@@ -1887,7 +1880,7 @@
         top-scores (get state :top-scores)]
     (clear (state :screen))
     ;; Title
-    (put-string (state :screen) 10 1 "Top scores")
+    (put-string (state :screen) :ui 10 1 "Top scores")
     ;; highscore list
     (doseq [[idx score] (map-indexed vector (take 10 (concat top-scores (repeat nil))))]
       (if score
@@ -1902,20 +1895,20 @@
 ;;                                                                                         "days"
 ;;                                                                                          "day")
 ;;                                                                                      points)))
-          (put-string (state :screen) 1 (+ idx 3) (format "%2d.%-20s (%d points)" (inc idx) player-name points) (if (and (= player-name (get-in state [:world :player :name]))
+          (put-string (state :screen) :ui 1 (+ idx 3) (format "%2d.%-20s (%d points)" (inc idx) player-name points) (if (and (= player-name (get-in state [:world :player :name]))
                                                                                                                          (= points (get state :points)))
                                                                                                                   :highlight
                                                                                                                   :white)
                                                                                                                 :black))
-        (put-string (state :screen) 1 (+ idx 3) "...")))
+        (put-string (state :screen) :ui 1 (+ idx 3) "...")))
     ;; Performance
-    (put-string (state :screen) 50 1 "Performance")
+    (put-string (state :screen) :ui 50 1 "Performance")
     (render-histogram state 45 3  "Points"        (get state :points)                                                                  (get state :point-data))
     (render-histogram state 61 3  "Turns"         (rw/get-time state)                                                                  (get state :time-data))
     (render-histogram state 45 13 "Kills"         (reduce + 0 (map second (get-in state [:world :player :stats :num-animals-killed]))) (get state :kills-data))
     (render-histogram state 61 13 "Items Crafted" (reduce + 0 (map second (get-in state [:world :player :stats :num-items-crafted])))  (get state :crafted-data))
-    (put-chars (state :screen) (markup->chars 45 22 "Your performance - <color fg=\"highlight\">^</color>"))
-    (put-chars (state :screen) (markup->chars 7 22 "Play again? [<color fg=\"highlight\">y</color>/<color fg=\"highlight\">n</color>]"))
+    (put-chars (state :screen) :ui (markup->chars 45 22 "Your performance - <color fg=\"highlight\">^</color>"))
+    (put-chars (state :screen) :ui (markup->chars 7 22 "Play again? [<color fg=\"highlight\">y</color>/<color fg=\"highlight\">n</color>]"))
     (refresh (state :screen))))
 
 (defn rockpick->render-map
@@ -1945,7 +1938,7 @@
   (let [characters (rockpick->render-map (get-in state [:data id]))]
     (log/info "render-map" (vec characters))
     (clear (state :screen))
-    (put-chars (state :screen) characters)
+    (put-chars (state :screen) :ui characters)
     (refresh (state :screen))))
 
 (defn render-keyboardcontrols-help
@@ -1970,7 +1963,7 @@
   (let [log (get-in state [:world :log])]
     (clear (state :screen))
     (doall (map-indexed (fn [idx message]
-                          (put-string (state :screen) 0 idx (get message :text) (get message :color) :black))
+                          (put-string (state :screen) :ui 0 idx (get message :text) (get message :color) :black))
                         log))
     (refresh (state :screen))))
 

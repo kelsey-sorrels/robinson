@@ -27,6 +27,7 @@
             [robinson.worldgen :as rworldgen]
             [robinson.lineofsight :as rlos]
             [robinson.renderutil :as rutil]
+            [robinson.events :as revents]
             [robinson.fx :as rfx]
             [robinson.feedback :as rf]
             robinson.macros
@@ -3656,7 +3657,8 @@
             new-time  (inc (get-in state [:world :time]))
             state     (-> state
                         rc/clear-ui-hint
-                        rfx/clear-fx)
+                        rfx/clear-fx
+                        (revents/assoc-event-time 0))
                             
             state     (transition-fn state)
             ;; apply effect on :enter-name state

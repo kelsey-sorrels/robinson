@@ -12,6 +12,8 @@
             [zaffre.aterminal :as aterminal]
             [robinson.aanimatedterminal :as raat]
             [robinson.animation :as ranimation]
+            [robinson.events :as revents]
+            clojure.data.priority-map
             #?@(:clj (
                 [taoensso.timbre :as log]
                 [zaffre.glterminal :as glterminal]
@@ -137,9 +139,19 @@
               _ (log/info "update-state-fn" update-state-fn)
               new-state       (rm/log-time "update-state" (update-state-fn state keyin))]
           (when new-state
-            (ranimation/reset-state! (get state :screen) new-state)
-            (render-state new-state)
-            (save-state new-state))
+            (let [chan (revents/stream new-state)]
+              (log/info "got state chan")
+              (loop [state nil]
+                (if-let [s (async/<!! chan)]
+                  (do
+                    (log/info "rendering s from state chan. keys" (keys s))
+                    (ranimation/reset-state! (get s :screen) s)
+                    (render-state s)
+                    (recur s))
+                   (do
+                     (log/info "done with state chan, saving")
+                     (save-state state)
+                     state)))))
           ;(async/thread (spit "save/world.edn" (with-out-str (pprint (new-state :world)))))
           new-state))
       #?(:clj
@@ -326,16 +338,17 @@
     ;; tick once to render frame
     #?(:clj
        (let [state {:world world
-                   :screen animated-terminal
-                   :quests {} #_quest-map
-                   :dialog {} #_dialog
-                   :feedback-participant feedback-participant
-                   :version version
-                   :user-id user-id
-                   :data data
-                   :settings (enduro/file-atom {} "config/settings.edn")
-                   :scores   (enduro/file-atom [] "scores/scores.edn")
-                   :fonts fonts}]
+                    :screen animated-terminal
+                    :quests {} #_quest-map
+                    :dialog {} #_dialog
+                    :feedback-participant feedback-participant
+                    :version version
+                    :user-id user-id
+                    :data data
+                    :settings (enduro/file-atom {} "config/settings.edn")
+                    :scores   (enduro/file-atom [] "scores/scores.edn")
+                    :fonts fonts
+                    :events (clojure.data.priority-map/priority-map)}]
          (f (tick state \.)))
        :cljs
        (p/then data (fn [[atmo help]]

@@ -218,10 +218,10 @@
                                   (raat/reset-mask! rain-fx (repeat rows (repeat columns v)))))))
 
 (defn transform [terminal mask state transforms]
-  (log/info (format "drawing %d transforms" (count transforms)))
+  #_(log/info (format "drawing %d transforms" (count transforms)))
   (doseq [transform transforms]
     (let [path (rlos/line-segment-fast-without-endpoints (get transform :from-xy) (get transform :to-xy))
-          n    (int (/ @frame-count 15))]
+          n    (int (/ @frame-count 1))]
       (when (< n (count path))
         (log/info "n" n "count path" (count path))
         (let [[vx vy] (rv/world-xy->screen-xy state (nth path n))]

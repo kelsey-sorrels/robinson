@@ -356,7 +356,7 @@
 (defn render-vertical-border
   [screen x y height fg bg]
   (doseq [dy (range (dec height))]
-    (put-string screen x (+ y dy) "\u2502" fg bg #{} {:mask #{:rain :transform}})))
+    (put-string screen :ui x (+ y dy) "\u2502" fg bg #{} {:mask #{:rain :transform}})))
 
 (defn render-list
   "Render a sequence of lines padding to height if necessary.
@@ -698,7 +698,7 @@
   (log/debug "cell" cell)
   (log/debug "cell-items" cell-items)
   (render-multi-select screen "Pick up" selected-hotkeys (translate-identified-items state items))
-  (put-chars screen (markup->chars 41 20 "<color fg=\"highlight\">space</color>-All" :black :white #{}))))
+  (put-chars screen :ui (markup->chars 41 20 "<color fg=\"highlight\">space</color>-All" :black :white #{}))))
 
 (defn render-inventory
   "Render the pickup item menu if the world state is `:inventory`."
@@ -1456,19 +1456,19 @@
           :black)))
     ;; if character is fishing, draw pole
     (condp = (current-state state)
-      :fishing-left  (put-string screen (dec (-> state :world :player :pos :x))
+      :fishing-left  (put-string screen :ui (dec (-> state :world :player :pos :x))
                                         (-> state :world :player :pos :y)
                                         "\\"
                                         :white :black)
-      :fishing-right (put-string screen (inc (-> state :world :player :pos :x))
+      :fishing-right (put-string screen :ui (inc (-> state :world :player :pos :x))
                                         (-> state :world :player :pos :y)
                                         "/"
                                         :white :black)
-      :fishing-up    (put-string screen (-> state :world :player :pos :x)
+      :fishing-up    (put-string screen :ui (-> state :world :player :pos :x)
                                         (dec (-> state :world :player :pos :y))
                                         "/"
                                         :white :black)
-      :fishing-down  (put-string screen (-> state :world :player :pos :x)
+      :fishing-down  (put-string screen :ui (-> state :world :player :pos :x)
                                         (inc (-> state :world :player :pos :y))
                                         "\\"
                                         :white :black)
@@ -1490,7 +1490,7 @@
         (log/debug "target-sx" target-sx "target-y" target-sy)
         (doseq [[sx sy] (rlos/line-segment-fast-without-endpoints (rv/world-xy->screen-xy state [player-x player-y])
                                                                   [target-sx target-sy])]
-            (put-string screen sx sy "\u25CF" :green :black))))
+            (put-string screen :ui sx sy "\u25CF" :green :black))))
       
     ;; draw npcs
     (let [place-npcs (npcs-in-viewport state)
@@ -1756,8 +1756,8 @@
                         first)]
     (swap! tidbit-freqs (fn [freqs] (update freqs n inc)))
     (clear (state :screen))
-    (put-string screen 30 12 (format "Generating %s..." (nth loading-tidbits n)))
-    (put-string screen 40 18 (nth ["/" "-" "\\" "|"] (mod (swap! loading-index inc) 4)))
+    (put-string screen :ui 30 12 (format "Generating %s..." (nth loading-tidbits n)))
+    (put-string screen :ui 40 18 (nth ["/" "-" "\\" "|"] (mod (swap! loading-index inc) 4)))
     (refresh screen)))
 
 (defn render-connection-failed [state]
@@ -1808,7 +1808,7 @@
           (put-string (state :screen) :ui 10 6 (format "Points: %s." points))
           (put-string (state :screen) :ui 10 8 "Inventory:")
           (doall (map-indexed
-            (fn [idx item] (put-string (state :screen) 20 (+ idx 8) (format "%s%s" (if (pos? (get item :count 0))
+            (fn [idx item] (put-string (state :screen) :ui 20 (+ idx 8) (format "%s%s" (if (pos? (get item :count 0))
                                                                                      (format "%dx " (get item :count))
                                                                                      "")
                                                                                     (item :name))))

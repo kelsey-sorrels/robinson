@@ -1985,10 +1985,12 @@
         ;; do attack
         (-> state
           (free-cursor)
-          (rcombat/attack [:world :player] (rnpc/npc->keys state (get obj :npc)) item)
-          (rw/conj-cell-items (get-in obj [:pos :x]) (get-in obj [:pos :y]) item)
           (rp/dec-item-count (get item :id))
-          (rfx/conj-fx-transform (rp/player-xy state) [target-x target-y] item))
+          (rfx/conj-fx-transform (rp/player-xy state) [target-x target-y] item)
+          (revents/conj-event 1000 (fn [state]
+            (-> state
+              (rcombat/attack [:world :player] (rnpc/npc->keys state (get obj :npc)) item)
+              (rw/conj-cell-items (get-in obj [:pos :x]) (get-in obj [:pos :y]) item)))))
       (contains? obj :cell)
         ;; drop item into cell before hitting colliding cell
         (as-> state state
@@ -2016,9 +2018,10 @@
         ;; didn't hit anything, drop into cell at max-distance
         (-> state
           (free-cursor)
-          (rw/conj-cell-items target-x target-y item)
           (rp/dec-item-count (get item :id))
-          (rfx/conj-fx-transform (rp/player-xy state) [target-x target-y] item)))))
+          (rfx/conj-fx-transform (rp/player-xy state) [target-x target-y] item)
+          (revents/conj-event 1000 (fn [state]
+            (rw/conj-cell-items state target-x target-y item)))))))
 
 (defn craft-weapon
   [state]

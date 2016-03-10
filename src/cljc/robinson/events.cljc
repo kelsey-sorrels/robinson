@@ -10,6 +10,7 @@
   (assoc state :event-time t))
 
 (defn conj-event [state dt f]
+  (log/info "Conj event")
   (let [event-time (get state :event-time)]
     (update state :events (fn [events] (assoc events f (+ event-time dt))))))
 

@@ -130,8 +130,10 @@
    time we start up."
   [state keyin]
   {:pre  [(or (char? keyin)
-              (keyword? keyin))]
-   :post [(= (type state) (type %))]}
+              (keyword? keyin))
+          (empty? (get state :events))]
+   :post [(= (type state) (type %))
+          (empty? (get % :events))]}
     (try
       (log/info "got " (str keyin) " type " (type keyin))
       (rm/log-time "tick"
@@ -140,20 +142,20 @@
               new-state       (rm/log-time "update-state" (update-state-fn state keyin))]
           (when new-state
             (let [chan (revents/stream new-state)]
-              (log/info "got state chan")
-              (loop [state nil]
-                (if-let [s (async/<!! chan)]
+              (log/info "got state chan" chan)
+              (loop [last-state nil]
+                (if-let [next-state (async/<!! chan)]
                   (do
-                    (log/info "rendering s from state chan. keys" (keys s))
-                    (ranimation/reset-state! (get s :screen) s)
-                    (render-state s)
-                    (recur s))
+                    (log/info "rendering s from state chan. keys" (keys next-state))
+                    (ranimation/reset-state! (get next-state :screen) next-state)
+                    (render-state next-state)
+                    (recur next-state))
                    (do
                      (log/info "done with state chan, saving")
-                     (save-state state)
-                     state)))))
+                     (save-state last-state)
+                     last-state)))))))
           ;(async/thread (spit "save/world.edn" (with-out-str (pprint (new-state :world)))))
-          new-state))
+          ;new-state))
       #?(:clj
          (catch Exception e
            (do
@@ -325,7 +327,7 @@
                                                     [ranimation/make-rand-fg-effect
                                                      ranimation/make-blink-effect
                                                      ranimation/make-blip-effect
-                                                     #_ranimation/make-transform-effect
+                                                     ranimation/make-transform-effect
                                                      #_ranimation/make-rain-effect]
                                                     [(ranimation/make-lantern-filter terminal)
                                                      (ranimation/make-vignette-filter terminal)

@@ -6,9 +6,12 @@
             [robinson.player :as rp]
             [robinson.world :as rw]
             [robinson.monstergen :as mg]
+            [robinson.itemgen :as ig]
             [robinson.describe :as rdesc]
             [robinson.npc :as rnpc]
             [robinson.combat :as rcombat]
+            [robinson.events :as revents]
+            [robinson.fx :as rfx]
             [robinson.dynamiccharacterproperties :as dcp]
             [taoensso.timbre :as log]))
 
@@ -149,7 +152,7 @@
                                        ;; crushing-wall specific
                                        :direction trap-direction
                                        :locations trap-locations))))
-    state))
+    (rc/append-log state "Click. Nothing happens.")))
 
 (defn trigger-wall-darts
   [state x y cell]
@@ -191,12 +194,18 @@
                 place-id          (rw/current-place-id state)
                 trigger-cell-path [:world :places place-id y x]
                 npc-path          (rnpc/npc->keys state (get obj :npc))]
-            (rcombat/attack state src-trap  npc-path))
+            (-> state
+              (rfx/conj-fx-transform [x y] (rc/pos->xy (get obj :pos)) (ig/gen-item :blowdart))
+              (revents/conj-event 100 (fn [state]
+                (rcombat/attack state src-trap  npc-path)))))
         (contains? obj :player)
           (let [[x y]             (rc/pos->xy (get cell :src-pos))
                 place-id          (rw/current-place-id state)
                 trigger-cell-path [:world :places place-id y x]]
-          (rcombat/attack state src-trap [:world :player]))
+            (-> state
+              (rfx/conj-fx-transform [x y] (rp/player-xy state) (ig/gen-item :blowdart))
+              (revents/conj-event 100 (fn [state]
+                (rcombat/attack state src-trap [:world :player])))))
         (contains? obj :cell)
           (rc/append-log state (format "Schwaff! Thump! The dart hits %s." (rdesc/describe-cell-type (get obj :cell))))
         :else

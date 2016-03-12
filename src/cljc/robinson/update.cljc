@@ -2017,9 +2017,11 @@
         (-> state
           free-cursor
           (rc/append-log "You throw it at the trap.")
-          (rt/trigger-if-trap [target-x target-y])
           (rp/dec-item-count (get item :id))
-          (rfx/conj-fx-transform (rp/player-xy state) [target-x target-y] item))
+          (rfx/conj-fx-transform (rp/player-xy state) [target-x target-y] item)
+          (revents/conj-event dt (fn [state]
+            (log/info "triggering trap")
+            (rt/trigger-if-trap state [target-x target-y]))))
       :else
         ;; didn't hit anything, drop into cell at max-distance
         (-> state

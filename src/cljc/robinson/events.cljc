@@ -2,8 +2,7 @@
 (ns robinson.events
   (:require 
             [taoensso.timbre :as log]
-            [robinson.common :as rc]
-            [robinson.math :as rmath]
+            [robinson.fx :as rfx]
             [clojure.core.async :as async :refer [go go-loop]]))
 
 (defn assoc-event-time [state t]
@@ -38,6 +37,7 @@
           (do
             (async/<! (async/timeout dt))
             (let [new-state (-> state
+                              rfx/clear-fx
                               (f)
                               (assoc :event-time elapsed))]
               (async/>! state-chan new-state)

@@ -1987,7 +1987,7 @@
           (free-cursor)
           (rp/dec-item-count (get item :id))
           (rfx/conj-fx-transform (rp/player-xy state) [target-x target-y] item)
-          (revents/conj-event 1000 (fn [state]
+          (revents/conj-event 100 (fn [state]
             (-> state
               (rcombat/attack [:world :player] (rnpc/npc->keys state (get obj :npc)) item)
               (rw/conj-cell-items (get-in obj [:pos :x]) (get-in obj [:pos :y]) item)))))

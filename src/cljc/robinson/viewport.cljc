@@ -354,21 +354,25 @@
             ;_ (println "r-y" r-y)
             ;_ (println "r-yrest" r-yrest)
             ;_ (println "r-xrest" r-xrest)
-            conj-cells (fn [cells place min-x min-y max-x max-y x-range y-range]
-                         (reduce (fn [cells [line sy]]
-                                   (reduce (fn [cells [cell sx]]
-                                             (conj! cells 
-                                                    [cell sx sy (+ sx v-x) (+ sy v-y)]))
-                                           cells
-                                           (map vector (subvec line min-x max-x)
-                                                       x-range)))
-                                 cells
-                                 (map vector
-                                      (try
-                                        (subvec place min-y max-y)
-                                        (catch Exception e
-                                          (log/error "place count" (count place) "min-y" min-y "max-y" max-y)))
-                                      y-range)))
+            conj-cells (fn [result place min-x min-y max-x max-y x-range y-range]
+                         (let [lines (mapv vector (subvec place min-y max-y) y-range)]
+                           (loop [result result
+                                  linesy (first lines)
+                                  rest-lines (next lines)]
+                             (if-let [[line sy] linesy]
+                               (recur
+                                 (let [cells (mapv vector (subvec line min-x max-x) x-range)]
+                                   (loop [result result
+                                          cellsx (first cells)
+                                          rest-cells (next cells)]
+                                     (if-let [[cell sx] cellsx]
+                                       (recur (conj! result [cell sx sy (+ sx v-x) (+ sy v-y)])
+                                              (first rest-cells)
+                                              (next rest-cells))
+                                       result)))
+                                 (first rest-lines)
+                                 (next rest-lines))
+                               result))))
             cells (-> (transient [])
                         (conj-cells ul-cells start-x start-y v-width v-height r-x     r-y)
                         (conj-cells ur-cells 0       start-y start-x v-height r-xrest r-y)

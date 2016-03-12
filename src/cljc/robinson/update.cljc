@@ -1979,7 +1979,8 @@
   (let [item           (get-throw-item state)
         [target-x
          target-y]     (rv/get-cursor-world-xy state)
-        obj            (rw/first-collidable-object state (rlos/target->cellsxy state target-x target-y))]
+        obj            (rw/first-collidable-object state (rlos/target->cellsxy state target-x target-y))
+        dt             (* 60 (rp/player-distance-from-pos state (or (get obj :pos) (rc/xy->pos target-x target-y))))]
     (cond
       (contains? obj :npc)
         ;; do attack
@@ -1987,25 +1988,30 @@
           (free-cursor)
           (rp/dec-item-count (get item :id))
           (rfx/conj-fx-transform (rp/player-xy state) [target-x target-y] item)
-          (revents/conj-event 100 (fn [state]
+          (revents/conj-event dt (fn [state]
             (-> state
               (rcombat/attack [:world :player] (rnpc/npc->keys state (get obj :npc)) item)
-              (rw/conj-cell-items (get-in obj [:pos :x]) (get-in obj [:pos :y]) item)))))
+              (rw/conj-cell-items (get-in obj [:pos :x]) (get-in obj [:pos :y]) (assoc item :count 1))))))
       (contains? obj :cell)
         ;; drop item into cell before hitting colliding cell
         (as-> state state
           (free-cursor state)
+          (rp/dec-item-count state (get item :id))
           (if (= (get-in obj [:cell :type]) :fire)
-            (rw/update-cell state (get-in obj [:pos :x]) (get-in obj [:pos :y]) (fn [cell] (update-in cell [:fuel] (partial + (ig/id->fuel (get item :id))))))
-            (let [{x :x y :y} (get obj :prev-pos)]
-              (rw/conj-cell-items state
-                                  x
-                                  y
-                                  (if (get item :rot-time)
-                                    (assoc item :rot-time (inc (rw/get-time state)))
-                                    item))
-              (rfx/conj-fx-transform (rp/player-xy state) [x y] item)))
-          (rp/dec-item-count state (get item :id)))
+            (-> state
+              (rfx/conj-fx-transform (rp/player-xy state) [target-x target-y] item)
+              (revents/conj-event state dt (fn [state]
+                (rw/update-cell (get-in obj [:pos :x]) (get-in obj [:pos :y]) (fn [cell] (update-in cell [:fuel] (partial + (ig/id->fuel (get item :id)))))))))
+              (let [{x :x y :y} (get obj :prev-pos)]
+                (-> state
+                  (rfx/conj-fx-transform (rp/player-xy state) [x y] item)
+                  (revents/conj-event dt (fn [state]
+                    (rw/conj-cell-items state
+                                        x
+                                        y
+                                        (if (get item :rot-time)
+                                          (assoc item :rot-time (inc (rw/get-time state)))
+                                          (assoc item :count 1)))))))))
       (contains? obj :trap)
         ;; remove item and trigger trap
         (-> state
@@ -2020,8 +2026,8 @@
           (free-cursor)
           (rp/dec-item-count (get item :id))
           (rfx/conj-fx-transform (rp/player-xy state) [target-x target-y] item)
-          (revents/conj-event 1000 (fn [state]
-            (rw/conj-cell-items state target-x target-y item)))))))
+          (revents/conj-event dt (fn [state]
+            (rw/conj-cell-items state target-x target-y (assoc item :count 1))))))))
 
 (defn craft-weapon
   [state]

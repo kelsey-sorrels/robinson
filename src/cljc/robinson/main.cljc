@@ -149,7 +149,7 @@
                     (log/info "rendering s from state chan. keys" (keys next-state))
                     (ranimation/reset-state! (get next-state :screen) next-state)
                     (render-state next-state)
-                    (recur next-state)
+                    (recur next-state))
                    (do
                      (log/info "done with state chan, saving")
                      (save-state last-state)

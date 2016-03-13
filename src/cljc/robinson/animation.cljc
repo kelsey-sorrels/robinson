@@ -454,6 +454,7 @@
                           (zat/clear-fx! terminal)
                           (doseq [effect @effects]
                             (raat/apply-effect! effect terminal))
+                          (zat/assoc-fx-uniform! terminal "time" (swap! frame-count inc))
                           (zat/refresh! terminal)))
                       schedule-pool)))))
 
@@ -495,7 +496,7 @@
       (raat/update-palette! effect (fn [palette] new-palette)))))
 
 (defn reset-state! [terminal new-state]
-  {:pre [(get new-state :fx)]}
+  ;{:pre [(get new-state :fx)]}
   (raat/swap-matching-effect-or-filter!
     terminal
     (fn [fx] (instance? ARequiresState fx))

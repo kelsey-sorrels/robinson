@@ -293,6 +293,7 @@
                                  map-value]))
                               (.listFiles (clojure.java.io/file "config/fonts"))))
         font      (get fonts (get settings :font))
+        fx-shader (get settings :fx-shader)
         _         (log/info "Using font settings" font)
         terminal  (or screen
                       #?(:clj
@@ -308,11 +309,11 @@
                                                           :default-bg-color [5 5 8]
                                                           :fx-shader {:name     "retro.fs"
                                                                       :uniforms [["time" 0.0]
-                                                                                 ["noise" 0.0016]
-                                                                                 ["colorShift" 0.00001]
-                                                                                 ["scanlineDepth" 0.94]
-                                                                                 ["brightness" 0.68]
-                                                                                 ["contrast" 2.46]]}}
+                                                                                 ["noise" (or (get fx-shader :noise) 0.0016)]
+                                                                                 ["colorShift" (or (get fx-shader :color-shift) 0.00001)]
+                                                                                 ["scanlineDepth" (or (get fx-shader :scanline-depth) 0.94)]
+                                                                                 ["brightness" (or (get fx-shader :brightness) 0.68)]
+                                                                                 ["contrast" (or (get fx-shader :contrast) 2.46)]]}}
                                                          (select-keys font
                                                            [:windows-font
                                                             :else-font

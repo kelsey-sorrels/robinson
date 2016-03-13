@@ -1718,7 +1718,8 @@
         target-pos          (nth (get-in state [:world :target-ranged-pos-coll]) target-ranged-index)
         npc                 (rnpc/npc-at-pos state target-pos)
         ranged-weapon-item  (first (filter (fn [item] (get item :wielded-ranged))
-                                                (rp/player-inventory state)))]
+                                                (rp/player-inventory state)))
+        dt                  (* 60 (rp/player-distance-from-pos state target-pos))]
     (log/info "target-ranged-index" target-ranged-index)
     (log/info "target-ranged-pos-coll" (get-in state [:world :target-ranged-pos-coll]))
     (log/info "npc" npc)
@@ -1729,8 +1730,10 @@
         ;; dec ranged weapon ammunition
         (rp/dec-item-count state (ig/item->ranged-combat-ammunition-item-id ranged-weapon-item))
         state)
-      ;; do combat
-      (rcombat/attack state [:world :player] (rnpc/npc->keys state npc) ranged-weapon-item))))
+      (rfx/conj-fx-transform state (rp/player-xy state) (rc/pos->xy target-pos) ranged-weapon-item)
+      (revents/conj-event state dt (fn [state]
+        ;; do combat
+        (rcombat/attack state [:world :player] (rnpc/npc->keys state npc) ranged-weapon-item))))))
 
 (defn free-cursor
   "Dissassociate the cursor from the world."

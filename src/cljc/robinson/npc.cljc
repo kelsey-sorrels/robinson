@@ -83,8 +83,8 @@
   (first (filter (fn [npc] (= (npc :id) id))
                  (get-npcs state))))
 
-(defn index-of [coll item]
-  (ffirst (filter  #(= (second %) item) (map-indexed vector coll))))
+(defn index-of-npc [npcs npc]
+  (ffirst (filter  #(= (-> % second :pos) (get npc :pos)) (map-indexed vector npcs))))
 
 (defn npc->keys
   "Find the keys required to lookup the npc.
@@ -92,7 +92,7 @@
   [state npc]
   (if-let [place-id (rw/current-place-id state)]
     [:world :places place-id :npcs (index-of (get-in state [:world :places place-id :npcs]) npc)]
-    [:world :npcs (index-of (get-in state [:world :npcs]) npc)]))
+    [:world :npcs (index-of-npc (get-in state [:world :npcs]) npc)]))
 
 (defn npc-freqs-in-player-place
   [state]

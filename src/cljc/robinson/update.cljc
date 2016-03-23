@@ -52,7 +52,8 @@
                 [taoensso.timbre :as log :include-macros true]
                 [goog.string.format])))
   #?(:clj
-      (:import zaffre.aterminal.ATerminal)))
+      (:import zaffre.aterminal.ATerminal
+               zaffre.font.TTFFont)))
 
 
 (defn format [s & args]
@@ -128,10 +129,8 @@
     (when-not (= current-font (get (rc/get-settings state) :font))
       ;; send new settings to screen
       (zat/apply-font! screen
-                       (get font :windows-font)
-                       (get font :else-font)
-                       (get font :font-size)
-                       (get font :antialias))
+                       (TTFFont. (get font :windows-font) (get font :font-size))
+                       (TTFFont. (get font :else-font) (get font :font-size)))
       ;; persist
       (rc/reset-settings! state (assoc (rc/get-settings state) :font current-font)))
     ;; cleanup temp new-font value

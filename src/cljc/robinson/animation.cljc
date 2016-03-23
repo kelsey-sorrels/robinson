@@ -412,8 +412,8 @@
     (get-key-chan [this] (zat/get-key-chan terminal))
     (set-fg! [this layer-id x y fg] (zat/set-fg! terminal layer-id x y fg))
     (set-bg! [this layer-id x y bg] (zat/set-bg! terminal layer-id x y bg))
-    (apply-font! [this windows-font else-font size antialias]
-       (zat/apply-font! terminal windows-font else-font size antialias))
+    (apply-font! [this windows-font else-font]
+       (zat/apply-font! terminal windows-font else-font))
     (set-cursor! [this x y] (zat/set-cursor! terminal x y))
     (clear! [this]
       (reset! opts (nil-grid terminal))

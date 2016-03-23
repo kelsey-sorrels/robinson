@@ -91,7 +91,7 @@
    npc and (get-in state (npc->path state npc)) refer to the same npc."
   [state npc]
   (if-let [place-id (rw/current-place-id state)]
-    [:world :places place-id :npcs (index-of (get-in state [:world :places place-id :npcs]) npc)]
+    [:world :places place-id :npcs (index-of-npc (get-in state [:world :places place-id :npcs]) npc)]
     [:world :npcs (index-of-npc (get-in state [:world :npcs]) npc)]))
 
 (defn npc-freqs-in-player-place

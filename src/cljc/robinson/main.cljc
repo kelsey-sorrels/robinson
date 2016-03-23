@@ -39,7 +39,8 @@
                 [cljs-promises.async :refer-macros [<?]])))
 
   #?@(:clj (
-     (:import [java.io DataInputStream DataOutputStream]))
+     (:import [java.io DataInputStream DataOutputStream]
+              [zaffre.font TTFFont]))
      :cljs (
      (:import [goog Uri])
      (:require-macros [cljs.core.async.macros :refer [go go-loop]]
@@ -301,24 +302,22 @@
                                                         :features
                                                         :fx
                                                         :ui]
-                                                       (merge
-                                                         {:title (format "Robinson - %s@%s" user-id version)
-                                                          :columns 80
-                                                          :rows 24
-                                                          :default-fg-color [255 255 255]
-                                                          :default-bg-color [5 5 8]
-                                                          :fx-shader {:name     "retro.fs"
-                                                                      :uniforms [["time" 0.0]
-                                                                                 ["noise" (or (get fx-shader :noise) 0.0016)]
-                                                                                 ["colorShift" (or (get fx-shader :color-shift) 0.00001)]
-                                                                                 ["scanlineDepth" (or (get fx-shader :scanline-depth) 0.94)]
-                                                                                 ["brightness" (or (get fx-shader :brightness) 0.68)]
-                                                                                 ["contrast" (or (get fx-shader :contrast) 2.46)]]}}
-                                                         (select-keys font
-                                                           [:windows-font
-                                                            :else-font
-                                                            :font-size
-                                                            :antialias]))))
+                                                       {:title (format "Robinson - %s@%s" user-id version)
+                                                        :columns 80
+                                                        :rows 24
+                                                        :default-fg-color [255 255 255]
+                                                        :default-bg-color [5 5 8]
+                                                        :windows-font (TTFFont. (get font :windows-font)
+                                                                                (get font :font-size))
+                                                        :else-font (TTFFont. (get font :else-font)
+                                                                             (get font :font-size))
+                                                        :fx-shader {:name     "retro.fs"
+                                                                    :uniforms [["time" 0.0]
+                                                                               ["noise" (or (get fx-shader :noise) 0.0016)]
+                                                                               ["colorShift" (or (get fx-shader :color-shift) 0.00001)]
+                                                                               ["scanlineDepth" (or (get fx-shader :scanline-depth) 0.94)]
+                                                                               ["brightness" (or (get fx-shader :brightness) 0.68)]
+                                                                               ["contrast" (or (get fx-shader :contrast) 2.46)]]}}))
                          :cljs
                          (webglterminal/make-terminal 80 24 [255 255 255] [0 0 0] nil
                                                   (get font :windows-font)

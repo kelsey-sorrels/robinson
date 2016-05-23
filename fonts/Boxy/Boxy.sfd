@@ -10,17 +10,18 @@ UnderlinePosition: 126
 UnderlineWidth: 50
 Ascent: 768
 Descent: 256
+InvalidEm: 0
 sfntRevision: 0x00010000
 LayerCount: 2
-Layer: 0 1 "Back"  1
-Layer: 1 1 "Fore"  0
+Layer: 0 1 "Back" 1
+Layer: 1 1 "Fore" 0
 XUID: [1021 572 990901585 11295349]
 FSType: 4
 OS2Version: 2
 OS2_WeightWidthSlopeOnly: 0
 OS2_UseTypoMetrics: 1
 CreationTime: 1439576743
-ModificationTime: 1450945134
+ModificationTime: 1463453817
 PfmFamily: 81
 TTFWeight: 400
 TTFWidth: 5
@@ -34,11 +35,11 @@ OS2TypoDOffset: 0
 OS2TypoLinegap: 0
 OS2WinAscent: 768
 OS2WinAOffset: 0
-OS2WinDescent: 128
+OS2WinDescent: 256
 OS2WinDOffset: 0
 HheadAscent: 768
 HheadAOffset: 0
-HheadDescent: -128
+HheadDescent: -256
 HheadDOffset: 0
 OS2SubXSize: 512
 OS2SubYSize: 512
@@ -73,14 +74,14 @@ ShortTable: maxp 16
   0
   0
 EndShort
-LangName: 1033 "" "" "Regular" "FontStruct Boxy" "" "Version 1.0" "" "FontStruct is a trademark of FSI FontShop International GmbH" "http://fontstruct.com" "Chris Burgess" "+IBoAxAD6-Boxy+IBoAxAD5 was built with FontStruct+AAoA" "http://www.fontshop.com" "http://fontstruct.com/fontstructions/show/1156394" "Creative Commons Attribution Share Alike" "http://creativecommons.org/licenses/by-sa/3.0/" "" "" "" "" "Five big quacking zephyrs jolt my wax bed" 
+LangName: 1033 "" "" "Regular" "FontStruct Boxy" "" "Version 1.0" "" "FontStruct is a trademark of FSI FontShop International GmbH" "http://fontstruct.com" "Chris Burgess" "+IBoAxAD6-Boxy+IBoAxAD5 was built with FontStruct+AAoA" "http://www.fontshop.com" "http://fontstruct.com/fontstructions/show/1156394" "Creative Commons Attribution Share Alike" "http://creativecommons.org/licenses/by-sa/3.0/" "" "" "" "" "Five big quacking zephyrs jolt my wax bed"
 Encoding: UnicodeBmp
 UnicodeInterp: none
 NameList: Adobe Glyph List
 DisplaySize: -24
 AntiAlias: 1
 FitToEm: 1
-WinInfo: 8160 34 17
+WinInfo: 0 34 17
 BeginPrivate: 0
 EndPrivate
 TeXData: 1 0 0 261120 130560 87040 393216 1048576 87040 783286 444596 497025 792723 393216 433062 380633 303038 157286 324010 404750 52429 2506097 1059062 262144
@@ -128,6 +129,8 @@ Encoding: 65537 -1 1
 Width: 127
 Flags: W
 LayerCount: 2
+Fore
+Validated: 1
 EndChar
 
 StartChar: glyph2
@@ -135,6 +138,8 @@ Encoding: 65538 -1 2
 Width: 255
 Flags: W
 LayerCount: 2
+Fore
+Validated: 1
 EndChar
 
 StartChar: space
@@ -142,6 +147,8 @@ Encoding: 32 32 3
 Width: 255
 Flags: W
 LayerCount: 2
+Fore
+Validated: 1
 EndChar
 
 StartChar: exclam
@@ -231,6 +238,7 @@ SplineSet
  384 0 l 5,7,-1
  0 0 l 5,4,-1
 EndSplineSet
+Validated: 1
 EndChar
 
 StartChar: one
@@ -1207,6 +1215,7 @@ SplineSet
  512 384 l 5,13,-1
  514 0 l 5,4,-1
 EndSplineSet
+Validated: 5
 EndChar
 
 StartChar: b
@@ -1233,6 +1242,7 @@ SplineSet
  384 0 l 1,13,-1
  0 0 l 1,4,-1
 EndSplineSet
+Validated: 5
 EndChar
 
 StartChar: c
@@ -1256,6 +1266,7 @@ SplineSet
  128 0 l 5,11,-1
  128 128 l 5,0,-1
 EndSplineSet
+Validated: 5
 EndChar
 
 StartChar: d
@@ -1282,6 +1293,7 @@ SplineSet
  128 0 l 1,13,-1
  512 0 l 1,4,-1
 EndSplineSet
+Validated: 5
 EndChar
 
 StartChar: e
@@ -1314,6 +1326,7 @@ SplineSet
  256 256 l 1,20,-1
  384 256 l 1,0,-1
 EndSplineSet
+Validated: 5
 EndChar
 
 StartChar: f
@@ -1341,6 +1354,7 @@ SplineSet
  256 0 l 5,15,-1
  128 0 l 5,0,-1
 EndSplineSet
+Validated: 5
 EndChar
 
 StartChar: g
@@ -1369,6 +1383,7 @@ SplineSet
  128 128 l 5,15,-1
  128 256 l 5,4,-1
 EndSplineSet
+Validated: 5
 EndChar
 
 StartChar: h
@@ -1392,6 +1407,7 @@ SplineSet
  128 0 l 1,11,-1
  0 0 l 1,0,-1
 EndSplineSet
+Validated: 5
 EndChar
 
 StartChar: i
@@ -1467,6 +1483,7 @@ SplineSet
  128 0 l 1,15,-1
  0 0 l 1,8,-1
 EndSplineSet
+Validated: 5
 EndChar
 
 StartChar: l
@@ -1484,6 +1501,7 @@ SplineSet
  384 0 l 5,5,-1
  128 0 l 5,0,-1
 EndSplineSet
+Validated: 1
 EndChar
 
 StartChar: m
@@ -1509,6 +1527,7 @@ SplineSet
  128 0 l 1,13,-1
  0 0 l 1,0,-1
 EndSplineSet
+Validated: 5
 EndChar
 
 StartChar: n
@@ -1530,6 +1549,7 @@ SplineSet
  128 0 l 1,9,-1
  0 0 l 1,0,-1
 EndSplineSet
+Validated: 5
 EndChar
 
 StartChar: o
@@ -1558,6 +1578,7 @@ SplineSet
  128 0 l 5,15,-1
  128 128 l 5,4,-1
 EndSplineSet
+Validated: 5
 EndChar
 
 StartChar: p
@@ -1584,6 +1605,7 @@ SplineSet
  128 -205 l 1,13,-1
  0 -205 l 1,4,-1
 EndSplineSet
+Validated: 5
 EndChar
 
 StartChar: q
@@ -1610,6 +1632,7 @@ SplineSet
  384 -244 l 1,13,-1
  512 -244 l 1,4,-1
 EndSplineSet
+Validated: 5
 EndChar
 
 StartChar: r
@@ -1627,6 +1650,7 @@ SplineSet
  128 0 l 1,5,-1
  0 0 l 1,0,-1
 EndSplineSet
+Validated: 1
 EndChar
 
 StartChar: s
@@ -1655,6 +1679,7 @@ SplineSet
  512 128 l 1,16,-1
  384 128 l 1,0,-1
 EndSplineSet
+Validated: 5
 EndChar
 
 StartChar: t
@@ -1680,6 +1705,7 @@ SplineSet
  384 0 l 1,13,-1
  128 0 l 1,0,-1
 EndSplineSet
+Validated: 1
 EndChar
 
 StartChar: u
@@ -1703,6 +1729,7 @@ SplineSet
  128 0 l 1,11,-1
  128 128 l 1,0,-1
 EndSplineSet
+Validated: 5
 EndChar
 
 StartChar: v
@@ -1728,6 +1755,7 @@ SplineSet
  384 128 l 1,11,-1
  256 128 l 1,8,-1
 EndSplineSet
+Validated: 5
 EndChar
 
 StartChar: w
@@ -1742,7 +1770,7 @@ SplineSet
  512 128 l 1,2,-1
  512 0 l 1,3,-1
  384 0 l 1,0,-1
-384 128 m 1,4,-1
+384 128 m 1025,4,-1
 512 128 m 1,5,-1
  512 512 l 5,6,-1
  640 512 l 5,7,-1
@@ -1764,6 +1792,7 @@ SplineSet
  384 128 l 1,20,-1
  256 128 l 1,17,-1
 EndSplineSet
+Validated: 5
 EndChar
 
 StartChar: x
@@ -1773,8 +1802,8 @@ Flags: W
 LayerCount: 2
 Fore
 SplineSet
-0 0 m 1,0,-1
-384 0 m 1,1,-1
+0 0 m 1025,0,-1
+384 0 m 1025,1,-1
 0 0 m 1,2,-1
  0 128 l 1,3,-1
  128 128 l 1,4,-1
@@ -1800,9 +1829,10 @@ SplineSet
  384 512 l 1,20,-1
  384 384 l 1,21,-1
  256 384 l 1,18,-1
-0 512 m 1,22,-1
-384 512 m 1,23,-1
+0 512 m 1025,22,-1
+384 512 m 1025,23,-1
 EndSplineSet
+Validated: 5
 EndChar
 
 StartChar: y
@@ -1830,6 +1860,7 @@ SplineSet
  384 -128 l 1,15,-1
  0 -128 l 1,0,-1
 EndSplineSet
+Validated: 5
 EndChar
 
 StartChar: z
@@ -1857,6 +1888,7 @@ SplineSet
  0 128 l 1,15,-1
  0 0 l 1,0,-1
 EndSplineSet
+Validated: 5
 EndChar
 
 StartChar: quotedblleft
@@ -2007,7 +2039,7 @@ SplineSet
  384 384 l 25,4,-1
  256 384 l 25,5,-1
  256 256 l 25,6,-1
- 128 256 l 25,7,-1
+ 128 256 l 1049,7,-1
 0 0 m 5,8,-1
  0 384 l 1,9,-1
  128 384 l 1,10,-1
@@ -2019,7 +2051,7 @@ SplineSet
  512 512 l 1,16,-1
  512 384 l 1,17,-1
  640 384 l 1,18,-1
- 640 0 l 1,19,-1
+ 640 0 l 1025,19,-1
 EndSplineSet
 Validated: 3
 EndChar
@@ -2044,7 +2076,7 @@ SplineSet
  0 384 l 5,10,-1
  128 384 l 5,11,-1
  128 512 l 5,12,-1
- 256 512 l 5,13,-1
+ 256 512 l 1029,13,-1
 EndSplineSet
 Validated: 3
 EndChar
@@ -2092,7 +2124,7 @@ SplineSet
  0 128 l 1,4,-1
  128 128 l 1,5,-1
  128 256 l 1,6,-1
- 256 256 l 1,7,-1
+ 256 256 l 1025,7,-1
 512 256 m 1,8,-1
  384 256 l 1,9,-1
  384 128 l 1,10,-1
@@ -2100,7 +2132,7 @@ SplineSet
  256 0 l 1,12,-1
  384 0 l 1,13,-1
  384 128 l 1,14,-1
- 512 128 l 5,15,-1
+ 512 128 l 1029,15,-1
 256 512 m 1,16,-1
  128 512 l 1,17,-1
  128 385 l 1,18,-1
@@ -2108,7 +2140,7 @@ SplineSet
  0 512 l 1,20,-1
  128 512 l 1,21,-1
  128 641 l 1,22,-1
- 256 641 l 1,23,-1
+ 256 641 l 1025,23,-1
 512 640 m 1,24,-1
  384 640 l 1,25,-1
  384 512 l 1,26,-1
@@ -2116,7 +2148,7 @@ SplineSet
  256 384 l 1,28,-1
  384 384 l 1,29,-1
  384 512 l 1,30,-1
- 512 512 l 1,31,-1
+ 512 512 l 1025,31,-1
 EndSplineSet
 Validated: 3
 EndChar
@@ -2131,11 +2163,11 @@ SplineSet
 384 0 m 1,0,-1
  256 0 l 1,1,-1
  256 640 l 1,2,-1
- 384 640 l 1,3,-1
+ 384 640 l 1025,3,-1
 128 0 m 1,4,-1
  0 0 l 1,5,-1
  0 640 l 1,6,-1
- 128 640 l 1,7,-1
+ 128 640 l 1025,7,-1
 EndSplineSet
 Validated: 3
 EndChar
@@ -2219,43 +2251,43 @@ Flags: W
 LayerCount: 2
 Fore
 SplineSet
-512 0 m 5,0,-1
- 512 128 l 5,1,-1
- 640 128 l 5,2,-1
- 640 0 l 5,3,-1
- 512 0 l 5,0,-1
-512 0 m 5,4,-1
-0 512 m 5,5,-1
- 0 640 l 5,6,-1
- 128 640 l 5,7,-1
- 128 512 l 5,8,-1
- 0 512 l 5,5,-1
-0 512 m 5,9,-1
-512 512 m 5,10,-1
- 512 640 l 5,11,-1
- 640 640 l 5,12,-1
- 640 512 l 5,13,-1
- 512 512 l 5,10,-1
-256 256 m 5,14,-1
- 256 384 l 5,15,-1
- 384 384 l 5,16,-1
- 384 256 l 5,17,-1
- 256 256 l 5,14,-1
-128 128 m 5,18,-1
- 128 256 l 5,19,-1
- 256 256 l 5,20,-1
- 256 128 l 5,21,-1
- 128 128 l 5,18,-1
-384 384 m 5,22,-1
- 384 512 l 5,23,-1
- 512 512 l 5,24,-1
- 512 384 l 5,25,-1
- 384 384 l 5,22,-1
-0 0 m 5,26,-1
- 0 128 l 5,27,-1
- 128 128 l 5,28,-1
- 128 0 l 5,29,-1
- 0 0 l 5,26,-1
+512 0 m 1,0,-1
+ 512 128 l 1,1,-1
+ 640 128 l 1,2,-1
+ 640 0 l 1,3,-1
+ 512 0 l 1,0,-1
+512 0 m 1025,4,-1
+0 512 m 1,5,-1
+ 0 640 l 1,6,-1
+ 128 640 l 1,7,-1
+ 128 512 l 1,8,-1
+ 0 512 l 1,5,-1
+0 512 m 1025,9,-1
+512 512 m 1,10,-1
+ 512 640 l 1,11,-1
+ 640 640 l 1,12,-1
+ 640 512 l 1,13,-1
+ 512 512 l 1,10,-1
+256 256 m 1,14,-1
+ 256 384 l 1,15,-1
+ 384 384 l 1,16,-1
+ 384 256 l 1,17,-1
+ 256 256 l 1,14,-1
+128 128 m 1,18,-1
+ 128 256 l 1,19,-1
+ 256 256 l 1,20,-1
+ 256 128 l 1,21,-1
+ 128 128 l 1,18,-1
+384 384 m 1,22,-1
+ 384 512 l 1,23,-1
+ 512 512 l 1,24,-1
+ 512 384 l 1,25,-1
+ 384 384 l 1,22,-1
+0 0 m 1,26,-1
+ 0 128 l 1,27,-1
+ 128 128 l 1,28,-1
+ 128 0 l 1,29,-1
+ 0 0 l 1,26,-1
 EndSplineSet
 Validated: 5
 EndChar
@@ -2272,13 +2304,13 @@ SplineSet
  512 256 l 1,2,-1
  512 128 l 1,3,-1
  384 128 l 1,0,-1
-384 128 m 1,4,-1
+384 128 m 1025,4,-1
 128 384 m 1,5,-1
  128 512 l 1,6,-1
  256 512 l 1,7,-1
  256 384 l 1,8,-1
  128 384 l 1,5,-1
-128 384 m 1,9,-1
+128 384 m 1025,9,-1
 256 256 m 1,10,-1
  256 384 l 1,11,-1
  384 384 l 1,12,-1
@@ -2846,6 +2878,8 @@ Encoding: 0 0 111
 Width: 255
 Flags: W
 LayerCount: 2
+Fore
+Validated: 1
 EndChar
 
 StartChar: uni2240
@@ -2874,6 +2908,7 @@ SplineSet
  256 0 l 5,15,-1
  384 0 l 5,8,-1
 EndSplineSet
+Validated: 5
 EndChar
 
 StartChar: shade
@@ -2883,14 +2918,14 @@ Flags: W
 LayerCount: 2
 Fore
 SplineSet
-640 768 m 1,0,-1
-512 896 m 1,1,-1
+640 768 m 1025,0,-1
+512 896 m 1025,1,-1
 640 640 m 1,2,-1
  640 768 l 1,3,-1
  512 768 l 1,4,-1
  512 640 l 1,5,-1
  640 640 l 1,2,-1
-640 512 m 1,6,-1
+640 512 m 1025,6,-1
 640 384 m 1,7,-1
  512 384 l 1,8,-1
  512 512 l 1,9,-1
@@ -2906,7 +2941,7 @@ SplineSet
  512 768 l 1,17,-1
  384 768 l 1,18,-1
  384 896 l 1,15,-1
-256 896 m 1,19,-1
+256 896 m 1025,19,-1
 512 512 m 1,20,-1
  512 640 l 1,21,-1
  384 640 l 1,22,-1
@@ -2967,6 +3002,7 @@ SplineSet
  128 0 l 1,71,-1
  256 0 l 1,64,-1
 EndSplineSet
+Validated: 3077
 EndChar
 
 StartChar: underscore
@@ -2982,6 +3018,7 @@ SplineSet
  767 -128 l 5,3,-1
  0 -128 l 5,0,-1
 EndSplineSet
+Validated: 1
 EndChar
 
 StartChar: less
@@ -3017,6 +3054,7 @@ SplineSet
  256 0 l 5,19,-1
  384 0 l 5,16,-1
 EndSplineSet
+Validated: 5
 EndChar
 
 StartChar: greater
@@ -3052,6 +3090,7 @@ SplineSet
  128 0 l 5,19,-1
  0 0 l 5,16,-1
 EndSplineSet
+Validated: 5
 EndChar
 
 StartChar: semicolon
@@ -3077,6 +3116,7 @@ SplineSet
  256 0 l 1,11,-1
  128 0 l 1,8,-1
 EndSplineSet
+Validated: 5
 EndChar
 
 StartChar: asciicircum
@@ -3112,6 +3152,7 @@ SplineSet
  0 384 l 5,19,-1
  128 384 l 5,16,-1
 EndSplineSet
+Validated: 5
 EndChar
 
 StartChar: grave
@@ -3131,8 +3172,9 @@ SplineSet
  128 512 l 1,6,-1
  128 384 l 1,7,-1
  256 384 l 1,4,-1
-0 640 m 1,8,-1
+0 640 m 1025,8,-1
 EndSplineSet
+Validated: 5
 EndChar
 
 StartChar: braceleft
@@ -3156,6 +3198,7 @@ SplineSet
  256 128 l 1,11,-1
  384 128 l 1,0,-1
 EndSplineSet
+Validated: 1
 EndChar
 
 StartChar: braceright
@@ -3179,6 +3222,7 @@ SplineSet
  128 128 l 5,11,-1
  0 128 l 5,0,-1
 EndSplineSet
+Validated: 9
 EndChar
 
 StartChar: sigma1
@@ -3204,6 +3248,7 @@ SplineSet
  384 -128 l 1,13,-1
  384 0 l 1,0,-1
 EndSplineSet
+Validated: 5
 EndChar
 
 StartChar: section
@@ -3244,6 +3289,7 @@ SplineSet
  384 384 l 5,25,-1
  0 384 l 5,16,-1
 EndSplineSet
+Validated: 524293
 EndChar
 
 StartChar: alpha
@@ -3277,6 +3323,7 @@ SplineSet
  513.341 126.512 l 5,19,-1
  639.341 126.512 l 5,8,-1
 EndSplineSet
+Validated: 524293
 EndChar
 
 StartChar: Lambda
@@ -3312,6 +3359,7 @@ SplineSet
  0 0 l 1,19,-1
  128 0 l 1,16,-1
 EndSplineSet
+Validated: 5
 EndChar
 
 StartChar: block
@@ -3328,6 +3376,7 @@ SplineSet
  1253 -512 l 5,3,-1
  -20 -512 l 5,0,-1
 EndSplineSet
+Validated: 1
 EndChar
 
 StartChar: numbersign
@@ -3372,6 +3421,7 @@ SplineSet
  256 0 l 5,31,-1
  128 0 l 5,4,-1
 EndSplineSet
+Validated: 1
 EndChar
 
 StartChar: SF440000
@@ -3410,6 +3460,7 @@ SplineSet
  128 819 l 1,23,-1
  256 819 l 1,18,-1
 EndSplineSet
+Validated: 9
 EndChar
 
 StartChar: equivalence
@@ -3435,6 +3486,7 @@ SplineSet
  640 256 l 1,11,-1
  0 256 l 1,8,-1
 EndSplineSet
+Validated: 1
 EndChar
 
 StartChar: SF470000
@@ -3459,6 +3511,7 @@ SplineSet
  384 -36 l 5,11,-1
  256 -36 l 5,4,-1
 EndSplineSet
+Validated: 1
 EndChar
 
 StartChar: SF480000
@@ -3482,6 +3535,7 @@ SplineSet
  256 -36 l 5,11,-1
  128 -36 l 5,0,-1
 EndSplineSet
+Validated: 1
 EndChar
 
 StartChar: SF460000
@@ -3505,6 +3559,7 @@ SplineSet
  256 822 l 1,11,-1
  128 822 l 1,0,-1
 EndSplineSet
+Validated: 9
 EndChar
 
 StartChar: filledbox
@@ -3520,6 +3575,7 @@ SplineSet
  640 0 l 1,3,-1
  128 0 l 1,0,-1
 EndSplineSet
+Validated: 1
 EndChar
 
 StartChar: Phi
@@ -3558,6 +3614,7 @@ SplineSet
  384 256 l 1,23,-1
  256 256 l 1,16,-1
 EndSplineSet
+Validated: 5
 EndChar
 
 StartChar: ordmasculine
@@ -3591,6 +3648,7 @@ SplineSet
  128 256 l 5,19,-1
  128 384 l 5,8,-1
 EndSplineSet
+Validated: 5
 EndChar
 
 StartChar: degree
@@ -3619,6 +3677,7 @@ SplineSet
  128 256 l 5,15,-1
  128 384 l 5,4,-1
 EndSplineSet
+Validated: 5
 EndChar
 
 StartChar: periodcentered
@@ -3634,6 +3693,7 @@ SplineSet
  384 256 l 5,3,-1
  256 256 l 5,0,-1
 EndSplineSet
+Validated: 1
 EndChar
 
 StartChar: invsmileface
@@ -3672,6 +3732,7 @@ SplineSet
  128 640 l 1,23,-1
  512 640 l 1,12,-1
 EndSplineSet
+Validated: 5
 EndChar
 
 StartChar: invbullet
@@ -3700,6 +3761,7 @@ SplineSet
  128 256 l 5,15,-1
  256 256 l 5,4,-1
 EndSplineSet
+Validated: 1
 EndChar
 
 StartChar: lfblock
@@ -3715,6 +3777,7 @@ SplineSet
  384 -512 l 5,3,-1
  -20 -512 l 1,0,-1
 EndSplineSet
+Validated: 1
 EndChar
 
 StartChar: rtblock
@@ -3730,6 +3793,7 @@ SplineSet
  1253 -512 l 1,3,-1
  384 -512 l 5,0,-1
 EndSplineSet
+Validated: 1
 EndChar
 
 StartChar: upblock
@@ -3746,6 +3810,7 @@ SplineSet
  1255 320 l 1,3,-1
  -18 320 l 1,0,-1
 EndSplineSet
+Validated: 1
 EndChar
 
 StartChar: SF060000
@@ -3765,6 +3830,7 @@ SplineSet
  384 -36 l 1,7,-1
  256 -36 l 1,0,-1
 EndSplineSet
+Validated: 1
 EndChar
 
 StartChar: invcircle
@@ -3798,6 +3864,7 @@ SplineSet
  128 256 l 1,19,-1
  256 256 l 1,8,-1
 EndSplineSet
+Validated: 5
 EndChar
 
 StartChar: integraltp
@@ -3817,6 +3884,7 @@ SplineSet
  256 512 l 1,7,-1
  256 0 l 1,0,-1
 EndSplineSet
+Validated: 5
 EndChar
 
 StartChar: SF450000
@@ -3841,6 +3909,7 @@ SplineSet
  384 708 l 5,11,-1
  256 708 l 5,4,-1
 EndSplineSet
+Validated: 9
 EndChar
 
 StartChar: SF370000
@@ -3865,6 +3934,7 @@ SplineSet
  692 384 l 5,11,-1
  692 256 l 5,4,-1
 EndSplineSet
+Validated: 1
 EndChar
 
 StartChar: SF200000
@@ -3889,12 +3959,13 @@ SplineSet
  -52 384 l 5,11,-1
  -52 256 l 5,4,-1
 EndSplineSet
+Validated: 9
 EndChar
 
 StartChar: ampersand
 Encoding: 38 38 149
 Width: 639
-Flags: WO
+Flags: W
 LayerCount: 2
 Fore
 SplineSet
@@ -3929,12 +4000,13 @@ SplineSet
  128 256 l 1,27,-1
  128 384 l 1,4,-1
 EndSplineSet
+Validated: 5
 EndChar
 
 StartChar: arrowleft
 Encoding: 8592 8592 150
 Width: 767
-Flags: WO
+Flags: W
 LayerCount: 2
 Fore
 SplineSet
@@ -3956,12 +4028,13 @@ SplineSet
  640 256 l 5,15,-1
  640 384 l 5,0,-1
 EndSplineSet
+Validated: 9
 EndChar
 
 StartChar: arrowright
 Encoding: 8594 8594 151
 Width: 767
-Flags: WO
+Flags: W
 LayerCount: 2
 Fore
 SplineSet
@@ -3983,12 +4056,13 @@ SplineSet
  0 384 l 5,15,-1
  0 256 l 5,0,-1
 EndSplineSet
+Validated: 9
 EndChar
 
 StartChar: uni2196
 Encoding: 8598 8598 152
 Width: 767
-Flags: WO
+Flags: W
 LayerCount: 2
 Fore
 SplineSet
@@ -4010,12 +4084,13 @@ SplineSet
  384 128 l 1,15,-1
  512 128 l 1,0,-1
 EndSplineSet
+Validated: 5
 EndChar
 
 StartChar: uni2197
 Encoding: 8599 8599 153
 Width: 767
-Flags: WO
+Flags: W
 LayerCount: 2
 Fore
 SplineSet
@@ -4037,6 +4112,7 @@ SplineSet
  0 256 l 5,15,-1
  0 128 l 5,0,-1
 EndSplineSet
+Validated: 5
 EndChar
 
 StartChar: uni2198
@@ -4064,6 +4140,7 @@ SplineSet
  128 512 l 5,15,-1
  0 512 l 5,0,-1
 EndSplineSet
+Validated: 5
 EndChar
 
 StartChar: uni2199
@@ -4091,6 +4168,7 @@ SplineSet
  512 384 l 1,15,-1
  512 512 l 1,0,-1
 EndSplineSet
+Validated: 5
 EndChar
 EndChars
 EndSplineFont

@@ -1,14 +1,5 @@
 (ns robinson.override)
 
-(defn protocol? [maybe-p]
-  (boolean (:on-interface maybe-p)))
-
-(def all-protocols (memoize (fn []
-  (filter #(protocol? @(val %)) (mapcat ns-publics (all-ns))))))
-
-(defn implemented-protocols [sym]
-  (filter #(satisfies? @(val %) sym) (all-protocols)))
-
 (defn- parse-impls [specs]
   (loop [ret {} s specs]
     (if (seq s)
@@ -51,11 +42,11 @@
   #_(println sym (type sym))
   (let [record-name (gensym "Record")
         overrides   (parse-impls specs)
-        protocols   (keys overrides)#_(map second (implemented-protocols v))
+        protocols   (keys overrides)
         defaults    (into {}
                           (map (fn [p]
-                                 (println "sigs" p (-> p resolve deref :sigs) sym)
-                                 [p (identity-impl sym (-> p resolve deref :sigs))]) 
+                                 (println "sigs" p (-> p resolve #_deref :sigs) sym)
+                                 [p (identity-impl sym (-> p resolve #_deref :sigs))]) 
                                protocols))
         impls       (mapcat (fn [[k v]] (cons k v)) (merge-impls defaults overrides))]
     (println "record-name" record-name)

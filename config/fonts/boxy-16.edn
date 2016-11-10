@@ -1,8 +1,9 @@
 ;; Settings
 {
  :name "Boxy 16"
+ :linux-font   "fonts/Boxy/Boxy.ttf"
+ :macosx-font  "fonts/Boxy/Boxy.ttf"
  :windows-font "fonts/Boxy/Boxy.ttf"
- :else-font    "fonts/Boxy/Boxy.ttf"
  :font-size    16
- :antialias    false
+ :transparent  true
 }

@@ -3,7 +3,12 @@
         clojure.stacktrace)
   (:require robinson.main
             [robinson.world :as rw]
-            [zaffre.aterminal :as aterminal]
+            [robinson.animation :as ranimation]
+            [robinson.aanimatedterminal :as raat]
+            [zaffre.terminal :as zat]
+            [zaffre.animation.wrapper :as zaw]
+            [zaffre.events :as zevents]
+            [zaffre.glterminal :as zgl]
             [clojure.core.async :as async :refer [go go-loop]]
             [clojure.tools.nrepl.server :as nreplserver]
             [taoensso.timbre :as log]))
@@ -41,47 +46,58 @@
         get-tick-fn      (fn [] (if-let [f (resolve 'robinson.main/tick)] f default-tick-fn))]
     (start-nstracker)
     ; start with initial state from setup-fn
-    (loop [setup-fn     (get-setup-fn)
-           setup-fn-var (var-get setup-fn)]
+    (let [setup-fn     (get-setup-fn)
+          setup-fn-var (var-get setup-fn)]
       (setup-fn
         (fn [state]
           ; on ticks, this loop will restart. If setup-fn changes,
           ; the state will be reset through setup-fn but the screen will cary over.
-          (go-loop [state state]
-            ; start with initial state from setup-fn
-            ; setup function changed? restart with new setup
-             (when (identical? (var-get (get-setup-fn)) setup-fn-var)
-              (if (nil? state)
-                ;; nil state, exit
-                (do
-                  (log/info "Got nil state. Exiting.")
-                  (async/>! done-chan true)
-                  (System/exit 0))
-                ; tick the old state through the tick-fn to get the new state
-                (let [new-state (try
-                                  (let [keyin (cond
-                                                (= (rw/current-state state) :sleep)
-                                                  \.
-                                                (contains? #{:loading :connecting} (rw/current-state state))
-                                                  :advance
-                                                :else
-                                                (let [key-chan (aterminal/get-key-chan (state :screen))]
-                                                  ;;(log/info  "waiting for key-chan")
-                                                  (async/<!! key-chan)))]
-                                     (when (= keyin :exit)
-                                       (System/exit 0))
-                                     (if keyin
-                                       ((get-tick-fn) state keyin)
-                                       state))
-                                  (catch Throwable e
-                                    (log/error e)
-                                    state))]
-                    (recur new-state)))))
-          (async/<!! done-chan)))
-      ; setup function changed, restart with new setup
-      (let [setup-fn  (get-setup-fn)
-            setup-var (var-get setup-fn)]
-        (println "(Re)starting loop with new setup-fn")
-        (recur setup-fn setup-var)))
-        (println "Core exiting")))
-
+          (zaw/create-animated-terminal
+            zgl/create-terminal
+            (get state :terminal-groups)
+            (assoc
+              (get state :terminal-opts)
+              :effect-gen-fns
+                [ranimation/make-rand-fg-effect
+                 ranimation/make-blink-effect
+                 ranimation/make-blip-effect
+                 ranimation/make-transform-effect
+                 #_ranimation/make-rain-effect]
+              :filters 
+                [ranimation/make-lantern-filter
+                 ranimation/make-vignette-filter
+                 ranimation/make-night-tint-filter])
+            (fn [animated-terminal]
+              (log/info "created animated terminal")
+              (let [; state is used in the input reducing function
+                    state        (atom (assoc state :screen animated-terminal))
+                    ; render state keeps track of the state to be rendered to the screen
+                    last-rendered-state (atom @state)]
+                ;(raat/start! animated-terminal 15)
+                (zat/do-frame animated-terminal 33
+                  (let [render-fn (resolve 'robinson.render/render)]
+                  ;; TODO render
+                    (assert render-fn "render-fn nil")
+                    (assert @last-rendered-state "@last-rendered-state nil")
+                    (render-fn @last-rendered-state)))
+                (log/info "adding keypress event listener")
+                (zevents/add-event-listener animated-terminal :keypress
+                  (fn [keyin]
+                    (log/info "got key" keyin)
+                    (let [new-state (try
+                                      ((resolve 'robinson.update/update-state) @state keyin)
+                                      (catch Throwable e
+                                        (log/error e)
+                                        @state))]
+                      (reset!
+                        state
+                        (loop [new-state new-state]
+                          (cond
+                            (nil? new-state)
+                               (System/exit 0)
+                            (= (rw/current-state new-state) :sleep)
+                              (recur ((get-tick-fn) new-state \,))
+                            (contains? #{:loading :connecting} (rw/current-state state))
+                              (recur ((get-tick-fn) new-state :advance))
+                            :else
+                              new-state))))))))))))))

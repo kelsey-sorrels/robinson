@@ -8,16 +8,16 @@
                                             wrap-line
                                             fill-missing
                                             xy->pos]]
-                                            
+            [robinson.override :as ro :refer [override]]
             [robinson.color :as rcolor]
             [robinson.viewport :as rv :refer [cells-in-viewport]]
             [robinson.world :as rw]
             [robinson.lineofsight :as rlos]
-            [zaffre.aterminal :as zat]
-            [robinson.aanimatedterminal :as raat]
+            [zaffre.terminal :as zat]
+            [zaffre.animation.animatedterminal :as zaat]
             [overtone.at-at :as atat])
   #?(:clj
-     (:import  zaffre.aterminal.ATerminal
+     (:import  ;zaffre.terminal.Terminal
                robinson.aanimatedterminal.AAnimatedTerminal
                robinson.aanimatedterminal.AId
                robinson.aanimatedterminal.AEffect
@@ -33,9 +33,14 @@
 (def frame-count (atom 0))
 (def ^:dynamic *rain-rate* 0.96)
 
+
+(defn size [terminal]
+  ((juxt :columns :rows) (-> (zat/groups terminal) :app)))
+
 ;; util/helper fns
 (defn nil-grid [terminal]
-  (let [[vw vh]    (zat/get-size terminal)]
+  (let [[vw vh] (size terminal)]
+    (log/info "vw vh" vw vh)
     (repeat vh (vec (repeat vw nil)))))
 
 (defn lantern-flicker [opts x y fg]
@@ -155,7 +160,7 @@
     :rand-fg)
   AEffect
   (apply-effect! [this terminal]
-    (let [[vw vh]    (zat/get-size terminal)]
+    (let [[vw vh]    (size terminal)]
       (doseq [[y line mask-line] (map vector (range) @opts @mask)
               [x cell-opts mask?] (map vector (range) line mask-line)
               :let               [cell-palette  (get cell-opts :palette)]
@@ -168,7 +173,7 @@
 
 (defn make-rand-fg-effect
   [terminal opts]
-  (let [[vw vh]   (zat/get-size terminal)
+  (let [[vw vh]   (size terminal)
         mask      (atom (repeat vh (repeat vw true)))
         palette   (atom {})]
     (RandFgEffect. terminal mask opts palette)))
@@ -180,7 +185,7 @@
     :rain)
   AEffect
   (apply-effect! [this terminal]
-    (let [[vw vh]    (zat/get-size terminal)]
+    (let [[vw vh]    (size terminal)]
       (dosync
         (step-rain! rain-state vw vh)
         (doseq [[y line mask-line] (map vector (range) @rain-state @mask)
@@ -200,22 +205,22 @@
 
 (defn make-rain-effect
   [terminal cell-opts]
-  (let [[vw vh]    (zat/get-size terminal)
+  (let [[vw vh]    (size terminal)
         mask       (atom (repeat vh (repeat vw true)))
         rain-state (atom (repeat vh (vec (repeat vw nil))))]
     (RainEffect. terminal mask rain-state)))
 
 (defn swap-rain-mask! [terminal f]
-  (raat/swap-matching-effect-or-filter! terminal
-                              (fn [fx] (= (raat/id fx) :rain))
-                              (fn [rain-fx] (raat/swap-mask! rain-fx f))))
+  (zaat/swap-matching-effect-or-filter! terminal
+                              (fn [fx] (= (zaat/id fx) :rain))
+                              (fn [rain-fx] (zaat/swap-mask! rain-fx f))))
 
 (defn reset-rain-mask! [terminal v]
-  (raat/swap-matching-effect-or-filter! terminal
-                              (fn [fx] (= (raat/id fx) :rain))
+  (zaat/swap-matching-effect-or-filter! terminal
+                              (fn [fx] (= (zaat/id fx) :rain))
                               (fn [rain-fx]
-                                (let [[columns rows] (zat/get-size terminal)]
-                                  (raat/reset-mask! rain-fx (repeat rows (repeat columns v)))))))
+                                (let [[columns rows] (size terminal)]
+                                  (zaat/reset-mask! rain-fx (repeat rows (repeat columns v)))))))
 
 (defn transform [terminal mask state transforms]
   #_(log/info (format "drawing %d transforms" (count transforms)))
@@ -261,7 +266,7 @@
 
 (defn make-transform-effect
   [terminal cell-opts]
-  (let [[vw vh]    (zat/get-size terminal)
+  (let [[vw vh]    (size terminal)
         mask       (atom (repeat vh (repeat vw true)))]
     (TransformEffect. terminal mask (atom nil))))
 
@@ -294,7 +299,7 @@
 
 (defn make-blink-effect
   [terminal cell-opts]
-  (let [[vw vh]    (zat/get-size terminal)]
+  (let [[vw vh]    (size terminal)]
     (BlinkEffect. terminal (atom nil))))
 
 (defn blip [terminal state blips]
@@ -336,7 +341,7 @@
 
 (defn make-blip-effect
   [terminal cell-opts]
-  (let [[vw vh]    (zat/get-size terminal)]
+  (let [[vw vh]    (size terminal)]
     (BlipEffect. terminal (atom nil))))
 
 ;;; Filters
@@ -382,102 +387,97 @@
 
 (defn apply-filters [cell-opts ch fx-filters]
   (reduce (fn [ch fx-filter]
-            ;;(log/info "applying filter" (raat/id fx-filter) "ch" ch)
+            ;;(log/info "applying filter" (zaat/id fx-filter) "ch" ch)
             (let [{x :x y :y} ch]
               (-> ch
-                (update :fg (partial raat/transform-fg fx-filter cell-opts x y))
-                (update :bg (partial raat/transform-bg fx-filter cell-opts x y))
+                (update :fg (partial zaat/transform-fg fx-filter cell-opts x y))
+                (update :bg (partial zaat/transform-bg fx-filter cell-opts x y))
                 #_((fn [ch] (log/info "ch" ch) ch)))))
           ch
           fx-filters))
 
 ;;; Animated Terminal
 
-(defrecord AnimatedTerminal
-  [terminal started opts effects filters schedule-pool]
-  ATerminal
-    ;; pass ATerminal methods through to terminal
-    (get-size [this] (zat/get-size terminal))
-    (put-chars! [this layer-id characters]
-      (swap! opts
-             (fn [opts]
-               (reduce (fn [opts [y y-characters]]
-                         (update opts y (fn [line]
-                                               (apply assoc (vec line) (interleave (map :x y-characters)
-                                                                                   (map :opts y-characters))))))
-                       (vec opts)
-                       (group-by :y characters))))
-      (let [characters (mapv (fn [ch] (apply-filters (get ch :opts {})  ch @filters)) characters)]
-        (zat/put-chars! terminal layer-id characters)))
-    (get-key-chan [this] (zat/get-key-chan terminal))
-    (set-fg! [this layer-id x y fg] (zat/set-fg! terminal layer-id x y fg))
-    (set-bg! [this layer-id x y bg] (zat/set-bg! terminal layer-id x y bg))
-    (apply-font! [this windows-font else-font]
-       (zat/apply-font! terminal windows-font else-font))
-    (set-cursor! [this x y] (zat/set-cursor! terminal x y))
-    (clear! [this]
-      (reset! opts (nil-grid terminal))
-      (zat/clear! terminal))
-    (refresh! [this]
-      (reset! frame-count 0)
-      (zat/clear-fx! terminal)
-      (doseq [effect @effects]
-        (raat/apply-effect! effect terminal))
-      (log/info "done applying effects")
-      (zat/refresh! terminal))
-    AAnimatedTerminal
-    (swap-effect-seq! [this f] (swap! effects f))
-    (swap-matching-effect-or-filter!
-      [this p f]
-      (swap! effects (fn [effects]
-                       (reduce (fn [effects effect]
-                                 (conj effects (if (p effect)
-                                                 (f effect)
-                                                 effect)))
-                               []
-                               effects)))
-      (swap! filters (fn [filters]
-                       (reduce (fn [filters fx-filter]
-                                 (conj filters (if (p fx-filter)
-                                                 (f fx-filter)
-                                                 fx-filter)))
-                               []
-                               filters))))
-    (start! [this fps]
-      (dosync
-        (when-not @started
-          (reset! started true)
-          (atat/every (/ 1000 fps)
-                      (fn []
-                        (dosync
-                          (swap! frame-count inc)
-                          (zat/clear-fx! terminal)
-                          (doseq [effect @effects]
-                            (raat/apply-effect! effect terminal))
-                          (zat/assoc-fx-uniform! terminal "time" (swap! frame-count inc))
-                          (zat/refresh! terminal)))
-                      schedule-pool)))))
-
-(defn wrap-terminal
+#_(defn wrap-terminal
   [terminal effects-gen-fns filters]
+  (log/info "wrap-terminal")
+  (Thread/sleep 1000)
   (let [started       (atom false)
         ;; grid of cell-opts
         opts          (atom (nil-grid terminal))
         effects       (atom (mapv (fn [effect-gen-fn] (effect-gen-fn terminal opts)) effects-gen-fns))
         filters       (atom filters)
+        _ (log/info "making atat pool")
         schedule-pool (atat/mk-pool)]
-    (AnimatedTerminal. terminal started opts effects filters schedule-pool)))
+    (log/info "overriding terminal")
+    (ro/override [t terminal]
+      zat/Terminal
+      ;; pass Terminal methods through to terminal
+      (put-chars! [this layer-id characters]
+        (log/info "put-chars!" layer-id characters)
+        (swap! opts
+               (fn [opts]
+                 (reduce (fn [opts [y y-characters]]
+                           (update opts y (fn [line]
+                                                 (apply assoc (vec line) (interleave (map :x y-characters)
+                                                                                     (map :opts y-characters))))))
+                         (vec opts)
+                         (group-by :y characters))))
+        (let [characters (mapv (fn [ch] (apply-filters (get ch :opts {})  ch @filters)) characters)]
+          (zat/put-chars! terminal layer-id characters)))
+      (refresh! [this]
+        (reset! frame-count 0)
+        (zat/clear-fx! terminal)
+        (doseq [effect @effects]
+          (zaat/apply-effect! effect terminal))
+        (log/info "done applying effects")
+        (zat/refresh! terminal))
+      (clear! [this]
+        (reset! opts (nil-grid terminal))
+        (zat/clear! terminal))
+      AAnimatedTerminal
+      (swap-effect-seq! [this f] (swap! effects f))
+      (swap-matching-effect-or-filter!
+        [this p f]
+        (swap! effects (fn [effects]
+                         (reduce (fn [effects effect]
+                                   (conj effects (if (p effect)
+                                                   (f effect)
+                                                   effect)))
+                                 []
+                                 effects)))
+        (swap! filters (fn [filters]
+                         (reduce (fn [filters fx-filter]
+                                   (conj filters (if (p fx-filter)
+                                                   (f fx-filter)
+                                                   fx-filter)))
+                                 []
+                                 filters))))
+      (start! [this fps]
+        (dosync
+          (when-not @started
+            (reset! started true)
+            (atat/every (/ 1000 fps)
+                        (fn []
+                          (dosync
+                            (swap! frame-count inc)
+                            (zat/clear-fx! terminal)
+                            (doseq [effect @effects]
+                              (zaat/apply-effect! effect terminal))
+                            (zat/assoc-shader-param! terminal "time" (swap! frame-count inc))
+                            (zat/refresh! terminal)))
+                        schedule-pool)))))))
 
 (defn set-mask! [terminal mask-ids xys v] 
   {:pre [(set? mask-ids)
          (coll? xys)
          (contains? #{true false} v)]}
-  (raat/swap-matching-effect-or-filter!
+  (zaat/swap-matching-effect-or-filter!
     terminal
     (fn [fx] (and (instance? AMask fx)
-                  (contains? mask-ids (raat/id fx))))
+                  (contains? mask-ids (zaat/id fx))))
     (fn [effect]
-      (raat/swap-mask! effect
+      (zaat/swap-mask! effect
                        (fn [mask]
                          (reduce (fn [mask [y xys]]
                                    (update mask y (fn [line]
@@ -489,18 +489,17 @@
 
 (defn set-palette! [terminal new-palette]
   {:pre [(map? new-palette)]}
-  (raat/swap-matching-effect-or-filter!
+  (zaat/swap-matching-effect-or-filter!
     terminal
     (fn [fx] (instance? APalette fx))
     (fn [effect]
-      (raat/update-palette! effect (fn [palette] new-palette)))))
+      #_(zaat/update-palette! effect (fn [palette] new-palette)))))
 
 (defn reset-state! [terminal new-state]
   ;{:pre [(get new-state :fx)]}
-  (raat/swap-matching-effect-or-filter!
+  (zaat/swap-matching-effect-or-filter!
     terminal
     (fn [fx] (instance? ARequiresState fx))
     (fn [effect]
-      (raat/reset-state! effect new-state))))
-  
-  
+      (zaat/reset-state! effect new-state))))
+ 

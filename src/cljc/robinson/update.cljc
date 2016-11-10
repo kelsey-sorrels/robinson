@@ -6,7 +6,8 @@
             [robinson.scores :as rs]
             [robinson.world :as rw]
             [robinson.viewport :as rv]
-            [zaffre.aterminal :as zat]
+            [zaffre.terminal :as zat]
+            [zaffre.font :as zfont]
             [robinson.describe :as rdesc]
             [robinson.traps :as rt]
             [robinson.dialog :as rdiag]
@@ -52,8 +53,8 @@
                 [taoensso.timbre :as log :include-macros true]
                 [goog.string.format])))
   #?(:clj
-      (:import zaffre.aterminal.ATerminal
-               zaffre.font.TTFFont)))
+      (:import zaffre.terminal.Terminal
+               #_zaffre.font.TTFFont)))
 
 
 (defn format [s & args]
@@ -125,12 +126,18 @@
   (let [fonts        (sort-by :name (get state :fonts))
         current-font (get state :new-font (get (rc/get-settings state) :font))
         font         (get-in state [:fonts current-font])
-        screen ^robinson.aterminal.ATerminal (get state :screen)]
+        screen ^robinson.terminal.Terminal (get state :screen)]
     (when-not (= current-font (get (rc/get-settings state) :font))
       ;; send new settings to screen
-      (zat/apply-font! screen
-                       (TTFFont. (get font :windows-font) (get font :font-size))
-                       (TTFFont. (get font :else-font) (get font :font-size)))
+      (zat/alter-group-font! screen :app
+        (fn [platform]
+          (case platform
+            :linux
+              (zfont/->TTFFont (get font :else-font) (get font :font-size))
+            :macosx
+              (zfont/->TTFFont (get font :else-font) (get font :font-size))
+            :windows
+              (zfont/->TTFFont (get font :windows-font) (get font :font-size)))))
       ;; persist
       (rc/reset-settings! state (assoc (rc/get-settings state) :font current-font)))
     ;; cleanup temp new-font value

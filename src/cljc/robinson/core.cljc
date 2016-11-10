@@ -3,7 +3,7 @@
 ;(set! *warn-on-reflection* true)
 (ns robinson.core
   (:require [robinson.main :as main]
-            [zaffre.aterminal :as aterminal]
+            [zaffre.terminal :as terminal]
             [robinson.world :as rw]
             #?@(:clj (
                 [clojure.core.async :as async :refer [go go-loop]]
@@ -61,7 +61,7 @@
                                       (contains? #{:loading :connecting} (rw/current-state state))
                                         :advance
                                       :else
-                                        (let [key-chan (aterminal/get-key-chan (state :screen))]
+                                        (let [key-chan (terminal/get-key-chan (state :screen))]
                                           ;(log/info  "waiting for key-chan")
                                           (async/<!! key-chan)))]
                           (when (= keyin :exit)

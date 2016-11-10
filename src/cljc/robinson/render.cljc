@@ -40,7 +40,7 @@
             [robinson.npc :as rnpc :refer [talking-npcs
                                            npcs-in-viewport]]
             [robinson.traps :as rt]
-            [zaffre.aterminal :as zat]
+            [zaffre.terminal :as zat]
             [robinson.aanimatedterminal :as raat]
             [robinson.animation :as ranimation]
             [tinter.core :as tinter]
@@ -55,7 +55,7 @@
                [goog.string :as gstring]
                [goog.string.format]))
   #?(:clj
-     (:import  zaffre.aterminal.ATerminal
+     (:import  zaffre.terminal.Terminal
                (java.awt Color Image)
                java.awt.image.BufferedImage
                javax.swing.ImageIcon)))
@@ -95,9 +95,9 @@
                :freshwater-hole :saltwater-hole} cell-type))
 
 (defn move-cursor
-  [^zaffre.aterminal.ATerminal screen x y]
+  [^zaffre.terminal.Terminal screen x y]
   (log/info "moving cursor to" x y)
-  (zat/set-cursor! screen x y))
+  #_(zat/set-cursor! screen x y))
 
 (defn fill-put-string-color-style-defaults
   ([string]
@@ -176,13 +176,13 @@
   (count (markup->chars 0 0 s)))
 
 (defn put-string
-  ([^zaffre.aterminal.ATerminal screen layer-id x y string]
+  ([^zaffre.terminal.Terminal screen layer-id x y string]
      (put-string screen layer-id (int (rmath/ceil x)) (int (rmath/ceil y)) string :white :black #{}))
-  ([^zaffre.aterminal.ATerminal screen layer-id x y string fg bg]
+  ([^zaffre.terminal.Terminal screen layer-id x y string fg bg]
      (put-string screen layer-id (int (rmath/ceil x)) (int (rmath/ceil y)) string fg bg #{}))
-  ([^zaffre.aterminal.ATerminal screen layer-id x y string fg bg styles]
+  ([^zaffre.terminal.Terminal screen layer-id x y string fg bg styles]
      (put-string screen layer-id (int (rmath/ceil x)) (int (rmath/ceil y)) string fg bg #{} {}))
-  ([^zaffre.aterminal.ATerminal screen layer-id x y string fg bg styles mask-opts]
+  ([^zaffre.terminal.Terminal screen layer-id x y string fg bg styles mask-opts]
    {:pre [(clojure.set/superset? #{:underline :bold} styles)
           (integer? x)
           (integer? y)
@@ -200,24 +200,24 @@
      (zat/put-chars! screen layer-id characters))))
       
 (defn put-chars
-  [^zaffre.aterminal.ATerminal screen layer-id characters]
+  [^zaffre.terminal.Terminal screen layer-id characters]
   {:pre [(every? (fn [ch] (char? (get ch :c))) characters)]}
   (zat/put-chars! screen layer-id characters))
       
 (defn set-bg!
-  [^zaffre.aterminal.ATerminal screen layer-id x y bg]
+  [^zaffre.terminal.Terminal screen layer-id x y bg]
   (zat/set-bg! screen layer-id x y bg))
 
-(defn get-size
-  [^zaffre.aterminal.ATerminal screen]
-  (zat/get-size screen))
+(defn size
+  [^zaffre.terminal.Terminal screen]
+  (juxt (zat/args screen) :screen-width :screen-height))
 
 (defn refresh
-  [^zaffre.aterminal.ATerminal screen]
+  [^zaffre.terminal.Terminal screen]
   (zat/refresh! screen))
 
 (defn clear
-  [^zaffre.aterminal.ATerminal screen]
+  [^zaffre.terminal.Terminal screen]
   (zat/clear! screen))
 
 (defn class->rgb
@@ -1209,7 +1209,7 @@
    the status bar. Everything."
   [state]
   (let [screen                                      (state :screen)
-        [columns rows]                              (get-size screen)
+        {:keys [columns rows]}                      (-> screen zat/groups :app)
         current-time                                (get-in state [:world :time])
         {{player-x :x player-y :y} :pos :as player} (rp/get-player state)
         d                                           (rlos/sight-distance state)
@@ -1433,7 +1433,8 @@
                                     cells))]
     (clear screen)
     ;; set rain mask to all true
-    (ranimation/reset-rain-mask! screen true)
+    ; TODO: remove and use groups instead
+    ;(ranimation/reset-rain-mask! screen true)
     ;; set palette
     (ranimation/set-palette! screen cell-type-palette)
     #_(log/info "putting chars" characters)

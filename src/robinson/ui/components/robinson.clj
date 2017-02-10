@@ -1,5 +1,5 @@
 ;; Functions for rendering state to screen
-(ns robinson.ui.components.robinson
+(ns robinson.render
   (:require 
             [taoensso.timbre :as log]
             [robinson.random :as rr]
@@ -40,20 +40,34 @@
             [robinson.npc :as rnpc :refer [talking-npcs
                                            npcs-in-viewport]]
             [robinson.traps :as rt]
-            [robinson.ui.updater :as ruu]
             [zaffre.terminal :as zat]
-            [zaffre.animation.wrapper :as zaw]
-            [zaffre.components :as zc]
-            [zaffre.components.ui :as zcui]
-            [zaffre.util :as zutil]
+            [robinson.aanimatedterminal :as raat]
             [tinter.core :as tinter]
             clojure.set
             [clojure.xml :as xml]
             [clojure.zip :as zip]
-            [clojure.pprint :as pprint]
-            clojure.string))
+            #?(:clj
+               [clojure.pprint :as pprint]
+               clojure.string
+               :cljs
+               [cljs.pprint :as pprint]
+               [goog.string :as gstring]
+               [goog.string.format]))
+  #?(:clj
+     (:import  zaffre.terminal.Terminal
+               (java.awt Color Image)
+               java.awt.image.BufferedImage
+               javax.swing.ImageIcon)))
 
-(set! *warn-on-reflection* true)
+
+#?(:clj
+(set! *warn-on-reflection* true))
+
+(defn format [s & args]
+  #?(:clj
+     (apply clojure.core/format s args)
+     :cljs
+     (apply gstring/format s args)))
 
 (def cell-type-palette
   {:fire                   [:red :orange]
@@ -79,66 +93,434 @@
                :bamboo-water-collector :solar-still 
                :freshwater-hole :saltwater-hole} cell-type))
 
+(defn move-cursor
+  [^zaffre.terminal.Terminal screen x y]
+  (log/info "moving cursor to" x y)
+  #_(zat/set-cursor! screen x y))
 
-(defonce frame-count (atom 0))
-(defonce frame-steps 1000000)
+(defn fill-put-string-color-style-defaults
+  ([string]
+    (fill-put-string-color-style-defaults string :white :black #{}))
+  ([string fg]
+    (fill-put-string-color-style-defaults string fg :black #{}))
+  ([string fg bg]
+    (fill-put-string-color-style-defaults string fg bg #{}))
+  ([string fg bg styles]
+   {:pre [(clojure.set/superset? #{:underline :bold} styles)]}
+   (let [new-fg (rcolor/color->rgb (if (has-palette? fg)
+                                     (cell-type->color fg)
+                                     fg))
+         bg     (rcolor/color->rgb bg)]
+     (if (has-palette? fg)
+       [string new-fg bg styles {:palette fg}]
+       [string new-fg bg styles {}]))))
+
+(defn zip-str [s]
+  (zip/xml-zip 
+      (xml/parse (java.io.ByteArrayInputStream. (.getBytes s)))))
+
+(defn str->chars
+  ([s]
+   (str->chars s :white :black))
+  ([s fg bg]
+   (str->chars s fg bg #{}))
+  ([s fg bg style]
+   (map (fn [c] {:c c :fg fg :bg bg :style style})
+        s)))
+
+(defn markup->chars
+  ([x y s]
+   (markup->chars x y s :white :black))
+  ([x y s fg bg]
+   (markup->chars x y s fg bg #{}))
+  ([x y s fg bg style]
+   (if (re-find #"^\s*$" s)
+     (map (fn [idx] {:c     \space
+                     :x     (+ x idx)
+                     :y     y
+                     :fg    (rcolor/color->rgb fg)
+                     :bg    (rcolor/color->rgb bg)
+                     :style style})
+          (range (count s)))
+     (let [body    (str "<body>" s "</body>")
+           z       (zip-str body)
+           content (-> z zip/node :content)
+           characters
+       (map-indexed (fn [idx c] (assoc c :c     (get c :c)
+                                         :x     (+ x idx)
+                                         :y     y
+                                         :fg    (rcolor/color->rgb (get c :fg))
+                                         :bg    (rcolor/color->rgb (get c :bg))
+                                         :style style))
+                    (reduce (fn [characters v]
+                              (cond
+                                (string? v)
+                                  (concat characters
+                                          (str->chars v fg bg style))
+                                (map? v)
+                                  (concat characters
+                                          (str->chars (-> v :content first)
+                                                      (if (= (get v :tag) :color)
+                                                        (keyword (get-in v [:attrs :fg] fg))
+                                                        fg)
+                                                      (if (= (get v :tag) :color)
+                                                        (keyword (get-in v [:attrs :bg] bg))
+                                                        bg)))))
+                            []
+                            content))]
+      characters))))
+
+(defn markup->length
+  [s]
+  (count (markup->chars 0 0 s)))
+
+(defn put-string
+  ([^zaffre.terminal.Terminal screen layer-id x y string]
+     (put-string screen layer-id (int (rmath/ceil x)) (int (rmath/ceil y)) string :white :black #{}))
+  ([^zaffre.terminal.Terminal screen layer-id x y string fg bg]
+     (put-string screen layer-id (int (rmath/ceil x)) (int (rmath/ceil y)) string fg bg #{}))
+  ([^zaffre.terminal.Terminal screen layer-id x y string fg bg styles]
+     (put-string screen layer-id (int (rmath/ceil x)) (int (rmath/ceil y)) string fg bg #{} {}))
+  ([^zaffre.terminal.Terminal screen layer-id x y string fg bg styles mask-opts]
+   {:pre [(clojure.set/superset? #{:underline :bold} styles)
+          (integer? x)
+          (integer? y)
+          (string? string)]}
+   (let [fg   (rcolor/color->rgb fg)
+         bg   (rcolor/color->rgb bg)
+         {:keys [mask unmask] :or {mask #{} unmask #{}}} mask-opts
+         characters (map-indexed (fn [i c] {:c  c
+                                            :fg fg
+                                            :bg bg
+                                            :x  (+ x i)
+                                            :y  y
+                                            :opts {}})
+                                 string)]
+     (zat/put-chars! screen layer-id characters))))
+      
+(defn put-chars
+  [^zaffre.terminal.Terminal screen layer-id characters]
+  {:pre [(every? (fn [ch] (char? (get ch :c))) characters)]}
+  (zat/put-chars! screen layer-id characters))
+      
+(defn set-bg!
+  [^zaffre.terminal.Terminal screen layer-id x y bg]
+  (zat/set-bg! screen layer-id x y bg))
 
 (defn size
   [^zaffre.terminal.Terminal screen]
   (juxt (zat/args screen) :screen-width :screen-height))
 
+(defn refresh
+  [^zaffre.terminal.Terminal screen]
+  (zat/refresh! screen))
+
+(defn clear
+  [^zaffre.terminal.Terminal screen]
+  (zat/clear! screen))
+
+(defn class->rgb
+  "Convert a class to a color characters of that type should be drawn."
+  [pc-class]
+  ;(log/debug "class->color" pc-class)
+  (rcolor/color->rgb
+    (case pc-class
+      :cleric    :white
+      :barbarian :red
+      :bard      :fushia
+      :druid     :yellow
+      :fighter   :orange
+      :ranger    :green
+      :rogue     :gray
+      :wizard    :purple)))
+
 (defn is-menu-state? [state]
   (contains? #{:inventory :describe-inventory :pickup-selection :drop :eat} (get-in state [:world :current-state])))
 
-(binding [zc/*updater* ruu/updater]
-(zc/def-component ItemList
-  [this]
-  (let [{:keys [items]} (zc/props this)]
-    (zc/csx
-      [:view {}
-          (map (fn [{:keys [fg bg style s]}]
-            [:view {:style {:fg fg :bg bg :display :block}} [
-              [:text {} [s]]]])
-            items)])))
-   
-(zc/def-component SelectItemList
-  [this]
-  (let [{:keys [title selected-hotkeys use-applicable items]} (zc/props this)]
-    (zc/csx
-      [:view {} (cons
-          [:text {} [title]]
-          (map (fn [item]
-                 {:s (format "%s%s%s%s %s %s"
-                       (or (item :hotkey)
-                           \ )
-                       (if (contains? selected-hotkeys (item :hotkey))
-                         \+
-                         \-)
-                       (if (contains? item :count)
-                         (format "%dx " (int (get item :count)))
-                         "")
-                       (get item :name)
-                       (if (contains? item :utility)
-                         (format "(%d%%)" (int (get item :utility)))
-                         "")
-                       (cond
-                         (contains? item :wielded)
-                           "(wielded)"
-                         (contains? item :wielded-ranged)
-                           "(wielded ranged)"
-                         (contains? item :worn)
-                           "(worn)"
-                         :else
-                           ""))
-                  :fg (if (or (not use-applicable)
-                              (get item :applicable))
-                        :black
-                        :gray)
-                  :bg :white
-                  :style #{}})
-               items))])))
+(defn markup-length [s]
+ (let [body    (str "<body>" s "</body>")
+       z       (zip-str body)
+       content (-> z zip/node :content)]
+   (reduce (fn [n v]
+             (cond
+               (string? v)
+                 (+ n
+                    (count v))
+               (map? v)
+                 (+ n
+                    (-> v :content first count))))
+           0
+           content)))
 
-#_(defn render-atmo
+(defn center-text [s width]
+  (let [n-ws-left (int (/ (- width (count s)) 2))
+        n-ws-right (int (+ 0.5 (/ (- width (count s)) 2)))]
+   (apply str (concat (repeat n-ws-left " ") s (repeat n-ws-right " ")))))
+
+(defn left-justify-text [s width]
+  (let [n-ws (- width (count s))]
+   (apply str (concat s (repeat n-ws " ")))))
+
+(defn center-markup [s width]
+  (try
+    (let [n-ws-left (int (/ (- width (markup-length s)) 2))
+          n-ws-right (int (+ 0.5 (/ (- width (markup-length s)) 2)))]
+      (apply str (concat (repeat n-ws-left " ") s (repeat n-ws-right " "))))
+    (catch Exception e
+      (log/error "Error in markup" s e)
+      "")))
+
+(defn left-justify-markup [s width]
+  (try
+    (let [n-ws (- width (markup-length s))]
+      (apply str (concat s (repeat n-ws " "))))
+    (catch Exception e
+      (println "Error in markup" s e)
+      "")))
+
+(defn render-line
+  ([screen layer-id x y width line fg bg style]
+    (render-line screen layer-id x y width line fg bg style {}))
+  ([screen layer-id x y width line fg bg {:keys [underline center invert]
+                                :or   {:underline false :center false :invert false}}
+                                mask-opts]
+  (let [width    (if (= width :auto)
+                   (count line)
+                   width)
+        ;; pad to width
+        s        (if center
+                   ;; center justify
+                   (center-markup line width)
+                   ;; left justify
+                   (left-justify-markup line width))
+        [fg bg]  (if invert
+                   [bg fg]
+                   [fg bg])
+        style    (if underline
+                   #{:underline}
+                   #{})]
+    #_(log/info "put-string" (format "\"%s\"" line) "width" width)
+    #_(put-string screen layer-id x y s fg bg style)
+    (let [characters (markup->chars (int (rmath/ceil x)) (int (rmath/ceil y)) s fg bg style)]
+      (put-chars screen layer-id characters)))))
+
+(def single-border
+  {:horizontal   \u2500
+   :vertical     \u2502
+   :top-left     \u250C
+   :top-right    \u2510
+   :bottom-left  \u2514
+   :bottom-right \u2518})
+
+(def double-border
+  {:horizontal   \u2550
+   :vertical     \u2551
+   :top-left     \u2554
+   :top-right    \u2557
+   :bottom-left  \u255A
+   :bottom-right \u255D})
+
+(defn render-rect-border
+  [screen x y width height fg bg characters]
+  {:pre [(integer? x)
+         (integer? y)]}
+  (let [{:keys [horizontal
+                vertical
+                top-left
+                top-right
+                bottom-left
+                bottom-right]} characters]
+    ;; render top and bottom
+    (doseq [dx (range (dec width))]
+      (put-string screen :ui (+ x dx 1) y (str horizontal) fg bg #{} {:mask #{:rain :transform}})
+      (put-string screen :ui (+ x dx 1) (+ y height) (str horizontal) fg bg #{} {:mask #{:rain :transform}}))
+    ;; render left and right
+    (doseq [dy (range (dec height))]
+      (put-string screen :ui x (+ y dy 1) (str vertical) fg bg #{} {:mask #{:rain :transform}})
+      (put-string screen :ui (+ x width) (+ y dy 1) (str vertical) fg bg #{} {:mask #{:rain :transform}}))
+    ;; render tl, tr, bl, br
+    (put-string screen :ui x y (str top-left) fg bg #{} {:mask #{:rain :transform}})
+    (put-string screen :ui (+ x width) y (str top-right) fg bg #{} {:mask #{:rain :transform}})
+    (put-string screen :ui x (+ y height) (str bottom-left) fg bg #{} {:mask #{:rain :transform}})
+    (put-string screen :ui (+ x width) (+ y height) (str bottom-right) fg bg #{} {:mask #{:rain :transform}})))
+
+(defn render-rect-single-border
+  [screen x y width height fg bg]
+  (render-rect-border screen x y width height fg bg single-border))
+
+(defn render-rect-double-border
+  [screen x y width height fg bg]
+  (render-rect-border screen x y width height fg bg double-border))
+
+(defn render-vertical-border
+  [screen x y height fg bg]
+  (doseq [dy (range (dec height))]
+    (put-string screen :ui x (+ y dy) "\u2502" fg bg #{} {:mask #{:rain :transform}})))
+
+(defn render-list
+  "Render a sequence of lines padding to height if necessary.
+   Lines are maps containing the keys `:s :fg :bg :style`."
+  [screen layer-id x y width height items]
+  (doseq [i (range height)]
+    (if (< i (count items))
+      (let [item (nth items i)]
+        (render-line screen layer-id x (+ y i) width (get item :s) (get item :fg) (get item :bg) (get item :style) {:mask #{:rain :transform}}))
+      (render-line screen layer-id x (+ y i) (dec width) " " :white :white #{} {:mask #{:rain :transform}}))))
+
+(defn wrap-chars [x y width height characters fg bg style]
+  (let [words  (take-nth 2 (partition-by (fn [ch] (= " " (get ch :c))) characters))
+        ox        x
+        oy        y
+        line      (atom y)
+        nchars (atom 0)]
+    (loop [characters []
+           words      words]
+      (if-not (seq words)
+        ;; no more words, pad to width and height, and return characters
+        (do
+          (println "characters" (count characters) "area" (* width height))
+          (concat characters
+                  (for [idx    (range (dec (count characters)) (* width height))
+                        :let [x (mod idx width)
+                              y (int (/ (- idx x) width))]]
+                    {:c " "
+                     :x (+ x ox)
+                     :y (+ y oy)
+                     :fg (rcolor/color->rgb fg)
+                     :bg (rcolor/color->rgb bg)})))
+        (let [[word & words] words
+                             ;; would putting this word exceed the width?
+              characters     (if (> (+ @nchars (count word) 1) width)
+                               ;; break to next line
+                               ;; pad spaces up to width
+                               ;; deref y into y-val otherwise the for evaluation will be done
+                               ;; lazily and after the swap! has occurred.
+                               (let [y-val      @line
+                                     nchars-val @nchars
+                                     characters (vec (concat characters
+                                                        (for [x (range (+ x nchars-val -1)
+                                                                       (+ x width))]
+                                                          (do
+                                                          (println "padding @" x y-val)
+                                                          {:c " "
+                                                           :x x
+                                                           :y y-val
+                                                           :fg (rcolor/color->rgb fg)
+                                                           :bg (rcolor/color->rgb bg)}))))]
+                                 (println "line-break padding from" (+ x nchars-val -1) "to" (+ x width))
+                                 (swap! line inc)
+                                 (reset! nchars 0)
+                                 characters)
+                               characters)
+              ;; reposition the characters in the word
+              word           (map-indexed
+                               (fn [idx ch]
+                                 (assoc ch
+                                        :x (+ idx @nchars x)
+                                        :y @line))
+                               word)
+              characters     (concat characters
+                                     word
+                                     [{:c " "
+                                       :x (+ @nchars (count word) x)
+                                       :y @line
+                                       :fg (rcolor/color->rgb fg)
+                                       :bg (rcolor/color->rgb bg)
+                                       :style style}])
+             ;; update counters
+             _               (swap! nchars (partial + (count word) 1))]
+          (println (format "word %s" (mapv (fn [ch] (select-keys ch #{:c :x :y})) word)))
+          (recur characters
+                 words))))))
+           
+(defn render-text
+  [screen position title text]
+  (let [x        (case position
+                   :left 0
+                   :right 50)
+        y        0
+        width    30
+        height   23
+        lines    (rc/wrap-line 28 text)
+        characters (markup->chars x (inc y) text :black :white #{})
+        characters (wrap-chars x (inc y) width height characters :black :white #{})]
+     (put-chars screen (wrap-chars x y  width 1 (markup->chars x y title :black :white #{}) :black :white #{}))
+     (put-chars screen characters)))
+     ;;(render-list screen x y width height items)))
+
+(defn render-multi-select
+  "Render a menu on the right side of the screen. It has a title, and selected items
+   can be identitifed by hotkeys. If elements in `items` have a key whose value
+   equals an element in `hotkeys` then the item will be displayed with a `+` rather
+   than a `-`. Each element in `items` must contains a key `:name`, the value of which
+   will be printed in the menu.
+  
+       (render-multi-select
+         screen
+         \"Select\"
+         [:a :c]
+         [{:name \"Item 1\"
+           :hotkey :a}
+          {:name \"Item 2\"
+           :hotkey :b}
+          {:name \"Item 3\"
+           :hotkey :c})
+  "
+  ([screen title selected-hotkeys items]
+   (render-multi-select screen title selected-hotkeys items 40 0 40 22))
+  ([screen title selected-hotkeys items x y width height]
+   (render-multi-select screen title selected-hotkeys items x y width height {}))
+  ([screen title selected-hotkeys items x y width height {:keys [use-applicable center border center-title]
+                                                          :or {:use-applicable false :border false :center false :center-title false}}]
+   ;; items is list of {:s "string" :fg :black :bg :white}
+   (let [items    (map (fn [item] {:s (format #?(:clj  "<color fg=\"highlight\">%c</color>%c%s%s %s %s"
+                                                 :cljs "<color fg=\"highlight\">%s</color>%s%s%s %s %s")
+                                              (or (item :hotkey)
+                                                  \ )
+                                              (if (contains? selected-hotkeys (item :hotkey))
+                                                \+
+                                                \-)
+                                              (if (contains? item :count)
+                                                (format "%dx " (int (get item :count)))
+                                                "")
+                                              (get item :name)
+                                              (if (contains? item :utility)
+                                                (format "(%d%%)" (int (get item :utility)))
+                                                "")
+                                              (cond
+                                                (contains? item :wielded)
+                                                  "(wielded)"
+                                                (contains? item :wielded-ranged)
+                                                  "(wielded ranged)"
+                                                (contains? item :worn)
+                                                  "(worn)"
+                                                :else
+                                                  ""))
+                                   :fg (if (or (not use-applicable)
+                                               (get item :applicable))
+                                         :black
+                                         :gray)
+                                   :bg :white
+                                   :style #{}})
+                       items)
+         ;; if width is :auto calc width by using max item length
+         width    (if (= width :auto)
+                    (reduce max (map (fn [item] (count (get item :s))) items))
+                    width)
+         height   (if (= height :auto)
+                    (count items)
+                    height)
+         title    (if (and title center-title)
+                    (center-text title width)
+                    (when title
+                      (format "  %s" title)))
+         items    (if title
+                     (concat [{:s title :fg :black :bg :white :style #{:underline :bold}}]
+                              items)
+                     items)]
+     (render-list screen :ui x y width height items))))
+
+(defn render-atmo
   [state x y]
   (let [screen (get state :screen)
         atmo   (get-in state [:data :atmo])
@@ -154,18 +536,7 @@
                                                       :black #{:underline} {:mask #{:rain :transform}})
       (put-string screen :ui (+ x i) (inc y) "\u2584" (nth column 2) (nth column 1) #{:underline} {:mask #{:rain :transform}}))))
 
-(zc/def-component Atmo
-  [this]
-  (let [{:keys [state]} (zc/props this)
-        atmo   (get-in state [:data :atmo])
-        frames (count atmo)
-        t      (mod (get-in state [:world :time]) frames)
-        frame  (nth atmo t)
-        indexed-colors (map vector (partition 3 frame) (range))]
-    (zc/csx
-      [:view {} []])))
-
-#_(defn render-hud
+(defn render-hud
   [state]
     ;; render atmo
     (render-atmo state 37 21)
@@ -215,23 +586,8 @@
     ;    (int (-> state :world :player :hp))
     ;    (-> state :world :player :max-hp)
     ;    (apply str (interpose " " (-> state :world :player :status)))
-(zc/def-component DoubleBarChart
-  [this]
-  (let [{:keys [fg-1 fg-2 p1 p2 width direction]} (zc/props this)]
-    (zc/csx
-      [:view {} []])))
-(zc/def-component StatusUI
-  [this]
-  (let [{:keys [wounded poisoned infected]} (zc/props this)]
-    (zc/csx
-      [:view {} []])))
-(zc/def-component Hud
-  [this]
-  (let [{:keys [state]} (zc/props this)]
-    (zc/csx
-      [:view {} []])))
 
-#_(defn render-crushing-wall
+(defn render-crushing-wall
   [screen trap]
   (let [ch (case (get trap :direction)
              :up    \╧
@@ -241,7 +597,7 @@
     (put-chars screen :features (for [[x y] (first (get trap :locations))]
                                   {:x x :y y :c ch :fg [90 90 90] :bg [0 0 0]}))))
 
-#_(defn render-poisonous-gas
+(defn render-poisonous-gas
   [screen state trap]
   (let [current-time (rw/get-time state)]
     (doseq [[x y] (keys (get trap :locations))]
@@ -249,7 +605,7 @@
         (let [bg (rcolor/color->rgb (rand-nth [:beige :temple-beige :light-brown]))]
           (set-bg! screen :map x y bg))))))
 
-#_(defn render-traps
+(defn render-traps
   [state]
   (when-let [traps (rt/current-place-traps state)]
     (let [screen (get state :screen)]
@@ -260,6 +616,55 @@
           :poisonous-gas
             (render-poisonous-gas screen state trap)
           nil)))))
+
+(def image-cache (atom {}))
+
+(def get-image
+  (memoize
+    (fn [path]
+      (let [image ^Image (.getImage (ImageIcon. path))]
+        image))))
+        
+
+#?(:clj
+(defn render-img
+  "Render an image using block element U+2584."
+  [state ^String path x y]
+  (let [image ^Image          (get-image path)
+        width                 (.getWidth image)
+        height                (.getHeight image)
+        buffered-image        (BufferedImage. width height BufferedImage/TYPE_INT_RGB)
+        gfx2d                 (doto (.createGraphics buffered-image)
+                                (.drawImage image 0 0 width height nil)
+                                (.dispose))]
+   (doall
+     (for [py (filter even? (range height))
+           px (range width)]
+       (let [color1 (Color. (.getRGB buffered-image px py))
+             color2 (Color. (.getRGB buffered-image px (inc py)))
+             rgb1 ((juxt (fn [^Color c] (.getRed c)) 
+                         (fn [^Color c] (.getGreen c))
+                         (fn [^Color c] (.getBlue c)))
+                   color1)           
+             rgb2 ((juxt (fn [^Color c] (.getRed c))
+                         (fn [^Color c] (.getGreen c))
+                         (fn [^Color c] (.getBlue c)))
+                   color2)]
+         (put-string (state :screen)
+                       :ui
+                       (+ x px)
+                       (int (+ y (/ py 2)))
+                       "\u2584"
+                       rgb2
+                       rgb1
+                       #{:underline}))))))
+
+:cljs
+(defn render-img
+  "Render an image using block element U+2584."
+  [state path x y]
+  ;TOOD: implement
+  nil))
 
 (defn translate-identified-items
   [state items]
@@ -274,7 +679,7 @@
                       item))
          items)))
 
-#_(defn render-pick-up-selection
+(defn render-pick-up-selection
   "Render the pickup item menu if the world state is `:pickup-selection`."
   [state]
   (let [screen           (state :screen)
@@ -294,12 +699,12 @@
   (render-multi-select screen "Pick up" selected-hotkeys (translate-identified-items state items))
   (put-chars screen :ui (markup->chars 41 20 "<color fg=\"highlight\">space</color>-All" :black :white #{}))))
 
-#_(defn render-inventory
+(defn render-inventory
   "Render the pickup item menu if the world state is `:inventory`."
   [state]
   (render-multi-select (state :screen) "Inventory" [] (translate-identified-items state (-> state :world :player :inventory))))
 
-#_(defn render-abilities
+(defn render-abilities
   "Render the player abilities menu if the world state is `:abilities`."
   [state]
   (let [screen (get state :screen)
@@ -328,7 +733,7 @@
     (render-rect-double-border screen 16 3 43 height :black :white)
     (put-string screen :ui 33 3 "Abilities" :black :white)))
 
-#_(defn render-ability-choices 
+(defn render-ability-choices 
   "Render the player ability choice menu if the world state is `:gain-level`."
   [state]
   (let [screen (get state :screen)
@@ -350,7 +755,7 @@
     (render-rect-double-border screen 16 3 43 height :black :white)
     (put-string screen :ui 29 3 "Choose New Ability" :black :white)))
 
-#_(defn render-action-choices
+(defn render-action-choices
   "Render the player action choices menu if the world state is `:action-select`."
   [state]
   (let [screen (get state :screen)
@@ -379,7 +784,7 @@
     (put-string screen :ui 30 3 "Choose Action" :black :white)))
 
 
-#_(defn render-player-stats
+(defn render-player-stats
   "Render the player character stats  menu if the world state is `:player-stats`."
   [state]
   (let [screen        (get state :screen)
@@ -409,7 +814,7 @@
     (render-rect-double-border screen x y 43 height :black :white)
     (put-string screen :ui (+ x 16) y "Player Info" :black :white)))
 
-#_(defn render-describe
+(defn render-describe
   "Render the describe info pane if the world state is `:describe`."
   [state]
   (let [{cursor-x :x
@@ -426,43 +831,43 @@
                                                       (get-cell state (+ x cursor-x) (+ y cursor-y)))
                                                  description))))
 
-#_(defn render-apply
+(defn render-apply
   "Render the inventory menu with `Apply` as the title."
   [state]
   (render-multi-select (state :screen) "Apply Inventory" [] (translate-identified-items state (-> state :world :player :inventory))))
 
-#_(defn render-apply-to
+(defn render-apply-to
   "Render the inventory menu with `Apply To` as the title."
   [state]
   (render-multi-select (state :screen) "Apply To" [] (translate-identified-items state (-> state :world :player :inventory))))
 
-#_(defn render-quaff-inventory
+(defn render-quaff-inventory
   "Render the inventory menu with `Quaff` as the title."
   [state]
   (render-multi-select (state :screen) "Quaff To" [] (translate-identified-items state (filter ig/is-quaffable?
                                                              (-> state :world :player :inventory)))))
 
-#_(defn render-magic
+(defn render-magic
   "Render the pickup item menu if the world state is `:magic`."
   [state]
   (render-multi-select (state :screen) "Magic" [] (get-magical-abilities (-> state :world :player))))
 
-#_(defn render-drop
+(defn render-drop
   "Render the pickup item menu if the world state is `:pickup`."
   [state]
   (render-multi-select (state :screen) "Drop Inventory" [] (translate-identified-items state (-> state :world :player :inventory))))
 
-#_(defn render-describe-inventory
+(defn render-describe-inventory
   "Render the pickup item menu if the world state is `:pickup`."
   [state]
   (render-multi-select (state :screen) "Describe" [] (translate-identified-items state (-> state :world :player :inventory))))
 
-#_(defn render-throw-inventory
+(defn render-throw-inventory
   "Render the throw item menu if the world state is `:throw-inventory`."
   [state]
   (render-multi-select (state :screen) "Throw" [] (translate-identified-items state (-> state :world :player :inventory))))
 
-#_(defn render-eat
+(defn render-eat
   "Render the eat item menu if the world state is `:pickup`."
   [state]
   (render-multi-select (state :screen)
@@ -472,7 +877,7 @@
                          (filter #(contains? % :hunger)
                                (inventory-and-player-cell-items state)))))
 
-#_(defn render-quests
+(defn render-quests
   "Render the pickup item menu if the world state is `:pickup`."
   [state]
   (render-multi-select (state :screen)
@@ -482,12 +887,111 @@
                                  (not (nil? (get-in state [:world  :quests (quest :id) :stage] nil))))
                                (:quests state))))
 
-#_(defn render-quit?
+(defn render-quit?
   "Render the pickup item menu if the world state is `:pickup`."
   [state]
   (put-string (state :screen) :ui 1 0 "quit? [yn]"))
 
-#_(defn render-craft
+(defn render-dialog
+  "Render the dialog menu if the world state is `:talking`."
+  [state]
+  (when (= (get-in state [:world :current-state]) :talking)
+    (let [npc           (first (talking-npcs state))
+          _ (log/debug "world state" (get-in state [:world :current-state]))
+          _ (log/debug "state :dialog" (state :dialog))
+          _ (log/debug "npcid" (get npc :id))
+          fsm           (get-in state [:dialog (get npc :id)])
+          _ (log/debug "fsm" fsm)
+          valid-input   (get-valid-input fsm)
+          _ (log/debug "render: valid-input:" valid-input)
+          _ (log/debug "render: current-state:" (fsm-current-state fsm))
+          options       (take (count valid-input)
+                              (map (fn [k v]
+                                     {:hotkey k
+                                      :name v})
+                                   [\a \b \c \d \e \f]
+                               valid-input))
+          last-response ((or (last (get-in state [:world :dialog*log])) {:text ""}) :text)
+          _ (log/debug "last-response" last-response)
+          response-wrapped (wrap-line (- 30 17) last-response)
+          _ (log/debug "response-wrapped" response-wrapped)]
+      (put-string (state :screen) :ui 0 16 (format "Talking to %-69s" (get npc :name)) :black :white #{:bold})
+      (doall (map (fn [y] (put-string (state :screen) :ui 12 y "                    " :black :white #{:bold}))
+                  (range 17 (+ 17 6))))
+      (doall (map-indexed (fn [idx line] (put-string (state :screen) :ui 13 (+ 17 idx) line :black :white #{:bold}))
+                          response-wrapped))
+      (render-multi-select (state :screen) "Respond:" [] options 32 17 68 5)
+      (render-img state (get npc :image-path) 0 17))))
+
+(defn render-shopping
+  "Render the shopping menu if the world state is `:shopping`."
+  [state]
+  (let [npc           (first (talking-npcs state))
+        options       [{:hotkey \a
+                        :name "Buy"}
+                       {:hotkey \b
+                        :name "Sell"}]
+        last-response ((or (last (get-in state [:world :dialog-log])) {:text ""}) :text)
+        response-wrapped (wrap-line (- 30 17) last-response)
+        style {:fg :black :bg :white :styles #{:bold}}]
+    (put-string (state :screen) :ui 0 16 (format "Doing business with %-69s" (get npc :name)) :black :white #{:bold})
+    (doall (map (fn [y] (put-string (state :screen) :ui 12 y "                    " :black :white #{:bold}))
+                (range 17 (+ 17 6))))
+    (doall (map-indexed (fn [idx line] (put-string (state :screen) :ui 13 (+ 17 idx) line :black :white #{:bold}))
+                        response-wrapped))
+    (render-multi-select (state :screen) "Option:" [] options 32 17 68 5)
+    (render-img state (get npc :image-path) 0 17)))
+
+(defn render-buy
+  "Render the dialog menu if the world state is `:buy`."
+  [state]
+  (let [npc           (first (talking-npcs state))
+        valid-input   (map (fn [item] (format "%s-$%d"  (item :name) (item :price)))
+                           (filter (fn [item] (contains? item :price))
+                                   (get npc :inventory [])))
+        options       (take (count valid-input)
+                            (map (fn [k v]
+                                   {:hotkey k
+                                    :name v})
+                                 [\a \b \c \d \e \f]
+                             valid-input))
+        last-response ((or (last (get-in state [:world :dialog-log])) {:text ""}) :text)
+        _ (log/debug "last-response" last-response)
+        response-wrapped (wrap-line (- 30 17) last-response)
+        _ (log/debug "response-wrapped" response-wrapped)
+        style {:fg :black :bg :white :styles #{:bold}}]
+    (put-string (state :screen) :ui 0 16 (format "Doing business with %-69s" (get npc :name)) :black :white #{:bold})
+    (doall (map (fn [y] (put-string (state :screen) :ui 12 y "                    " :black :white #{:bold}))
+                (range 17 (+ 17 6))))
+    (doall (map-indexed (fn [idx line] (put-string (state :screen) :ui 13 (+ 17 idx) line :black :white #{:bold}))
+                        response-wrapped))
+    (render-multi-select (state :screen) "Buy:" [] options 32 17 68 5)
+    (render-img state (get npc :image-path) 0 17)))
+
+(defn render-sell
+  "Render the dialog menu if the world state is `:sell`."
+  [state]
+  (let [npc           (first (talking-npcs state))
+        buy-fn        (get-in state (get npc :buy-fn-path) (fn [_] nil))
+        _ (log/debug "render-sell (npc :buy-fn-path)" (get npc :buy-fn-path))
+        _ (log/debug "render-sell buy-fn" buy-fn)
+        options       (filter #(not (nil? (buy-fn %)))
+                               (get-in state [:world :player :inventory]))
+        _ (log/debug "options" options)
+        last-response ((or (last (get-in state [:world :dialog-log])) {:text ""}) :text)
+        _ (log/debug "last-response" last-response)
+        response-wrapped (wrap-line (- 30 17) last-response)
+        _ (log/debug "response-wrapped" response-wrapped)
+        style {:fg :black :bg :white :styles #{:bold}}]
+    (put-string (state :screen) :ui 0 16 (format "Doing business with %-69s" (get npc :name)) :black :white #{:bold})
+    (doall (map (fn [y] (put-string (state :screen) :ui 12 y "                    " :black :white #{:bold}))
+                (range 17 (+ 17 6))))
+    (doall (map-indexed (fn [idx line] (put-string (state :screen) :ui 13 (+ 17 idx) line :black :white #{:bold}))
+                        response-wrapped))
+    (render-multi-select (state :screen) "Sell:" [] options 32 17 68 5)
+    (render-img state (get npc :image-path) 0 17)))
+
+(defn render-craft
   "Render the craft menu if the world state is `:craft`."
   [state]
   (let [screen (state :screen)]
@@ -499,7 +1003,7 @@
     (render-rect-single-border screen 29 5 20 5 :black :white)
     (put-string screen :ui 37 5 "Craft" :black :white)))
 
-#_(defn render-craft-submenu
+(defn render-craft-submenu
   "Render the craft submenu"
   [state recipe-type]
   (let [screen               (state :screen)
@@ -515,7 +1019,8 @@
     (concat
       [{:s (name recipe-type) :fg :black :bg :white :style #{:underline}}]
        (map (fn [recipe]
-              {:s (format "%c-%s"
+              {:s (format #?(:clj  "%c-%s"
+                             :cljs "%s-%s")
                     (get recipe :hotkey)
                     (get recipe :name))
                :fg (if (contains? recipe :applicable)
@@ -564,37 +1069,37 @@
   (put-string screen :ui 40 20 "\u2534" :black :white)
   (put-string screen :ui 37 5 "Craft" :black :white)))
           
-#_(defn render-craft-weapon
+(defn render-craft-weapon
   "Render the craft weapon menu if the world state is `:craft-weapon`."
   [state]
   (render-craft-submenu state :weapons))
 
-#_(defn render-craft-survival
+(defn render-craft-survival
   "Render the craft menu if the world state is `:craft-survival`."
   [state]
   (render-craft-submenu state :survival))
 
-#_(defn render-craft-shelter
+(defn render-craft-shelter
   "Render the craft menu if the world state is `:craft-shelter`."
   [state]
   (render-craft-submenu state :shelter))
 
-#_(defn render-craft-transportation
+(defn render-craft-transportation
   "Render the craft menu if the world state is `:craft-transportation`."
   [state]
   (render-craft-submenu state :transportation))
 
-#_(defn render-wield
+(defn render-wield
   "Render the wield item menu if the world state is `:wield`."
   [state]
   (render-multi-select (state :screen) "Wield" [] (filter can-be-wielded? (-> state :world :player :inventory))))
 
-#_(defn render-wield-ranged
+(defn render-wield-ranged
   "Render the wield ranged  item menu if the world state is `:wield-ranged`."
   [state]
   (render-multi-select (state :screen) "Wield Ranged" [] (filter can-be-wielded-for-ranged-combat? (-> state :world :player :inventory))))
 
-#_(defn render-start-text [state]
+(defn render-start-text [state]
   (let [screen     (state :screen)
         start-text (sg/start-text state)
         width      (reduce max (map markup->length (clojure.string/split-lines start-text)))]
@@ -608,7 +1113,7 @@
          {:s "  Press <color fg=\"highlight\">any key</color> to continue and <color fg=\"highlight\">?</color> to view help." :fg :black :bg :white :style #{}}]))
     (render-rect-double-border screen 15 4 (inc width) 6 :black :white)))
 
-#_(defn render-raw-popover [state]
+(defn render-raw-popover [state]
   (let [screen     (state :screen)
         message    (rpop/get-popover-message state)
         lines      (clojure.string/split-lines message)
@@ -627,7 +1132,7 @@
           lines)))
     (render-rect-double-border screen (dec popover-x) popover-y (inc width) (inc height) :black :white)))
 
-#_(defn render-popover [state]
+(defn render-popover [state]
   (let [screen     (state :screen)
         message    (rpop/get-popover-message state)
         lines      (clojure.string/split-lines message)
@@ -649,7 +1154,7 @@
     (render-rect-double-border screen (dec popover-x) popover-y (inc width) (+ 4 height) :black :white)))
 
 
-#_(defn render-dead-text [state]
+(defn render-dead-text [state]
   (let [screen         (state :screen)
         hp             (get-in state [:world :player :hp])
         hunger         (get-in state [:world :player :hunger])
@@ -678,7 +1183,7 @@
            "Press <color fg=\"highlight\">space</color> to continue."])))
     (render-rect-double-border screen 26 4 width 6 :black :white)))
 
-#_(defn render-rescued-text [state]
+(defn render-rescued-text [state]
   (let [screen      (state :screen)
         rescue-mode (rendgame/rescue-mode state)]
     (render-list screen :ui 16 4 53 6
@@ -692,12 +1197,12 @@
     (render-rect-double-border screen 16 4 53 6 :black :white)))
 
 
-#_(defn render-harvest
+(defn render-harvest
   "Render the harvest prompt if the world state is `:harvest`."
   [state]
   (put-string (state :screen) :ui 0 0 "Pick a direction to harvest."))
 
-#_(defn render-map
+(defn render-map
   "The big render function used during the normal game.
    This renders everything - the map, the menus, the log,
    the status bar. Everything."
@@ -930,7 +1435,7 @@
     ; TODO: remove and use groups instead
     ;(ranimation/reset-rain-mask! screen true)
     ;; set palette
-    (zaw/set-palette! screen cell-type-palette)
+    ;(ranimation/set-palette! screen cell-type-palette)
     #_(log/info "putting chars" characters)
     (put-chars screen :map characters)
     ;; draw character
@@ -1072,6 +1577,7 @@
                    place-npcs)))
     (render-hud state)
     (log/info "current-state" (current-state state))
+    (println "ui-hint" (get-in state [:world :ui-hint]))
     (if-not (nil? (get-in state [:world :ui-hint]))
       ;; ui-hint
       (put-chars screen :ui (markup->chars 0 0 (get-in state [:world :ui-hint])))
@@ -1153,13 +1659,60 @@
     (refresh screen)))
     ;;(log/debug "end-render")))
 
-#_(defn render-enter-name [state]
+(defn render-enter-name [state]
   (let [screen (state :screen)
         player-name (get-in state [:world :player :name])]
     (clear (state :screen))
     (put-string screen :ui 30 5 "Robinson")
     (put-string screen :ui 20 7 "Name:___________________")
     (put-string screen :ui 25 7 (str player-name "\u2592"))
+    (refresh screen)))
+
+(defn render-start [state]
+  (let [screen (state :screen)
+        player-name (get-in state [:world :player :name])]
+    (clear (state :screen))
+    (render-img state "images/robinson-mainmenu.jpg" 0 0)
+    (put-chars screen :ui (markup->chars 30 20 "<color bg=\"background\">Press </color><color fg=\"highlight\" bg=\"background\">space</color><color bg=\"background\"> to play</color>"))
+    (put-chars screen :ui (markup->chars 30 22 "<color fg=\"highlight\" bg=\"background\">c</color><color bg=\"background\">-configure </color>"))
+    (refresh screen)))
+
+(defn render-configure [state]
+  (let [screen (state :screen)]
+    (clear (state :screen))
+    (put-string screen :ui 34 5 "Configure")
+    (put-chars screen :ui (markup->chars 34 7 "<color fg=\"highlight\" bg=\"background\">f</color><color bg=\"background\">-font </color>"))
+    (refresh screen)))
+
+(defn render-configure-font [state]
+  (let [screen (state :screen)
+        font   (get-in state [:fonts (get state :new-font (get (rc/get-settings state) :font))])]
+    (clear (state :screen))
+    (put-string screen :ui 31 5 "Configure Font")
+    (put-string screen :ui 31 7 (format "Font: %s" (get font :name)))
+    (put-chars screen :ui (markup->chars 31 12 "<color fg=\"highlight\" bg=\"background\">n</color><color bg=\"background\">-next font </color>"))
+    (put-chars screen (markup->chars 31 13 "<color fg=\"highlight\" bg=\"background\">p</color><color bg=\"background\">-previous font </color>"))
+    (put-chars screen (markup->chars 31 14 "<color fg=\"highlight\" bg=\"background\">s</color><color bg=\"background\">-save and apply</color>"))
+    (refresh screen)))
+
+(defn render-start-inventory [state]
+  (let [screen           (state :screen)
+        player-name      (get-in state [:world :player :name])
+        selected-hotkeys (get-in state [:world :selected-hotkeys])
+        start-inventory  (sg/start-inventory)]
+    (clear (state :screen))
+    (put-string screen :ui 20 5 "Choose up to three things to take with you:")
+    (doseq [y         (range (count start-inventory))]
+      (let [item      (nth start-inventory y)
+            hotkey    (get item :hotkey)
+            item-name (get item :name)]
+        (put-chars screen :ui (markup->chars 20 (+ 7 y) (format #?(:clj  "<color fg=\"highlight\">%c</color>%c%s"
+                                                               :cljs "<color fg=\"highlight\">%s</color>%s%s")
+                                                            hotkey
+                                                            (if (contains? selected-hotkeys hotkey)
+                                                              \+
+                                                              \-)
+                                                            item-name)))))
     (refresh screen)))
 
 (def loading-index (atom 0))
@@ -1194,7 +1747,7 @@
    "hurricane"])
 (def tidbit-freqs (atom (zipmap (range (count loading-tidbits)) (repeat 0))))
 
-#_(defn render-loading [state]
+(defn render-loading [state]
   (let [screen     (state :screen)
         n          (->> (sort-by val @tidbit-freqs)
                         (partition-by val)
@@ -1207,7 +1760,7 @@
     (put-string screen :ui 40 18 (nth ["/" "-" "\\" "|"] (mod (swap! loading-index inc) 4)))
     (refresh screen)))
 
-#_(defn render-connection-failed [state]
+(defn render-connection-failed [state]
   (let [screen     (state :screen)]
     (clear screen)
     (put-string screen 30 12 :ui "Connection failed")
@@ -1215,13 +1768,13 @@
     (refresh screen)))
 
 (def connecting-index (atom 0))
-#_(defn render-connecting [state]
+(defn render-connecting [state]
   (let [screen     (state :screen)]
     (clear screen)
     (put-string screen 30 12 :ui (format "Connecting%s" (apply str (repeat (mod (swap! connecting-index inc) 4) "."))))
     (refresh screen)))
 
-#_(defn render-game-over
+(defn render-game-over
   "Render the game over screen."
   [state]
   (let [cur-state      (current-state state)
@@ -1286,7 +1839,7 @@
     250 \u00B7
     c))
 
-#_(defn render-histogram
+(defn render-histogram
   [state x y title value histogram]
   (let [group-size (get histogram "group-size")]
   ;; render x-axis
@@ -1321,7 +1874,7 @@
       (doseq [y (range from to)]
         (put-chars (state :screen) :ui [{:c (cp437->unicode 219)#_"*" :x x :y (inc y) :fg fg :bg (rcolor/color->rgb :black) :style #{}}])))))))
 
-#_(defn render-share-score
+(defn render-share-score
   [state]
   (let [score      (get state :last-score)
         top-scores (get state :top-scores)]
@@ -1380,201 +1933,80 @@
                                         line))
                          layer))))
 
-(binding [zc/*updater* ruu/updater]
-(zc/def-component Start
-  [this]
-  (zc/csx
-    [:terminal {} [
-      [:group {:id :app} [
-        [:layer {:id :ui} [
-          [:view {} [
-              [zcui/Image {:src "/home/santos/src/robinson/images/robinson-mainmenu.jpg"}]
-              [:view {:style {:position-type :absolute
-                              :position-top 30
-                              :position-left 20}} [
-                [:text {} ["Press space to play"]]
-                [:text {} ["c - configure"]]]]]]]]]]]]))
-)
-   
-(zc/def-component Configure
-  [this]
-  (let [{:keys [state]} (zc/props this)]
-    (zc/csx
-	  [:terminal {} [
-		[:group {:id :app} [
-		  [:layer {:id :ui} [
-			[:view {:style {:position-type :absolute
-							:position-top 30
-							:position-left 20}} [
-			  [:text {} ["Configure"]]
-			  [:text {} ["f - font"]]]]]]]]]])))
+(defn render-data
+  [state id]
+  (let [characters (rockpick->render-map (get-in state [:data id]))]
+    (log/info "render-map" (vec characters))
+    (clear (state :screen))
+    (put-chars (state :screen) :ui characters)
+    (refresh (state :screen))))
 
-(zc/def-component ConfigureFont
-  [this]
-  (let [{:keys [state]} (zc/props this)
-        font   (get-in state [:fonts (get state :new-font (get (rc/get-settings state) :font))])]
-    (zc/csx
-	  [:terminal {} [
-		[:group {:id :app} [
-		  [:layer {:id :ui} [
-			[:view {:style {:position-type :absolute
-							:position-top 30
-							:position-left 20}} [
-			  [:text {} ["Configure Font"]]
-			  [:text {} ["Font: " (get font :name)]]
-			  [:text {} ["n - next font" (get font :name)]]
-			  [:text {} ["p - precious dont" (get font :name)]]
-			  [:text {} ["s - save and apply" (get font :name)]]]]]]]]]])))
+(defn render-keyboardcontrols-help
+  "Render the help screen."
+  [state]
+  (render-data state :keyboard-controls))
 
-(zc/def-component EnterName
-  [this]
-  (let [{:keys [state]} (zc/props this)]
-    nil
-))
+(defn render-ui-help
+  "Render the help screen."
+  [state]
+  (render-data state :ui))
 
-(zc/def-component StartInventory
-  [this]
-  (let [{:keys [state]} (zc/props this)
-        player-name      (get-in state [:world :player :name])
-        selected-hotkeys (get-in state [:world :selected-hotkeys])
-        start-inventory  (sg/start-inventory)]
-    (zc/csx
-	  [:terminal {} [
-		[:group {:id :app} [
-		  [:layer {:id :ui} [
-            [:text {:style {:position-top 20 :position-left 5}} ["Choose up to three things to take with you:"]]
-            [:view {}
-              (for [item      start-inventory
-                    :let [hotkey    (get item :hotkey)
-                          item-name (get item :name)]]
-                [:text {} [(format "<color fg=\"highlight\">%c</color>%c%s"
-                                                                    hotkey
-                                                                    (if (contains? selected-hotkeys hotkey)
-                                                                      \+
-                                                                      \-)
-                                                                    item-name)]])]]]]]]])))
-
-(zc/def-component Loading
-  [this]
-  (let [{:keys [state]} (zc/props this)]
-    nil
-))
-
-(zc/def-component Connecting
-  [this]
-  (let [{:keys [state]} (zc/props this)]
-    nil
-))
-
-(zc/def-component ConnectionFailed
-  [this]
-  (let [{:keys [state]} (zc/props this)]
-    nil
-))
+(defn render-gameplay-help
+  "Render the help screen."
+  [state]
+  (render-data state :gameplay))
 
 
-(zc/def-component GameOver
-  [this]
-  (let [{:keys [state]} (zc/props this)]
-    nil
-))
+(defn render-full-log
+  "Render the log as a full screen."
+  [state]
+  (let [log (get-in state [:world :log])]
+    (clear (state :screen))
+    (doall (map-indexed (fn [idx message]
+                          (put-string (state :screen) :ui 0 idx (get message :text) (get message :color) :black))
+                        log))
+    (refresh (state :screen))))
 
-(zc/def-component ShareScore
-  [this]
-  (let [{:keys [state]} (zc/props this)]
-    nil
-))
+(defn render
+  "Pick between the normal render function and the
+   game over render function based on the dead state
+   of the player."
+  [state]
+  (log/info "render current-state" (current-state state))
+  (dosync
+  (cond
+    (= (current-state state) :start)
+      (render-start state)
+    (= (current-state state) :configure)
+      (render-configure state)
+    (= (current-state state) :configure-font)
+      (render-configure-font state)
+    (= (current-state state) :enter-name)
+      (render-enter-name state)
+    (= (current-state state) :start-inventory)
+      (render-start-inventory state)
+    (= (current-state state) :loading)
+      (render-loading state)
+    (= (current-state state) :connecting)
+      (render-connecting state)
+    (= (current-state state) :connection-failed)
+      (render-connection-failed state)
+    ;(= (current-state state) :start-text)
+    ;  (render-start-text state)
+    ;; Is player dead?
+    (contains? #{:game-over-dead :game-over-rescued} (current-state state))
+      ;; Render game over
+      (render-game-over state)
+    (= (get-in state [:world :current-state]) :share-score)
+      (render-share-score state)
+    (= (get-in state [:world :current-state]) :help-controls)
+      (render-keyboardcontrols-help state)
+    (= (get-in state [:world :current-state]) :help-ui)
+      (render-ui-help state)
+    (= (get-in state [:world :current-state]) :help-gameplay)
+      (render-gameplay-help state)
+    (= (get-in state [:world :current-state]) :log)
+      (render-full-log state)
+    :else (render-map state))))
 
-(zc/def-component RexPaintFromData
-  [this]
-  (let [{:keys [state data-key]} (zc/props this)
-        data (get-in state [:data data-key])]
-    (zc/csx
-	  [:terminal {} [
-		[:group {:id :app} [
-		  [:layer {:id :ui} [
-            [:view {} [
-              [zcui/RexPaintImage {:data data}]]]]]]]]])))
 
-(zc/def-component KeyboardControlsHelp
-  [this]
-  (let [{:keys [state]} (zc/props this)]
-    (zc/csx
-	  [RexPaintFromData {:state state :data-key :keyboard-controls}])))
-
-
-(zc/def-component UIHelp
-  [this]
-  (let [{:keys [state]} (zc/props this)]
-    (zc/csx
-	  [RexPaintFromData {:state state :data-key :ui}])))
-
-(zc/def-component GameplayHelp
-  [this]
-  (let [{:keys [state]} (zc/props this)]
-    (zc/csx
-	  [RexPaintFromData {:state state :data-key :gameplay}])))
-
-(zc/def-component FullLog
-  [this]
-  (let [{:keys [state]} (zc/props this)
-        log (get-in state [:world :log])]
-    (zc/csx
-	  [:terminal {} [
-		[:group {:id :app} [
-		  [:layer {:id :ui} [
-            [:view {} 
-              (for [{:keys [text color]} log]
-                [:text {:style {:fg color}} [text]])]]]]]]])))
-
-(zc/def-component Map
-  [this]
-  (let [{:keys [state]} (zc/props this)]
-    (zc/csx
-	  [:terminal {} [
-		[:group {:id :app} [
-		  [:layer {:id :ui} [
-            [:view {} [
-              [:text {} ["Map"]]]]]]]]]])))
-
-(zc/def-component Robinson
-  [this]
-  (let [state (get (zc/props this) :game-state)]
-    (assert (not (nil? state)))
-    (log/info "render current-state" (current-state state))
-    (cond
-      (= (current-state state) :start)
-        (zc/csx [Start {}])
-      (= (current-state state) :configure)
-        (zc/csx [Configure {:state state}])
-      (= (current-state state) :configure-font)
-        (zc/csx [ConfigureFont {:state state}])
-      (= (current-state state) :enter-name)
-        (zc/csx [EnterName {:state state}])
-      (= (current-state state) :start-inventory)
-        (zc/csx [StartInventory {:state state}])
-      (= (current-state state) :loading)
-        (zc/csx [Loading {:state state}])
-      (= (current-state state) :connecting)
-        (zc/csx [Connecting {:state state}])
-      (= (current-state state) :connection-failed)
-        (zc/csx [ConnectionFailed {:state state}])
-      ;(= (current-state state) :start-text)
-      ;  (render-start-text state)
-      ;; Is player dead?
-      (contains? #{:game-over-dead :game-over-rescued} (current-state state))
-        ;; Render game over
-        (zc/csx [GameOver {:state state}])
-      (= (get-in state [:world :current-state]) :share-score)
-        (zc/csx [ShareScore {:state state}])
-      (= (get-in state [:world :current-state]) :help-controls)
-        (zc/csx [KeyboardControlsHelp {:state state}])
-      (= (get-in state [:world :current-state]) :help-ui)
-        (zc/csx [UIHelp {:state state}])
-      (= (get-in state [:world :current-state]) :help-gameplay)
-        (zc/csx [GameplayHelp {:state state}])
-      (= (get-in state [:world :current-state]) :log)
-        (zc/csx [FullLog {:state state}])
-      :else
-        (zc/csx [Map {:state state}]))))
-)

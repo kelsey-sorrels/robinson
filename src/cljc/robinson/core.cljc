@@ -3,7 +3,10 @@
 ;(set! *warn-on-reflection* true)
 (ns robinson.core
   (:require [robinson.main :as main]
-            [zaffre.terminal :as terminal]
+            [zaffre.terminal :as zat]
+            [zaffre.glterminal :as zgl]
+            [zaffre.events :as zevents]
+            [zaffre.animation.wrapper :as zaw]
             [robinson.world :as rw]
             #?@(:clj (
                 [clojure.core.async :as async :refer [go go-loop]]
@@ -41,53 +44,50 @@
   ; start with initial state from setup-fn
   (main/setup
     (fn [state]
-      (loop [state state]
-        (reset! state-ref state)
-        (if (nil? state)
-          (do
-            (log/info "Got nil state. Exiting.")
-            #?@(:clj (
-                (async/>!! done-chan true)
-                (System/exit 0))
-                :cljs (
-                nil)))
-          ; tick the old state through the tick-fn to get the new state
-          (let [state (try
-                        (let [keyin (cond
-                                      (= (rw/current-state state) :sleep)
-                                      (do
-                                        (log/info "State = sleep, Auto-pressing .")
-                                        \.)
-                                      (contains? #{:loading :connecting} (rw/current-state state))
-                                        :advance
-                                      :else
-                                        (let [key-chan (terminal/get-key-chan (state :screen))]
-                                          ;(log/info  "waiting for key-chan")
-                                          (async/<!! key-chan)))]
-                          (when (= keyin :exit)
-                            (System/exit 0))
-                          (if keyin
-                            (do
-                              (log/info "Core current-state" (rw/current-state state))
-                              (log/info "Core got key" keyin)
-                              (let [new-state (main/tick state keyin)]
-                                (log/info "End of game loop")
-                                new-state))
-                            state))
-                        #?(:clj
-                           (catch Throwable ex
-                             (log/error ex)
-                             (print-stack-trace ex)
-                             state)
-                          :cljs
-                          (catch js/Error ex
-                             (log/error (str ex))
-                             state)))]
-            (recur state))))
-               
-      ;#?(:clj
-         (async/<!! done-chan))))
-          
+      (zaw/create-animated-terminal
+        zgl/create-terminal
+        (get state :terminal-groups)
+        (get state :terminal-opts)
+        (fn [terminal]
+          (reset! state-ref (assoc state :screen terminal))
+          ;; render loop
+          (zat/do-frame terminal 33
+            ;;TODO do render
+            nil)
+          (zevents/add-event-listener terminal :keypress
+            (fn [keyin]
+              (swap! state-ref (fn [state]
+                ; tick the old state through the tick-fn to get the new state
+                (let [state (try
+                              (let [keyin (cond
+                                            (= (rw/current-state state) :sleep)
+                                            (do
+                                              (log/info "State = sleep, Auto-pressing .")
+                                              \.)
+                                            (contains? #{:loading :connecting} (rw/current-state state))
+                                              :advance
+                                            :else
+                                              keyin)]
+                                (when (= keyin :exit)
+                                  (System/exit 0))
+                                (if keyin
+                                  (do
+                                    (log/info "Core current-state" (rw/current-state state))
+                                    (log/info "Core got key" keyin)
+                                    (let [new-state (main/tick state keyin)]
+                                      (log/info "End of game loop")
+                                      new-state))
+                                  state))
+                              #?(:clj
+                                 (catch Throwable ex
+                                   (log/error ex)
+                                   (print-stack-trace ex)
+                                   state)
+                                :cljs
+                                (catch js/Error ex
+                                   (log/error (str ex))
+                                   state)))]
+                  state))))))))))
 #?(:cljs
    (-main))
 

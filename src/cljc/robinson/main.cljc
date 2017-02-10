@@ -10,7 +10,6 @@
             [robinson.monstergen :as mg]
             [robinson.render :as rrender]
             [robinson.aanimatedterminal :as raat]
-            [robinson.animation :as ranimation]
             [robinson.events :as revents]
             clojure.data.priority-map
             #?@(:clj (
@@ -148,7 +147,7 @@
                 (if-let [next-state (async/<!! chan)]
                   (do
                     (log/info "rendering s from state chan. keys" (keys next-state))
-                    (ranimation/reset-state! (get next-state :screen) next-state)
+                    ;(ranimation/reset-state! (get next-state :screen) next-state)
                     (render-state next-state)
                     (recur next-state))
                    (do
@@ -315,23 +314,23 @@
                       :data {:atmo atmo :help help}
                       :settings settings})))
           _ (log/info "Using font settings" font)
-          terminal-groups {:app {
-                              :layers [
-                                :map
-                                :features
-                                :fx
-                                :ui]
-                              :columns 80
-                              :rows 24
-                              :pos [0 0]
-                              :font (fn [platform]
-                                      (zfont/->TTFFont
-                                        (get font (case platform
-                                                    :linux   :linux-font
-                                                    :macosx  :macosx-font
-                                                    :windows :windows-font))
-                                        (get font :font-size)
-                                        (get font :transparent)))}}
+          terminal-groups [{:id :app
+                            :layers [
+                              :map
+                              :features
+                              :fx
+                              :ui]
+                            :columns 80
+                            :rows 24
+                            :pos [0 0]
+                            :font (fn [platform]
+                                    (zfont/->TTFFont
+                                      (get font (case platform
+                                                  :linux   :linux-font
+                                                  :macosx  :macosx-font
+                                                  :windows :windows-font))
+                                      (get font :font-size)
+                                      (get font :transparent)))}]
           terminal-opts {:title (format "Robinson - %s@%s" user-id version)
                          :screen-width (* 80 12)
                          :screen-height (* 24 16)

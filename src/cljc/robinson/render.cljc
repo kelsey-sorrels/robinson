@@ -42,7 +42,6 @@
             [robinson.traps :as rt]
             [zaffre.terminal :as zat]
             [robinson.aanimatedterminal :as raat]
-            [robinson.animation :as ranimation]
             [tinter.core :as tinter]
             clojure.set
             [clojure.xml :as xml]
@@ -1436,7 +1435,7 @@
     ; TODO: remove and use groups instead
     ;(ranimation/reset-rain-mask! screen true)
     ;; set palette
-    (ranimation/set-palette! screen cell-type-palette)
+    ;(ranimation/set-palette! screen cell-type-palette)
     #_(log/info "putting chars" characters)
     (put-chars screen :map characters)
     ;; draw character

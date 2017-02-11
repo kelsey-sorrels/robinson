@@ -6,6 +6,7 @@
             [zaffre.terminal :as zat]
             [zaffre.glterminal :as zgl]
             [zaffre.events :as zevents]
+            [zaffre.tilesets :as ztiles]
             [zaffre.animation.wrapper :as zaw]
             [robinson.world :as rw]
             #?@(:clj (
@@ -23,6 +24,8 @@
 #?(:cljs
 (enable-console-print!))
 
+(def font ztiles/pastiche-16x16)
+ 
 ;; Conveinience ref for accessing the last state when in repl.
 (defonce state-ref (atom nil))
 
@@ -42,52 +45,63 @@
    the next state after one iteration."
   []
   ; start with initial state from setup-fn
-  (main/setup
-    (fn [state]
-      (zaw/create-animated-terminal
-        zgl/create-terminal
-        (get state :terminal-groups)
-        (get state :terminal-opts)
+  ;(main/setup
+    ;(fn [state]
+      (zgl/create-terminal ;zaw/create-animated-terminal
+        ;zgl/create-terminal
+    [{:id :app        ;; Setup a layer group `:app`
+      :layers [:text] ;; With one layer `:text`
+      :columns 16     ;; 16 characters wide
+      :rows 16        ;; 16 characters tall
+      :pos [0 0]      ;; With no position offset
+      :font (constantly font)}] ;; Give the group a nice font
+    {:title "Zaffre demo"     ;; Set the window title
+     :screen-width (* 16 16)  ;; Screen dimentions in pixels
+     :screen-height (* 16 16)} ;; Since our font is 16x16 and our layer group
+ 
+        ;(get state :terminal-groups)
+        ;(get state :terminal-opts)
         (fn [terminal]
-          (reset! state-ref (assoc state :screen terminal))
-          ;; render loop
-          (zat/do-frame terminal 33
-            ;;TODO do render
-            nil)
-          (zevents/add-event-listener terminal :keypress
-            (fn [keyin]
-              (swap! state-ref (fn [state]
-                ; tick the old state through the tick-fn to get the new state
-                (let [state (try
-                              (let [keyin (cond
-                                            (= (rw/current-state state) :sleep)
-                                            (do
-                                              (log/info "State = sleep, Auto-pressing .")
-                                              \.)
-                                            (contains? #{:loading :connecting} (rw/current-state state))
-                                              :advance
-                                            :else
-                                              keyin)]
-                                (when (= keyin :exit)
-                                  (System/exit 0))
-                                (if keyin
-                                  (do
-                                    (log/info "Core current-state" (rw/current-state state))
-                                    (log/info "Core got key" keyin)
-                                    (let [new-state (main/tick state keyin)]
-                                      (log/info "End of game loop")
-                                      new-state))
-                                  state))
-                              #?(:clj
-                                 (catch Throwable ex
-                                   (log/error ex)
-                                   (print-stack-trace ex)
-                                   state)
-                                :cljs
-                                (catch js/Error ex
-                                   (log/error (str ex))
-                                   state)))]
-                  state))))))))))
+          nil)))
+          ;;(reset! state-ref (assoc state :screen terminal))
+          ;;;; render loop
+          ;;(zat/do-frame terminal 33
+          ;;  ;;TODO do render
+          ;;  nil)
+          ;;(zevents/add-event-listener terminal :keypress
+          ;;  (fn [keyin]
+          ;;    (swap! state-ref (fn [state]
+          ;;      ; tick the old state through the tick-fn to get the new state
+          ;;      (let [state (try
+          ;;                    (let [keyin (cond
+          ;;                                  (= (rw/current-state state) :sleep)
+          ;;                                  (do
+          ;;                                    (log/info "State = sleep, Auto-pressing .")
+          ;;                                    \.)
+          ;;                                  (contains? #{:loading :connecting} (rw/current-state state))
+          ;;                                    :advance
+          ;;                                  :else
+          ;;                                    keyin)]
+          ;;                      (when (= keyin :exit)
+          ;;                        (System/exit 0))
+          ;;                      (if keyin
+          ;;                        (do
+          ;;                          (log/info "Core current-state" (rw/current-state state))
+          ;;                          (log/info "Core got key" keyin)
+          ;;                          (let [new-state (main/tick state keyin)]
+          ;;                            (log/info "End of game loop")
+          ;;                            new-state))
+          ;;                        state))
+          ;;                    #?(:clj
+          ;;                       (catch Throwable ex
+          ;;                         (log/error ex)
+          ;;                         (print-stack-trace ex)
+          ;;                         state)
+          ;;                      :cljs
+          ;;                      (catch js/Error ex
+          ;;                         (log/error (str ex))
+          ;;                         state)))]
+          ;;        state))))))))))
 #?(:cljs
    (-main))
 

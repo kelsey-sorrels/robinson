@@ -54,10 +54,7 @@
                [goog.string :as gstring]
                [goog.string.format]))
   #?(:clj
-     (:import  zaffre.terminal.Terminal
-               (java.awt Color Image)
-               java.awt.image.BufferedImage
-               javax.swing.ImageIcon)))
+     (:import  zaffre.terminal.Terminal)))
 
 
 #?(:clj
@@ -617,47 +614,11 @@
             (render-poisonous-gas screen state trap)
           nil)))))
 
-(def image-cache (atom {}))
-
-(def get-image
-  (memoize
-    (fn [path]
-      (let [image ^Image (.getImage (ImageIcon. path))]
-        image))))
-        
-
 #?(:clj
 (defn render-img
   "Render an image using block element U+2584."
   [state ^String path x y]
-  (let [image ^Image          (get-image path)
-        width                 (.getWidth image)
-        height                (.getHeight image)
-        buffered-image        (BufferedImage. width height BufferedImage/TYPE_INT_RGB)
-        gfx2d                 (doto (.createGraphics buffered-image)
-                                (.drawImage image 0 0 width height nil)
-                                (.dispose))]
-   (doall
-     (for [py (filter even? (range height))
-           px (range width)]
-       (let [color1 (Color. (.getRGB buffered-image px py))
-             color2 (Color. (.getRGB buffered-image px (inc py)))
-             rgb1 ((juxt (fn [^Color c] (.getRed c)) 
-                         (fn [^Color c] (.getGreen c))
-                         (fn [^Color c] (.getBlue c)))
-                   color1)           
-             rgb2 ((juxt (fn [^Color c] (.getRed c))
-                         (fn [^Color c] (.getGreen c))
-                         (fn [^Color c] (.getBlue c)))
-                   color2)]
-         (put-string (state :screen)
-                       :ui
-                       (+ x px)
-                       (int (+ y (/ py 2)))
-                       "\u2584"
-                       rgb2
-                       rgb1
-                       #{:underline}))))))
+  nil)
 
 :cljs
 (defn render-img

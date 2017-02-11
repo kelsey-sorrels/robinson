@@ -32,22 +32,36 @@
             [robinson.fx :as rfx]
             [robinson.feedback :as rf]
             robinson.macros
-            [robinson.macros :as rm]
-            clojure.pprint
-            clojure.edn
-            [clojure.core.async :as async]
-            [clojure.data.json :as json]
-            [clojure.java.io :as io]
-            [taoensso.timbre :as log]
-            clj-tiny-astar.path
-            [clj-http.client :as http]
-            [clojure.stacktrace :as st]
-            clojure.inspector
-            clojure.string)
-  (:import zaffre.terminal.Terminal))
+            #?@(:clj (
+                [robinson.macros :as rm]
+                clojure.pprint
+                clojure.edn
+                [clojure.core.async :as async]
+                [clojure.data.json :as json]
+                [clojure.java.io :as io]
+                [taoensso.timbre :as log]
+                clj-tiny-astar.path
+                [clj-http.client :as http]
+                [clojure.stacktrace :as st]
+                clojure.inspector
+                clojure.string)
+                :cljs (
+                [robinson.macros :as rm :include-macros true]
+                [cljs.core.async :as async]
+                clojure.walk
+                cljs.reader
+                [taoensso.timbre :as log :include-macros true]
+                [goog.string.format])))
+  #?(:clj
+      (:import zaffre.terminal.Terminal
+               #_zaffre.font.TTFFont)))
+
 
 (defn format [s & args]
-  (apply clojure.core/format s args))
+  #?(:clj
+     (apply clojure.core/format s args)
+     :cljs
+     (apply gstring/format s args)))
 
 (defn- pass-state
   [state & more]
@@ -216,7 +230,8 @@
                     (assoc :world (loop []
                                     (if-let [w (try
                                                  (rworldgen/init-world (rc/system-time-millis))
-                                                 (catch Throwable e
+                                                 (catch #?@(:clj  (Throwable e)
+                                                            :cljs (js/Error e))
                                                    (log/error e)
                                                    nil))]
                                         w
@@ -242,7 +257,10 @@
   [state keyin]
   {:pre  [(not (nil? state))]
    :post [(not (nil? %))]}
-  (if (and (char? keyin)
+  (if (and #?(:clj
+              (char? keyin)
+              :cljs
+              (string? keyin))
            (<= (int \a) (int keyin) (int \k)))
     (let [new-state (toggle-hotkey state keyin)
           selected-hotkeys (get-in new-state [:world :selected-hotkeys])]
@@ -292,7 +310,7 @@
         [target-x
          target-y]           (rw/player-adjacent-xy state direction)
         target-place         (rv/xy->place-id state target-x target-y)
-        visible-place-ids    (rv/visible-place-ids state target-x target-y)
+        ;rv/visible-place-ids (rv/visible-place-ids state target-x target-y)
         _ (log/info "target-x" target-x "target-y" target-y)
         _ (log/info "target-place" target-place)
        vp-pos                (apply rc/xy->pos
@@ -2508,7 +2526,8 @@
       (update-in [:world :npcs] vec)
       (rc/conj-in [:world :npcs] (get-in state [:world :player]))
       (assoc-in [:world :player] npc))]
-    (log/debug "npcs" (with-out-str (clojure.pprint/pprint (-> state :world :npcs))))
+    #?(:clj
+       (log/debug "npcs" (with-out-str (clojure.pprint/pprint (-> state :world :npcs)))))
     state))
 
 (defn save-score
@@ -2585,10 +2604,16 @@
           path                   (try
                                    (log/debug "a* params" bounds traversable? npc-pos-vec (rc/pos->xy target))
                                    (clj-tiny-astar.path/a* bounds traversable? npc-pos-vec (rc/pos->xy target))
-                                   (catch Exception e
-                                     (log/error "Caught exception during a* traversal." npc-pos-vec [(target :x) (target :y)] e)
-                                     (st/print-cause-trace e)
-                                     nil))
+                                   #?(:clj
+                                      (catch Exception e
+                                        (log/error "Caught exception during a* traversal." npc-pos-vec [(target :x) (target :y)] e)
+                                        (st/print-cause-trace e)
+                                        nil)
+                                      :cljs
+                                      (catch js/Error e
+                                        (log/error "Caught exception during a* traversal." npc-pos-vec [(target :x) (target :y)] e)
+                                        ;(st/print-cause-trace e)
+                                        nil)))
           _                      (log/debug "path to target" (str (type path)) (str path))
           new-pos                (if (and (not (nil? path))
                                           (> (count path) 1)
@@ -3137,7 +3162,10 @@
                        :points points
                        :version version)
         body    (as-> world world
-                      (clojure.walk/postwalk (fn [v] (if (char? v)
+                      (clojure.walk/postwalk (fn [v] (if #?(:clj
+                                                            (char? v)
+                                                            :cljs
+                                                            (string? v))
                                                        (str v)
                                                        v))
                                               world)
@@ -3736,8 +3764,9 @@
             (as-> state
               (if (contains? (-> state :world :player :status) :dead)
                 (do
-                  ;; delete the save game on player death
-                  (delete-save-game)
+                  #?(:clj
+                     ;; delete the save game on player death
+                     (delete-save-game))
                   (-> state
                     (update-in [:world :player :status]
                      (fn [status]

@@ -11,7 +11,7 @@
                  [lein-cloverage "1.0.2"]
                  [lein-tarsier "0.10.0"]
                  [com.cemerick/clojurescript.test "0.3.3"]]
-  :dependencies [[org.clojure/clojure "1.7.0"]
+  :dependencies [[org.clojure/clojure "1.8.0"]
                  [org.clojure/core.async "0.1.346.0-17112a-alpha"]
                  [org.clojure/core.match "0.3.0-alpha4"]
                  [org.clojure/core.memoize "0.5.7"]
@@ -25,7 +25,6 @@
                  [org.clojure/tools.namespace "0.2.11"]
                  ;[org.clojure/clojurescript "0.0-3030"]
                  [org.clojure/clojurescript "1.7.10"]
-                 [hello_lwjgl/lwjgl "2.9.1"]
                  [im.bci/pngdecoder "0.13"]
                  [clj-http "2.0.0"]
                  [clj-audio "0.1.0"]
@@ -125,6 +124,7 @@
              "-XX:+CMSConcurrentMTEnabled"
              "-XX:MaxGCPauseMillis=20"
              "-Dhttps.protocols=TLSv1"
+             "-XstartOnFirstThread"
              "-Dsun.java2d.opengl=true"
              ;"-Dsun.java2d.trace=log"
              "-Dsun.java2d.opengl.fbobject=true"])

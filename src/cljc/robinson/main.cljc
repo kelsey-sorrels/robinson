@@ -1,15 +1,9 @@
 (ns robinson.main
   (:require 
-            [robinson.common :as rc]
             [robinson.random :as rr]
-            [robinson.world :as rw]
-            [robinson.worldgen :as rwgen]
-            [robinson.dialog :as rdiag]
-            [robinson.npc :as rnpc]
-            [robinson.update :as ru]
             [robinson.monstergen :as mg]
-            [robinson.render :as rrender]
-            [robinson.aanimatedterminal :as raat]
+            ;[robinson.update :as rupdate]
+            ;[robinson.render :as rrender]
             [robinson.events :as revents]
             clojure.data.priority-map
             #?@(:clj (

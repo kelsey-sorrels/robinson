@@ -310,7 +310,7 @@
         [target-x
          target-y]           (rw/player-adjacent-xy state direction)
         target-place         (rv/xy->place-id state target-x target-y)
-        rv/visible-place-ids (rv/visible-place-ids state target-x target-y)
+        ;rv/visible-place-ids (rv/visible-place-ids state target-x target-y)
         _ (log/info "target-x" target-x "target-y" target-y)
         _ (log/info "target-place" target-place)
        vp-pos                (apply rc/xy->pos

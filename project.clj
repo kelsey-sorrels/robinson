@@ -95,6 +95,8 @@
           :plugins
             [[com.cemerick/piggieback "0.1.5-SNAPSHOT"]
              [lein-cljsbuild "1.0.6"]]}
+    :test {
+           :main robinson.core}
     :demos {:dependencies 
               [[quil "2.2.6"]]}
     :uberjar {:aot [robinson.update

@@ -86,15 +86,17 @@
                                             "phantomjs" :runner
                                             "target/unit-test.js"]}}
   :profiles {
-    :dev {:dependencies
-          [[org.clojure/core.typed "0.3.9"]
-           #_[org.clojure/clojurescript "0.0-3030"]]
+    :dev {
+          :main robinson.core
+          :dependencies
+            [[org.clojure/core.typed "0.3.9"]
+             #_[org.clojure/clojurescript "0.0-3030"]]
 
           :plugins
-          [[com.cemerick/piggieback "0.1.5-SNAPSHOT"]
-           [lein-cljsbuild "1.0.6"]]}
+            [[com.cemerick/piggieback "0.1.5-SNAPSHOT"]
+             [lein-cljsbuild "1.0.6"]]}
     :demos {:dependencies 
-            [[quil "2.2.6"]]}
+              [[quil "2.2.6"]]}
     :uberjar {:aot [robinson.update
                     robinson.render
                     robinson.npc
@@ -124,7 +126,9 @@
              "-XX:+CMSConcurrentMTEnabled"
              "-XX:MaxGCPauseMillis=20"
              "-Dhttps.protocols=TLSv1"
-             "-XstartOnFirstThread"
-             "-Dsun.java2d.opengl=true"
-             ;"-Dsun.java2d.trace=log"
-             "-Dsun.java2d.opengl.fbobject=true"])
+             ~(if (-> (System/getProperty "os.name")
+                    (.toLowerCase)
+                    (.contains "mac"))
+               "-XstartOnFirstThread"
+               "")]
+)

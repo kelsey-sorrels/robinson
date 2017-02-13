@@ -92,7 +92,8 @@
 
           :plugins
             [[com.cemerick/piggieback "0.1.5-SNAPSHOT"]
-             [lein-cljsbuild "1.0.6"]]
+             [lein-cljsbuild "1.0.6"]]}
+    :run {
            :jvm-opts [
              ;"-agentpath:/home/santos/bin/yjp-2014-build-14096/bin/linux-x86-64/libyjpagent.so"
              "-Xdebug"

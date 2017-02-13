@@ -107,7 +107,7 @@
             "-Dhttps.protocols=TLSv1"
             "-XstartOnFirstThread"]}
     :test {
-           :jvm-opts ^:displace [
+           :jvm-opts ^:replace [
              "-XX:-OmitStackTraceInFastThrow"
              "-XX:+UseParNewGC"
              "-XX:+UseConcMarkSweepGC"

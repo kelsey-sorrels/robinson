@@ -86,17 +86,34 @@
                                             "phantomjs" :runner
                                             "target/unit-test.js"]}}
   :profiles {
-    :dev {
-          :main robinson.core
-          :dependencies
+    :dev {:dependencies
             [[org.clojure/core.typed "0.3.9"]
              #_[org.clojure/clojurescript "0.0-3030"]]
 
           :plugins
             [[com.cemerick/piggieback "0.1.5-SNAPSHOT"]
-             [lein-cljsbuild "1.0.6"]]}
+             [lein-cljsbuild "1.0.6"]]
+           :jvm-opts [
+             ;"-agentpath:/home/santos/bin/yjp-2014-build-14096/bin/linux-x86-64/libyjpagent.so"
+             "-Xdebug"
+             ;"-Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=5005"
+             ;"-XX:+UnlockCommercialFeatures"
+             ;"-XX:+FlightRecorder"
+             "-XX:-OmitStackTraceInFastThrow"
+             "-XX:+UseParNewGC"
+             "-XX:+UseConcMarkSweepGC"
+             "-XX:+CMSConcurrentMTEnabled"
+             "-XX:MaxGCPauseMillis=20"
+             "-Dhttps.protocols=TLSv1"
+             "-XstartOnFirstThread"]}
     :test {
-           :main robinson.core}
+           :jvm-opts [
+             "-XX:-OmitStackTraceInFastThrow"
+             "-XX:+UseParNewGC"
+             "-XX:+UseConcMarkSweepGC"
+             "-XX:+CMSConcurrentMTEnabled"
+             "-XX:MaxGCPauseMillis=20"
+             "-Dhttps.protocols=TLSv1"]}
     :demos {:dependencies 
               [[quil "2.2.6"]]}
     :uberjar {:aot [robinson.update
@@ -116,21 +133,4 @@
                        robinson.combat robinson.core robinson.describe robinson.endgame robinson.lineofsight robinson.main robinson.monstergen
                        robinson.player robinson.render robinson.swingterminal robinson.viewport robinson.worldgen]}
   :repl-options {:timeout 920000}
-  :jvm-opts [
-             ;"-agentpath:/home/santos/bin/yjp-2014-build-14096/bin/linux-x86-64/libyjpagent.so"
-             "-Xdebug"
-             ;"-Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=5005"
-             ;"-XX:+UnlockCommercialFeatures"
-             ;"-XX:+FlightRecorder"
-             "-XX:-OmitStackTraceInFastThrow"
-             "-XX:+UseParNewGC"
-             "-XX:+UseConcMarkSweepGC"
-             "-XX:+CMSConcurrentMTEnabled"
-             "-XX:MaxGCPauseMillis=20"
-             "-Dhttps.protocols=TLSv1"
-             ~(if (-> (System/getProperty "os.name")
-                    (.toLowerCase)
-                    (.contains "mac"))
-               "-XstartOnFirstThread"
-               "")]
 )

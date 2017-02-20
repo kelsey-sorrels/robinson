@@ -9,6 +9,7 @@
             #?@(:clj (
                 [taoensso.timbre :as log]
                 [zaffre.glterminal :as glterminal]
+                [zaffre.lwjglutil :as zlwjglutil]
                 [zaffre.font :as zfont]
                 [robinson.macros :as rm]
                 [rockpick.core :as rpc]
@@ -75,7 +76,7 @@
     ;  (spit "save/world.edn.out" state))
     (recur)))
 
-(go-loop [interrupted-state nil]
+#_(go-loop [interrupted-state nil]
   (if-let [state (or interrupted-state
                      (async/alt!
                        render-chan ([v] v)
@@ -317,9 +318,9 @@
                             :columns 80
                             :rows 24
                             :pos [0 0]
-                            :font (fn [platform]
+                            :font (constantly
                                     (zfont/->TTFFont
-                                      (get font (case platform
+                                      (get font (case (zlwjglutil/platform)
                                                   :linux   :linux-font
                                                   :macosx  :macosx-font
                                                   :windows :windows-font))

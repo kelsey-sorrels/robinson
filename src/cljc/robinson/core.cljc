@@ -34,6 +34,73 @@
 ;; (robinson.core/-main)
 
 (defonce done-chan (async/chan))
+#?@(:cljs (
+(cljs.reader/register-tag-parser! "robinson.monstergen.Monster" mg/map->Monster)
+(cljs.reader/register-tag-parser! "robinson.player.Player" mg/map->Player)
+(def world-storage (local-storage (atom nil) :world))))
+
+;; Save thread
+(def save-chan (async/chan (async/sliding-buffer 1)))
+(with-open [o (io/output-stream "save/world.edn")]
+  (go-loop []
+    (let [state (async/<! save-chan)]
+      (log/info "World saved at time" (get-in state [:world :time]))
+      #?(:clj
+         (try
+           (nippy/freeze-to-out! (DataOutputStream. o) (get state :world))
+           (catch Throwable e (log/error "Error saving" e)))
+         :cljs
+         (reset! world-storage (get state :world)))
+      ;(as-> state state
+      ;  (get state :world)
+      ;  (pp/write state :stream nil)
+      ;  (spit "save/world.edn.out" state))
+      (recur))))
+
+
+;; Render thread
+(def render-chan (async/chan (async/sliding-buffer 1)))
+(defonce last-rendered-state (atom nil))
+(go-loop [interrupted-state nil]
+  (if-let [state (or interrupted-state
+                     (async/alt!
+                       render-chan ([v] v)
+                       :default @last-rendered-state))]
+    (do
+      (reset! last-rendered-state state)
+      (log/info "Rendering world at time" (get-in state [:world :time]))
+      (try
+        ;(rm/log-time "render" (rrender/render state))
+        (let [render-fn (resolve 'robinson.render/render)]
+          (render-fn state))
+        #?(:clj
+           (catch Throwable e
+             (log/error "Error rendering" e)
+             (st/print-stack-trace e)
+             (st/print-cause-trace e))
+           :cljs
+           (catch js/Error e (log/error e))))
+      (recur (async/<! render-chan) #_(async/alt!
+               (async/timeout 600) nil
+               render-chan ([v] v))))
+    (recur (async/<! render-chan) #_(async/alt!
+             (async/timeout 600) nil
+             render-chan ([v] v)))))
+
+(defn save-state [state]
+  #?(:clj
+     (async/>!! save-chan state)
+     :cljs
+     (go
+       (async/>! save-chan state))))
+
+(defn render-state [state]
+  #?(:clj
+     (async/>!! render-chan state)
+     :cljs
+     (go
+       (async/>! render-chan state))))
+
 
 (defn -main
   "Entry default point to application.
@@ -55,7 +122,7 @@
         (get state :terminal-groups)
         (get state :terminal-opts)
         (fn [terminal]
-          (reset! state-ref (assoc state :screen terminal))
+          (reset! state-ref (dissoc state :terminal-groups :terminal-opts))
           ;; render loop
           (zat/do-frame terminal 33
             ;; Draw strings
@@ -82,7 +149,7 @@
                                   (do
                                     (log/info "Core current-state" (rw/current-state state))
                                     (log/info "Core got key" keyin)
-                                    (let [new-state (main/tick state keyin)]
+                                    (let [new-state (r/update state keyin)]
                                       (log/info "End of game loop")
                                       new-state))
                                   state))
@@ -95,7 +162,10 @@
                                 (catch js/Error ex
                                    (log/error (str ex))
                                    state)))]
+                  (render-state state)
+                  (save-state state)
                   state))))))))))
+
 #?(:cljs
    (-main))
 

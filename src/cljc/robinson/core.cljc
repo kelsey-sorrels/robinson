@@ -2,7 +2,7 @@
 ;;
 ;(set! *warn-on-reflection* true)
 (ns robinson.core
-  (:require [robinson.main :as main]
+  (:require [robinson.setup :as setup]
             [zaffre.terminal :as zat]
             [zaffre.glterminal :as zgl]
             [zaffre.events :as zevents]
@@ -10,17 +10,24 @@
             [zaffre.animation.wrapper :as zaw]
             [zaffre.util :as zutil]
             [robinson.world :as rw]
+            [robinson.update :as rupdate]
+            [robinson.render :as rrender]
             #?@(:clj (
+                [clojure.stacktrace :as st]
                 [clojure.core.async :as async :refer [go go-loop]]
                 [clojure.stacktrace :refer [print-stack-trace]]
-                [taoensso.timbre :as log])
+                [taoensso.timbre :as log]
+                [clojure.java.io :as io]
+                [taoensso.nippy :as nippy])
                 :cljs (
                 [cljs.core.async :as async]
                 [taoensso.timbre :as log :include-macros true])))
-  #?(:clj
+  #?@(:clj (
      (:gen-class)
+     (:import 
+       [java.io DataInputStream DataOutputStream]))
      :cljs
-     (:require-macros [cljs.core.async.macros :refer [go go-loop]])))
+     ((:require-macros [cljs.core.async.macros :refer [go go-loop]]))))
 
 #?(:cljs
 (enable-console-print!))
@@ -41,9 +48,11 @@
 
 ;; Save thread
 (def save-chan (async/chan (async/sliding-buffer 1)))
-(with-open [o (io/output-stream "save/world.edn")]
-  (go-loop []
-    (let [state (async/<! save-chan)]
+(go []
+  ;; wait for first element and then requeue it
+  (async/>! (async/<! save-chan))
+  (with-open [o (io/output-stream "save/world.edn")]
+    (loop [state (async/<! save-chan)]
       (log/info "World saved at time" (get-in state [:world :time]))
       #?(:clj
          (try
@@ -55,8 +64,7 @@
       ;  (get state :world)
       ;  (pp/write state :stream nil)
       ;  (spit "save/world.edn.out" state))
-      (recur))))
-
+      (recur (async/<! save-chan)))))
 
 ;; Render thread
 (def render-chan (async/chan (async/sliding-buffer 1)))
@@ -113,7 +121,7 @@
    the next state after one iteration."
   []
   ; start with initial state from setup-fn
-  (main/setup
+  (setup/setup
     (fn [state]
      (log/info "terminal-groups" (get state :terminal-groups))
      (log/info "terminal-opts" (get state :terminal-opts))
@@ -149,7 +157,7 @@
                                   (do
                                     (log/info "Core current-state" (rw/current-state state))
                                     (log/info "Core got key" keyin)
-                                    (let [new-state (r/update state keyin)]
+                                    (let [new-state (rupdate/update-state state keyin)]
                                       (log/info "End of game loop")
                                       new-state))
                                   state))
@@ -162,8 +170,8 @@
                                 (catch js/Error ex
                                    (log/error (str ex))
                                    state)))]
-                  (render-state state)
-                  (save-state state)
+                  #_(render-state state)
+                  #_(save-state state)
                   state))))))))))
 
 #?(:cljs

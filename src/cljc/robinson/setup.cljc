@@ -2,8 +2,6 @@
   (:require 
             [robinson.random :as rr]
             [robinson.monstergen :as mg]
-            ;[robinson.update :as rupdate]
-            ;[robinson.render :as rrender]
             [robinson.events :as revents]
             clojure.data.priority-map
             #?@(:clj (
@@ -48,6 +46,7 @@
 (log/merge-config!
   {:ns-blacklist ["robinson.render"]})
 
+#?(:cljs
 (defn get-resource [path]
   (-> (p/promise (fn [resolve reject]
                    (xhr/send

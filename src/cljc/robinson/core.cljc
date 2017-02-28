@@ -107,10 +107,10 @@
              ;(zat/refresh! terminal)
             nil)
         ;; render thread
-        #_(go-loop [interrupted-state nil]
+        (go-loop [interrupted-state nil]
           (if-let [state (or interrupted-state
                              (async/alts!
-                               render-chan
+                               [render-chan]
                                :default @last-rendered-state))]
             (do
               (reset! last-rendered-state state)
@@ -131,7 +131,7 @@
                        render-chan ([v] v))))
             (recur (async/<! render-chan))))
         ;; save thread
-        #_(go []
+        (go []
           ;; wait for first element and then requeue it
           (async/>! (async/<! save-chan))
           (with-open [o (io/output-stream "save/world.edn")]
@@ -181,8 +181,8 @@
                                 (catch js/Error ex
                                    (log/error (str ex))
                                    state)))]
-                  #_(render-state state)
-                  #_(save-state state)
+                  (render-state state)
+                  (save-state state)
                   state))))))))))
 
 #?(:cljs

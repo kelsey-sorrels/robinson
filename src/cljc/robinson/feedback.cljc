@@ -1,9 +1,9 @@
 ;; Functions for sending feedback
 (ns robinson.feedback
   (:require [clj-http.client :as client]
-            [seesaw.core :as ss]
-            [seesaw.border :as ss-border]
-            [seesaw.forms :as ss-forms]
+            ;[seesaw.core :as ss]
+            ;[seesaw.border :as ss-border]
+            ;[seesaw.forms :as ss-forms]
             [clojure.data.json :as json]))
 
 (defn upload-report [data]
@@ -16,7 +16,7 @@
                 :content-type :json}))
 
 (defn send-report [state]
-  (let [date              (str (new java.util.Date))
+  #_(let [date              (str (new java.util.Date))
         version           (get state :version)
         user-id           (get state :user-id)
         upload-input      (ss/checkbox :selected? true)
@@ -41,8 +41,8 @@
                         :content content
                         :resizable? false
                         :on-close :hide)]
-  (ss/listen cancel-button :mouse-clicked (fn [e] (ss/hide! frame)))
-  (ss/listen send-button :mouse-clicked (fn [e] (upload-report
+  #_(ss/listen cancel-button :mouse-clicked (fn [e] (ss/hide! frame)))
+  #_(ss/listen send-button :mouse-clicked (fn [e] (upload-report
                                                   {:date date
                                                    :version version
                                                    :user-id user-id
@@ -51,7 +51,7 @@
                                                             (get state :world)
                                                             nil)})
                                                 (ss/hide! frame)))
-  (->
+  #_(->
     frame
     ss/pack!
     ss/show!)))

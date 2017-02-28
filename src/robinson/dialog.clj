@@ -2,7 +2,8 @@
 (ns robinson.dialog
   (:require [robinson.common :as rc]
             [taoensso.timbre :as log]
-            [dorothy.core :refer :all]))
+            #_(:clj
+            [dorothy.core :refer :all])))
 
 ;; State Machine Functions
 ;; =======================
@@ -58,7 +59,8 @@
                                                                 "nil"
                                                                 e))
                                                          (butlast couplet)))))}])
-(comment
+
+#_(:clj
 (defn- transform-to-graph
   "Transforms a dialog tree into a dorothy graph."
   [dialog]

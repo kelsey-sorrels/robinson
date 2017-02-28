@@ -37,63 +37,21 @@
 ;; Conveinience ref for accessing the last state when in repl.
 (defonce state-ref (atom nil))
 
-;; (clojure.core.async/thread (robinson.core/-main))
-;; (robinson.core/-main)
-
-(defonce done-chan (async/chan))
-#?@(:cljs (
-(cljs.reader/register-tag-parser! "robinson.monstergen.Monster" mg/map->Monster)
-(cljs.reader/register-tag-parser! "robinson.player.Player" mg/map->Player)
-(def world-storage (local-storage (atom nil) :world))))
+;(defonce done-chan (async/chan))
+;#?@(:cljs (
+;(cljs.reader/register-tag-parser! "robinson.monstergen.Monster" mg/map->Monster)
+;(cljs.reader/register-tag-parser! "robinson.player.Player" mg/map->Player)
+;(def world-storage (local-storage (atom nil) :world))))
 
 ;; Save thread
 (def save-chan (async/chan (async/sliding-buffer 1)))
-(go []
-  ;; wait for first element and then requeue it
-  (async/>! (async/<! save-chan))
-  (with-open [o (io/output-stream "save/world.edn")]
-    (loop [state (async/<! save-chan)]
-      (log/info "World saved at time" (get-in state [:world :time]))
-      #?(:clj
-         (try
-           (nippy/freeze-to-out! (DataOutputStream. o) (get state :world))
-           (catch Throwable e (log/error "Error saving" e)))
-         :cljs
-         (reset! world-storage (get state :world)))
-      ;(as-> state state
-      ;  (get state :world)
-      ;  (pp/write state :stream nil)
-      ;  (spit "save/world.edn.out" state))
-      (recur (async/<! save-chan)))))
 
 ;; Render thread
-(def render-chan (async/chan (async/sliding-buffer 1)))
+;; infinite chan of last-rendered-state
 (defonce last-rendered-state (atom nil))
-(go-loop [interrupted-state nil]
-  (if-let [state (or interrupted-state
-                     (async/alt!
-                       render-chan ([v] v)
-                       :default @last-rendered-state))]
-    (do
-      (reset! last-rendered-state state)
-      (log/info "Rendering world at time" (get-in state [:world :time]))
-      (try
-        ;(rm/log-time "render" (rrender/render state))
-        (let [render-fn (resolve 'robinson.render/render)]
-          (render-fn state))
-        #?(:clj
-           (catch Throwable e
-             (log/error "Error rendering" e)
-             (st/print-stack-trace e)
-             (st/print-cause-trace e))
-           :cljs
-           (catch js/Error e (log/error e))))
-      (recur (async/<! render-chan) #_(async/alt!
-               (async/timeout 600) nil
-               render-chan ([v] v))))
-    (recur (async/<! render-chan) #_(async/alt!
-             (async/timeout 600) nil
-             render-chan ([v] v)))))
+
+;; gamestates pushed onto render-chan will be rendered
+(defonce render-chan (async/chan (async/sliding-buffer 1)))
 
 (defn save-state [state]
   #?(:clj
@@ -127,17 +85,70 @@
      (log/info "terminal-opts" (get state :terminal-opts))
       (zgl/create-terminal ;zaw/create-animated-terminal
         ;zgl/create-terminal
-        (get state :terminal-groups)
+        ;(map (fn [group]
+        ;       (merge group
+        ;         [{:id :app
+        ;           :layers [:ui]
+        ;           :columns 16
+        ;           :rows 16
+        ;           :pos [0 0]
+        ;           :font (constantly font)}]
+          (get state :terminal-groups)
         (get state :terminal-opts)
+        ;  {:title "Zaffre demo"
+        ;   :screen-width (* 16 16)
+        ;   :screen-height (* 16 16)}
         (fn [terminal]
           (reset! state-ref (dissoc state :terminal-groups :terminal-opts))
           ;; render loop
           (zat/do-frame terminal 33
             ;; Draw strings
-             (zutil/put-string terminal :ui 20 8 "Hello world")
-             (zat/refresh! terminal)
+             (zutil/put-string terminal :ui 8 8 "Hello world")
+             ;(zat/refresh! terminal)
             nil)
-          (zevents/add-event-listener terminal :keypress
+        ;; render thread
+        #_(go-loop [interrupted-state nil]
+          (if-let [state (or interrupted-state
+                             (async/alts!
+                               render-chan
+                               :default @last-rendered-state))]
+            (do
+              (reset! last-rendered-state state)
+              (log/info "Rendering world at time" (get-in state [:world :time]))
+              (try
+                ;(rm/log-time "render" (rrender/render state))
+                (let [render-fn (resolve 'robinson.render/render)]
+                  (render-fn state))
+                #?(:clj
+                   (catch Throwable e
+                     (log/error "Error rendering" e)
+                     (st/print-stack-trace e)
+                     (st/print-cause-trace e))
+                   :cljs
+                   (catch js/Error e (log/error e))))
+              (recur (async/<! render-chan) #_(async/alt!
+                       (async/timeout 600) nil
+                       render-chan ([v] v))))
+            (recur (async/<! render-chan))))
+        ;; save thread
+        #_(go []
+          ;; wait for first element and then requeue it
+          (async/>! (async/<! save-chan))
+          (with-open [o (io/output-stream "save/world.edn")]
+            (loop [state (async/<! save-chan)]
+              (log/info "World saved at time" (get-in state [:world :time]))
+              #?(:clj
+                 (try
+                   (nippy/freeze-to-out! (DataOutputStream. o) (get state :world))
+                   (catch Throwable e (log/error "Error saving" e)))
+                 :cljs
+                 (reset! world-storage (get state :world)))
+              ;(as-> state state
+              ;  (get state :world)
+              ;  (pp/write state :stream nil)
+              ;  (spit "save/world.edn.out" state))
+              (recur (async/<! save-chan)))))
+          #_(zevents/add-event-listener terminal :keypress
             (fn [keyin]
               (swap! state-ref (fn [state]
                 ; tick the old state through the tick-fn to get the new state

@@ -88,6 +88,7 @@
   :profiles {
     :dev {:dependencies
             [[org.clojure/core.typed "0.3.9"]
+             [org.clojure/test.check "0.9.0"]
              #_[org.clojure/clojurescript "0.0-3030"]]
 
           :plugins

@@ -71,12 +71,7 @@
       (or (get (worn-item state) :toughness)
           0)))
 
-(defrecord Player [id
-                   name
-                   race
-                   class
-                   movement-policy
-                   in-party?
+(defrecord Player [name
                    inventory
                    dexterity
                    speed
@@ -87,7 +82,6 @@
                    max-hp
                    will-to-live
                    max-will-to-live
-                   money
                    xp
                    level
                    hunger
@@ -134,18 +128,8 @@
 (defn gen-player
   [inventory starting-pos]
   (Player.
-    ;id
-    :player
     ;name
     "Player"
-    ;race
-    :human
-    ;class
-    :ranger
-    ;movement-policy
-    :entourage
-    ;in-party?
-    true
     ;inventory
     inventory
     ;dexterity
@@ -166,8 +150,6 @@
     100
     ;max-will-to-live
     100
-    ;money
-    50
     ;xp
     0
     ;level

@@ -107,7 +107,9 @@
             "-XX:MaxGCPauseMillis=20"
             "-Dhttps.protocols=TLSv1"
             "-XstartOnFirstThread"]}
-    :test {
+    :test {:dependencies
+             [[mvxcvi/puget "1.0.1"]
+              [fipp "0.6.8"]]
            :jvm-opts ^:replace [
              "-XX:-OmitStackTraceInFastThrow"
              "-XX:+UseParNewGC"

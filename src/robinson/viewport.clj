@@ -3,7 +3,11 @@
   (:require
             [taoensso.timbre :as log]
             [robinson.common :as rc]
-            [robinson.player :as rp]))
+            [robinson.player :as rp]
+            [clojure.test :refer [is]]
+            #?@(:cljs (
+               [goog.string :as gstring]
+               [goog.string.format]))))
 
 (defn xy-in-rect?
   [x y rx ry rw rh]
@@ -54,8 +58,8 @@
 (defn xy->place-id
   [state x y]
   {:pre [(not (nil? state))
-         (integer? x)
-         (integer? y)]
+         (is (integer? x) (format "x:" x))
+         (is (integer? y) (format "y:" y))]
    :post [(or (string? %) (vector? %))]}
   (or (get-in state [:world :current-place])
     (let [{v-width     :width
@@ -232,10 +236,16 @@
       (map (fn [line1 line2]
            (when-not (vector? line1)
               (log/info "line1 not vector" line1)
-              (throw (Exception. (spit line2))))
+              (throw #?(:clj
+                        (Exception. (spit line2))
+                        :cljs
+                        (js/Error. (gstring/spit line1)))))
            (when-not (vector? line2)
               (log/info "line2 not vector" line2)
-              (throw (Exception. (spit line2))))
+              (throw #?(:clj
+                        (Exception. (spit line2))
+                        :cljs
+                        (js/Error. (gstring/spit line2)))))
            (concat (subvec line1 start-x)
                    (subvec line2 0 start-x)))
            

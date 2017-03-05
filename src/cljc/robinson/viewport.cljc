@@ -4,6 +4,7 @@
             [taoensso.timbre :as log]
             [robinson.common :as rc]
             [robinson.player :as rp]
+            [clojure.test :refer [is]]
             #?@(:cljs (
                [goog.string :as gstring]
                [goog.string.format]))))
@@ -57,8 +58,8 @@
 (defn xy->place-id
   [state x y]
   {:pre [(not (nil? state))
-         (integer? x)
-         (integer? y)]
+         (is (integer? x) (format "x:" x))
+         (is (integer? y) (format "y:" y))]
    :post [(or (string? %) (vector? %))]}
   (or (get-in state [:world :current-place])
     (let [{v-width     :width

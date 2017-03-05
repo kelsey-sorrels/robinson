@@ -6,6 +6,7 @@
             [robinson.math :as rmath]
             [robinson.color :as rcolor]
             [robinson.renderutil :as rutil]
+            [robinson.image :as rimage]
             [robinson.scores :as rs]
             [robinson.startgame :as sg]
             [robinson.popover :as rpop]
@@ -41,7 +42,9 @@
                                            npcs-in-viewport]]
             [robinson.traps :as rt]
             [tinter.core :as tinter]
+            [puget.printer :as pprinter]
             clojure.set
+            [clojure.test :as t :refer [is]]
             [clojure.xml :as xml]
             [clojure.zip :as zip]
             #?(:clj
@@ -77,6 +80,31 @@
      :cljs
      (apply gstring/format s args)))
 
+(defn character? [c]
+  (and (is (char? (get c :c)))
+       (is (integer? (get c :x)))
+       (is (integer? (get c :y)))
+       (is (vector? (get c :fg [])))
+       (is (vector? (get c :bg [])))))
+(defn characters? [xs]
+  (and (is (sequential? xs))
+       (is (every? character? xs))))
+
+(defn renderstate? [x]
+  (println x)
+  (is (every? characters? (vals (get x :layers {})))))
+
+;;; {
+;;;   :layers {
+;;;     :map      [...characters]
+;;;     :features [...characters]
+;;;     :fx       [...characters]
+;;;     :ui       [...characters]}
+;;;   :fov #{[x y] [x y]...} Fov in screen space
+;;;   :lantern [r g b]
+;;;   :night   [r g b]
+;;;   :events (lazy-seq [dt {:layer-id :layer :characters [...characters]})
+;;; }
 (def cell-type-palette
   {:fire                   [:red :orange]
    :water                  [:blue :dark-blue]
@@ -185,7 +213,8 @@
 
 (defn put-chars
   [rstate layer-id characters]
-  {:pre [(every? (fn [ch] (char? (get ch :c))) characters)]}
+  {:pre [characters?
+         (is (get-in rstate [:layers layer-id]) (format (str [:layers layer-id]) "not in" (str rstate)))]}
   (rc/concat-in rstate [:layers layer-id] characters))
       
 (defn put-string
@@ -622,8 +651,13 @@
 #?(:clj
 (defn render-img
   "Render an image using block element U+2584."
-  [state ^String path x y]
-  nil)
+  [^String path x y]
+  {:post [characters?]}
+  (let [data  (rimage/image-values path)
+        black [0 0 0]]
+    (map (fn [{px :x py :y fg :fg}]
+           {:c \space :x (+ x px) :y (+ y py) :fg black :bg fg})
+         data)))
 
 :cljs
 (defn render-img
@@ -1619,7 +1653,7 @@
 (defn render-start [rstate state]
   (let [player-name (get-in state [:world :player :name])]
     (-> rstate
-      (render-img "images/robinson-mainmenu.jpg" 0 0)
+      (put-chars :ui (render-img "images/robinson-mainmenu.jpg" 0 0))
       (put-chars :ui (markup->chars 30 20 "<color bg=\"background\">Press </color><color fg=\"highlight\" bg=\"background\">space</color><color bg=\"background\"> to play</color>"))
       (put-chars :ui (markup->chars 30 22 "<color fg=\"highlight\" bg=\"background\">c</color><color bg=\"background\">-configure </color>")))))
 
@@ -1892,7 +1926,10 @@
    game over render function based on the dead state
    of the player."
   [state]
+  {:pre [(not (nil? state))]
+   :post [renderstate?]}
   (log/info "render current-state" (current-state state))
+  (Thread/sleep 1000)
   ;; rstate = render state
   (let [rstate {:layers {
                    :map      []

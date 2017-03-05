@@ -29,7 +29,11 @@
      :cljs
      ((:require-macros [cljs.core.async.macros :refer [go go-loop]]))))
 
-#?(:cljs
+#?(
+:clj
+(log/merge-config!
+  {:appenders {:spit (taoensso.timbre.appenders.core/spit-appender {:fname "/robinson.log"})}})
+:cljs
 (enable-console-print!))
 
 (def font ztiles/pastiche-16x16)
@@ -45,10 +49,6 @@
 
 ;; Save thread
 (def save-chan (async/chan (async/sliding-buffer 1)))
-
-;; Render thread
-;; infinite chan of last-rendered-state
-(defonce last-rendered-state (atom nil))
 
 ;; gamestates pushed onto render-chan will be rendered
 (defonce render-chan (async/chan (async/sliding-buffer 1)))
@@ -85,105 +85,95 @@
      (log/info "terminal-opts" (get state :terminal-opts))
       (zgl/create-terminal ;zaw/create-animated-terminal
         ;zgl/create-terminal
-        ;(map (fn [group]
-        ;       (merge group
-        ;         [{:id :app
-        ;           :layers [:ui]
-        ;           :columns 16
-        ;           :rows 16
-        ;           :pos [0 0]
-        ;           :font (constantly font)}]
-          (get state :terminal-groups)
+        (get state :terminal-groups)
         (get state :terminal-opts)
-        ;  {:title "Zaffre demo"
-        ;   :screen-width (* 16 16)
-        ;   :screen-height (* 16 16)}
         (fn [terminal]
           (reset! state-ref (dissoc state :terminal-groups :terminal-opts))
-          ;; render loop
-          (zat/do-frame terminal 33
-            ;; Draw strings
-             (zutil/put-string terminal :ui 8 8 "Hello world")
-             ;(zat/refresh! terminal)
-            nil)
-        ;; render thread
-        (go-loop [interrupted-state nil]
-          (if-let [state (or interrupted-state
-                             (async/alts!
-                               [render-chan]
-                               :default @last-rendered-state))]
-            (do
-              (reset! last-rendered-state state)
-              (log/info "Rendering world at time" (get-in state [:world :time]))
-              (try
-                ;(rm/log-time "render" (rrender/render state))
-                (let [render-fn (resolve 'robinson.render/render)]
-                  (render-fn state))
-                #?(:clj
-                   (catch Throwable e
-                     (log/error "Error rendering" e)
-                     (st/print-stack-trace e)
-                     (st/print-cause-trace e))
-                   :cljs
-                   (catch js/Error e (log/error e))))
-              (recur (async/<! render-chan) #_(async/alt!
-                       (async/timeout 600) nil
-                       render-chan ([v] v))))
-            (recur (async/<! render-chan))))
-        ;; save thread
-        (go []
-          ;; wait for first element and then requeue it
-          (async/>! (async/<! save-chan))
-          (with-open [o (io/output-stream "save/world.edn")]
-            (loop [state (async/<! save-chan)]
-              (log/info "World saved at time" (get-in state [:world :time]))
-              #?(:clj
-                 (try
-                   (nippy/freeze-to-out! (DataOutputStream. o) (get state :world))
-                   (catch Throwable e (log/error "Error saving" e)))
-                 :cljs
-                 (reset! world-storage (get state :world)))
-              ;(as-> state state
-              ;  (get state :world)
-              ;  (pp/write state :stream nil)
-              ;  (spit "save/world.edn.out" state))
-              (recur (async/<! save-chan)))))
-          #_(zevents/add-event-listener terminal :keypress
-            (fn [keyin]
-              (swap! state-ref (fn [state]
-                ; tick the old state through the tick-fn to get the new state
-                (let [state (try
-                              (let [keyin (cond
-                                            (= (rw/current-state state) :sleep)
-                                            (do
-                                              (log/info "State = sleep, Auto-pressing .")
-                                              \.)
-                                            (contains? #{:loading :connecting} (rw/current-state state))
-                                              :advance
-                                            :else
-                                              keyin)]
-                                (when (= keyin :exit)
-                                  (System/exit 0))
-                                (if keyin
-                                  (do
-                                    (log/info "Core current-state" (rw/current-state state))
-                                    (log/info "Core got key" keyin)
-                                    (let [new-state (rupdate/update-state state keyin)]
-                                      (log/info "End of game loop")
-                                      new-state))
-                                  state))
-                              #?(:clj
-                                 (catch Throwable ex
-                                   (log/error ex)
-                                   (print-stack-trace ex)
-                                   state)
-                                :cljs
-                                (catch js/Error ex
-                                   (log/error (str ex))
-                                   state)))]
-                  (render-state state)
-                  (save-state state)
-                  state))))))))))
+          (let [last-rendered-state (atom @state-ref) ;; last gamestate rendered
+                last-renderstate    (atom
+                                      (let [render-fn (resolve 'robinson.render/render)]
+                                        (render-fn state)))]
+            ;; render loop
+            (zat/do-frame terminal 33
+              ;; Draw strings
+               (when-let [renderstate @last-renderstate]
+                 (doseq [[layer-id characters] (get renderstate :layers)]
+                   (zat/put-chars! terminal layer-id characters))))
+            ;; render thread
+            (go-loop [interrupted-state nil]
+              (let [[state _] (or interrupted-state
+                                 (async/alts!
+                                   [render-chan]
+                                   :default @last-rendered-state))]
+                (when state
+                  (reset! last-rendered-state state)
+                  (log/info "Rendering world at time" (get-in state [:world :time]) (get-in state [:world :current-state]))
+                  (try
+                    ;(rm/log-time "render" (rrender/render state))
+                    (let [render-fn (resolve 'robinson.render/render)]
+                      (reset! last-renderstate (render-fn state)))
+                    #?(:clj
+                       (catch Throwable e
+                         (log/error "Error rendering" e)
+                         (st/print-stack-trace e)
+                         (st/print-cause-trace e))
+                       :cljs
+                       (catch js/Error e (log/error e)))))
+                (recur (async/<! render-chan))))
+            ;; save thread
+            (go []
+              ;; wait for first element and then requeue it
+              (async/>! (async/<! save-chan))
+              (with-open [o (io/output-stream "save/world.edn")]
+                (loop [state (async/<! save-chan)]
+                  (log/info "World saved at time" (get-in state [:world :time]))
+                  #?(:clj
+                     (try
+                       (nippy/freeze-to-out! (DataOutputStream. o) (get state :world))
+                       (catch Throwable e (log/error "Error saving" e)))
+                     :cljs
+                     (reset! world-storage (get state :world)))
+                  ;(as-> state state
+                  ;  (get state :world)
+                  ;  (pp/write state :stream nil)
+                  ;  (spit "save/world.edn.out" state))
+                  (recur (async/<! save-chan)))))
+              #_(zevents/add-event-listener terminal :keypress
+                (fn [keyin]
+                  (swap! state-ref (fn [state]
+                    ; tick the old state through the tick-fn to get the new state
+                    (let [state (try
+                                  (let [keyin (cond
+                                                (= (rw/current-state state) :sleep)
+                                                (do
+                                                  (log/info "State = sleep, Auto-pressing .")
+                                                  \.)
+                                                (contains? #{:loading :connecting} (rw/current-state state))
+                                                  :advance
+                                                :else
+                                                  keyin)]
+                                    (when (= keyin :exit)
+                                      (System/exit 0))
+                                    (if keyin
+                                      (do
+                                        (log/info "Core current-state" (rw/current-state state))
+                                        (log/info "Core got key" keyin)
+                                        (let [new-state (rupdate/update-state state keyin)]
+                                          (log/info "End of game loop")
+                                          new-state))
+                                      state))
+                                  #?(:clj
+                                     (catch Throwable ex
+                                       (log/error ex)
+                                       (print-stack-trace ex)
+                                       state)
+                                    :cljs
+                                    (catch js/Error ex
+                                       (log/error (str ex))
+                                       state)))]
+                      (render-state state)
+                      (save-state state)
+                      state)))))))))))
 
 #?(:cljs
    (-main))

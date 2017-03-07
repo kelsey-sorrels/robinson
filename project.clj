@@ -43,6 +43,8 @@
                  [dorothy "0.0.6"]
                  [com.taoensso/nippy "2.13.0"]
                  [com.taoensso/timbre "4.0.2"]
+                 [mvxcvi/puget "1.0.1"]
+                 [fipp "0.6.8"]
                  [clojure-watch "LATEST"]
                  [overtone/at-at "1.2.0"]
                  [alandipert/enduro "1.2.0"]
@@ -108,8 +110,7 @@
             "-Dhttps.protocols=TLSv1"
             "-XstartOnFirstThread"]}
     :test {:dependencies
-             [[mvxcvi/puget "1.0.1"]
-              [fipp "0.6.8"]]
+             []
            :jvm-opts ^:replace [
              "-XX:-OmitStackTraceInFastThrow"
              "-XX:+UseParNewGC"

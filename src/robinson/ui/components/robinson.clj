@@ -560,63 +560,71 @@
         t      (mod (get-in state [:world :time]) frames)
         frame  (nth atmo t)
         indexed-colors (map vector (partition 3 frame) (range))]
-    (doseq [[column i] indexed-colors]
+    (reduce (fn [rstate [column i]]
       #_(log/info x i y column)
-      (put-string rstate :ui (+ x i) y       "\u2584" (if (contains? #{0 6} i)
-                                                        :black
-                                                        (nth column 0))
-                                                      :black #{:underline} {:mask #{:rain :transform}})
-      (put-string rstate :ui (+ x i) (inc y) "\u2584" (nth column 2) (nth column 1) #{:underline} {:mask #{:rain :transform}}))))
+      (-> rstate
+        (put-string :ui (+ x i) y       "\u2584" (if (contains? #{0 6} i)
+                                                   :black
+                                                   (nth column 0))
+                                                 :black #{:underline} {:mask #{:rain :transform}})
+        (put-string :ui (+ x i) (inc y) "\u2584" (nth column 2) (nth column 1) #{:underline} {:mask #{:rain :transform}})))
+      rstate
+      indexed-colors)))
 
 (defn render-hud
   [rstate state]
-    ;; render atmo
-    (render-atmo state 37 21)
-    ;; render statuses
-    (put-string rstate :ui 37 23 " "      :gray :gray #{} {:mask #{:rain :transform}})
-    (put-string rstate :ui 38 23 "\u2665" (if (player-wounded? state) :red :black) :gray #{} {:mask #{:rain :transform}})
-    (put-string rstate :ui 39 23 " "      :gray :gray #{} {:mask #{:rain :transform}})
-    (put-string rstate :ui 40 23 "\u2665" (if (player-poisoned? state) :green :black) :gray #{} {:mask #{:rain :transform}})
-    (put-string rstate :ui 41 23 " "      :gray :gray #{} {:mask #{:rain :transform}})
-    (put-string rstate :ui 42 23 "\u2665" (if (player-infected? state) :yellow :black) :gray #{} {:mask #{:rain :transform}})
-    (put-string rstate :ui 43 23 " "      :gray :gray #{} {:mask #{:rain :transform}})
-    (when (= (current-state state) :sleep)
-      (put-string rstate 38 20 :ui (format "Zzz%s" (apply str (repeat (mod (get-time state) 3) "." ))) #{} {:mask #{:rain :transform}}))
-    ;; render will to live and hp
-    (let [wtl        (get-in state [:world :player :will-to-live])
-          max-wtl    (get-in state [:world :player :max-will-to-live])
-          hp         (get-in state [:world :player :hp])
-          max-hp     (get-in state [:world :player :max-hp])
-          hunger     (get-in state [:world :player :hunger])
-          max-hunger (get-in state [:world :player :max-hunger])
-          thirst     (get-in state [:world :player :thirst])
-          max-thirst (get-in state [:world :player :max-thirst])]
-      (doseq [x (range 37)]
-        (put-string rstate :ui x 23 "\u2584" (if (> (/ (- 37 x) 37)
-                                                    (/ wtl max-wtl))
-                                               :black
-                                               :green)
-                                             (if (> (/ (- 37 x) 37)
-                                                    (/ hp max-hp))
-                                               :black
-                                               :red)
-                                             #{:underline}
-                                             {:mask #{:rain :transform}}))
-      (doseq [x (range (- 80 43))]
-        (put-string rstate :ui (+ 44 x) 23 "\u2584"
-                                           (if (> (/ x (- 80 44))
-                                                  (/ hunger max-hunger))
-                                             :black
-                                             :yellow)
-                                           (if (> (/ x (- 80 44))
-                                                  (/ thirst max-thirst))
-                                             :black
-                                             :blue)
-                                           #{:underline}
-                                           {:mask #{:rain :transform}}))))
-  ;    (int (-> state :world :player :hp))
-  ;    (-> state :world :player :max-hp)
-  ;    (apply str (interpose " " (-> state :world :player :status)))
+  {:pre [(not (nil? rstate))
+         (not (nil? state))]}
+    (-> rstate
+      ;; render atmo
+      (render-atmo state 37 21)
+      ;; render statuses
+      (put-string :ui 37 23 " "      :gray :gray #{} {:mask #{:rain :transform}})
+      (put-string :ui 38 23 "\u2665" (if (player-wounded? state) :red :black) :gray #{} {:mask #{:rain :transform}})
+      (put-string :ui 39 23 " "      :gray :gray #{} {:mask #{:rain :transform}})
+      (put-string :ui 40 23 "\u2665" (if (player-poisoned? state) :green :black) :gray #{} {:mask #{:rain :transform}})
+      (put-string :ui 41 23 " "      :gray :gray #{} {:mask #{:rain :transform}})
+      (put-string :ui 42 23 "\u2665" (if (player-infected? state) :yellow :black) :gray #{} {:mask #{:rain :transform}})
+      (put-string :ui 43 23 " "      :gray :gray #{} {:mask #{:rain :transform}})
+      ((fn [rstate]
+        (if (= (current-state state) :sleep)
+          (put-string rstate 38 20 :ui (format "Zzz%s" (apply str (repeat (mod (get-time state) 3) "." ))) #{} {:mask #{:rain :transform}}))
+          rstate))
+      ((fn [rstate]
+        ;; render will to live and hp
+        (let [wtl        (get-in state [:world :player :will-to-live])
+              max-wtl    (get-in state [:world :player :max-will-to-live])
+              hp         (get-in state [:world :player :hp])
+              max-hp     (get-in state [:world :player :max-hp])
+              hunger     (get-in state [:world :player :hunger])
+              max-hunger (get-in state [:world :player :max-hunger])
+              thirst     (get-in state [:world :player :thirst])
+              max-thirst (get-in state [:world :player :max-thirst])]
+          (put-chars rstate :ui
+            (concat
+              (for [x (range 37)]
+                {:x x :y 23 :c \u2584
+                 :fg (if (> (/ (- 37 x) 37)
+                            (/ wtl max-wtl))
+                       :black
+                       :green)
+                 :bg (if (> (/ (- 37 x) 37)
+                          (/ hp max-hp))
+                     :black
+                     :red)})
+              (for [x (range (- 80 43))]
+                {:x (+ 44 x) :y 23 :c \u2584
+                 :fg (if (> (/ x (- 80 44))
+                        (/ hunger max-hunger))
+                   :black
+                   :yellow)
+                 :bg (if (> (/ x (- 80 44))
+                        (/ thirst max-thirst))
+                   :black
+                   :blue)}))))))))
+      ;    (int (-> state :world :player :hp))
+      ;    (-> state :world :player :max-hp)
+      ;    (apply str (interpose " " (-> state :world :player :status)))
 
 (defn render-crushing-wall
   [rstate trap]
@@ -653,11 +661,20 @@
   "Render an image using block element U+2584."
   [^String path x y]
   {:post [characters?]}
-  (let [data  (rimage/image-values path)
-        black [0 0 0]]
-    (map (fn [{px :x py :y fg :fg}]
-           {:c \space :x (+ x px) :y (+ y py) :fg black :bg fg})
-         data)))
+  (let [data   (rimage/image-values path)
+        width  (reduce max (map :x data))
+        height (reduce max (map :y data))
+        xy->rgb (into {} (map (fn [{:keys [x y fg]}] [[x y] fg]) data))]
+        ;; take lines two at a time and use one for fg an the other for bg
+    (for [py (filter even? (range height))
+          px (range width)
+          :let [color1 (xy->rgb [px py])
+                color2 (xy->rgb [px (inc py)])]]
+        {:c  \u2584
+         :x  (+ x px)        
+         :y  (int (+ y (/ py 2)))        
+         :fg color2        
+         :bg color1})))
 
 :cljs
 (defn render-img
@@ -1190,6 +1207,222 @@
   [rstate state]
   (put-string rstate :ui 0 0 "Pick a direction to harvest."))
 
+(defn npc->char-fg-bg [current-time d targeted? npc]
+  (rcolor/target-tint-npc
+    (rcolor/night-tint-npc
+      (rcolor/color-bloodied-char 
+        (< current-time (get npc :bloodied 0))
+        (case (get npc :race)
+          :rat             [\r]
+          :spider          [\S]
+          :scorpion        [\u03C2] ;;ς
+          :snake           [\u00A7] ;;§
+          :bat             [\B]
+          :boar            [\b :brown :black]
+          :gecko           [\g :green :black]
+          :monkey          [\y :orange :black]
+          :bird            [\a :red :black]
+          :centipede       [\c :red :black]
+          :turtle          [\t :green :black]
+          :red-frog        [\u03B1 :red :black] ;;α
+          :orange-frog     [\u03B1 :orange :black] ;;α
+          :yellow-frog     [\u03B1 :yellow :black] ;;α
+          :green-frog      [\u03B1 :green :black] ;;α
+          :blue-frog       [\u03B1 :blue :black] ;;α
+          :purple-frog     [\u03B1 :purple :black] ;;α
+          :parrot          [\p :red :black]
+          :shark           [\u039B] ;;Λ
+          :fish            [\f]
+          :octopus         [\# :orange :black]
+          :sea-snake       [\u00A7]
+          :clam            [\c]
+          :urchin          [\u :purple :black]
+          :squid           [\q :orange :black]
+          :crocodile       [\l :green :black]
+          :mosquito        [\m]
+          :mongoose        [\r :brown :black]
+          :tarantula       [\s :brown :black]
+          :monitor-lizard  [\l :gray :black]
+          :komodo-dragon   [\l :dark-green :black]
+          :cobra           [\u00A7] ;;§
+          :puffer-fish     [\f :yellow :black]
+          :crab            [\c :orange :black]
+          :hermit-crab     [\c :yellow :black]
+          :electric-eel    [\e :brown :black]
+          :jellyfish       [\j]
+          ;; pirate ship npc
+          :giant-rat       [\R]
+          :eel             [\e]
+          :giant-lizard    [\L]
+          ;; ruined temple ncs
+          :giant-centipedge [\C]
+          :gorilla         [\M]
+          :giant-snake     [\u00A7 :green :black] ;;§
+          :human           [\@ (class->rgb (get npc :class)) :black]
+          [\@])) d) targeted?))
+
+(defn draw-npcs [rstate state current-time vx vy d]
+  {:post [(comp nil? not)]}
+  ;; draw npcs
+  (let [place-npcs (npcs-in-viewport state)
+        ;_ (log/debug "place-npcs" place-npcs)
+        pos (-> state :world :player :pos)
+        get-cell (memoize (fn [x y] (get-cell state x y)))
+        place-id (rw/current-place-id state)]
+    (put-chars rstate :features
+      (reduce (fn [characters npc]
+                (let [x         (-> npc :pos :x)
+                      y         (-> npc :pos :y)
+                      #_#_vx        (- x (if place-id 0 (-> state :world :viewport :pos :x)))
+                      #_#_vy        (- y (if place-id 0 (-> state :world :viewport :pos :y)))
+                      targeted? (when (= (current-state state) :select-ranged-target)
+                                  (let [target-ranged-index (get-in state [:world :target-ranged-index])
+                                        target-ranged-pos-coll (get-in state [:world :target-ranged-pos-coll])
+                                        target-pos             (nth target-ranged-pos-coll target-ranged-index)]
+                                    (= target-pos (get npc :pos))))
+                      ;t       (rw/get-time state)
+                      visible (and (not (farther-than?
+                                          pos
+                                          {:x x :y y}
+                                          8))
+                                   (= (get (rw/get-cell state x y) :discovered) current-time))]
+                  ;(log/debug "npc@" x y "visible?" visible)
+                  (if visible
+                    (let [[c fg bg] (npc->char-fg-bg current-time d targeted? npc)]
+                      {:c c :x vx :y vy :fg fg :bg bg})
+                    characters)))
+              []
+              place-npcs))))
+
+(defn draw-log [rstate state]
+  (if-not (nil? (get-in state [:world :ui-hint]))
+    ;; ui-hint
+    (put-chars rstate :ui (markup->chars 0 0 (get-in state [:world :ui-hint])))
+    ;; draw log
+    (let [current-time     (dec (rw/get-time state))
+          log-idx          (get-in state [:world :log-idx] 0)
+          num-logs         (count (filter #(= current-time (get % :time)) (get-in state [:world :log])))
+          up-arrow-char    \u2191
+          down-arrow-char  \u2193
+          msg-above?       (< log-idx (dec num-logs))
+          msg-below?       (pos? log-idx)
+          up-arrow-color   (when msg-above?
+                             (get (nth (reverse (get-in state [:world :log])) (inc log-idx)) :color))
+          down-arrow-color (when msg-below?
+                             (get (nth (reverse (get-in state [:world :log])) (dec log-idx)) :color))
+          message          (if (zero? num-logs)
+                             {:message "" :time 0 :color :black} 
+                             (nth (reverse (get-in state [:world :log])) log-idx))
+          darken-factor    (inc  (* (/ -1 5) (- current-time (message :time))))
+          log-color        (rcolor/darken-rgb (rcolor/color->rgb (get message :color)) darken-factor)
+          characters       (markup->chars 0 0 (format "%s%s %s" (if msg-above?
+                                                                  (str "<color fg=\"highlight\">/</color>-<color fg=\"" (name up-arrow-color) "\">" up-arrow-char "</color>")
+                                                                  "   ")
+                                                                (if msg-below?
+                                                                  (str "<color fg=\"highlight\">*</color>-<color fg=\"" (name down-arrow-color) "\">" down-arrow-char "</color>")
+                                                                  "   ")
+                                                                (if (get message :text)
+                                                                  (str "<color fg=\"" (name (get message :color)) "\">" (get message :text) "</color>")
+                                                                  "")))]
+      (log/info "current-time" current-time)
+      (log/info "num-log-msgs" num-logs)
+      (log/info "message" message)
+      (put-chars :ui characters)))
+
+(defn render-menus [rstate state]
+  (case (current-state state)
+    :pickup-selection     (render-pick-up-selection rstate state)
+    :inventory            (render-inventory rstate state)
+    :abilities            (render-abilities rstate state)
+    :player-stats         (render-player-stats rstate state)
+    :gain-level           (render-ability-choices rstate state)
+    :action-select        (render-action-choices rstate state)
+    :describe             (render-describe rstate state)
+    :apply                (render-apply rstate state)
+    :apply-item-inventory
+                          (render-apply-to rstate state)
+    :quaff-inventory
+                          (render-quaff-inventory rstate state)
+    :magic                (render-magic rstate state)
+    :drop                 (render-drop rstate state)
+    :describe-inventory   (render-describe-inventory rstate state)
+    :throw-inventory      (render-throw-inventory rstate state)
+    :eat                  (render-eat rstate state)
+    :quests               (render-quests rstate state)
+    :craft                (render-craft rstate state)
+    :craft-weapon         (render-craft-weapon rstate state)
+    :craft-survival       (render-craft-survival rstate state)
+    :craft-shelter        (render-craft-shelter rstate state)
+    :craft-transportation (render-craft-transportation rstate state)
+    :wield                (render-wield rstate state)
+    :wield-ranged         (render-wield-ranged rstate state)
+    :start-text           (render-start-text rstate state)
+    :popover              (render-popover rstate state)
+    :quaff-popover        (render-raw-popover rstate state)
+    :dead                 (render-dead-text rstate state)
+    :rescued              (render-rescued-text rstate state)
+    :quit               (render-quit? rstate state)
+    :harvest            (render-harvest rstate state)
+    :dialog             (render-dialog rstate state)
+    :shopping           (render-shopping rstate state)
+    :buy                (render-buy rstate state)
+    :sell               (render-sell rstate state)
+    rstate)))
+
+(defn draw-player [rstate state current-time vx vy player player-x player-y]
+  (-> rstate
+    (put-string
+      :map
+      (- player-x vx)
+      (- player-y vy)
+      "@"
+      (if (< current-time (get player :bloodied 0))
+        :dark-red
+        :white)
+      (if (contains? (set (map :id (get (first (player-cellxy state)) :items))) :raft)
+        :brown
+        :black))
+    ((fn [rstate]
+      ;; if character is fishing, draw pole
+      (condp = (current-state state)
+        :fishing-left  (put-string rstate :ui (dec (-> state :world :player :pos :x))
+                                          (-> state :world :player :pos :y)
+                                          "\\"
+                                          :white :black)
+        :fishing-right (put-string rstate :ui (inc (-> state :world :player :pos :x))
+                                          (-> state :world :player :pos :y)
+                                          "/"
+                                          :white :black)
+        :fishing-up    (put-string rstate :ui (-> state :world :player :pos :x)
+                                          (dec (-> state :world :player :pos :y))
+                                          "/"
+                                          :white :black)
+        :fishing-down  (put-string rstate :ui (-> state :world :player :pos :x)
+                                          (inc (-> state :world :player :pos :y))
+                                          "\\"
+                                          :white :black)
+        rstate)))))
+
+(defn draw-ranged-attack-line [rstate state player player-x player-y]
+  ;; draw ranged-attack line
+  (when (contains? #{:select-ranged-target :select-throw-target} (current-state state))
+    (let [[target-sx
+           target-sy] (case (current-state state)
+                        :select-ranged-target
+                          (let [target-ranged-index (get-in state [:world :target-ranged-index])
+                                target-ranged-pos-coll (get-in state [:world :target-ranged-pos-coll])
+                                target-pos             (nth target-ranged-pos-coll target-ranged-index)]
+                            (log/debug "target-ranged-index" target-ranged-index)
+                            (log/debug "target-ranged-pos-coll" (get-in state [:world :target-ranged-pos-coll]))
+                            (log/debug "target-pos" target-pos)
+                            (rv/world-xy->screen-xy state (rc/pos->xy target-pos)))
+                        :select-throw-target
+                          (rc/pos->xy (rv/get-cursor-pos state)))]
+      (log/debug "target-sx" target-sx "target-y" target-sy)
+      (doseq [[sx sy] (rlos/line-segment-fast-without-endpoints (rv/world-xy->screen-xy state [player-x player-y])
+                                                                [target-sx target-sy])]
+          (put-string rstate :ui sx sy "\u25CF" :green :black)))))
+      
 (defn render-map
   "The big render function used during the normal game.
    This renders everything - the map, the menus, the log,
@@ -1198,6 +1431,7 @@
   (let [{:keys [columns rows]}                      (get state :screen)
         current-time                                (get-in state [:world :time])
         {{player-x :x player-y :y} :pos :as player} (rp/get-player state)
+        [vx vy]                                     (rv/viewport-xy state)
         d                                           (rlos/sight-distance state)
         cells                                       (rv/cellsxy-in-viewport state)
         lantern-on                                  (when-let [lantern (rp/inventory-id->item state :lantern)]
@@ -1423,227 +1657,25 @@
     ;; set palette
     ;(ranimation/set-palette! screen cell-type-palette)
     #_(log/info "putting chars" characters)
-    (put-chars rstate :map characters)
+    (-> rstate
+      (put-chars :map characters)
     ;; draw character
     ;(log/debug (-> state :world :player))
-    (let [[vx vy] (rv/viewport-xy state)
-          [x y]   (rp/player-xy state)]
-      (put-string
-        rstate
-        :map
-        (- x vx)
-        (- y vy)
-        "@"
-        (if (< current-time (get player :bloodied 0))
-          :dark-red
-          :white)
-        (if (contains? (set (map :id (get (first (player-cellxy state)) :items))) :raft)
-          :brown
-          :black)))
-    ;; if character is fishing, draw pole
-    (condp = (current-state state)
-      :fishing-left  (put-string rstate :ui (dec (-> state :world :player :pos :x))
-                                        (-> state :world :player :pos :y)
-                                        "\\"
-                                        :white :black)
-      :fishing-right (put-string rstate :ui (inc (-> state :world :player :pos :x))
-                                        (-> state :world :player :pos :y)
-                                        "/"
-                                        :white :black)
-      :fishing-up    (put-string rstate :ui (-> state :world :player :pos :x)
-                                        (dec (-> state :world :player :pos :y))
-                                        "/"
-                                        :white :black)
-      :fishing-down  (put-string rstate :ui (-> state :world :player :pos :x)
-                                        (inc (-> state :world :player :pos :y))
-                                        "\\"
-                                        :white :black)
-      nil)
-    ;; draw ranged-attack line
-    (when (contains? #{:select-ranged-target :select-throw-target} (current-state state))
-      (let [[target-sx
-             target-sy] (case (current-state state)
-                          :select-ranged-target
-                            (let [target-ranged-index (get-in state [:world :target-ranged-index])
-                                  target-ranged-pos-coll (get-in state [:world :target-ranged-pos-coll])
-                                  target-pos             (nth target-ranged-pos-coll target-ranged-index)]
-                              (log/debug "target-ranged-index" target-ranged-index)
-                              (log/debug "target-ranged-pos-coll" (get-in state [:world :target-ranged-pos-coll]))
-                              (log/debug "target-pos" target-pos)
-                              (rv/world-xy->screen-xy state (rc/pos->xy target-pos)))
-                          :select-throw-target
-                            (rc/pos->xy (rv/get-cursor-pos state)))]
-        (log/debug "target-sx" target-sx "target-y" target-sy)
-        (doseq [[sx sy] (rlos/line-segment-fast-without-endpoints (rv/world-xy->screen-xy state [player-x player-y])
-                                                                  [target-sx target-sy])]
-            (put-string rstate :ui sx sy "\u25CF" :green :black))))
-      
-    ;; draw npcs
-    (let [place-npcs (npcs-in-viewport state)
-          ;_ (log/debug "place-npcs" place-npcs)
-          pos (-> state :world :player :pos)
-          get-cell (memoize (fn [x y] (get-cell state x y)))
-          place-id (rw/current-place-id state)]
-      (doall (map (fn [npc]
-                    (let [x         (-> npc :pos :x)
-                          y         (-> npc :pos :y)
-                          vx        (- x (if place-id 0 (-> state :world :viewport :pos :x)))
-                          vy        (- y (if place-id 0 (-> state :world :viewport :pos :y)))
-                          targeted? (when (= (current-state state) :select-ranged-target)
-                                      (let [target-ranged-index (get-in state [:world :target-ranged-index])
-                                            target-ranged-pos-coll (get-in state [:world :target-ranged-pos-coll])
-                                            target-pos             (nth target-ranged-pos-coll target-ranged-index)]
-                                        (= target-pos (get npc :pos))))
-                          t       (rw/get-time state)
-                          visible (and (not (farther-than?
-                                              pos
-                                              {:x x :y y}
-                                              8))
-                                       (= (get (rw/get-cell state x y) :discovered) t))]
-                      ;(log/debug "npc@" x y "visible?" visible)
-                      (when visible
-                        (apply put-string rstate
-                                          :features
-                                            vx
-                                            vy
-                                            (map (fn [f v] (f v))
-                                              [str identity identity]
-                                              (rcolor/target-tint-npc
-                                                (rcolor/night-tint-npc
-                                                  (rcolor/color-bloodied-char 
-                                                    (< current-time (get npc :bloodied 0))
-                                                    (case (get npc :race)
-                                                      :rat             [\r]
-                                                      :spider          [\S]
-                                                      :scorpion        [\u03C2] ;;ς
-                                                      :snake           [\u00A7] ;;§
-                                                      :bat             [\B]
-                                                      :boar            [\b :brown :black]
-                                                      :gecko           [\g :green :black]
-                                                      :monkey          [\y :orange :black]
-                                                      :bird            [\a :red :black]
-                                                      :centipede       [\c :red :black]
-                                                      :turtle          [\t :green :black]
-                                                      :red-frog        [\u03B1 :red :black] ;;α
-                                                      :orange-frog     [\u03B1 :orange :black] ;;α
-                                                      :yellow-frog     [\u03B1 :yellow :black] ;;α
-                                                      :green-frog      [\u03B1 :green :black] ;;α
-                                                      :blue-frog       [\u03B1 :blue :black] ;;α
-                                                      :purple-frog     [\u03B1 :purple :black] ;;α
-                                                      :parrot          [\p :red :black]
-                                                      :shark           [\u039B] ;;Λ
-                                                      :fish            [\f]
-                                                      :octopus         [\# :orange :black]
-                                                      :sea-snake       [\u00A7]
-                                                      :clam            [\c]
-                                                      :urchin          [\u :purple :black]
-                                                      :squid           [\q :orange :black]
-                                                      :crocodile       [\l :green :black]
-                                                      :mosquito        [\m]
-                                                      :mongoose        [\r :brown :black]
-                                                      :tarantula       [\s :brown :black]
-                                                      :monitor-lizard  [\l :gray :black]
-                                                      :komodo-dragon   [\l :dark-green :black]
-                                                      :cobra           [\u00A7] ;;§
-                                                      :puffer-fish     [\f :yellow :black]
-                                                      :crab            [\c :orange :black]
-                                                      :hermit-crab     [\c :yellow :black]
-                                                      :electric-eel    [\e :brown :black]
-                                                      :jellyfish       [\j]
-                                                      ;; pirate ship npc
-                                                      :giant-rat       [\R]
-                                                      :eel             [\e]
-                                                      :giant-lizard    [\L]
-                                                      ;; ruined temple ncs
-                                                      :giant-centipedge [\C]
-                                                      :gorilla         [\M]
-                                                      :giant-snake     [\u00A7 :green :black] ;;§
-                                                      :human           [\@ (class->rgb (get npc :class)) :black]
-                                                      [\@])) d) targeted?))))))
-                   place-npcs)))
-    (render-hud state)
-    (log/info "current-state" (current-state state))
-    (println "ui-hint" (get-in state [:world :ui-hint]))
-    (if-not (nil? (get-in state [:world :ui-hint]))
-      ;; ui-hint
-      (put-chars rstate :ui (markup->chars 0 0 (get-in state [:world :ui-hint])))
-      ;; draw log
-      (let [current-time     (dec (rw/get-time state))
-            log-idx          (get-in state [:world :log-idx] 0)
-            num-logs         (count (filter #(= current-time (get % :time)) (get-in state [:world :log])))
-            up-arrow-char    \u2191
-            down-arrow-char  \u2193
-            msg-above?       (< log-idx (dec num-logs))
-            msg-below?       (pos? log-idx)
-            up-arrow-color   (when msg-above?
-                               (get (nth (reverse (get-in state [:world :log])) (inc log-idx)) :color))
-            down-arrow-color (when msg-below?
-                               (get (nth (reverse (get-in state [:world :log])) (dec log-idx)) :color))
-            message          (if (zero? num-logs)
-                               {:message "" :time 0 :color :black} 
-                               (nth (reverse (get-in state [:world :log])) log-idx))
-            darken-factor    (inc  (* (/ -1 5) (- current-time (message :time))))
-            log-color        (rcolor/darken-rgb (rcolor/color->rgb (get message :color)) darken-factor)
-            characters       (markup->chars 0 0 (format "%s%s %s" (if msg-above?
-                                                                    (str "<color fg=\"highlight\">/</color>-<color fg=\"" (name up-arrow-color) "\">" up-arrow-char "</color>")
-                                                                    "   ")
-                                                                  (if msg-below?
-                                                                    (str "<color fg=\"highlight\">*</color>-<color fg=\"" (name down-arrow-color) "\">" down-arrow-char "</color>")
-                                                                    "   ")
-                                                                  (if (get message :text)
-                                                                    (str "<color fg=\"" (name (get message :color)) "\">" (get message :text) "</color>")
-                                                                    "")))]
-        (log/info "current-time" current-time)
-        (log/info "num-log-msgs" num-logs)
-        (log/info "message" message)
-        (put-chars rstate :ui characters)
-        (render-traps state)))
-    (case (current-state state)
-      :pickup-selection     (render-pick-up-selection state)
-      :inventory            (render-inventory state)
-      :abilities            (render-abilities state)
-      :player-stats         (render-player-stats state)
-      :gain-level           (render-ability-choices state)
-      :action-select        (render-action-choices state)
-      :describe             (render-describe state)
-      :apply                (render-apply state)
-      :apply-item-inventory
-                            (render-apply-to state)
-      :quaff-inventory
-                            (render-quaff-inventory state)
-      :magic                (render-magic state)
-      :drop                 (render-drop state)
-      :describe-inventory   (render-describe-inventory state)
-      :throw-inventory      (render-throw-inventory state)
-      :eat                  (render-eat state)
-      :quests               (render-quests state)
-      :craft                (render-craft state)
-      :craft-weapon         (render-craft-weapon state)
-      :craft-survival       (render-craft-survival state)
-      :craft-shelter        (render-craft-shelter state)
-      :craft-transportation (render-craft-transportation state)
-      :wield                (render-wield state)
-      :wield-ranged         (render-wield-ranged state)
-      :start-text           (render-start-text state)
-      :popover              (render-popover state)
-      :quaff-popover        (render-raw-popover state)
-      :dead                 (render-dead-text state)
-      :rescued              (render-rescued-text state)
-      nil)
-    (case (current-state state)
-      :quit               (render-quit? state)
-      :harvest            (render-harvest state)
-      :dialog             (render-dialog state)
-      :shopping           (render-shopping state)
-      :buy                (render-buy state)
-      :sell               (render-sell state)
-      nil)
-    ;; draw cursor
-    (if-let [cursor-pos (-> state :world :cursor)]
-      (move-cursor rstate (cursor-pos :x) (cursor-pos :y))
-      (move-cursor rstate -1 -1))))
-    ;;(log/debug "end-render")))
-
+      (draw-player state current-time vx vy player player-x player-y)
+      (draw-ranged-attack-line state player player-x player-y)
+      (draw-npcs state current-time vx vy d)
+      (render-hud state)
+    #_(log/info "current-state" (current-state state))
+    #_(println "ui-hint" (get-in state [:world :ui-hint]))
+      (draw-log state)
+      (render-traps state)
+      (render-menus state)
+      ((fn [rstate]
+         ;; draw cursor
+         (if-let [cursor-pos (-> state :world :cursor)]
+           (move-cursor rstate (cursor-pos :x) (cursor-pos :y))
+           (move-cursor rstate -1 -1)))))))
+ 
 (defn render-enter-name [rstate state]
   (let [player-name (get-in state [:world :player :name])]
     (put-string rstate :ui 30 5 "Robinson")
@@ -1929,7 +1961,6 @@
   {:pre [(not (nil? state))]
    :post [renderstate?]}
   (log/info "render current-state" (current-state state))
-  (Thread/sleep 1000)
   ;; rstate = render state
   (let [rstate {:layers {
                    :map      []
@@ -1951,7 +1982,7 @@
       (= (current-state state) :enter-name)
         (render-enter-name rstate state)
       (= (current-state state) :start-inventory)
-        (render-start-inventory state)
+        (render-start-inventory rstate state)
       (= (current-state state) :loading)
         (render-loading rstate state)
       (= (current-state state) :connecting)
@@ -1967,7 +1998,7 @@
       (= (get-in state [:world :current-state]) :share-score)
         (render-share-score rstate state)
       (= (get-in state [:world :current-state]) :help-controls)
-        (render-keyboardcontrols-help state)
+        (render-keyboardcontrols-help rstate state)
       (= (get-in state [:world :current-state]) :help-ui)
         (render-ui-help rstate state)
       (= (get-in state [:world :current-state]) :help-gameplay)

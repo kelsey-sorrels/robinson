@@ -85,6 +85,7 @@
     [r g b]
     [(/ r 4) (/ g 3) (/ (max r g b) 2)]))
 
+;; returns [char fg bg]
 (defn night-tint-npc
   [[s fg bg] d]
    [s (night-tint (color->rgb (or fg :white)) d) (color->rgb (or bg :black))])

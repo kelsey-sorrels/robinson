@@ -210,8 +210,8 @@
                                       (get font :font-size)
                                       (get font :transparent)))}]
           terminal-opts {:title (format "Robinson - %s@%s" user-id version)
-                         :screen-width (* 80 12)
-                         :screen-height (* 24 16)
+                         :screen-width (* 80 18)
+                         :screen-height (* 24 22)
                          :default-fg-color [255 255 255]
                          :default-bg-color [5 5 8]
                          #_#_:fx-shader {:name     "retro.fs"

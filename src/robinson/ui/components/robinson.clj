@@ -389,6 +389,7 @@
   "Render a sequence of lines padding to height if necessary.
    Lines are maps containing the keys `:s :fg :bg :style`."
   [rstate layer-id x y width height items]
+  {:pre [(not (nil? rstate))]}
   (doseq [i (range height)]
     (if (< i (count items))
       (let [item (nth items i)]
@@ -647,14 +648,18 @@
 
 (defn render-traps
   [rstate state]
-  (when-let [traps (rt/current-place-traps state)]
-    (doseq [trap traps]
+  (if-let [traps (rt/current-place-traps state)]
+    ;; FIXME
+    (reduce (fn [rstate trap]
       (case (get trap :type)
         :crushing-wall
           (render-crushing-wall rstate trap)
         :poisonous-gas
           (render-poisonous-gas rstate state trap)
-        nil))))
+        rstate))
+      rstate
+      traps)
+    rstate))
 
 #?(:clj
 (defn render-img
@@ -1110,6 +1115,7 @@
   (render-multi-select rstate "Wield Ranged" [] (filter can-be-wielded-for-ranged-combat? (-> state :world :player :inventory))))
 
 (defn render-start-text [rstate state]
+  {:pre [(not (nil? rstate))]}
   (let [start-text (sg/start-text state)
         width      (reduce max (map markup->length (clojure.string/split-lines start-text)))]
     (render-list rstate :ui 16 4 width 6
@@ -1262,7 +1268,8 @@
           [\@])) d) targeted?))
 
 (defn draw-npcs [rstate state current-time vx vy d]
-  {:post [(comp nil? not)]}
+  {:pre [(not (nil? rstate))]
+   :post [(comp nil? not)]}
   ;; draw npcs
   (let [place-npcs (npcs-in-viewport state)
         ;_ (log/debug "place-npcs" place-npcs)
@@ -1327,9 +1334,10 @@
       (log/info "current-time" current-time)
       (log/info "num-log-msgs" num-logs)
       (log/info "message" message)
-      (put-chars :ui characters)))
+      (put-chars rstate :ui characters))))
 
 (defn render-menus [rstate state]
+  {:pre [(not (nil? rstate))]}
   (case (current-state state)
     :pickup-selection     (render-pick-up-selection rstate state)
     :inventory            (render-inventory rstate state)
@@ -1367,7 +1375,7 @@
     :shopping           (render-shopping rstate state)
     :buy                (render-buy rstate state)
     :sell               (render-sell rstate state)
-    rstate)))
+    rstate))
 
 (defn draw-player [rstate state current-time vx vy player player-x player-y]
   (-> rstate
@@ -1405,7 +1413,7 @@
 
 (defn draw-ranged-attack-line [rstate state player player-x player-y]
   ;; draw ranged-attack line
-  (when (contains? #{:select-ranged-target :select-throw-target} (current-state state))
+  (if (contains? #{:select-ranged-target :select-throw-target} (current-state state))
     (let [[target-sx
            target-sy] (case (current-state state)
                         :select-ranged-target
@@ -1421,7 +1429,8 @@
       (log/debug "target-sx" target-sx "target-y" target-sy)
       (doseq [[sx sy] (rlos/line-segment-fast-without-endpoints (rv/world-xy->screen-xy state [player-x player-y])
                                                                 [target-sx target-sy])]
-          (put-string rstate :ui sx sy "\u25CF" :green :black)))))
+          (put-string rstate :ui sx sy "\u25CF" :green :black)))
+    rstate))
       
 (defn render-map
   "The big render function used during the normal game.

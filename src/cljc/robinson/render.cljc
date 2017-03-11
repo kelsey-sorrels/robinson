@@ -92,7 +92,6 @@
        (is (every? character? xs))))
 
 (defn renderstate? [x]
-  (println x)
   (is (every? characters? (vals (get x :layers {})))))
 
 ;;; {
@@ -393,7 +392,6 @@
         fg (rcolor/color->rgb fg)
         bg (rcolor/color->rgb bg)]
     ;; render top and bottom
-    ; FIXME
     (put-chars rstate :ui
       (mapcat identity
           (concat
@@ -1190,7 +1188,6 @@
          v-height] (rv/viewport-wh state)
         popover-x  (int (- (/ v-width 2) (/ width 2)))
         popover-y  (int (- (/ v-height 2) (/ height 2)))]
-    (println "rendering popover at" popover-x "," popover-y)
     (render-list rstate :ui popover-x popover-y width (inc height)
       (concat
         [{:s "" :fg :black :bg :white :style #{}}]
@@ -1208,7 +1205,6 @@
          v-height] (rv/viewport-wh state)
         popover-x  (int (- (/ v-width 2) (/ width 2)))
         popover-y  (int (- (/ v-height 2) (/ height 2)))]
-    (println "rendering popover at" popover-x "," popover-y)
     (-> rstate
       (render-list :ui popover-x popover-y width (+ 4 height)
         (concat

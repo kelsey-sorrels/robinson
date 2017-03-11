@@ -42,6 +42,7 @@
                                            npcs-in-viewport]]
             [robinson.traps :as rt]
             [tinter.core :as tinter]
+            [rockpick.core :as rockpick]
             [puget.printer :as pprinter]
             clojure.set
             [clojure.test :as t :refer [is]]
@@ -105,6 +106,34 @@
 ;;;   :night   [r g b]
 ;;;   :events (lazy-seq [dt {:layer-id :layer :characters [...characters]})
 ;;; }
+
+(defn log-render [rstate state path file-name]
+  #_(letfn [(to-layer [characters] (if (empty? characters)
+                                   [[]]
+                                   (let [[max-x max-y] ((juxt :x :y) (sort-by (juxt :y :x) characters))
+                                          empty-character {:ch (char 0)
+                                                           :fg {:r 0 :g 0 :b 0}
+                                                           :bg {:r 0 :g 0 :b 0}}
+                                          empty-grid   (vec (repeat 24 (vec (repeat 80 empty-character))))]
+                                     (->> characters
+                                          (map (fn [character]
+                                                 (-> character
+                                                   (clojure.set/rename-keys {:c :ch})
+                                                   (update :fg (fn [[r g b]] {:r r :g g :b b}))
+                                                   (update :bg (fn [[r g b]] {:r r :g g :b b})))))
+                                          (filter (fn [{:keys [x y]}]
+                                                    (and (< 0 x 80)
+                                                         (< 0 y 23))))
+                                          (reduce (fn [grid character]
+                                                    (assoc-in grid [(get character :y) (get character :x)] character))
+                                                  empty-grid)))))]
+    (let [layers (map to-layer ((juxt :map :features :fx :ui) (get rstate :layers)))
+          location (str path "/" (rw/get-time state) "-" file-name)]
+      #_(doseq [layer layers]
+        (println "layer" layer))
+      (rockpick/write-xp (clojure.java.io/output-stream location) layers)))
+  rstate)
+
 (def cell-type-palette
   {:fire                   [:red :orange]
    :water                  [:blue :dark-blue]
@@ -133,7 +162,7 @@
   [rstate x y]
   (log/info "moving cursor to" x y)
   ;; TODO implement
-  nil)
+  rstate)
 
 (defn fill-put-string-color-style-defaults
   ([string]
@@ -215,7 +244,12 @@
   [rstate layer-id characters]
   {:pre [characters?
          (is (get-in rstate [:layers layer-id]) (format (str [:layers layer-id]) "not in" (str rstate)))]}
-  (rc/concat-in rstate [:layers layer-id] characters))
+  (rc/concat-in rstate
+                [:layers layer-id]
+                (filter (fn [character]
+                          (and (< -1 (get character :x) 80)
+                               (< -1 (get character :y) 23)))
+                          characters)))
       
 (defn put-string
   ([rstate layer-id x y string]
@@ -327,8 +361,6 @@
         style    (if underline
                    #{:underline}
                    #{})]
-    #_(log/info "put-string" (format "\"%s\"" line) "width" width)
-    #_(put-string rstate layer-id x y s fg bg style)
     (let [characters (markup->chars (int (rmath/ceil x)) (int (rmath/ceil y)) s fg bg style)]
       (put-chars rstate layer-id characters)))))
 
@@ -357,20 +389,26 @@
                 top-left
                 top-right
                 bottom-left
-                bottom-right]} characters]
+                bottom-right]} characters
+        fg (rcolor/color->rgb fg)
+        bg (rcolor/color->rgb bg)]
     ;; render top and bottom
-    (doseq [dx (range (dec width))]
-      (put-string rstate :ui (+ x dx 1) y (str horizontal) fg bg #{} {:mask #{:rain :transform}})
-      (put-string rstate :ui (+ x dx 1) (+ y height) (str horizontal) fg bg #{} {:mask #{:rain :transform}}))
-    ;; render left and right
-    (doseq [dy (range (dec height))]
-      (put-string rstate :ui x (+ y dy 1) (str vertical) fg bg #{} {:mask #{:rain :transform}})
-      (put-string rstate :ui (+ x width) (+ y dy 1) (str vertical) fg bg #{} {:mask #{:rain :transform}}))
-    ;; render tl, tr, bl, br
-    (put-string rstate :ui x y (str top-left) fg bg #{} {:mask #{:rain :transform}})
-    (put-string rstate :ui (+ x width) y (str top-right) fg bg #{} {:mask #{:rain :transform}})
-    (put-string rstate :ui x (+ y height) (str bottom-left) fg bg #{} {:mask #{:rain :transform}})
-    (put-string rstate :ui (+ x width) (+ y height) (str bottom-right) fg bg #{} {:mask #{:rain :transform}})))
+    ; FIXME
+    (put-chars rstate :ui
+      (mapcat identity
+          (concat
+            (for [dx (range (dec width))]
+              [{:x (+ x dx 1) :y y :c horizontal :fg fg :bg bg}
+               {:x (+ x dx 1) :y (+ y height) :c horizontal :fg fg :bg bg}])
+            ;; render left and right
+            (for [dy (range (dec height))]
+              [{:x x :y (+ y dy 1) :c vertical :fg fg :bg bg}
+               {:x (+ x width) :y (+ y dy 1) :c vertical :fg fg :bg bg}])
+            ;; render tl, tr, bl, br
+            [[{:x x :y y :c top-left :fg fg :bg bg}
+              {:x (+ x width) :y y :c top-right :fg fg :bg bg}
+              {:x x :y (+ y height) :c bottom-left :fg fg :bg bg}
+              {:x (+ x width) :y (+ y height) :c bottom-right :fg fg :bg bg}]])))))
 
 (defn render-rect-single-border
   [rstate x y width height fg bg]
@@ -382,19 +420,22 @@
 
 (defn render-vertical-border
   [rstate x y height fg bg]
-  (doseq [dy (range (dec height))]
-    (put-string rstate :ui x (+ y dy) "\u2502" fg bg #{} {:mask #{:rain :transform}})))
+  (put-chars rstate :ui
+    (for [dy (range (dec height))]
+      {:x x :y (+ y dy) :c \u2502 :fg fg :bg bg})))
 
 (defn render-list
   "Render a sequence of lines padding to height if necessary.
    Lines are maps containing the keys `:s :fg :bg :style`."
   [rstate layer-id x y width height items]
   {:pre [(not (nil? rstate))]}
-  (doseq [i (range height)]
-    (if (< i (count items))
-      (let [item (nth items i)]
-        (render-line rstate layer-id x (+ y i) width (get item :s) (get item :fg) (get item :bg) (get item :style)))
-      (render-line rstate layer-id x (+ y i) (dec width) " " :white :white #{}))))
+  (reduce (fn [rstate i] [i (range height)]
+            (if (< i (count items))
+              (let [item (nth items i)]
+                (render-line rstate layer-id x (+ y i) width (get item :s) (get item :fg) (get item :bg)))
+              (render-line rstate layer-id x (+ y i) (dec width) " " :white :white)))
+    rstate
+    (range height)))
 
 (defn wrap-chars [x y width height characters fg bg style]
   (let [words  (take-nth 2 (partition-by (fn [ch] (= " " (get ch :c))) characters))
@@ -600,29 +641,34 @@
               hunger     (get-in state [:world :player :hunger])
               max-hunger (get-in state [:world :player :max-hunger])
               thirst     (get-in state [:world :player :thirst])
-              max-thirst (get-in state [:world :player :max-thirst])]
+              max-thirst (get-in state [:world :player :max-thirst])
+              red-rgb    (rcolor/color->rgb :red)
+              green-rgb  (rcolor/color->rgb :green)
+              yellow-rgb (rcolor/color->rgb :yellow)
+              blue-rgb   (rcolor/color->rgb :blue)
+              black-rgb  (rcolor/color->rgb :black)]
           (put-chars rstate :ui
             (concat
               (for [x (range 37)]
                 {:x x :y 23 :c \u2584
                  :fg (if (> (/ (- 37 x) 37)
                             (/ wtl max-wtl))
-                       :black
-                       :green)
+                       black-rgb
+                       green-rgb)
                  :bg (if (> (/ (- 37 x) 37)
                           (/ hp max-hp))
-                     :black
-                     :red)})
-              (for [x (range (- 80 43))]
+                       black-rgb
+                       red-rgb)})
+              (for [x (range (- 80 44))]
                 {:x (+ 44 x) :y 23 :c \u2584
                  :fg (if (> (/ x (- 80 44))
                         (/ hunger max-hunger))
-                   :black
-                   :yellow)
+                       black-rgb
+                       yellow-rgb)
                  :bg (if (> (/ x (- 80 44))
                         (/ thirst max-thirst))
-                   :black
-                   :blue)}))))))))
+                       black-rgb
+                       blue-rgb)}))))))))
       ;    (int (-> state :world :player :hp))
       ;    (-> state :world :player :max-hp)
       ;    (apply str (interpose " " (-> state :world :player :status)))
@@ -640,6 +686,7 @@
 (defn render-poisonous-gas
   [rstate state trap]
   (let [current-time (rw/get-time state)]
+    ; FIXME
     (doseq [[x y] (keys (get trap :locations))]
       (when (= (get (rw/get-cell state x y) :discovered) current-time)
         (let [bg (rcolor/color->rgb (rand-nth [:beige :temple-beige :light-brown]))]
@@ -732,8 +779,35 @@
         height (if (seq abilities)
                  (+ 3 (* 3 (count abilities)))
                  4)]  
-    (render-list rstate :ui 17 4 43 height
-      (if (seq abilities)
+    (-> rstate
+      (render-list :ui 17 4 43 height
+        (if (seq abilities)
+          (concat
+            (mapcat
+              (fn [ability]
+                [{:s (format "<color fg=\"highlight\">%s</color> - %s" (get ability :hotkey) (get ability :name))
+                  :fg :black
+                  :bg :white
+                  :style #{}}
+                 {:s (format "    %s" (get ability :description)) :fg :black :bg :white :style #{}}
+                 {:s "" :fg :black :bg :white :style #{}}])
+              abilities)
+            [{:s "" :fg :black :bg :white :style #{}}
+             {:s "Select hotkey or press <color fg=\"highlight\">Esc</color> to exit." :fg :black :bg :white :style #{}}])
+          [{:s "No abilities." :fg :black :bg :white :style #{}}
+           {:s "" :fg :black :bg :white :style #{}}
+           {:s "Press <color fg=\"highlight\">Esc</color> to exit." :fg :black :bg :white :style #{}}]))
+          
+      (render-rect-double-border 16 3 43 height :black :white)
+      (put-string :ui 33 3 "Abilities" :black :white))))
+
+(defn render-ability-choices 
+  "Render the player ability choice menu if the world state is `:gain-level`."
+  [rstate state]
+  (let [abilities (get-in state [:world :ability-choices])
+        height (+ 3 (* 3 (count abilities)))]
+    (-> rstate
+      (render-list :ui 17 4 43 height
         (concat
           (mapcat
             (fn [ability]
@@ -745,34 +819,9 @@
                {:s "" :fg :black :bg :white :style #{}}])
             abilities)
           [{:s "" :fg :black :bg :white :style #{}}
-           {:s "Select hotkey or press <color fg=\"highlight\">Esc</color> to exit." :fg :black :bg :white :style #{}}])
-        [{:s "No abilities." :fg :black :bg :white :style #{}}
-         {:s "" :fg :black :bg :white :style #{}}
-         {:s "Press <color fg=\"highlight\">Esc</color> to exit." :fg :black :bg :white :style #{}}]))
-        
-    (render-rect-double-border rstate 16 3 43 height :black :white)
-    (put-string rstate :ui 33 3 "Abilities" :black :white)))
-
-(defn render-ability-choices 
-  "Render the player ability choice menu if the world state is `:gain-level`."
-  [rstate state]
-  (let [abilities (get-in state [:world :ability-choices])
-        height (+ 3 (* 3 (count abilities)))]
-    (render-list rstate :ui 17 4 43 height
-      (concat
-        (mapcat
-          (fn [ability]
-            [{:s (format "<color fg=\"highlight\">%s</color> - %s" (get ability :hotkey) (get ability :name))
-              :fg :black
-              :bg :white
-              :style #{}}
-             {:s (format "    %s" (get ability :description)) :fg :black :bg :white :style #{}}
-             {:s "" :fg :black :bg :white :style #{}}])
-          abilities)
-        [{:s "" :fg :black :bg :white :style #{}}
-         {:s "Select hotkey." :fg :black :bg :white :style #{}}]))
-    (render-rect-double-border rstate 16 3 43 height :black :white)
-    (put-string rstate :ui 29 3 "Choose New Ability" :black :white)))
+           {:s "Select hotkey." :fg :black :bg :white :style #{}}]))
+      (render-rect-double-border 16 3 43 height :black :white)
+      (put-string :ui 29 3 "Choose New Ability" :black :white))))
 
 (defn render-action-choices
   "Render the player action choices menu if the world state is `:action-select`."
@@ -780,26 +829,27 @@
   (let [abilities (get-in state [:world :action-select])
         height (if (seq abilities)
                  (+ 3 (* 3 (count abilities)))
-                 4)]  
-    (render-list rstate :ui 17 4 43 height
-      (if (seq abilities)
-        (concat
-          (mapcat
-            (fn [ability]
-              [{:s (format "<color fg=\"highlight\">%s</color> - %s" (get ability :hotkey) (get ability :name))
-                :fg :black
-                :bg :white
-                :style #{}}
-               {:s "" :fg :black :bg :white :style #{}}])
-            abilities)
-          [{:s "" :fg :black :bg :white :style #{}}
-           {:s "Select hotkey or press <color fg=\"highlight\">Esc</color> to exit." :fg :black :bg :white :style #{}}])
-        [{:s "Nothing to do." :fg :black :bg :white :style #{}}
-         {:s "" :fg :black :bg :white :style #{}}
-         {:s "Press <color fg=\"highlight\">Esc</color> to exit." :fg :black :bg :white :style #{}}]))
-        
-    (render-rect-double-border rstate 16 3 43 height :black :white)
-    (put-string rstate :ui 30 3 "Choose Action" :black :white)))
+                 4)]
+    (-> rstate
+      (render-list :ui 17 4 43 height
+        (if (seq abilities)
+          (concat
+            (mapcat
+              (fn [ability]
+                [{:s (format "<color fg=\"highlight\">%s</color> - %s" (get ability :hotkey) (get ability :name))
+                  :fg :black
+                  :bg :white
+                  :style #{}}
+                 {:s "" :fg :black :bg :white :style #{}}])
+              abilities)
+            [{:s "" :fg :black :bg :white :style #{}}
+             {:s "Select hotkey or press <color fg=\"highlight\">Esc</color> to exit." :fg :black :bg :white :style #{}}])
+          [{:s "Nothing to do." :fg :black :bg :white :style #{}}
+           {:s "" :fg :black :bg :white :style #{}}
+           {:s "Press <color fg=\"highlight\">Esc</color> to exit." :fg :black :bg :white :style #{}}]))
+          
+      (render-rect-double-border 16 3 43 height :black :white)
+      (put-string :ui 30 3 "Choose Action" :black :white))))
 
 
 (defn render-player-stats
@@ -816,20 +866,20 @@
         strength      (int (rp/get-player-attribute state :strength))
         dexterity     (rp/get-player-attribute state :dexterity)
         toughness     (rp/get-player-attribute state :toughness)]
-  
-    (render-list rstate :ui (inc x) (inc y) 43 height
-        [{:s (format "Name:      %s" player-name) :fg :black :bg :white :style #{}}
-         {:s (format "Level:     %d (%d/%d)" level xp xp-next-level) :fg :black :bg :white :style #{}}
-         {:s "" :fg :black :bg :white :style #{}}
-         {:s (format "Max HP:    %d" max-hp ) :fg :black :bg :white :style #{}}
-         {:s "" :fg :black :bg :white :style #{}}
-         {:s (format "Strength:  %d" strength ) :fg :black :bg :white :style #{}}
-         {:s (format "Dexterity: %d" dexterity ) :fg :black :bg :white :style #{}}
-         {:s (format "Toughness: %d" toughness ) :fg :black :bg :white :style #{}}
-         {:s "" :fg :black :bg :white :style #{}}
-         {:s "Press <color fg=\"highlight\">Esc</color> to exit." :fg :black :bg :white :style #{}}])
-    (render-rect-double-border rstate x y 43 height :black :white)
-    (put-string rstate :ui (+ x 16) y "Player Info" :black :white)))
+    (-> rstate
+      (render-list :ui (inc x) (inc y) 43 height
+          [{:s (format "Name:      %s" player-name) :fg :black :bg :white :style #{}}
+           {:s (format "Level:     %d (%d/%d)" level xp xp-next-level) :fg :black :bg :white :style #{}}
+           {:s "" :fg :black :bg :white :style #{}}
+           {:s (format "Max HP:    %d" max-hp ) :fg :black :bg :white :style #{}}
+           {:s "" :fg :black :bg :white :style #{}}
+           {:s (format "Strength:  %d" strength ) :fg :black :bg :white :style #{}}
+           {:s (format "Dexterity: %d" dexterity ) :fg :black :bg :white :style #{}}
+           {:s (format "Toughness: %d" toughness ) :fg :black :bg :white :style #{}}
+           {:s "" :fg :black :bg :white :style #{}}
+           {:s "Press <color fg=\"highlight\">Esc</color> to exit." :fg :black :bg :white :style #{}}])
+      (render-rect-double-border x y 43 height :black :white)
+      (put-string :ui (+ x 16) y "Player Info" :black :white))))
 
 (defn render-describe
   "Render the describe info pane if the world state is `:describe`."
@@ -1011,13 +1061,14 @@
 (defn render-craft
   "Render the craft menu if the world state is `:craft`."
   [rstate state]
-  (render-multi-select rstate nil [] [{:name "Weapons" :hotkey \w}
-                                      {:name "Survival" :hotkey \s}
-                                      {:name "Shelter" :hotkey \c}
-                                      {:name "Transportation" :hotkey \t}]
-                                      30 6 20 5)
-  (render-rect-single-border rstate 29 5 20 5 :black :white)
-  (put-string rstate :ui 37 5 "Craft" :black :white))
+  (-> rstate
+    (render-multi-select nil [] [{:name "Weapons" :hotkey \w}
+                                        {:name "Survival" :hotkey \s}
+                                        {:name "Shelter" :hotkey \c}
+                                        {:name "Transportation" :hotkey \t}]
+                                        30 6 20 5)
+    (render-rect-single-border 29 5 20 5 :black :white)
+    (put-string :ui 37 5 "Craft" :black :white)))
 
 (defn render-craft-submenu
   "Render the craft submenu"
@@ -1118,15 +1169,17 @@
   {:pre [(not (nil? rstate))]}
   (let [start-text (sg/start-text state)
         width      (reduce max (map markup->length (clojure.string/split-lines start-text)))]
-    (render-list rstate :ui 16 4 width 6
-      (concat
-        [{:s "" :fg :black :bg :white :style #{}}]
-        (map
-          (fn [line] {:s line :fg :black :bg :white :style #{:center}})
-          (remove empty? (clojure.string/split-lines start-text)))
-        [{:s "" :fg :black :bg :white :style #{}}
-         {:s "  Press <color fg=\"highlight\">any key</color> to continue and <color fg=\"highlight\">?</color> to view help." :fg :black :bg :white :style #{}}]))
-    (render-rect-double-border rstate 15 4 (inc width) 6 :black :white)))
+    (-> rstate
+      (render-list :ui 16 4 width 6
+        (concat
+          [{:s "" :fg :black :bg :white :style #{}}]
+          (map
+            (fn [line] {:s line :fg :black :bg :white :style #{:center}})
+            (remove empty? (clojure.string/split-lines start-text)))
+          [{:s "" :fg :black :bg :white}
+           {:s "  Press <color fg=\"highlight\">any key</color> to continue and <color fg=\"highlight\">?</color> to view help."
+            :fg :black :bg :white}]))
+      (render-rect-double-border 15 4 (inc width) 6 :black :white))))
 
 (defn render-raw-popover [rstate state]
   (let [message    (rpop/get-popover-message state)
@@ -1156,15 +1209,16 @@
         popover-x  (int (- (/ v-width 2) (/ width 2)))
         popover-y  (int (- (/ v-height 2) (/ height 2)))]
     (println "rendering popover at" popover-x "," popover-y)
-    (render-list rstate :ui popover-x popover-y width (+ 4 height)
-      (concat
-        [{:s "" :fg :black :bg :white :style #{}}]
-        (map
-          (fn [line] {:s line :fg :black :bg :white :style #{:center}})
-          (remove empty? lines))
-        [{:s "" :fg :black :bg :white :style #{}}
-         {:s "  Press <color fg=\"highlight\">space</color> to continue." :fg :black :bg :white :style #{:center}}]))
-    (render-rect-double-border rstate (dec popover-x) popover-y (inc width) (+ 4 height) :black :white)))
+    (-> rstate
+      (render-list :ui popover-x popover-y width (+ 4 height)
+        (concat
+          [{:s "" :fg :black :bg :white :style #{}}]
+          (map
+            (fn [line] {:s line :fg :black :bg :white :style #{:center}})
+            (remove empty? lines))
+          [{:s "" :fg :black :bg :white :style #{}}
+           {:s "  Press <color fg=\"highlight\">space</color> to continue." :fg :black :bg :white :style #{:center}}]))
+      (render-rect-double-border (dec popover-x) popover-y (inc width) (+ 4 height) :black :white))))
 
 
 (defn render-dead-text [rstate state]
@@ -1184,28 +1238,30 @@
                              (<= will-to-live 0)   "just giving up on life"
                              :else                 "mysterious causes")))
         width          (max 25 (+ 7 (markup->length cause-of-death)))]
-    (render-list rstate :ui 27 4 width 6
-      (concat
-        [{:s "" :fg :black :bg :white :style #{}}]
-        (map
-          (fn [line] {:s line :fg :black :bg :white :style #{:center}})
-          ["You died."
-           (format "From %s" cause-of-death)
-           ""
-           "Press <color fg=\"highlight\">space</color> to continue."])))
-    (render-rect-double-border rstate 26 4 width 6 :black :white)))
+    (-> rstate
+      (render-list :ui 27 4 width 6
+        (concat
+          [{:s "" :fg :black :bg :white :style #{}}]
+          (map
+            (fn [line] {:s line :fg :black :bg :white :style #{:center}})
+            ["You died."
+             (format "From %s" cause-of-death)
+             ""
+             "Press <color fg=\"highlight\">space</color> to continue."])))
+      (render-rect-double-border 26 4 width 6 :black :white))))
 
 (defn render-rescued-text [rstate state]
   (let [rescue-mode (rendgame/rescue-mode state)]
-    (render-list rstate :ui 16 4 53 6
-      (concat
-        [{:s "" :fg :black :bg :white :style #{}}]
-        (map
-          (fn [line] {:s line :fg :black :bg :white :style #{:center}})
-          ["Rescue!"
-           (format "A passing %s spots you." rescue-mode)
-           "Press <color fg=\"highlight\">space</color> to continue."])))
-    (render-rect-double-border rstate 16 4 53 6 :black :white)))
+    (-> rstate
+      (render-list :ui 16 4 53 6
+        (concat
+          [{:s "" :fg :black :bg :white :style #{}}]
+          (map
+            (fn [line] {:s line :fg :black :bg :white :style #{:center}})
+            ["Rescue!"
+             (format "A passing %s spots you." rescue-mode)
+             "Press <color fg=\"highlight\">space</color> to continue."])))
+      (render-rect-double-border 16 4 53 6 :black :white))))
 
 
 (defn render-harvest
@@ -1296,7 +1352,7 @@
                   ;(log/debug "npc@" x y "visible?" visible)
                   (if visible
                     (let [[c fg bg] (npc->char-fg-bg current-time d targeted? npc)]
-                      {:c c :x vx :y vy :fg fg :bg bg})
+                      (cons {:c c :x vx :y vy :fg fg :bg bg} characters))
                     characters)))
               []
               place-npcs))))
@@ -1427,6 +1483,7 @@
                         :select-throw-target
                           (rc/pos->xy (rv/get-cursor-pos state)))]
       (log/debug "target-sx" target-sx "target-y" target-sy)
+      ; FIXME
       (doseq [[sx sy] (rlos/line-segment-fast-without-endpoints (rv/world-xy->screen-xy state [player-x player-y])
                                                                 [target-sx target-sy])]
           (put-string rstate :ui sx sy "\u25CF" :green :black)))
@@ -1668,17 +1725,25 @@
     #_(log/info "putting chars" characters)
     (-> rstate
       (put-chars :map characters)
+      (log-render state "debug" "0-map-chars.xp")
     ;; draw character
     ;(log/debug (-> state :world :player))
       (draw-player state current-time vx vy player player-x player-y)
+      (log-render state "debug" "1-draw-player.xp")
       (draw-ranged-attack-line state player player-x player-y)
+      (log-render state "debug" "2-draw-ranged-attack-line.xp")
       (draw-npcs state current-time vx vy d)
+      (log-render state "debug" "3-draw-npcs.xp")
       (render-hud state)
+      (log-render state "debug" "4-render-hud.xp")
     #_(log/info "current-state" (current-state state))
     #_(println "ui-hint" (get-in state [:world :ui-hint]))
       (draw-log state)
+      (log-render state "debug" "5-render-log.xp")
       (render-traps state)
+      (log-render state "debug" "6-render-traps.xp")
       (render-menus state)
+      (log-render state "debug" "7-render-menus.xp")
       ((fn [rstate]
          ;; draw cursor
          (if-let [cursor-pos (-> state :world :cursor)]
@@ -1687,9 +1752,10 @@
  
 (defn render-enter-name [rstate state]
   (let [player-name (get-in state [:world :player :name])]
-    (put-string rstate :ui 30 5 "Robinson")
-    (put-string rstate :ui 20 7 "Name:___________________")
-    (put-string rstate :ui 25 7 (str player-name "\u2592"))))
+    (-> rstate
+      (put-string :ui 30 5 "Robinson")
+      (put-string :ui 20 7 "Name:___________________")
+      (put-string :ui 25 7 (str player-name "\u2592")))))
 
 (defn render-start [rstate state]
   (let [player-name (get-in state [:world :player :name])]
@@ -1699,33 +1765,37 @@
       (put-chars :ui (markup->chars 30 22 "<color fg=\"highlight\" bg=\"background\">c</color><color bg=\"background\">-configure </color>")))))
 
 (defn render-configure [rstate state]
-  (put-string rstate :ui 34 5 "Configure")
-  (put-chars rstate :ui (markup->chars 34 7 "<color fg=\"highlight\" bg=\"background\">f</color><color bg=\"background\">-font </color>")))
+  (-> rstate
+    (put-string :ui 34 5 "Configure")
+    (put-chars :ui (markup->chars 34 7 "<color fg=\"highlight\" bg=\"background\">f</color><color bg=\"background\">-font </color>"))))
 
 (defn render-configure-font [rstate state]
   (let [font (get-in state [:fonts (get state :new-font (get (rc/get-settings state) :font))])]
-    (put-string rstate :ui 31 5 "Configure Font")
-    (put-string rstate :ui 31 7 (format "Font: %s" (get font :name)))
-    (put-chars rstate :ui (markup->chars 31 12 "<color fg=\"highlight\" bg=\"background\">n</color><color bg=\"background\">-next font </color>"))
-    (put-chars rstate (markup->chars 31 13 "<color fg=\"highlight\" bg=\"background\">p</color><color bg=\"background\">-previous font </color>"))
-    (put-chars rstate (markup->chars 31 14 "<color fg=\"highlight\" bg=\"background\">s</color><color bg=\"background\">-save and apply</color>"))))
+    (-> rstate
+      (put-string :ui 31 5 "Configure Font")
+      (put-string :ui 31 7 (format "Font: %s" (get font :name)))
+      (put-chars :ui (markup->chars 31 12 "<color fg=\"highlight\" bg=\"background\">n</color><color bg=\"background\">-next font </color>"))
+      (put-chars (markup->chars 31 13 "<color fg=\"highlight\" bg=\"background\">p</color><color bg=\"background\">-previous font </color>"))
+      (put-chars (markup->chars 31 14 "<color fg=\"highlight\" bg=\"background\">s</color><color bg=\"background\">-save and apply</color>")))))
 
 (defn render-start-inventory [rstate state]
   (let [player-name      (get-in state [:world :player :name])
         selected-hotkeys (get-in state [:world :selected-hotkeys])
         start-inventory  (sg/start-inventory)]
-    (put-string rstate :ui 20 5 "Choose up to three things to take with you:")
-    (doseq [y         (range (count start-inventory))]
-      (let [item      (nth start-inventory y)
-            hotkey    (get item :hotkey)
-            item-name (get item :name)]
-        (put-chars rstate :ui (markup->chars 20 (+ 7 y) (format #?(:clj  "<color fg=\"highlight\">%c</color>%c%s"
-                                                               :cljs "<color fg=\"highlight\">%s</color>%s%s")
-                                                            hotkey
-                                                            (if (contains? selected-hotkeys hotkey)
-                                                              \+
-                                                              \-)
-                                                            item-name)))))))
+    
+    (reduce (fn [rstate y]
+              (let [item      (nth start-inventory y)
+                    hotkey    (get item :hotkey)
+                    item-name (get item :name)]
+                (put-chars rstate :ui (markup->chars 20 (+ 7 y) (format #?(:clj  "<color fg=\"highlight\">%c</color>%c%s"
+                                                                       :cljs "<color fg=\"highlight\">%s</color>%s%s")
+                                                                    hotkey
+                                                                    (if (contains? selected-hotkeys hotkey)
+                                                                      \+
+                                                                      \-)
+                                                                    item-name)))))
+            (put-string rstate :ui 20 5 "Choose up to three things to take with you:")
+            (range (count start-inventory)))))
 
 (def loading-index (atom 0))
 (def loading-tidbits
@@ -1766,12 +1836,14 @@
                rand-nth
                first)]
     (swap! tidbit-freqs (fn [freqs] (update freqs n inc)))
-    (put-string rstate :ui 30 12 (format "Generating %s..." (nth loading-tidbits n)))
-    (put-string rstate :ui 40 18 (nth ["/" "-" "\\" "|"] (mod (swap! loading-index inc) 4)))))
+    (-> rstate
+      (put-string :ui 30 12 (format "Generating %s..." (nth loading-tidbits n)))
+      (put-string :ui 40 18 (nth ["/" "-" "\\" "|"] (mod (swap! loading-index inc) 4))))))
 
 (defn render-connection-failed [rstate state]
-  (put-string rstate 30 12 :ui "Connection failed")
-  (put-chars rstate :ui (markup->chars 30 22 "Play again? [<color fg=\"highlight\">y</color>/<color fg=\"highlight\">n</color>]")))
+  (-> rstate
+    (put-string 30 12 :ui "Connection failed")
+    (put-chars :ui (markup->chars 30 22 "Play again? [<color fg=\"highlight\">y</color>/<color fg=\"highlight\">n</color>]"))))
 
 (def connecting-index (atom 0))
 (defn render-connecting [rstate state]
@@ -1844,11 +1916,13 @@
   [rstate x y title value histogram]
   (let [group-size (get histogram "group-size")]
   ;; render x-axis
+  ; FIXME
   (doseq [i (range 8)]
     (put-chars rstate :ui [{:c (get single-border :horizontal) :x (+ x i 1) :y (+ y 8) :fg (rcolor/color->rgb :white) :bg (rcolor/color->rgb :black) :style #{}}]))
   ;; put caret
   (put-chars rstate :ui [{:c \^ :x (+ x (int (/ value group-size)) 1) :y (+ y 8) :fg (rcolor/color->rgb :highlight) :bg (rcolor/color->rgb :black) :style #{}}])
   ;; render y-axis
+  ; FIXME
   (doseq [i (range 7)]
     (put-chars rstate :ui [{:c (get single-border :vertical)  :x x :y (+ y i 1) :fg (rcolor/color->rgb :white) :bg (rcolor/color->rgb :black) :style #{}}]))
   (put-chars rstate :ui [{:c (get single-border :bottom-left)  :x x :y (+ y 8) :fg (rcolor/color->rgb :white) :bg (rcolor/color->rgb :black) :style #{}}])
@@ -1860,6 +1934,7 @@
     (log/debug "max-count" max-count)
     (log/debug "group-size" group-size)
     ;; for each bar
+    ; FIXME
     (doseq [data (get histogram "data")
             :when (get data "group")
             :let [group (get data "group")
@@ -1872,6 +1947,7 @@
       (let [from (int (- (+ y 7) (* 7 (/ (get data "count") max-count))))
             to   (+ y 7)]
         (log/debug "from" from "to" to "x" x)
+      ; FIXME
       (doseq [y (range from to)]
         (put-chars rstate :ui [{:c (cp437->unicode 219)#_"*" :x x :y (inc y) :fg fg :bg (rcolor/color->rgb :black) :style #{}}])))))))
 
@@ -1882,6 +1958,7 @@
     ;; Title
     (put-string rstate :ui 10 1 "Top scores")
     ;; highscore list
+    ; FIXME
     (doseq [[idx score] (map-indexed vector (take 10 (concat top-scores (repeat nil))))]
       (if score
         (let [player-name    (get score "player-name" "?name?")

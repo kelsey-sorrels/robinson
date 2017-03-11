@@ -50,8 +50,8 @@
    `attack` is one of :bite :claws :punch.
    `damage-type` is one of :miss :hit :dead"
   [attacker defender attack defender-body-part damage-type]
-  (let [attacker-race        (get attacker :race)
-        defender-race        (get defender :race)
+  (let [attacker-race        (get attacker :race :human)
+        defender-race        (get defender :race :human)
         attacker-name        (get attacker :name)
         defender-name        (get defender :name)
         rand-punch-verb      (fn [] (rr/rand-nth ["wack" "punch" "hit" "pummel" "batter"
@@ -263,7 +263,7 @@
 (defmethod calc-dmg :melee
   [state attacker attack attack-type defender defender-body-part]
   #_(log/info "Attacker" attacker "attacker-type" (type attacker) "Defender" defender "defender-type" (type defender))
-  (log/info "attacker" (:race attacker) "defender" (:race defender))
+  (log/info "attacker" (get attacker :race :human) "defender" (get defender :race :human))
   ;;Damage = Astr * (Adex / Dsp) * (As / Ds) * (At / Dt)
   (let [attacker-strength  (dcp/get-strength attacker state)
         attacker-dexterity (dcp/get-dexterity attacker state)
@@ -280,7 +280,7 @@
 (defn calc-dmg-ranged-or-thrown
   [state attacker attack attack-type defender defender-body-part]
   #_(log/info "Attacker" attacker "attacker-type" (type attacker) "Defender" defender "defender-type" (type defender))
-  (log/info "attacker" (:race attacker) "defender" (:race defender))
+  (log/info "attacker" (get attacker :race :human) "defender" (get defender :race :human))
   ;;Damage = Astr * (Adex / Dsp) * (As / Ds) * (At / Dt)
   (let [attacker-strength  (dcp/get-strength attacker state)
         attacker-dexterity (dcp/get-dexterity attacker state)
@@ -344,7 +344,7 @@
   {:pre [(or (vector? attacker-or-path) (record? attacker-or-path))
          (vector? defender-path)
          (some? state)
-         (or (every? (set (keys (get-in state defender-path))) [:hp :pos :race :body-parts])
+         (or (every? (set (keys (get-in state defender-path))) [:hp :pos :body-parts])
              (assert false (str "defender under specified " defender-path (get-in state defender-path))))
          (vector? (get-in state [:world :npcs]))]
    :post [(some? %)
@@ -381,9 +381,9 @@
     (log/info "attack" attack)
     (log/info "hit?" hit)
     (log/info "hp" hp)
-    (log/info "max-hp" (if (= (get defender :race) :human)
+    (log/info "max-hp" (if (= (get defender :race :human) :human)
                           (get defender :max-hp)
-                          (get (mg/gen-monster (get defender :race)) :hp)))
+                          (get (mg/gen-monster (get defender :race :human)) :hp)))
     (log/debug "dmg" dmg)
     (try
       (cond
@@ -452,7 +452,7 @@
                                                                          status)))
             ;; chance of being paralyzed by frog
             (if (and (= (get defender :id) :player)
-                     (mg/is-poisonous-frog? state (get attacker :race)))
+                     (mg/is-poisonous-frog? state (get attacker :race :human)))
               (rp/assoc-player-attribute :paralyzed-start-time (inc (rw/get-time state)))
               state)
 

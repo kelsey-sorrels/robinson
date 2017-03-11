@@ -1319,13 +1319,13 @@
           :human           [\@ (class->rgb (get npc :class)) :black]
           [\@])) d) targeted?))
 
-(defn draw-npcs [rstate state current-time vx vy d]
+(defn draw-npcs [rstate state player-pos current-time vx vy d]
   {:pre [(not (nil? rstate))]
    :post [(comp nil? not)]}
   ;; draw npcs
   (let [place-npcs (npcs-in-viewport state)
         ;_ (log/debug "place-npcs" place-npcs)
-        pos (-> state :world :player :pos)
+        ;pos (-> state :world :player :pos)
         get-cell (memoize (fn [x y] (get-cell state x y)))
         place-id (rw/current-place-id state)]
     (put-chars rstate :features
@@ -1341,7 +1341,7 @@
                                     (= target-pos (get npc :pos))))
                       ;t       (rw/get-time state)
                       visible (and (not (farther-than?
-                                          pos
+                                          player-pos
                                           {:x x :y y}
                                           8))
                                    (= (get (rw/get-cell state x y) :discovered) current-time))]
@@ -1463,6 +1463,161 @@
                                           :white :black)
         rstate)))))
 
+(defmulti cell->ch-fg-bg (fn [{:keys [type]}  _] type))
+(defmethod cell->ch-fg-bg :floor [cell _] [\·])
+(defmethod cell->ch-fg-bg :open-door [cell _] [\-  :brown  :black #{:bold}])
+(defmethod cell->ch-fg-bg :close-door [cell _] [\+  :brown  :black #{:bold}])
+(defmethod cell->ch-fg-bg :corridor [cell _] [\#] )
+(defmethod cell->ch-fg-bg :down-stairs [cell _] [\>] )
+(defmethod cell->ch-fg-bg :up-stairs [cell _] [\<] )
+(defmethod cell->ch-fg-bg :fire [cell current-time]
+  [\u2240 (if (= (cell :discovered) current-time)
+            :fire
+            :red) :black]) ;; ≀ 
+(defmethod cell->ch-fg-bg :water [cell current-time]
+  [\u2248 (if (= (cell :discovered) current-time)
+            :water
+            :blue) :black]) ;; ≈ 
+(defmethod cell->ch-fg-bg :surf [cell current-time]
+  [\~ (if (= (cell :discovered) current-time)
+        :surf
+        :light-blue) :black])
+(defmethod cell->ch-fg-bg :shallow-water [cell current-time]
+  [\~ (if (= (cell :discovered) current-time)
+        :shallow-water
+        :light-blue) :black])
+(defmethod cell->ch-fg-bg :swamp [cell current-time]
+  [\~ (if (= (cell :discovered) current-time)
+        :swamp
+        :light-blue) :black])
+(defmethod cell->ch-fg-bg :lava [cell current-time]
+  [\~ (if (= (cell :discovered) current-time)
+       :lava
+       :light-blue) :black])
+(defmethod cell->ch-fg-bg :mountain [cell _] [\u2206 :gray :black]) ;; ∆
+(defmethod cell->ch-fg-bg :sand [cell _] [\·  :beige      :black])
+(defmethod cell->ch-fg-bg :dirt [cell _] [\·  :brown      :black])
+(defmethod cell->ch-fg-bg :dune [cell _] [\u1d16  :light-brown :black]) ;; ᴖ
+(defmethod cell->ch-fg-bg :rocky-shore [cell _] [\u1d16  :dark-gray  :black]) ;; ᴖ
+(defmethod cell->ch-fg-bg :gravel [cell _] [\·  :gray       :black])
+(defmethod cell->ch-fg-bg :short-grass [cell _] [\·  :green      :black])
+(defmethod cell->ch-fg-bg :tall-grass [cell _] [\" :dark-green :black])
+(defmethod cell->ch-fg-bg :tree [cell _] [\T  :dark-green :black])
+(defmethod cell->ch-fg-bg :bamboo [cell _] [\u01c1 :light-green :black]) ;; ∥ 
+(defmethod cell->ch-fg-bg :palisade [cell _] [\# :brown :black])
+(defmethod cell->ch-fg-bg :ramada [cell _] [\# :beige :black])
+(defmethod cell->ch-fg-bg :tarp-shelter [cell _] [\# :blue  :black])
+(defmethod cell->ch-fg-bg :lean-to [cell _] [\# :light-green :black])
+(defmethod cell->ch-fg-bg :campfire [cell _] [\^ :brown :black])
+(defmethod cell->ch-fg-bg :bamboo-water-collector [cell _]
+                 (if (< 10 (get cell :water 0))
+                   [\O :bamboo-water-collector :black]
+                   [\O]))
+(defmethod cell->ch-fg-bg :solar-still [cell _]
+                 (if (< 10 (get cell :water 0))
+                   [\O :solar-still :black]
+                   [\O]))
+(defmethod cell->ch-fg-bg :palm-tree [cell _] [\7  :dark-green :black])
+(defmethod cell->ch-fg-bg :fruit-tree [cell _] [\u2648  :light-green :black]) ;; ♈
+(defmethod cell->ch-fg-bg :freshwater-hole [cell _] (if (< 10 (get cell :water 0))
+                   [\~ :freshwater-hole :black]
+                   [\O]))
+(defmethod cell->ch-fg-bg :saltwater-hole [cell _] (if (< 10 (get cell :water 0))
+                   [\~ :saltwater-hole :black]
+                   [\O]))
+(defmethod cell->ch-fg-bg :dry-hole [cell _] [\O])
+;; pirate ship cell types
+(defmethod cell->ch-fg-bg :bulkhead [cell _] [\◘ :brown :black])
+(defmethod cell->ch-fg-bg :wheel [cell _] [\○ :dark-brown :black])
+(defmethod cell->ch-fg-bg :bulkhead2 [cell _] [\◘ :brown :black])
+(defmethod cell->ch-fg-bg :wooden-wall [cell _] [\# :ship-brown :black])
+(defmethod cell->ch-fg-bg :railing [cell _] [\# :ship-brown :black])
+(defmethod cell->ch-fg-bg :hammock-v [cell _] [\) :brown :black])
+(defmethod cell->ch-fg-bg :hammock-h [cell _] [\- :brown :black])
+(defmethod cell->ch-fg-bg :deck [cell _] [\· :dark-brown :black])
+(defmethod cell->ch-fg-bg :canon-breach [cell _] [\║ :gray :dark-brown])
+(defmethod cell->ch-fg-bg :tackle [cell _] [\º :brown :black])
+(defmethod cell->ch-fg-bg :canon [cell _] [\║ :gray :black])
+(defmethod cell->ch-fg-bg :grate [cell _] [\╬ :dark-beige :black])
+(defmethod cell->ch-fg-bg :table [cell _] [\╤ :ship-light-brown :black])
+(defmethod cell->ch-fg-bg :chair [cell _] [\╥ :ship-light-brown :black])
+(defmethod cell->ch-fg-bg :mast [cell _] [\╨ :ship-light-brown :black])
+(defmethod cell->ch-fg-bg :beam [cell _] [\═ :brown :black])
+(defmethod cell->ch-fg-bg :canon-truck-1 [cell _] [\▄ :dark-brown :black])
+(defmethod cell->ch-fg-bg :locker [cell _] [\▌ :brown :black])
+(defmethod cell->ch-fg-bg :locker2 [cell _] [\▐ :brown :black])
+(defmethod cell->ch-fg-bg :canon-truck-2 [cell _] [\▀ :dark-brown :black])
+(defmethod cell->ch-fg-bg :ships-wheel [cell _] [\Φ :brown :black])
+(defmethod cell->ch-fg-bg :ladder [cell _] [\≡ :dark-beige :black])
+(defmethod cell->ch-fg-bg :porthole [cell _] [\° :brown :black])
+(defmethod cell->ch-fg-bg :chest [cell _] [\■ :ship-dark-brown :black])
+(defmethod cell->ch-fg-bg :artifact-chest [cell _] [\■ :dark-beige :black])
+;; ruined temple cell types
+(defmethod cell->ch-fg-bg :vertical-wall [cell _] [\║ :temple-beige :black])
+(defmethod cell->ch-fg-bg :horizontal-wall [cell _] [\═ :temple-beige :black])
+(defmethod cell->ch-fg-bg :vertical-wall-alt [cell _] [\° :white :black])
+(defmethod cell->ch-fg-bg :horizontal-wall-alt [cell _] [\° :white :black])
+(defmethod cell->ch-fg-bg :upper-left-1 [cell _] [\╔ :temple-beige :black])
+(defmethod cell->ch-fg-bg :upper-right-1 [cell _] [\╗ :temple-beige :black])
+(defmethod cell->ch-fg-bg :bottom-left-1 [cell _] [\╚ :temple-beige :black])
+(defmethod cell->ch-fg-bg :bottom-right-1 [cell _] [\╝ :temple-beige :black])
+(defmethod cell->ch-fg-bg :upper-left-2 [cell _] [\◙ :temple-beige :black])
+(defmethod cell->ch-fg-bg :upper-right-2 [cell _] [\◙ :temple-beige :black])
+(defmethod cell->ch-fg-bg :bottom-left-2 [cell _] [\◙ :temple-beige :black])
+(defmethod cell->ch-fg-bg :bottom-right-2 [cell _] [\◙ :temple-beige :black])
+(defmethod cell->ch-fg-bg :altar [cell _] [\┬ :white :black])
+(defmethod cell->ch-fg-bg :vine [cell _] [\⌠ :moss-green :black])
+(defmethod cell->ch-fg-bg :moss-corridor [cell _] [\# :moss-green :black])
+(defmethod cell->ch-fg-bg :moss-vertical-wall [cell _] [\║ :moss-green :black])
+(defmethod cell->ch-fg-bg :moss-horizontal-wall [cell _] [\═ :moss-green :black])
+(defmethod cell->ch-fg-bg :moss-vertical-wall-alt [cell _] [\° :white :black])
+(defmethod cell->ch-fg-bg :moss-horizontal-wall-alt [cell _] [\° :white :black])
+(defmethod cell->ch-fg-bg :moss-upper-left-1 [cell _] [\╔ :moss-green :black])
+(defmethod cell->ch-fg-bg :moss-upper-right-1 [cell _] [\╗ :moss-green :black])
+(defmethod cell->ch-fg-bg :moss-bottom-left-1 [cell _] [\╚ :moss-green :black])
+(defmethod cell->ch-fg-bg :moss-bottom-right-1 [cell _] [\╝ :moss-green :black])
+(defmethod cell->ch-fg-bg :moss-upper-left-2 [cell _] [\◙ :moss-green :black])
+(defmethod cell->ch-fg-bg :moss-upper-right-2 [cell _] [\◙ :moss-green :black])
+(defmethod cell->ch-fg-bg :moss-bottom-left-2 [cell _] [\◙ :moss-green :black])
+(defmethod cell->ch-fg-bg :moss-bottom-right-2 [cell _] [\◙ :moss-green :black])
+(defmethod cell->ch-fg-bg :white-corridor [cell _] [\# :white :black])
+(defmethod cell->ch-fg-bg :white-vertical-wall [cell _] [\║ :white :black])
+(defmethod cell->ch-fg-bg :white-horizontal-wall [cell _] [\═ :white :black])
+(defmethod cell->ch-fg-bg :white-vertical-wall-alt [cell _] [\° :white :black])
+(defmethod cell->ch-fg-bg :white-horizontal-wall-alt [cell _] [\° :white :black])
+(defmethod cell->ch-fg-bg :white-upper-left-1 [cell _] [\╔ :white :black])
+(defmethod cell->ch-fg-bg :white-upper-right-1 [cell _] [\╗ :white :black])
+(defmethod cell->ch-fg-bg :white-bottom-left-1 [cell _] [\╚ :white :black])
+(defmethod cell->ch-fg-bg :white-bottom-right-1 [cell _] [\╝ :white :black])
+(defmethod cell->ch-fg-bg :white-upper-left-2 [cell _] [\◙ :white :black])
+(defmethod cell->ch-fg-bg :white-upper-right-2 [cell _] [\◙ :white :black])
+(defmethod cell->ch-fg-bg :white-bottom-left-2 [cell _] [\◙ :white :black])
+(defmethod cell->ch-fg-bg :white-bottom-right-2 [cell _] [\◙ :white :black])
+(defmethod cell->ch-fg-bg :empty [cell _] [\space :black :black])
+(defmethod cell->ch-fg-bg :crushing-wall-trigger [cell _]
+                  (if (get cell :trap-found)
+                    [\^]
+                    [\·]))
+(defmethod cell->ch-fg-bg :wall-darts-trigger [cell _]
+                  (if (get cell :trap-found)
+                    [\^]
+                    [\·]))
+(defmethod cell->ch-fg-bg :poisonous-gas-trigger [cell _]
+                  (if (get cell :trap-found)
+                    [\^]
+                    [\·]))
+(defmethod cell->ch-fg-bg :spike-pit [cell _]
+                  (if (get cell :trap-found)
+                    [\^]
+                    [\·]))
+(defmethod cell->ch-fg-bg :snakes-trigger [cell _]
+                  (if (get cell :trap-found)
+                    [\^]
+                    [\·]))
+(defmethod cell->ch-fg-bg :default [cell _]
+  (log/info (format "unknown type: %s %s" (str (get cell :type)) (str cell)))
+  [\?])
+
 (defn draw-ranged-attack-line [rstate state player player-x player-y]
   ;; draw ranged-attack line
   (if (contains? #{:select-ranged-target :select-throw-target} (current-state state))
@@ -1490,14 +1645,17 @@
    This renders everything - the map, the menus, the log,
    the status bar. Everything."
   [rstate state]
-  (let [{:keys [columns rows]}                      (get state :screen)
-        current-time                                (get-in state [:world :time])
-        {{player-x :x player-y :y} :pos :as player} (rp/get-player state)
-        [vx vy]                                     (rv/viewport-xy state)
-        d                                           (rlos/sight-distance state)
-        cells                                       (rv/cellsxy-in-viewport state)
-        lantern-on                                  (when-let [lantern (rp/inventory-id->item state :lantern)]
-                                                      (get lantern state :off))
+  (let [{:keys [columns rows]}  (get state :screen)
+        current-time            (get-in state [:world :time])
+        {{player-x :x
+          player-y :y
+          :as player-pos} :pos
+         :as player}            (rp/get-player state)
+        [vx vy]                 (rv/viewport-xy state)
+        d                       (rlos/sight-distance state)
+        cells                   (rv/cellsxy-in-viewport state)
+        lantern-on              (when-let [lantern (rp/inventory-id->item state :lantern)]
+                                  (get lantern state :off))
         ;_ (println cells)
         ;_ (log/info "cells" (str cells))
         characters     (persistent!
@@ -1525,154 +1683,7 @@
                                                             [(rutil/item->char (first cell-items))
                                                              (rutil/item->fg   (first cell-items))
                                                              :black])
-                                                          (case (cell :type)
-                                                           :floor           [\·]
-                                                           :open-door       [\-  :brown  :black #{:bold}]
-                                                           :close-door      [\+  :brown  :black #{:bold}]
-                                                           :corridor        [\#] 
-                                                           :down-stairs     [\>] 
-                                                           :up-stairs       [\<] 
-                                                           :fire            [\u2240 (if (= (cell :discovered) current-time)
-                                                                                       :fire
-                                                                                       :red) :black] ;; ≀ 
-                                                           :water           [\u2248 (if (= (cell :discovered) current-time)
-                                                                                       :water
-                                                                                       :blue) :black] ;; ≈ 
-                                                           :surf            [\~ (if (= (cell :discovered) current-time)
-                                                                                   :surf
-                                                                                   :light-blue) :black]
-                                                           :shallow-water   [\~ (if (= (cell :discovered) current-time)
-                                                                                   :shallow-water
-                                                                                   :light-blue) :black]
-                                                           :swamp           [\~ (if (= (cell :discovered) current-time)
-                                                                                   :swamp
-                                                                                   :light-blue) :black]
-                                                           :lava            [\~ (if (= (cell :discovered) current-time)
-                                                                                   :lava
-                                                                                   :light-blue) :black]
-                                                           :mountain        [\u2206 :gray :black] ;; ∆
-                                                           :sand            [\·  :beige      :black]
-                                                           :dirt            [\·  :brown      :black]
-                                                           :dune            [\u1d16  :light-brown :black] ;; ᴖ
-                                                           :rocky-shore     [\u1d16  :dark-gray  :black] ;; ᴖ
-                                                           :gravel          [\·  :gray       :black]
-                                                           :short-grass     [\·  :green      :black]
-                                                           :tall-grass      [\" :dark-green :black]
-                                                           :tree            [\T  :dark-green :black]
-                                                           :bamboo          [\u01c1 :light-green :black] ;; ∥ 
-                                                           :palisade        [\# :brown :black]
-                                                           :ramada          [\# :beige :black]
-                                                           :tarp-shelter    [\# :blue  :black]
-                                                           :lean-to         [\# :light-green :black]
-                                                           :campfire        [\^ :brown :black]
-                                                           :bamboo-water-collector
-                                                                            (if (< 10 (get cell :water 0))
-                                                                              [\O :bamboo-water-collector :black]
-                                                                              [\O])
-                                                           :solar-still
-                                                                            (if (< 10 (get cell :water 0))
-                                                                              [\O :solar-still :black]
-                                                                              [\O])
-                                                           :palm-tree       [\7  :dark-green :black]
-                                                           :fruit-tree      [\u2648  :light-green :black] ;; ♈
-                                                           :freshwater-hole (if (< 10 (get cell :water 0))
-                                                                              [\~ :freshwater-hole :black]
-                                                                              [\O])
-                                                           :saltwater-hole  (if (< 10 (get cell :water 0))
-                                                                              [\~ :saltwater-hole :black]
-                                                                              [\O])
-                                                           :dry-hole        [\O]
-                                                           ;; pirate ship cell types
-                                                           :bulkhead        [\◘ :brown :black]
-                                                           :wheel           [\○ :dark-brown :black]
-                                                           :bulkhead2       [\◘ :brown :black]
-                                                           :wooden-wall     [\# :ship-brown :black]
-                                                           :railing         [\# :ship-brown :black]
-                                                           :hammock-v       [\) :brown :black]
-                                                           :hammock-h       [\- :brown :black]
-                                                           :deck            [\· :dark-brown :black]
-                                                           :canon-breach    [\║ :gray :dark-brown]
-                                                           :tackle          [\º :brown :black]
-                                                           :canon           [\║ :gray :black]
-                                                           :grate           [\╬ :dark-beige :black]
-                                                           :table           [\╤ :ship-light-brown :black]
-                                                           :chair           [\╥ :ship-light-brown :black]
-                                                           :mast            [\╨ :ship-light-brown :black]
-                                                           :beam            [\═ :brown :black]
-                                                           :canon-truck-1   [\▄ :dark-brown :black]
-                                                           :locker          [\▌ :brown :black]
-                                                           :locker2         [\▐ :brown :black]
-                                                           :canon-truck-2   [\▀ :dark-brown :black]
-                                                           :ships-wheel     [\Φ :brown :black]
-                                                           :ladder          [\≡ :dark-beige :black]
-                                                           :porthole        [\° :brown :black]
-                                                           :chest           [\■ :ship-dark-brown :black]
-                                                           :artifact-chest  [\■ :dark-beige :black]
-                                                           ;; ruined temple cell types
-                                                           :vertical-wall   [\║ :temple-beige :black]
-                                                           :horizontal-wall [\═ :temple-beige :black]
-                                                           :vertical-wall-alt [\° :white :black]
-                                                           :horizontal-wall-alt [\° :white :black]
-                                                           :upper-left-1    [\╔ :temple-beige :black]
-                                                           :upper-right-1   [\╗ :temple-beige :black]
-                                                           :bottom-left-1   [\╚ :temple-beige :black]
-                                                           :bottom-right-1  [\╝ :temple-beige :black]
-                                                           :upper-left-2    [\◙ :temple-beige :black]
-                                                           :upper-right-2   [\◙ :temple-beige :black]
-                                                           :bottom-left-2   [\◙ :temple-beige :black]
-                                                           :bottom-right-2  [\◙ :temple-beige :black]
-                                                           :altar           [\┬ :white :black]
-                                                           :vine            [\⌠ :moss-green :black]
-                                                           :moss-corridor   [\# :moss-green :black]
-                                                           :moss-vertical-wall  [\║ :moss-green :black]
-                                                           :moss-horizontal-wall [\═ :moss-green :black]
-                                                           :moss-vertical-wall-alt [\° :white :black]
-                                                           :moss-horizontal-wall-alt [\° :white :black]
-                                                           :moss-upper-left-1 [\╔ :moss-green :black]
-                                                           :moss-upper-right-1 [\╗ :moss-green :black]
-                                                           :moss-bottom-left-1 [\╚ :moss-green :black]
-                                                           :moss-bottom-right-1 [\╝ :moss-green :black]
-                                                           :moss-upper-left-2 [\◙ :moss-green :black]
-                                                           :moss-upper-right-2 [\◙ :moss-green :black]
-                                                           :moss-bottom-left-2 [\◙ :moss-green :black]
-                                                           :moss-bottom-right-2 [\◙ :moss-green :black]
-                                                           :white-corridor  [\# :white :black]
-                                                           :white-vertical-wall   [\║ :white :black]
-                                                           :white-horizontal-wall [\═ :white :black]
-                                                           :white-vertical-wall-alt [\° :white :black]
-                                                           :white-horizontal-wall-alt [\° :white :black]
-                                                           :white-upper-left-1 [\╔ :white :black]
-                                                           :white-upper-right-1 [\╗ :white :black]
-                                                           :white-bottom-left-1 [\╚ :white :black]
-                                                           :white-bottom-right-1 [\╝ :white :black]
-                                                           :white-upper-left-2 [\◙ :white :black]
-                                                           :white-upper-right-2 [\◙ :white :black]
-                                                           :white-bottom-left-2 [\◙ :white :black]
-                                                           :white-bottom-right-2 [\◙ :white :black]
-                                                           :empty                [\space :black :black]
-                                                           :crushing-wall-trigger
-                                                                             (if (get cell :trap-found)
-                                                                               [\^]
-                                                                               [\·])
-                                                           :wall-darts-trigger
-                                                                             (if (get cell :trap-found)
-                                                                               [\^]
-                                                                               [\·])
-                                                           :poisonous-gas-trigger
-                                                                             (if (get cell :trap-found)
-                                                                               [\^]
-                                                                               [\·])
-                                                           :spike-pit
-                                                                             (if (get cell :trap-found)
-                                                                               [\^]
-                                                                               [\·])
-                                                           :snakes-trigger
-                                                                             (if (get cell :trap-found)
-                                                                               [\^]
-                                                                               [\·])
-                                              
-                                                           (do (log/info (format "unknown type: %s %s" (str (get cell :type)) (str cell)))
-                                                           [\?])))))
+                                                          (cell->ch-fg-bg cell current-time))))
                                            ;; shade character based on visibility, harvestableness, raft
                                            shaded-out-char (cond
                                                              (not= (cell :discovered) current-time)
@@ -1728,7 +1739,7 @@
       (log-render state "debug" "1-draw-player.xp")
       (draw-ranged-attack-line state player player-x player-y)
       (log-render state "debug" "2-draw-ranged-attack-line.xp")
-      (draw-npcs state current-time vx vy d)
+      (draw-npcs state player-pos current-time vx vy d)
       (log-render state "debug" "3-draw-npcs.xp")
       (render-hud state)
       (log-render state "debug" "4-render-hud.xp")

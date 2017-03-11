@@ -2,6 +2,7 @@
 ;;
 ;(set! *warn-on-reflection* true)
 (ns robinson.core
+  (:use ns-tracker.core)
   (:require [robinson.setup :as setup]
             [zaffre.terminal :as zat]
             [zaffre.glterminal :as zgl]
@@ -31,8 +32,32 @@
 
 #?(
 :clj
-(log/merge-config!
-  {:appenders {:spit (taoensso.timbre.appenders.core/spit-appender {:fname "/robinson.log"})}})
+(do
+  (log/merge-config!
+    {:appenders {:spit (taoensso.timbre.appenders.core/spit-appender {:fname "/robinson.log"})}})
+  (letfn[(check-namespace-changes [track]
+           (try
+             (doseq [ns-sym (track)]
+               (when (not (contains? #{"robinson.autoreloadcore"
+                                       "robinson.core"
+                                       "robinson.main"
+                                       "robinson-tools.worldgen"
+                                       "robinson-tools.devtools"}
+                                     (str ns-sym)))
+               (log/info "Reloading namespace:" ns-sym)
+                 (require ns-sym :reload)
+                 (log/info "Done.")))
+             (catch Throwable e (log/error e)))
+             (Thread/sleep 500))
+         (start-nstracker []
+          (let [track (ns-tracker ["src/clj" "src/cljc"])]
+            (doto
+              (Thread.
+                #(while true
+                            (check-namespace-changes track)))
+              (.setDaemon true)
+              (.start))))]
+  (start-nstracker)))
 :cljs
 (enable-console-print!))
 

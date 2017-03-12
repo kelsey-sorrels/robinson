@@ -1325,21 +1325,17 @@
   ;; draw npcs
   (let [place-npcs (npcs-in-viewport state)
         ;_ (log/debug "place-npcs" place-npcs)
-        ;pos (-> state :world :player :pos)
         get-cell (memoize (fn [x y] (get-cell state x y)))
         place-id (rw/current-place-id state)]
     (put-chars rstate :features
       (reduce (fn [characters npc]
                 (let [x         (-> npc :pos :x)
                       y         (-> npc :pos :y)
-                      #_#_vx        (- x (if place-id 0 (-> state :world :viewport :pos :x)))
-                      #_#_vy        (- y (if place-id 0 (-> state :world :viewport :pos :y)))
                       targeted? (when (= (current-state state) :select-ranged-target)
                                   (let [target-ranged-index (get-in state [:world :target-ranged-index])
                                         target-ranged-pos-coll (get-in state [:world :target-ranged-pos-coll])
                                         target-pos             (nth target-ranged-pos-coll target-ranged-index)]
                                     (= target-pos (get npc :pos))))
-                      ;t       (rw/get-time state)
                       visible (and (not (farther-than?
                                           player-pos
                                           {:x x :y y}
@@ -1348,7 +1344,7 @@
                   ;(log/debug "npc@" x y "visible?" visible)
                   (if visible
                     (let [[c fg bg] (npc->char-fg-bg current-time d targeted? npc)]
-                      (cons {:c c :x vx :y vy :fg fg :bg bg} characters))
+                      (cons {:c c :x (- x vx) :y (- y vy) :fg fg :bg bg} characters))
                     characters)))
               []
               place-npcs))))
@@ -2064,39 +2060,40 @@
                  :lantern [0 0 0]
                  :night   [255 255 255]
                  :events  [] ; seq of state events translated into draw cmds
-               }]
+               }
+        cs     (current-state state)]
     (cond
-      (= (current-state state) :start)
+      (= cs :start)
         (render-start rstate state)
-      (= (current-state state) :configure)
+      (= cs :configure)
         (render-configure rstate state)
-      (= (current-state state) :configure-font)
+      (= cs :configure-font)
         (render-configure-font rstate state)
-      (= (current-state state) :enter-name)
+      (= cs :enter-name)
         (render-enter-name rstate state)
-      (= (current-state state) :start-inventory)
+      (= cs :start-inventory)
         (render-start-inventory rstate state)
-      (= (current-state state) :loading)
+      (= cs :loading)
         (render-loading rstate state)
-      (= (current-state state) :connecting)
+      (= cs :connecting)
         (render-connecting rstate state)
-      (= (current-state state) :connection-failed)
+      (= cs :connection-failed)
         (render-connection-failed rstate state)
-      ;(= (current-state state) :start-text)
+      ;(= (cs) :start-text)
       ;  (render-start-text state)
       ;; Is player dead?
-      (contains? #{:game-over-dead :game-over-rescued} (current-state state))
+      (contains? #{:game-over-dead :game-over-rescued} cs)
         ;; Render game over
         (render-game-over rstate state)
-      (= (get-in state [:world :current-state]) :share-score)
+      (= cs :share-score)
         (render-share-score rstate state)
-      (= (get-in state [:world :current-state]) :help-controls)
+      (= cs :help-controls)
         (render-keyboardcontrols-help rstate state)
-      (= (get-in state [:world :current-state]) :help-ui)
+      (= cs :help-ui)
         (render-ui-help rstate state)
-      (= (get-in state [:world :current-state]) :help-gameplay)
+      (= cs :help-gameplay)
         (render-gameplay-help rstate state)
-      (= (get-in state [:world :current-state]) :log)
+      (= cs :log)
         (render-full-log rstate state)
       :else (render-map rstate state))))
 

@@ -197,7 +197,8 @@
                               :map
                               :features
                               :fx
-                              :ui]
+                              :ui
+                              :uifx]
                             :columns 80
                             :rows 24
                             :pos [0 0]

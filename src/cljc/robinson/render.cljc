@@ -1757,8 +1757,8 @@
   (let [player-name (get-in state [:world :player :name])]
     (-> rstate
       (put-string :ui 30 5 "Robinson")
-      (put-string :ui 20 7 "Name:___________________")
-      (put-string :ui 25 7 (str player-name "\u2592")))))
+      (put-string :ui 20 7 "Name:")
+      (put-string :ui 25 7 (str player-name)))))
 
 (defn render-start [rstate state]
   (let [player-name (get-in state [:world :player :name])]

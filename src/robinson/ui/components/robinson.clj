@@ -29,7 +29,6 @@
                                             player-infected?]]
             [robinson.describe :as rdesc]
             [robinson.endgame :as rendgame :refer [gen-end-madlib]]
-            [robinson.magic :as rm :refer [get-magical-abilities]]
             [robinson.crafting :as rcrafting :refer [get-recipes]]
             [robinson.itemgen :refer [can-be-wielded?
                                       can-be-wielded-for-ranged-combat?
@@ -40,7 +39,6 @@
                                                fsm-current-state]]
             [robinson.npc :as rnpc :refer [talking-npcs
                                            npcs-in-viewport]]
-            [robinson.traps :as rt]
             [tinter.core :as tinter]
             [rockpick.core :as rockpick]
             [puget.printer :as pprinter]
@@ -148,6 +146,12 @@
 (defn cell-type->color
   [cell-type]
   (rand-nth (get cell-type-palette cell-type)))
+
+(defn cell-type->rbg
+  [cell-type]
+  (-> cell-type
+    cell-type->color
+    rcolor/color->rgb))
 
 (defn has-palette?
   [cell-type]
@@ -693,7 +697,7 @@
 
 (defn render-traps
   [rstate state]
-  (if-let [traps (rt/current-place-traps state)]
+  (if-let [traps (rw/current-place-traps state)]
     ;; FIXME
     (reduce (fn [rstate trap]
       (case (get trap :type)
@@ -911,11 +915,6 @@
   [rstate state]
   (render-multi-select rstate "Quaff To" [] (translate-identified-items state (filter ig/is-quaffable?
                                                              (-> state :world :player :inventory)))))
-
-(defn render-magic
-  "Render the pickup item menu if the world state is `:magic`."
-  [rstate state]
-  (render-multi-select rstate "Magic" [] (get-magical-abilities (-> state :world :player))))
 
 (defn render-drop
   "Render the pickup item menu if the world state is `:pickup`."
@@ -1399,7 +1398,6 @@
                           (render-apply-to rstate state)
     :quaff-inventory
                           (render-quaff-inventory rstate state)
-    :magic                (render-magic rstate state)
     :drop                 (render-drop rstate state)
     :describe-inventory   (render-describe-inventory rstate state)
     :throw-inventory      (render-throw-inventory rstate state)

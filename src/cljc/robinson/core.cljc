@@ -122,43 +122,42 @@
                    (doseq [[layer-id characters] (get renderstate :layers)]
                      (zat/put-chars! terminal layer-id characters))))
               (go-loop [keyin (async/<! key-chan)]
-                (swap! state-ref (fn [state]
-                  ; tick the old state through the tick-fn to get the new state
-                  (let [state (try
-                                (let [keyin (cond
-                                              (= (rw/current-state state) :sleep)
-                                              (do
-                                                (log/info "State = sleep, Auto-pressing .")
-                                                \.)
-                                              (contains? #{:loading :connecting} (rw/current-state state))
-                                                :advance
-                                              :else
-                                                keyin)]
-                                  (when (= keyin :exit)
-                                    (System/exit 0))
-                                  (if keyin
-                                    (do
-                                      (log/info "Core current-state" (rw/current-state state))
-                                      (log/info "Core got key" keyin)
-                                      (let [new-state (rupdate/update-state state keyin)]
-                                        (log/info "End of game loop")
-                                        new-state))
-                                    state))
-                                #?(:clj
-                                   (catch Throwable ex
-                                     (log/error ex)
-                                     (print-stack-trace ex)
-                                     state)
-                                  :cljs
-                                  (catch js/Error ex
-                                     (log/error (str ex))
-                                     state)))]
-                    (rfx/update-effects-state! effects-state state)
-                    (log/info "sending state to render-chan")
-                    (async/>!! render-chan state)
-                    ;(save-state state)
-                    state)))
-                (recur (async/<! key-chan)))
+                ; tick the old state through the tick-fn to get the new state
+                (let [state (try
+                              (let [state @state-ref]
+                                (when (= keyin :exit)
+                                  (System/exit 0))
+                                (if keyin
+                                  (do
+                                    (log/info "Core current-state" (rw/current-state state))
+                                    (log/info "Core got key" keyin)
+                                    (let [new-state (rupdate/update-state state keyin)]
+                                      (log/info "End of game loop")
+                                      new-state))
+                                  state))
+                              #?(:clj
+                                 (catch Throwable ex
+                                   (log/error ex)
+                                   (print-stack-trace ex)
+                                   state)
+                                :cljs
+                                (catch js/Error ex
+                                   (log/error (str ex))
+                                   state)))]
+                  (rfx/update-effects-state! effects-state state)
+                  (log/info "sending state to render-chan")
+                  (async/>!! render-chan state)
+                  ;(save-state state)
+                  (reset! state-ref state)
+                  (recur (cond
+                           (= (rw/current-state state) :sleep)
+                             (do
+                               (log/info "State = sleep, Auto-pressing .")
+                               \.)
+                           (contains? #{:loading :connecting} (rw/current-state state))
+                             :advance
+                           :else
+                             (async/<! key-chan)))))
               ;; render thread
               (go-loop [interrupted-state nil]
                 (let [state (async/<! render-chan)]

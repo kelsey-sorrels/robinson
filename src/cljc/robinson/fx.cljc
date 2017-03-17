@@ -6,6 +6,7 @@
             [robinson.math :as rmath]
             [robinson.color :as rcolor]
             [robinson.world :as rw]
+            [robinson.render :as rr]
             [taoensso.timbre :as log]
             [zaffre.animation.wrapper :as zaw]))
 
@@ -57,6 +58,11 @@
                               :characters [{:x x :y y :c c :fg fg :bg bg}]}]))
                   chs)))))
 
+(defn projected-ref [r f]
+  (proxy [clojure.lang.IDeref] []
+    (deref []
+      (f @r))))
+
 (defn silenceable [events enabled-ref]
   (map (fn [event]
          (if @enabled-ref
@@ -79,30 +85,44 @@
     (map vector
          (repeat 11)
          (args-stream 0))))
+
+(defn make-cell-palette-effect
+  [layer-id effects-state-ref]
+  (let [{:keys [palette-cells current-time]} @effects-state-ref]
+    (map vector
+      (repeat 500)
+      (map (fn [palette-cells]
+             {:layer-id layer-id
+              :characters (map (fn [cell]
+                                 (let [[ch fg bg] (rr/cell->ch-fg-bg cell current-time)]
+                                   (merge
+                                     (select-keys cell [:x :y])
+                                     {:c ch
+                                      :fg (rr/cell-type->color fg)
+                                      :bg (rcolor/color->rgb bg)})))
+                              palette-cells)})
+        (repeat palette-cells)))))
  
 (defn effects-state []
-  {:name-entry-pos (atom nil)
-   :loading?       (atom false)})
+  (atom {:name-entry-pos nil
+         :loading?       false
+         :palette-cells  []
+         :current-time   0}))
 
 (defn effects [effects-state]
-  [(silenceable (make-loading-effect :uifx 40 18) (get effects-state :loading?))
-   (make-name-entry-blink-effect :uifx (get effects-state :name-entry-pos))])
+  [(silenceable (make-loading-effect :uifx 40 18) (projected-ref effects-state #(get % :loading?)))
+   (make-name-entry-blink-effect :uifx (projected-ref effects-state #(get % :name-entry-pos)))
+   (make-cell-palette-effect :uifx effects-state)])
 
 (defn update-effects-state! [effects-state state]
   (cond
     (= (rw/current-state state) :loading)
-      (do
-        (update effects-state :loading? #(reset! % true))
-        (update effects-state :name-entry-pos #(reset! % nil)))
+      (swap! effects-state #(assoc % :loading? true :name-entry-pos nil))
     (= (rw/current-state state) :enter-name)
-      (do
-        (update effects-state :loading? #(reset! % false))
-        (update effects-state :name-entry-pos #(reset! % {:x (+ 25 (count (get-in state [:world :player :name])))
-                                                          :y 7})))
+      (swap! effects-state #(assoc % :loading? false
+                                     :name-entry-pos {:x (+ 25 (count (get-in state [:world :player :name])))
+                                                      :y 7}))
     :else
-      (do
-        (update effects-state :loading? #(reset! % false))
-        (update effects-state :name-entry-pos #(reset! % nil)))))
-  
-  
+      (swap! effects-state #(assoc % :loading? false
+                                     :name-entry-pos nil))))
 

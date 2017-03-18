@@ -88,20 +88,20 @@
 
 (defn make-cell-palette-effect
   [layer-id effects-state-ref]
-  (let [{:keys [palette-cells current-time]} @effects-state-ref]
     (map vector
       (repeat 500)
-      (map (fn [palette-cells]
+      (map (fn [[palette-cells current-time]]
              {:layer-id layer-id
               :characters (map (fn [cell]
                                  (let [[ch fg bg] (rr/cell->ch-fg-bg cell current-time)]
                                    (merge
                                      (select-keys cell [:x :y])
                                      {:c ch
-                                      :fg (rr/cell-type->color fg)
+                                      :fg (rcolor/color->rgb (rr/cell-type->color (get cell :type)))
                                       :bg (rcolor/color->rgb bg)})))
                               palette-cells)})
-        (repeat palette-cells)))))
+        (repeatedly (fn []
+          ((juxt :palette-cells :current-time) @effects-state-ref))))))
  
 (defn effects-state []
   (atom {:name-entry-pos nil
@@ -112,9 +112,9 @@
 (defn effects [effects-state]
   [(silenceable (make-loading-effect :uifx 40 18) (projected-ref effects-state #(get % :loading?)))
    (make-name-entry-blink-effect :uifx (projected-ref effects-state #(get % :name-entry-pos)))
-   (make-cell-palette-effect :uifx effects-state)])
+   (make-cell-palette-effect :mapfx effects-state)])
 
-(defn update-effects-state! [effects-state state]
+(defn update-effects-state! [effects-state state rstate]
   (cond
     (= (rw/current-state state) :loading)
       (swap! effects-state #(assoc % :loading? true :name-entry-pos nil))
@@ -124,5 +124,6 @@
                                                       :y 7}))
     :else
       (swap! effects-state #(assoc % :loading? false
-                                     :name-entry-pos nil))))
+                                     :name-entry-pos nil
+                                     :palette-cells (get rstate :palette-cells )))))
 

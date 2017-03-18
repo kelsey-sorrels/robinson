@@ -1426,7 +1426,7 @@
 (defn draw-player [rstate state current-time vx vy player player-x player-y]
   (-> rstate
     (put-string
-      :map
+      :features
       (- player-x vx)
       (- player-y vy)
       "@"
@@ -1612,6 +1612,71 @@
   (log/info (format "unknown type: %s %s" (str (get cell :type)) (str cell)))
   [\?])
 
+;; Add cells to rstate.palette-cells
+(defn concat-palette-cells [rstate cells-vxy-wxy]
+  (rc/concat-in
+    rstate
+    [:palette-cells]
+    (filter (comp has-palette? :type)
+      (map (fn [[cell vx vy _ _]]
+             (assoc cell :x vx :y vy))
+           cells-vxy-wxy))))
+
+(defn cell->char [current-time sight-distance lantern-on [cell vx vy wx wy]]
+   #_(when (= (get cell :discovered 0) current-time)
+     (println "render-cell" (select-keys cell [:type :discovered]) vx vy wx wy))
+     (let [cell-items (cell :items)
+           ;_ (println "render-cell" (str cell) vx vy wx wy)
+           out-char (apply fill-put-string-color-style-defaults
+                      (rcolor/color-bloodied-char 
+                        (< current-time (get cell :bloodied 0))
+                        (if (and cell-items
+                                 (seq cell-items)
+                                 (= (cell :discovered) current-time))
+                          (if (contains? #{:chest :artifact-chest} (get cell :type))
+                            [\■ :dark-beige :black]
+                            [(rutil/item->char (first cell-items))
+                             (rutil/item->fg   (first cell-items))
+                             :black])
+                          (cell->ch-fg-bg cell current-time))))
+           ;; shade character based on visibility, harvestableness, raft
+           shaded-out-char (cond
+                             (not= (cell :discovered) current-time)
+                               (-> out-char
+                                 (update-in [1] (fn [c] (rcolor/rgb->mono (rcolor/darken-rgb c 0.18))))
+                                 (update-in [2] (fn [c] (rcolor/rgb->mono (rcolor/darken-rgb c 0.15)))))
+                             (contains? cell :harvestable)
+                               (let [[chr fg bg] out-char]
+                                 [chr bg (rcolor/night-tint (rcolor/color->rgb fg) sight-distance)])
+                             (contains? (set (map :id cell-items)) :raft)
+                               (let [[chr fg bg] out-char]
+                                 (log/info "raft-cell" out-char cell-items)
+                                 (if (> (count cell-items) 1)
+                                   [chr fg (rcolor/color->rgb :brown)]
+                                   [\u01c1 (rcolor/color->rgb :black) (rcolor/color->rgb :brown)]))
+                             :else
+                               out-char)
+           ;; add character opts to indicate distance from player
+           #_#_shaded-out-char (if (and (= (get cell :discovered) current-time)
+                                    (not (contains? #{:fire :lava} (get cell :type)))
+                                    (get shaded-out-char 4))
+                             (update shaded-out-char
+                                     4 ;; opts index
+                                     (fn [opts]
+                                       (assoc opts
+                                              :visible (= (cell :discovered) current-time)
+                                              :lantern-flicker (and lantern-on (= (cell :discovered) current-time))
+                                              :distance-from-player
+                                                (distance-from-player state (xy->pos wx wy))
+                                              :night-tint
+                                                d)))
+                             shaded-out-char)]
+         {:x    vx
+          :y    vy
+          :c    (get shaded-out-char 0)
+          :fg   (get shaded-out-char 1)
+          :bg   (get shaded-out-char 2)}))
+
 (defn draw-ranged-attack-line [rstate state player player-x player-y]
   ;; draw ranged-attack line
   (if (contains? #{:select-ranged-target :select-throw-target} (current-state state))
@@ -1646,78 +1711,18 @@
           :as player-pos} :pos
          :as player}            (rp/get-player state)
         [vx vy]                 (rv/viewport-xy state)
-        d                       (rlos/sight-distance state)
+        sight-distance          (rlos/sight-distance state)
         cells                   (rv/cellsxy-in-viewport state)
         lantern-on              (when-let [lantern (rp/inventory-id->item state :lantern)]
                                   (get lantern state :off))
         ;_ (println cells)
-        ;_ (log/info "cells" (str cells))
-        characters     (persistent!
-                         (reduce (fn [characters [cell vx vy wx wy]]
-                                   ;(log/debug "begin-render")
-                                   ;(clear (state :screen))
-                                   ;;(debug "rendering place" (current-place state))
-                                   ;; draw map
-                                   ;(println "render-cell" (str cell) vx vy wx wy)
-                                   #_(when (= (get cell :discovered 0) current-time)
-                                     (println "render-cell" (select-keys cell [:type :discovered]) vx vy wx wy))
-                                   (if (or (nil? cell)
-                                           (not (cell :discovered)))
-                                     characters
-                                     (let [cell-items (cell :items)
-                                           ;_ (println "render-cell" (str cell) vx vy wx wy)
-                                           out-char (apply fill-put-string-color-style-defaults
-                                                      (rcolor/color-bloodied-char 
-                                                        (< current-time (get cell :bloodied 0))
-                                                        (if (and cell-items
-                                                                 (seq cell-items)
-                                                                 (= (cell :discovered) current-time))
-                                                          (if (contains? #{:chest :artifact-chest} (get cell :type))
-                                                            [\■ :dark-beige :black]
-                                                            [(rutil/item->char (first cell-items))
-                                                             (rutil/item->fg   (first cell-items))
-                                                             :black])
-                                                          (cell->ch-fg-bg cell current-time))))
-                                           ;; shade character based on visibility, harvestableness, raft
-                                           shaded-out-char (cond
-                                                             (not= (cell :discovered) current-time)
-                                                               (-> out-char
-                                                                 (update-in [1] (fn [c] (rcolor/rgb->mono (rcolor/darken-rgb c 0.18))))
-                                                                 (update-in [2] (fn [c] (rcolor/rgb->mono (rcolor/darken-rgb c 0.15)))))
-                                                             (contains? cell :harvestable)
-                                                               (let [[chr fg bg] out-char]
-                                                                 [chr bg (rcolor/night-tint (rcolor/color->rgb fg) d)])
-                                                             (contains? (set (map :id cell-items)) :raft)
-                                                               (let [[chr fg bg] out-char]
-                                                                 (log/info "raft-cell" out-char cell-items)
-                                                                 (if (> (count cell-items) 1)
-                                                                   [chr fg (rcolor/color->rgb :brown)]
-                                                                   [\u01c1 (rcolor/color->rgb :black) (rcolor/color->rgb :brown)]))
-                                                             :else
-                                                               out-char)
-                                           ;; add character opts to indicate distance from player
-                                           shaded-out-char (if (and (= (get cell :discovered) current-time)
-                                                                    (not (contains? #{:fire :lava} (get cell :type)))
-                                                                    (get shaded-out-char 4))
-                                                             (update shaded-out-char
-                                                                     4 ;; opts index
-                                                                     (fn [opts]
-                                                                       (assoc opts
-                                                                              :visible (= (cell :discovered) current-time)
-                                                                              :lantern-flicker (and lantern-on (= (cell :discovered) current-time))
-                                                                              :distance-from-player
-                                                                                (distance-from-player state (xy->pos wx wy))
-                                                                              :night-tint
-                                                                                d)))
-                                                             shaded-out-char)]
-                                         (conj! characters {:x    vx
-                                                            :y    vy
-                                                            :c    (get shaded-out-char 0)
-                                                            :fg   (get shaded-out-char 1)
-                                                            :bg   (get shaded-out-char 2)
-                                                            :opts (get shaded-out-char 4)}))))
-                                    (transient [])
-                                    cells))]
+        ;_ (log/info "cells" (str cells)
+        ;; separate cells into those inside fov and those outside
+        {fov-cells true
+         non-fov-cells false} (group-by (fn [[cell _ _ _ _]]
+                                          (= (get cell :discovered 0) current-time))
+                                        cells)
+         characters           (map (partial cell->char current-time sight-distance lantern-on) (concat fov-cells non-fov-cells))]
     ;; set rain mask to all true
     ; TODO: remove and use groups instead
     ;(ranimation/reset-rain-mask! screen true)
@@ -1727,13 +1732,14 @@
     (-> rstate
       (put-chars :map characters)
       (log-render state "debug" "0-map-chars.xp")
+      (concat-palette-cells fov-cells)
     ;; draw character
     ;(log/debug (-> state :world :player))
       (draw-player state current-time vx vy player player-x player-y)
       (log-render state "debug" "1-draw-player.xp")
       (draw-ranged-attack-line state player player-x player-y)
       (log-render state "debug" "2-draw-ranged-attack-line.xp")
-      (draw-npcs state player-pos current-time vx vy d)
+      (draw-npcs state player-pos current-time vx vy sight-distance)
       (log-render state "debug" "3-draw-npcs.xp")
       (render-hud state)
       (log-render state "debug" "4-render-hud.xp")
@@ -2054,10 +2060,11 @@
                    :features []
                    :fx       []
                    :ui       []}
-                 :fov     #{} ; fov in screen-space
-                 :lantern [0 0 0]
-                 :night   [255 255 255]
-                 :events  [] ; seq of state events translated into draw cmds
+                 :fov           #{} ; fov in screen-space
+                 :lantern       [0 0 0]
+                 :night         [255 255 255]
+                 :palette-cells []
+                 :events        [] ; seq of state events translated into draw cmds
                }
         cs     (current-state state)]
     (cond

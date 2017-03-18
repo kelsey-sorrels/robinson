@@ -144,7 +144,6 @@
                                 (catch js/Error ex
                                    (log/error (str ex))
                                    state)))]
-                  (rfx/update-effects-state! effects-state state)
                   (log/info "sending state to render-chan")
                   (async/>!! render-chan state)
                   ;(save-state state)
@@ -167,9 +166,11 @@
                     (log/info "Rendering world at time" (get-in state [:world :time]) (get-in state [:world :current-state]))
                     (try
                       ;(rm/log-time "render" (rrender/render state))
-                      (let [now (System/currentTimeMillis)
-                        render-fn (resolve 'robinson.render/render)]
-                        (reset! last-renderstate (render-fn state))
+                      (let [now       (System/currentTimeMillis)
+                            render-fn (resolve 'robinson.render/render)
+                            rstate    (render-fn state)]
+                        (rfx/update-effects-state! effects-state state rstate)
+                        (reset! last-renderstate rstate)
                         (log/info "finished rendering in" (- (System/currentTimeMillis) now) "ms"))
                       #?(:clj
                          (catch Throwable e

@@ -195,6 +195,7 @@
           terminal-groups [{:id :app
                             :layers [
                               :map
+                              :mapfx
                               :features
                               :fx
                               :ui

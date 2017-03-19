@@ -189,13 +189,12 @@
       (xml/parse (java.io.ByteArrayInputStream. (.getBytes s)))))
 
 (defn str->chars
-  ([s]
-   (str->chars s :white :black))
-  ([s fg bg]
-   (str->chars s fg bg #{}))
-  ([s fg bg style]
-   (map (fn [c] {:c c :fg fg :bg bg :style style})
-        s)))
+  ([s x y]
+   (str->chars s x y :white :black))
+  ([s x y fg bg]
+   (let [fg-rgb (rcolor/color->rgb fg)
+         bg-rgb (rcolor/color->rgb bg)]
+   (map-indexed (fn [i c] {:x (+ x i) :y y :c c :fg fg-rgb :bg bg-rgb}) s))))
 
 (defn markup->chars
   ([x y s]
@@ -214,29 +213,23 @@
      (let [body    (str "<body>" s "</body>")
            z       (zip-str body)
            content (-> z zip/node :content)
-           characters
-       (map-indexed (fn [idx c] (assoc c :c     (get c :c)
-                                         :x     (+ x idx)
-                                         :y     y
-                                         :fg    (rcolor/color->rgb (get c :fg))
-                                         :bg    (rcolor/color->rgb (get c :bg))
-                                         :style style))
-                    (reduce (fn [characters v]
-                              (cond
-                                (string? v)
-                                  (concat characters
-                                          (str->chars v fg bg style))
-                                (map? v)
-                                  (concat characters
-                                          (str->chars (-> v :content first)
-                                                      (if (= (get v :tag) :color)
-                                                        (keyword (get-in v [:attrs :fg] fg))
-                                                        fg)
-                                                      (if (= (get v :tag) :color)
-                                                        (keyword (get-in v [:attrs :bg] bg))
-                                                        bg)))))
-                            []
-                            content))]
+           characters (reduce (fn [characters v]
+                                (cond
+                                  (string? v)
+                                    (concat characters
+                                            (str->chars v x y fg bg ))
+                                  (map? v)
+                                    (concat characters
+                                            (str->chars (-> v :content first)
+                                                        x y
+                                                        (if (= (get v :tag) :color)
+                                                          (keyword (get-in v [:attrs :fg] fg))
+                                                          fg)
+                                                        (if (= (get v :tag) :color)
+                                                          (keyword (get-in v [:attrs :bg] bg))
+                                                          bg)))))
+                              []
+                              content)]
       characters))))
 
 (defn markup->length
@@ -614,7 +607,6 @@
                                                         :bg black-rgb}
                              {:x (+ x i) :y (inc y) :c \u2584 :fg (nth column 2) :bg (nth column 1)}])
                           indexed-colors))]
-    (println "atmo chars" (vec characters))
     (put-chars rstate :ui characters)))
 
 (defn render-hud
@@ -695,17 +687,18 @@
 (defn render-poisonous-gas
   [rstate state trap]
   (let [current-time (rw/get-time state)]
-    ; FIXME
-    (doseq [[x y] (keys (get trap :locations))]
-      (when (= (get (rw/get-cell state x y) :discovered) current-time)
-        (let [bg (rcolor/color->rgb (rand-nth [:beige :temple-beige :light-brown]))]
+    (put-chars rstate :features
+      (reduce (fn [characters [x y]]
+        (if (= (get (rw/get-cell state x y) :discovered) current-time)
+          (let [bg (rcolor/color->rgb (rand-nth [:beige :temple-beige :light-brown]))]
           ;; TODO implement
-          #_(set-bg! screen :map x y bg))))))
+            (conj characters {:x x :y y :c \  :fg [0 0 0] :bg bg}))
+          characters))
+        (keys (get trap :locations))))))
 
 (defn render-traps
   [rstate state]
   (if-let [traps (rw/current-place-traps state)]
-    ;; FIXME
     (reduce (fn [rstate trap]
       (case (get trap :type)
         :crushing-wall
@@ -1194,13 +1187,14 @@
          v-height] (rv/viewport-wh state)
         popover-x  (int (- (/ v-width 2) (/ width 2)))
         popover-y  (int (- (/ v-height 2) (/ height 2)))]
-    (render-list rstate :ui popover-x popover-y width (inc height)
-      (concat
-        [{:s "" :fg :black :bg :white :style #{}}]
-        (map
-          (fn [line] {:s line :fg :black :bg :white :style #{:center}})
-          lines)))
-    (render-rect-double-border rstate (dec popover-x) popover-y (inc width) (inc height) :black :white)))
+    (-> rstate
+      (render-list :ui popover-x popover-y width (inc height)
+        (concat
+          [{:s "" :fg :black :bg :white :style #{}}]
+          (map
+            (fn [line] {:s line :fg :black :bg :white :style #{:center}})
+            lines)))
+      (render-rect-double-border (dec popover-x) popover-y (inc width) (inc height) :black :white))))
 
 (defn render-popover [rstate state]
   (let [message    (rpop/get-popover-message state)
@@ -1432,17 +1426,19 @@
 
 (defn draw-player [rstate state current-time vx vy player player-x player-y]
   (-> rstate
-    (put-string
+    (put-chars
       :features
-      (- player-x vx)
-      (- player-y vy)
-      "@"
-      (if (< current-time (get player :bloodied 0))
-        :dark-red
-        :white)
-      (if (contains? (set (map :id (get (first (player-cellxy state)) :items))) :raft)
-        :brown
-        :black))
+      [{:x (- player-x vx)
+        :y (- player-y vy)
+        :c \@
+        :fg (rcolor/color->rgb
+              (if (< current-time (get player :bloodied 0))
+                :dark-red
+                :white))
+        :bg (rcolor/color->rgb
+              (if (contains? (set (map :id (get (first (player-cellxy state)) :items))) :raft)
+                :brown
+                :black))}])
     ((fn [rstate]
       ;; if character is fishing, draw pole
       (condp = (current-state state)
@@ -1693,17 +1689,20 @@
                           (let [target-ranged-index (get-in state [:world :target-ranged-index])
                                 target-ranged-pos-coll (get-in state [:world :target-ranged-pos-coll])
                                 target-pos             (nth target-ranged-pos-coll target-ranged-index)]
-                            (log/debug "target-ranged-index" target-ranged-index)
-                            (log/debug "target-ranged-pos-coll" (get-in state [:world :target-ranged-pos-coll]))
-                            (log/debug "target-pos" target-pos)
+                            (log/info "target-ranged-index" target-ranged-index)
+                            (log/info "target-ranged-pos-coll" (get-in state [:world :target-ranged-pos-coll]))
+                            (log/info "target-pos" target-pos)
                             (rv/world-xy->screen-xy state (rc/pos->xy target-pos)))
                         :select-throw-target
-                          (rc/pos->xy (rv/get-cursor-pos state)))]
-      (log/debug "target-sx" target-sx "target-y" target-sy)
-      ; FIXME
-      (doseq [[sx sy] (rlos/line-segment-fast-without-endpoints (rv/world-xy->screen-xy state [player-x player-y])
-                                                                [target-sx target-sy])]
-          (put-string rstate :ui sx sy "\u25CF" :green :black)))
+                          (rc/pos->xy (rv/get-cursor-pos state)))
+           player-sxy (rv/world-xy->screen-xy state [player-x player-y])
+           green-rgb  (rcolor/color->rgb :green)
+           black-rgb  (rcolor/color->rgb :black)
+           characters (for [[sx sy] (rlos/line-segment-fast-without-endpoints player-sxy
+                                                                              [target-sx target-sy])]
+                        {:x sx :y sy :c \u25CF :fg green-rgb :bg black-rgb})]
+      (println "player-sx" player-sxy "player-sy" 0 "target-sx" target-sx "target-y" target-sy (vec characters))
+      (put-chars rstate :ui characters))
     rstate))
       
 (defn render-map
@@ -1728,13 +1727,10 @@
         {fov-cells true
          non-fov-cells false} (group-by (fn [[cell _ _ _ _]]
                                           (= (get cell :discovered 0) current-time))
-                                        cells)
+                                        (filter (fn [[cell _ _ _ _]]
+                                                  (get cell :discovered))
+                                                cells))
          characters           (map (partial cell->char current-time sight-distance lantern-on) (concat fov-cells non-fov-cells))]
-    ;; set rain mask to all true
-    ; TODO: remove and use groups instead
-    ;(ranimation/reset-rain-mask! screen true)
-    ;; set palette
-    ;(ranimation/set-palette! screen cell-type-palette)
     #_(log/info "putting chars" characters)
     (-> rstate
       (put-chars :map characters)
@@ -1929,77 +1925,81 @@
 (defn render-histogram
   [rstate x y title value histogram]
   (let [group-size (get histogram "group-size")]
-  ;; render x-axis
-  ; FIXME
-  (doseq [i (range 8)]
-    (put-chars rstate :ui [{:c (get single-border :horizontal) :x (+ x i 1) :y (+ y 8) :fg (rcolor/color->rgb :white) :bg (rcolor/color->rgb :black) :style #{}}]))
-  ;; put caret
-  (put-chars rstate :ui [{:c \^ :x (+ x (int (/ value group-size)) 1) :y (+ y 8) :fg (rcolor/color->rgb :highlight) :bg (rcolor/color->rgb :black) :style #{}}])
-  ;; render y-axis
-  ; FIXME
-  (doseq [i (range 7)]
-    (put-chars rstate :ui [{:c (get single-border :vertical)  :x x :y (+ y i 1) :fg (rcolor/color->rgb :white) :bg (rcolor/color->rgb :black) :style #{}}]))
-  (put-chars rstate :ui [{:c (get single-border :bottom-left)  :x x :y (+ y 8) :fg (rcolor/color->rgb :white) :bg (rcolor/color->rgb :black) :style #{}}])
-  ;; print title
-  (put-chars rstate :ui (markup->chars x y title))
-  ;; print bars
-  (let [max-count (reduce (fn [m data](max m (get data "count"))) 0 (get histogram "data"))]
-    (log/debug "data" histogram)
-    (log/debug "max-count" max-count)
-    (log/debug "group-size" group-size)
-    ;; for each bar
-    ; FIXME
-    (doseq [data (get histogram "data")
-            :when (get data "group")
-            :let [group (get data "group")
-                  x (+ x 1 (/ group group-size))
-                  fg (rcolor/color->rgb
-                       (if (< group (inc value) (+ group group-size 1))
-                         :highlight
-                         :dark-gray))]]
-      ;; for each step in the bar
-      (let [from (int (- (+ y 7) (* 7 (/ (get data "count") max-count))))
-            to   (+ y 7)]
-        (log/debug "from" from "to" to "x" x)
+    (-> rstate
+      ;; render x-axis
       ; FIXME
-      (doseq [y (range from to)]
-        (put-chars rstate :ui [{:c (cp437->unicode 219)#_"*" :x x :y (inc y) :fg fg :bg (rcolor/color->rgb :black) :style #{}}])))))))
+      (put-chars :ui
+        (doseq [i (range 8)]
+          {:c (get single-border :horizontal) :x (+ x i 1) :y (+ y 8) :fg (rcolor/color->rgb :white) :bg (rcolor/color->rgb :black)}))
+      ;; put caret
+      (put-chars :ui [{:c \^ :x (+ x (int (/ value group-size)) 1) :y (+ y 8) :fg (rcolor/color->rgb :highlight) :bg (rcolor/color->rgb :black)}])
+      ;; render y-axis
+      (put-chars :ui
+        (doseq [i (range 7)]
+          {:c (get single-border :vertical)  :x x :y (+ y i 1) :fg (rcolor/color->rgb :white) :bg (rcolor/color->rgb :black)}))
+      (put-chars :ui [{:c (get single-border :bottom-left)  :x x :y (+ y 8) :fg (rcolor/color->rgb :white) :bg (rcolor/color->rgb :black) :style #{}}])
+      ;; print title
+      (put-chars :ui (markup->chars x y title))
+      ;; print bars
+      (put-chars :ui
+        (mapcat identity
+          (let [max-count (reduce (fn [m data](max m (get data "count"))) 0 (get histogram "data"))]
+            (log/debug "data" histogram)
+            (log/debug "max-count" max-count)
+            (log/debug "group-size" group-size)
+            ;; for each bar
+            (for [data (get histogram "data")
+                  :when (get data "group")
+                  :let [group (get data "group")
+                        x (+ x 1 (/ group group-size))
+                        fg (rcolor/color->rgb
+                             (if (< group (inc value) (+ group group-size 1))
+                               :highlight
+                               :dark-gray))]]
+              ;; for each step in the bar
+              (let [from (int (- (+ y 7) (* 7 (/ (get data "count") max-count))))
+                    to   (+ y 7)]
+                (log/debug "from" from "to" to "x" x)
+              (for [y (range from to)]
+                {:c (cp437->unicode 219)#_"*" :x x :y (inc y) :fg fg :bg (rcolor/color->rgb :black)})))))))))
 
 (defn render-share-score
   [rstate state]
   (let [score      (get state :last-score)
         top-scores (get state :top-scores)]
-    ;; Title
-    (put-string rstate :ui 10 1 "Top scores")
-    ;; highscore list
-    ; FIXME
-    (doseq [[idx score] (map-indexed vector (take 10 (concat top-scores (repeat nil))))]
-      (if score
-        (let [player-name    (get score "player-name" "?name?")
-              points         (get score "points" 0)
-              days-survived  (get score :days-survived 0 )
-              turns-survived (get score :turns-survived 0 )]
-          ;;(put-string (state :screen) 30 (+ idx 3) (format "%d. %s survived for %d %s. (%d points)"
-;;                                                                                       (inc idx)
-;;                                                                                       player-name days-survived
-;;                                                                                       (if (> 1 days-survived)
-;;                                                                                         "days"
-;;                                                                                          "day")
-;;                                                                                      points)))
-          (put-string rstate :ui 1 (+ idx 3) (format "%2d.%-20s (%d points)" (inc idx) player-name points) (if (and (= player-name (get-in state [:world :player :name]))
-                                                                                                                         (= points (get state :points)))
-                                                                                                                  :highlight
-                                                                                                                  :white)
-                                                                                                                :black))
-        (put-string rstate :ui 1 (+ idx 3) "...")))
-    ;; Performance
-    (put-string rstate :ui 50 1 "Performance")
-    (render-histogram state 45 3  "Points"        (get state :points)                                                                  (get state :point-data))
-    (render-histogram state 61 3  "Turns"         (rw/get-time state)                                                                  (get state :time-data))
-    (render-histogram state 45 13 "Kills"         (reduce + 0 (map second (get-in state [:world :player :stats :num-animals-killed]))) (get state :kills-data))
-    (render-histogram state 61 13 "Items Crafted" (reduce + 0 (map second (get-in state [:world :player :stats :num-items-crafted])))  (get state :crafted-data))
-    (put-chars rstate :ui (markup->chars 45 22 "Your performance - <color fg=\"highlight\">^</color>"))
-    (put-chars rstate :ui (markup->chars 7 22 "Play again? [<color fg=\"highlight\">y</color>/<color fg=\"highlight\">n</color>]"))))
+    (-> rstate
+      ;; Title
+      (put-string :ui 10 1 "Top scores")
+      ;; highscore list
+      ; FIXME
+      (put-chars :ui
+        (for [[idx score] (map-indexed vector (take 10 (concat top-scores (repeat nil))))]
+          (if score
+            (let [player-name    (get score "player-name" "?name?")
+                  points         (get score "points" 0)
+                  days-survived  (get score :days-survived 0 )
+                  turns-survived (get score :turns-survived 0 )]
+              ;;(put-string (state :screen) 30 (+ idx 3) (format "%d. %s survived for %d %s. (%d points)"
+    ;;                                                                                       (inc idx)
+    ;;                                                                                       player-name days-survived
+    ;;                                                                                       (if (> 1 days-survived)
+    ;;                                                                                         "days"
+    ;;                                                                                          "day")
+    ;;                                                                                      points)))
+              (str->chars 1 (+ idx 3) (format "%2d.%-20s (%d points)" (inc idx) player-name points) (if (and (= player-name (get-in state [:world :player :name]))
+                                                                                                                             (= points (get state :points)))
+                                                                                                                      :highlight
+                                                                                                                      :white)
+                                                                                                                    :black))
+            (str->chars 1 (+ idx 3) "..."))))
+      ;; Performance
+      (put-string :ui 50 1 "Performance")
+      (render-histogram state 45 3  "Points"        (get state :points)                                                                  (get state :point-data))
+      (render-histogram state 61 3  "Turns"         (rw/get-time state)                                                                  (get state :time-data))
+      (render-histogram state 45 13 "Kills"         (reduce + 0 (map second (get-in state [:world :player :stats :num-animals-killed]))) (get state :kills-data))
+      (render-histogram state 61 13 "Items Crafted" (reduce + 0 (map second (get-in state [:world :player :stats :num-items-crafted])))  (get state :crafted-data))
+      (put-chars :ui (markup->chars 45 22 "Your performance - <color fg=\"highlight\">^</color>"))
+      (put-chars :ui (markup->chars 7 22 "Play again? [<color fg=\"highlight\">y</color>/<color fg=\"highlight\">n</color>]")))))
 
 (defn rockpick->render-map
   [layers]

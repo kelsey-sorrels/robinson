@@ -83,7 +83,7 @@
   (+ initial (* n (- final initial))))
 
 (defn lerp-rgb [initial-rgb final-rgb n]
-  (map #(lerp %1 %2 n) initial-rgb final-rgb n))
+  (map #(lerp %1 %2 n) initial-rgb final-rgb))
 
 (defn lighting
   [sight-distance]
@@ -92,8 +92,8 @@
     (cond
       (<= sight-distance 4)
         night-rgb
-      (<= sight-distance 5)
-        (lerp-rgb night-rgb day-rgb (- sight-distance 4))
+      (<= sight-distance 7)
+        (lerp-rgb night-rgb day-rgb (/ (- sight-distance 4) (- 7 4)))
       :else
         day-rgb)))
 

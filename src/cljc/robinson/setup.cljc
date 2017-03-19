@@ -192,28 +192,48 @@
                       :data {:atmo atmo :help help}
                       :settings settings})))
           _ (log/info "Using font settings" font)
-          terminal-groups [{:id :app
-                            :layers [
-                              :map
-                              :mapfx
-                              :features
-                              :fx
-                              :ui
-                              :uifx]
-                            :columns 80
-                            :rows 24
-                            :pos [0 0]
-                            :font (constantly
+          font (constantly
                                     (zfont/->TTFFont
                                       (get font (case (zlwjglutil/platform)
                                                   :linux   :linux-font
                                                   :macosx  :macosx-font
                                                   :windows :windows-font))
                                       (get font :font-size)
-                                      (get font :transparent)))}]
+                                      (get font :transparent)))
+          terminal-groups [{:id :app
+                            :layers [
+                              :map
+                              :mapfx
+                              :features
+                              :fx]
+                            :columns 80
+                            :rows 24
+                            :pos [0 0]
+                            :font font}
+                           {:id :lighting
+                            :layers [
+                              :lighting]
+                            :columns 80
+                            :rows 24
+                            :pos [0 0]
+                            ;; multiply layer
+                            :gl-blend-equation :gl-func-add
+                            :gl-blend-func [:gl-dst-color :gl-zero]
+                            :font font}
+                           {:id :ui
+                            :layers [
+                              :ui
+                              :uifx]
+                            :columns 80
+                            :rows 24
+                            :pos [0 0]
+                            ; typical transparent src alpha blending
+                            :gl-blend-equation :gl-func-add
+                            :gl-blend-func [:gl-one :gl-one-minus-src-alpha]
+                            :font font}]
           terminal-opts {:title (format "Robinson - %s@%s" user-id version)
                          :screen-width (* 80 18)
-                         :screen-height (* 24 22)
+                         :screen-height (* 24 24)
                          :default-fg-color [255 255 255]
                          :default-bg-color [5 5 8]
                          #_#_:fx-shader {:name     "retro.fs"

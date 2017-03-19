@@ -1349,6 +1349,13 @@
               []
               place-npcs))))
 
+(defn render-lighting [rstate sight-distance]
+  (let [bg         (rcolor/lighting sight-distance)
+        characters (for [x (range 80)
+                         y (range 24)]
+                     {:x x :y y :c \  :fg [0 0 0] :bg bg})]
+    (put-chars rstate :lighting characters)))
+
 (defn draw-log [rstate state]
   (if-not (nil? (get-in state [:world :ui-hint]))
     ;; ui-hint
@@ -1744,6 +1751,7 @@
       (log-render state "debug" "2-draw-ranged-attack-line.xp")
       (draw-npcs state player-pos current-time vx vy sight-distance)
       (log-render state "debug" "3-draw-npcs.xp")
+      (render-lighting sight-distance)
       (render-hud state)
       (log-render state "debug" "4-render-hud.xp")
     #_(log/info "current-state" (current-state state))
@@ -1927,7 +1935,6 @@
   (let [group-size (get histogram "group-size")]
     (-> rstate
       ;; render x-axis
-      ; FIXME
       (put-chars :ui
         (doseq [i (range 8)]
           {:c (get single-border :horizontal) :x (+ x i 1) :y (+ y 8) :fg (rcolor/color->rgb :white) :bg (rcolor/color->rgb :black)}))
@@ -1971,7 +1978,6 @@
       ;; Title
       (put-string :ui 10 1 "Top scores")
       ;; highscore list
-      ; FIXME
       (put-chars :ui
         (for [[idx score] (map-indexed vector (take 10 (concat top-scores (repeat nil))))]
           (if score
@@ -2066,6 +2072,7 @@
                    :map      []
                    :features []
                    :fx       []
+                   :lighting []
                    :ui       []}
                  :fov           #{} ; fov in screen-space
                  :lantern       [0 0 0]

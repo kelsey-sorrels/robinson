@@ -603,74 +603,81 @@
         frames (count atmo)
         t      (mod (get-in state [:world :time]) frames)
         frame  (nth atmo t)
-        indexed-colors (map vector (partition 3 frame) (range))]
-    (reduce (fn [rstate [column i]]
-      #_(log/info x i y column)
-      (-> rstate
-        (put-string :ui (+ x i) y       "\u2584" (if (contains? #{0 6} i)
-                                                   :black
-                                                   (nth column 0))
-                                                 :black #{:underline} {:mask #{:rain :transform}})
-        (put-string :ui (+ x i) (inc y) "\u2584" (nth column 2) (nth column 1) #{:underline} {:mask #{:rain :transform}})))
-      rstate
-      indexed-colors)))
+        indexed-colors (map vector (partition 3 frame) (range))
+        black-rgb (rcolor/color->rgb :black)
+        characters (mapcat identity
+                     (map (fn [[column i]]
+                            #_(log/info x i y column)
+                            [{:x (+ x i) :y y :c \u2584 :fg (if (contains? #{0 6} i)
+                                                                       black-rgb
+                                                                       (nth column 0))
+                                                        :bg black-rgb}
+                             {:x (+ x i) :y (inc y) :c \u2584 :fg (nth column 2) :bg (nth column 1)}])
+                          indexed-colors))]
+    (println "atmo chars" (vec characters))
+    (put-chars rstate :ui characters)))
 
 (defn render-hud
   [rstate state]
   {:pre [(not (nil? rstate))
          (not (nil? state))]}
-    (-> rstate
-      ;; render atmo
-      (render-atmo state 37 21)
-      ;; render statuses
-      (put-string :ui 37 23 " "      :gray :gray #{} {:mask #{:rain :transform}})
-      (put-string :ui 38 23 "\u2665" (if (player-wounded? state) :red :black) :gray #{} {:mask #{:rain :transform}})
-      (put-string :ui 39 23 " "      :gray :gray #{} {:mask #{:rain :transform}})
-      (put-string :ui 40 23 "\u2665" (if (player-poisoned? state) :green :black) :gray #{} {:mask #{:rain :transform}})
-      (put-string :ui 41 23 " "      :gray :gray #{} {:mask #{:rain :transform}})
-      (put-string :ui 42 23 "\u2665" (if (player-infected? state) :yellow :black) :gray #{} {:mask #{:rain :transform}})
-      (put-string :ui 43 23 " "      :gray :gray #{} {:mask #{:rain :transform}})
-      ((fn [rstate]
-        (if (= (current-state state) :sleep)
-          (put-string rstate 38 20 :ui (format "Zzz%s" (apply str (repeat (mod (get-time state) 3) "." ))) #{} {:mask #{:rain :transform}}))
-          rstate))
-      ((fn [rstate]
-        ;; render will to live and hp
-        (let [wtl        (get-in state [:world :player :will-to-live])
-              max-wtl    (get-in state [:world :player :max-will-to-live])
-              hp         (get-in state [:world :player :hp])
-              max-hp     (get-in state [:world :player :max-hp])
-              hunger     (get-in state [:world :player :hunger])
-              max-hunger (get-in state [:world :player :max-hunger])
-              thirst     (get-in state [:world :player :thirst])
-              max-thirst (get-in state [:world :player :max-thirst])
-              red-rgb    (rcolor/color->rgb :red)
-              green-rgb  (rcolor/color->rgb :green)
-              yellow-rgb (rcolor/color->rgb :yellow)
-              blue-rgb   (rcolor/color->rgb :blue)
-              black-rgb  (rcolor/color->rgb :black)]
-          (put-chars rstate :ui
-            (concat
-              (for [x (range 37)]
-                {:x x :y 23 :c \u2584
-                 :fg (if (> (/ (- 37 x) 37)
-                            (/ wtl max-wtl))
-                       black-rgb
-                       green-rgb)
-                 :bg (if (> (/ (- 37 x) 37)
-                          (/ hp max-hp))
-                       black-rgb
-                       red-rgb)})
-              (for [x (range (- 80 44))]
-                {:x (+ 44 x) :y 23 :c \u2584
-                 :fg (if (> (/ x (- 80 44))
-                        (/ hunger max-hunger))
-                       black-rgb
-                       yellow-rgb)
-                 :bg (if (> (/ x (- 80 44))
-                        (/ thirst max-thirst))
-                       black-rgb
-                       blue-rgb)}))))))))
+    (let [black-rgb   (rcolor/color->rgb :black)
+          gray-rgb    (rcolor/color->rgb :gray)
+          red-rgb     (rcolor/color->rgb :red)
+          yellow-rgb  (rcolor/color->rgb :yellow)
+          green-rgb   (rcolor/color->rgb :green)]
+      (-> rstate
+        ;; render atmo
+        (render-atmo state 37 21)
+        ;; render statuses
+        (put-chars :ui [{:x 37 :y 23 :c \      :fg gray-rgb :bg gray-rgb}
+                        {:x 38 :y 23 :c \u2665 :fg (if (player-wounded? state) red-rgb black-rgb) :bg gray-rgb}
+                        {:x 39 :y 23 :c \      :fg gray-rgb :bg gray-rgb}
+                        {:x 40 :y 23 :c \u2665 :fg (if (player-poisoned? state) green-rgb black-rgb) :bg gray-rgb}
+                        {:x 41 :y 23 :c \      :fg gray-rgb :bg gray-rgb}
+                        {:x 42 :y 23 :c \u2665 :fg (if (player-infected? state) yellow-rgb black-rgb) :bg gray-rgb}
+                        {:x 43 :y 23 :c \      :fg gray-rgb :bg gray-rgb}])
+        ((fn [rstate]
+          (if (= (current-state state) :sleep)
+            (put-string rstate 38 20 :ui (format "Zzz%s" (apply str (repeat (mod (get-time state) 3) "." ))) #{} {:mask #{:rain :transform}}))
+            rstate))
+        ((fn [rstate]
+          ;; render will to live and hp
+          (let [wtl        (get-in state [:world :player :will-to-live])
+                max-wtl    (get-in state [:world :player :max-will-to-live])
+                hp         (get-in state [:world :player :hp])
+                max-hp     (get-in state [:world :player :max-hp])
+                hunger     (get-in state [:world :player :hunger])
+                max-hunger (get-in state [:world :player :max-hunger])
+                thirst     (get-in state [:world :player :thirst])
+                max-thirst (get-in state [:world :player :max-thirst])
+                red-rgb    (rcolor/color->rgb :red)
+                green-rgb  (rcolor/color->rgb :green)
+                yellow-rgb (rcolor/color->rgb :yellow)
+                blue-rgb   (rcolor/color->rgb :blue)
+                black-rgb  (rcolor/color->rgb :black)]
+            (put-chars rstate :ui
+              (concat
+                (for [x (range 37)]
+                  {:x x :y 23 :c \u2584
+                   :fg (if (> (/ (- 37 x) 37)
+                              (/ wtl max-wtl))
+                         black-rgb
+                         green-rgb)
+                   :bg (if (> (/ (- 37 x) 37)
+                            (/ hp max-hp))
+                         black-rgb
+                         red-rgb)})
+                (for [x (range (- 80 44))]
+                  {:x (+ 44 x) :y 23 :c \u2584
+                   :fg (if (> (/ x (- 80 44))
+                          (/ hunger max-hunger))
+                         black-rgb
+                         yellow-rgb)
+                   :bg (if (> (/ x (- 80 44))
+                          (/ thirst max-thirst))
+                         black-rgb
+                         blue-rgb)})))))))))
       ;    (int (-> state :world :player :hp))
       ;    (-> state :world :player :max-hp)
       ;    (apply str (interpose " " (-> state :world :player :status)))

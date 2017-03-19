@@ -231,7 +231,6 @@
                                                           bg)))))
                               []
                               content)]
-      (log/info "markup->chars" (vec characters))
       characters))))
 
 (defn markup->length
@@ -241,7 +240,7 @@
 (defn put-chars
   [rstate layer-id characters]
   {:pre [characters?
-         (is (get-in rstate [:layers layer-id]) (format (str [:layers layer-id]) "not in" (str rstate)))]}
+         (is (get-in rstate [:layers layer-id]) (str [:layers layer-id] "not in" rstate))]}
   (rc/concat-in rstate
                 [:layers layer-id]
                 (filter (fn [character]

@@ -44,7 +44,7 @@
 ;(log/set-config! [] (read-string (slurp "config/timbre.clj"))(log/set-log-level! :error)
 
 (log/merge-config!
-  {:ns-blacklist ["robinson.render"]})
+  {:ns-blacklist [#_"robinson.render"]})
 
 #?(:cljs
 (defn get-resource [path]

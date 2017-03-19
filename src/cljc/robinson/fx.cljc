@@ -89,6 +89,7 @@
 (defn make-cell-palette-effect
   [layer-id effects-state-ref]
     (map vector
+      ; FIXME long animation deplays don't work with map movement. change to shorter dt
       (repeat 500)
       (map (fn [[palette-cells current-time]]
              {:layer-id layer-id

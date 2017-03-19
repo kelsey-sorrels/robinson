@@ -161,6 +161,10 @@
                :bamboo-water-collector :solar-still 
                :freshwater-hole :saltwater-hole} cell-type))
 
+(defn light-producing?
+  [cell-type]
+  (contains? #{:fire :lava} cell-type))
+
 (defn move-cursor
   [rstate x y]
   (log/info "moving cursor to" x y)
@@ -192,23 +196,20 @@
   ([s x y]
    (str->chars s x y :white :black))
   ([s x y fg bg]
-   (let [fg-rgb (rcolor/color->rgb fg)
-         bg-rgb (rcolor/color->rgb bg)]
+   (let [fg-rgb (mapv int (rcolor/color->rgb fg))
+         bg-rgb (mapv int (rcolor/color->rgb bg))]
    (map-indexed (fn [i c] {:x (+ x i) :y y :c c :fg fg-rgb :bg bg-rgb}) s))))
 
 (defn markup->chars
   ([x y s]
    (markup->chars x y s :white :black))
   ([x y s fg bg]
-   (markup->chars x y s fg bg #{}))
-  ([x y s fg bg style]
    (if (re-find #"^\s*$" s)
      (map (fn [idx] {:c     \space
                      :x     (+ x idx)
                      :y     y
                      :fg    (rcolor/color->rgb fg)
-                     :bg    (rcolor/color->rgb bg)
-                     :style style})
+                     :bg    (rcolor/color->rgb bg)})
           (range (count s)))
      (let [body    (str "<body>" s "</body>")
            z       (zip-str body)
@@ -217,11 +218,11 @@
                                 (cond
                                   (string? v)
                                     (concat characters
-                                            (str->chars v x y fg bg ))
+                                            (str->chars v (+ x (count characters)) y fg bg))
                                   (map? v)
                                     (concat characters
                                             (str->chars (-> v :content first)
-                                                        x y
+                                                        (+ x (count characters)) y
                                                         (if (= (get v :tag) :color)
                                                           (keyword (get-in v [:attrs :fg] fg))
                                                           fg)
@@ -230,6 +231,7 @@
                                                           bg)))))
                               []
                               content)]
+      (log/info "markup->chars" (vec characters))
       characters))))
 
 (defn markup->length
@@ -353,11 +355,8 @@
                    (left-justify-markup line width))
         [fg bg]  (if invert
                    [bg fg]
-                   [fg bg])
-        style    (if underline
-                   #{:underline}
-                   #{})]
-    (let [characters (markup->chars (int (rmath/ceil x)) (int (rmath/ceil y)) s fg bg style)]
+                   [fg bg])]
+    (let [characters (markup->chars (int (rmath/ceil x)) (int (rmath/ceil y)) s fg bg )]
       (put-chars rstate layer-id characters)))))
 
 (def single-border
@@ -486,7 +485,7 @@
                                word)
               characters     (concat characters
                                      word
-                                     [{:c " "
+                                     [{:c \space
                                        :x (+ @nchars (count word) x)
                                        :y @line
                                        :fg (rcolor/color->rgb fg)
@@ -509,8 +508,9 @@
         lines    (rc/wrap-line 28 text)
         characters (markup->chars x (inc y) text :black :white #{})
         characters (wrap-chars x (inc y) width height characters :black :white #{})]
-     (put-chars rstate (wrap-chars x y  width 1 (markup->chars x y title :black :white #{}) :black :white #{}))
-     (put-chars rstate characters)))
+     (-> rstate
+       (put-chars (wrap-chars x y  width 1 (markup->chars x y title :black :white) :black :white))
+       (put-chars characters))))
      ;;(render-list rstate x y width height items)))
 
 (defn render-multi-select
@@ -534,7 +534,7 @@
   ([rstate title selected-hotkeys items]
    (render-multi-select rstate title selected-hotkeys items 40 0 40 22))
   ([rstate title selected-hotkeys items x y width height]
-   (render-multi-select rstate title selected-hotkeys items x y width height #{}))
+   (render-multi-select rstate title selected-hotkeys items 40 0 40 22 #{}))
   ([rstate title selected-hotkeys items x y width height style]
    ;; items is list of {:s "string" :fg :black :bg :white}
    (let [{:keys [use-applicable
@@ -546,7 +546,7 @@
          items    (map (fn [item] {:s (format #?(:clj  "<color fg=\"highlight\">%c</color>%c%s%s %s %s"
                                                  :cljs "<color fg=\"highlight\">%s</color>%s%s%s %s %s")
                                               (or (item :hotkey)
-                                                  \ )
+                                                  \space)
                                               (if (contains? selected-hotkeys (item :hotkey))
                                                 \+
                                                 \-)
@@ -570,8 +570,7 @@
                                                (get item :applicable))
                                          :black
                                          :gray)
-                                   :bg :white
-                                   :style #{}})
+                                   :bg :white})
                        items)
          ;; if width is :auto calc width by using max item length
          width    (if (= width :auto)
@@ -585,7 +584,7 @@
                     (when title
                       (format "  %s" title)))
          items    (if title
-                     (concat [{:s title :fg :black :bg :white :style #{:underline :bold}}]
+                     (concat [{:s title :fg :black :bg :white}]
                               items)
                      items)]
      (render-list rstate :ui x y width height items))))
@@ -622,13 +621,13 @@
         ;; render atmo
         (render-atmo state 37 21)
         ;; render statuses
-        (put-chars :ui [{:x 37 :y 23 :c \      :fg gray-rgb :bg gray-rgb}
+        (put-chars :ui [{:x 37 :y 23 :c \space :fg gray-rgb :bg gray-rgb}
                         {:x 38 :y 23 :c \u2665 :fg (if (player-wounded? state) red-rgb black-rgb) :bg gray-rgb}
-                        {:x 39 :y 23 :c \      :fg gray-rgb :bg gray-rgb}
+                        {:x 39 :y 23 :c \space :fg gray-rgb :bg gray-rgb}
                         {:x 40 :y 23 :c \u2665 :fg (if (player-poisoned? state) green-rgb black-rgb) :bg gray-rgb}
-                        {:x 41 :y 23 :c \      :fg gray-rgb :bg gray-rgb}
+                        {:x 41 :y 23 :c \space :fg gray-rgb :bg gray-rgb}
                         {:x 42 :y 23 :c \u2665 :fg (if (player-infected? state) yellow-rgb black-rgb) :bg gray-rgb}
-                        {:x 43 :y 23 :c \      :fg gray-rgb :bg gray-rgb}])
+                        {:x 43 :y 23 :c \space :fg gray-rgb :bg gray-rgb}])
         ((fn [rstate]
           (if (= (current-state state) :sleep)
             (put-string rstate 38 20 :ui (format "Zzz%s" (apply str (repeat (mod (get-time state) 3) "." ))) #{} {:mask #{:rain :transform}}))
@@ -692,7 +691,7 @@
         (if (= (get (rw/get-cell state x y) :discovered) current-time)
           (let [bg (rcolor/color->rgb (rand-nth [:beige :temple-beige :light-brown]))]
           ;; TODO implement
-            (conj characters {:x x :y y :c \  :fg [0 0 0] :bg bg}))
+            (conj characters {:x x :y y :c \space :fg [0 0 0] :bg bg}))
           characters))
         (keys (get trap :locations))))))
 
@@ -789,16 +788,15 @@
               (fn [ability]
                 [{:s (format "<color fg=\"highlight\">%s</color> - %s" (get ability :hotkey) (get ability :name))
                   :fg :black
-                  :bg :white
-                  :style #{}}
-                 {:s (format "    %s" (get ability :description)) :fg :black :bg :white :style #{}}
-                 {:s "" :fg :black :bg :white :style #{}}])
+                  :bg :white}
+                 {:s (format "    %s" (get ability :description)) :fg :black :bg :white}
+                 {:s "" :fg :black :bg :white}])
               abilities)
-            [{:s "" :fg :black :bg :white :style #{}}
-             {:s "Select hotkey or press <color fg=\"highlight\">Esc</color> to exit." :fg :black :bg :white :style #{}}])
-          [{:s "No abilities." :fg :black :bg :white :style #{}}
-           {:s "" :fg :black :bg :white :style #{}}
-           {:s "Press <color fg=\"highlight\">Esc</color> to exit." :fg :black :bg :white :style #{}}]))
+            [{:s "" :fg :black :bg :white}
+             {:s "Select hotkey or press <color fg=\"highlight\">Esc</color> to exit." :fg :black :bg :white}])
+          [{:s "No abilities." :fg :black :bg :white}
+           {:s "" :fg :black :bg :white}
+           {:s "Press <color fg=\"highlight\">Esc</color> to exit." :fg :black :bg :white}]))
           
       (render-rect-double-border 16 3 43 height :black :white)
       (put-string :ui 33 3 "Abilities" :black :white))))
@@ -815,13 +813,12 @@
             (fn [ability]
               [{:s (format "<color fg=\"highlight\">%s</color> - %s" (get ability :hotkey) (get ability :name))
                 :fg :black
-                :bg :white
-                :style #{}}
-               {:s (format "    %s" (get ability :description)) :fg :black :bg :white :style #{}}
-               {:s "" :fg :black :bg :white :style #{}}])
+                :bg :white}
+               {:s (format "    %s" (get ability :description)) :fg :black :bg :white}
+               {:s "" :fg :black :bg :white}])
             abilities)
-          [{:s "" :fg :black :bg :white :style #{}}
-           {:s "Select hotkey." :fg :black :bg :white :style #{}}]))
+          [{:s "" :fg :black :bg :white}
+           {:s "Select hotkey." :fg :black :bg :white}]))
       (render-rect-double-border 16 3 43 height :black :white)
       (put-string :ui 29 3 "Choose New Ability" :black :white))))
 
@@ -840,15 +837,14 @@
               (fn [ability]
                 [{:s (format "<color fg=\"highlight\">%s</color> - %s" (get ability :hotkey) (get ability :name))
                   :fg :black
-                  :bg :white
-                  :style #{}}
-                 {:s "" :fg :black :bg :white :style #{}}])
+                  :bg :white}
+                 {:s "" :fg :black :bg :white}])
               abilities)
-            [{:s "" :fg :black :bg :white :style #{}}
-             {:s "Select hotkey or press <color fg=\"highlight\">Esc</color> to exit." :fg :black :bg :white :style #{}}])
-          [{:s "Nothing to do." :fg :black :bg :white :style #{}}
-           {:s "" :fg :black :bg :white :style #{}}
-           {:s "Press <color fg=\"highlight\">Esc</color> to exit." :fg :black :bg :white :style #{}}]))
+            [{:s "" :fg :black :bg :white}
+             {:s "Select hotkey or press <color fg=\"highlight\">Esc</color> to exit." :fg :black :bg :white}])
+          [{:s "Nothing to do." :fg :black :bg :white}
+           {:s "" :fg :black :bg :white}
+           {:s "Press <color fg=\"highlight\">Esc</color> to exit." :fg :black :bg :white}]))
           
       (render-rect-double-border 16 3 43 height :black :white)
       (put-string :ui 30 3 "Choose Action" :black :white))))
@@ -870,16 +866,16 @@
         toughness     (rp/get-player-attribute state :toughness)]
     (-> rstate
       (render-list :ui (inc x) (inc y) 43 height
-          [{:s (format "Name:      %s" player-name) :fg :black :bg :white :style #{}}
-           {:s (format "Level:     %d (%d/%d)" level xp xp-next-level) :fg :black :bg :white :style #{}}
-           {:s "" :fg :black :bg :white :style #{}}
-           {:s (format "Max HP:    %d" max-hp ) :fg :black :bg :white :style #{}}
-           {:s "" :fg :black :bg :white :style #{}}
-           {:s (format "Strength:  %d" strength ) :fg :black :bg :white :style #{}}
-           {:s (format "Dexterity: %d" dexterity ) :fg :black :bg :white :style #{}}
-           {:s (format "Toughness: %d" toughness ) :fg :black :bg :white :style #{}}
-           {:s "" :fg :black :bg :white :style #{}}
-           {:s "Press <color fg=\"highlight\">Esc</color> to exit." :fg :black :bg :white :style #{}}])
+          [{:s (format "Name:      %s" player-name) :fg :black :bg :white}
+           {:s (format "Level:     %d (%d/%d)" level xp xp-next-level) :fg :black :bg :white}
+           {:s "" :fg :black :bg :white}
+           {:s (format "Max HP:    %d" max-hp ) :fg :black :bg :white}
+           {:s "" :fg :black :bg :white}
+           {:s (format "Strength:  %d" strength ) :fg :black :bg :white}
+           {:s (format "Dexterity: %d" dexterity ) :fg :black :bg :white}
+           {:s (format "Toughness: %d" toughness ) :fg :black :bg :white}
+           {:s "" :fg :black :bg :white}
+           {:s "Press <color fg=\"highlight\">Esc</color> to exit." :fg :black :bg :white}])
       (render-rect-double-border x y 43 height :black :white)
       (put-string :ui (+ x 16) y "Player Info" :black :white))))
 
@@ -997,7 +993,7 @@
                         :name "Sell"}]
         last-response ((or (last (get-in state [:world :dialog-log])) {:text ""}) :text)
         response-wrapped (wrap-line (- 30 17) last-response)
-        style {:fg :black :bg :white :styles #{:bold}}]
+        style {:fg :black :bg :white}]
     (put-string rstate :ui 0 16 (format "Doing business with %-69s" (get npc :name)) :black :white #{:bold})
     (doall (map (fn [y] (put-string rstate :ui 12 y "                    " :black :white #{:bold}))
                 (range 17 (+ 17 6))))
@@ -1023,7 +1019,7 @@
         _ (log/debug "last-response" last-response)
         response-wrapped (wrap-line (- 30 17) last-response)
         _ (log/debug "response-wrapped" response-wrapped)
-        style {:fg :black :bg :white :styles #{:bold}}]
+        style {:fg :black :bg :white}]
     (put-string rstate :ui 0 16 (format "Doing business with %-69s" (get npc :name)) :black :white #{:bold})
     (doall (map (fn [y] (put-string rstate :ui 12 y "                    " :black :white #{:bold}))
                 (range 17 (+ 17 6))))
@@ -1046,7 +1042,7 @@
         _ (log/debug "last-response" last-response)
         response-wrapped (wrap-line (- 30 17) last-response)
         _ (log/debug "response-wrapped" response-wrapped)
-        style {:fg :black :bg :white :styles #{:bold}}]
+        style {:fg :black :bg :white}]
     (put-string rstate :ui 0 16 (format "Doing business with %-69s" (get npc :name)) :black :white #{:bold})
     (doall (map (fn [y] (put-string rstate :ui 12 y "                    " :black :white #{:bold}))
                 (range 17 (+ 17 6))))
@@ -1080,7 +1076,7 @@
   ;; render recipes
   (render-list rstate :ui 11 6 29 15
     (concat
-      [{:s (name recipe-type) :fg :black :bg :white :style #{:underline}}]
+      [{:s (name recipe-type) :fg :black :bg :white}]
        (map (fn [recipe]
               {:s (format #?(:clj  "%c-%s"
                              :cljs "%s-%s")
@@ -1105,10 +1101,10 @@
       (log/info "exhaust" exhaust "have" have)
       (render-list rstate :ui 41 6 29 15
       (concat
-        [{:s "" :fg :black :bg :white :style #{}}
-         {:s "Consumes" :fg :black :bg :white :style #{}}]
+        [{:s "" :fg :black :bg :white}
+         {:s "Consumes" :fg :black :bg :white}]
         (if (empty? exhaust)
-          [{:s "N/A" :fg :black :bg :white :style #{}}]
+          [{:s "N/A" :fg :black :bg :white}]
           (let [idx-ids (mapcat (fn [ids]
                            (map-indexed vector ids))
                          (partition-by identity (sort exhaust)))]
@@ -1116,17 +1112,17 @@
             (reduce (fn [lines [idx id]]
                       (conj lines
                             (if (< idx (get inventory-id-freqs id 0))
-                              {:s (id->name id) :fg :black :bg :white :style #{}}
-                              {:s (id->name id) :fg :gray :bg :white :style #{}})))
+                              {:s (id->name id) :fg :black :bg :white}
+                              {:s (id->name id) :fg :gray :bg :white})))
                    []
                    idx-ids)))
-        [{:s "" :fg :black :bg :white :style #{}}
-         {:s "Required tools" :fg :black :bg :white :style #{}}]
+        [{:s "" :fg :black :bg :white}
+         {:s "Required tools" :fg :black :bg :whit}]
         (if (empty? have)
-          [{:s "N/A" :fg :black :bg :white :style #{}}]
-          (map (fn [id] {:s (id->name id) :fg :black :bg :white :style #{}}) have)))))
+          [{:s "N/A" :fg :black :bg :white}]
+          (map (fn [id] {:s (id->name id) :fg :black :bg :white}) have)))))
     (render-list rstate :ui 41 6 29 15
-        [{:s "Select a recipe" :fg :black :bg :white :style #{}}]))
+        [{:s "Select a recipe" :fg :black :bg :white}]))
   (render-rect-single-border rstate 10 5 60 15 :black :white)
   (render-vertical-border rstate 40 6 15 :black :white)
   (put-string rstate :ui 40 20 "\u2534" :black :white)
@@ -1169,7 +1165,7 @@
     (-> rstate
       (render-list :ui 16 4 width 6
         (concat
-          [{:s "" :fg :black :bg :white :style #{}}]
+          [{:s "" :fg :black :bg :white}]
           (map
             (fn [line] {:s line :fg :black :bg :white :style #{:center}})
             (remove empty? (clojure.string/split-lines start-text)))
@@ -1190,7 +1186,7 @@
     (-> rstate
       (render-list :ui popover-x popover-y width (inc height)
         (concat
-          [{:s "" :fg :black :bg :white :style #{}}]
+          [{:s "" :fg :black :bg :white}]
           (map
             (fn [line] {:s line :fg :black :bg :white :style #{:center}})
             lines)))
@@ -1208,11 +1204,11 @@
     (-> rstate
       (render-list :ui popover-x popover-y width (+ 4 height)
         (concat
-          [{:s "" :fg :black :bg :white :style #{}}]
+          [{:s "" :fg :black :bg :white}]
           (map
             (fn [line] {:s line :fg :black :bg :white :style #{:center}})
             (remove empty? lines))
-          [{:s "" :fg :black :bg :white :style #{}}
+          [{:s "" :fg :black :bg :white}
            {:s "  Press <color fg=\"highlight\">space</color> to continue." :fg :black :bg :white :style #{:center}}]))
       (render-rect-double-border (dec popover-x) popover-y (inc width) (+ 4 height) :black :white))))
 
@@ -1237,7 +1233,7 @@
     (-> rstate
       (render-list :ui 27 4 width 6
         (concat
-          [{:s "" :fg :black :bg :white :style #{}}]
+          [{:s "" :fg :black :bg :white}]
           (map
             (fn [line] {:s line :fg :black :bg :white :style #{:center}})
             ["You died."
@@ -1251,7 +1247,7 @@
     (-> rstate
       (render-list :ui 16 4 53 6
         (concat
-          [{:s "" :fg :black :bg :white :style #{}}]
+          [{:s "" :fg :black :bg :white}]
           (map
             (fn [line] {:s line :fg :black :bg :white :style #{:center}})
             ["Rescue!"
@@ -1350,10 +1346,12 @@
               place-npcs))))
 
 (defn render-lighting [rstate sight-distance]
-  (let [bg         (rcolor/lighting sight-distance)
-        characters (for [x (range 80)
-                         y (range 24)]
-                     {:x x :y y :c \  :fg [0 0 0] :bg bg})]
+  (let [bg                  (rcolor/lighting sight-distance)
+        light-producing-xys (set (map (juxt :x :y) (get rstate :light-producing-cells)))
+        characters          (for [x (range 80)
+                                  y (range 24)
+                                  :when (not (contains? light-producing-xys [x y]))]
+                              {:x x :y y :c \space :fg [0 0 0] :bg bg})]
     (put-chars rstate :lighting characters)))
 
 (defn draw-log [rstate state]
@@ -1632,6 +1630,15 @@
              (assoc cell :x vx :y vy))
            cells-vxy-wxy))))
 
+(defn concat-light-producing-cells [rstate cells-vxy-wxy]
+  (rc/concat-in
+    rstate
+    [:light-producing-cells]
+    (filter (comp light-producing? :type)
+      (map (fn [[cell vx vy _ _]]
+             (assoc cell :x vx :y vy))
+           cells-vxy-wxy))))
+
 (defn cell->char [current-time sight-distance lantern-on [cell vx vy wx wy]]
    #_(when (= (get cell :discovered 0) current-time)
      (println "render-cell" (select-keys cell [:type :discovered]) vx vy wx wy))
@@ -1743,6 +1750,7 @@
       (put-chars :map characters)
       (log-render state "debug" "0-map-chars.xp")
       (concat-palette-cells fov-cells)
+      (concat-light-producing-cells fov-cells)
     ;; draw character
     ;(log/debug (-> state :world :player))
       (draw-player state current-time vx vy player player-x player-y)
@@ -1921,12 +1929,12 @@
 (defn cp437->unicode
   [c]
   (case (int c)
-      0 \ 
+      0 \space 
       3 \u2665
     179 \u2502
     219 \u2588
     220 \u2584
-    249 "·"
+    249 \·
     250 \u00B7
     c))
 
@@ -1944,7 +1952,7 @@
       (put-chars :ui
         (doseq [i (range 7)]
           {:c (get single-border :vertical)  :x x :y (+ y i 1) :fg (rcolor/color->rgb :white) :bg (rcolor/color->rgb :black)}))
-      (put-chars :ui [{:c (get single-border :bottom-left)  :x x :y (+ y 8) :fg (rcolor/color->rgb :white) :bg (rcolor/color->rgb :black) :style #{}}])
+      (put-chars :ui [{:c (get single-border :bottom-left)  :x x :y (+ y 8) :fg (rcolor/color->rgb :white) :bg (rcolor/color->rgb :black)}])
       ;; print title
       (put-chars :ui (markup->chars x y title))
       ;; print bars
@@ -2074,11 +2082,12 @@
                    :fx       []
                    :lighting []
                    :ui       []}
-                 :fov           #{} ; fov in screen-space
-                 :lantern       [0 0 0]
-                 :night         [255 255 255]
-                 :palette-cells []
-                 :events        [] ; seq of state events translated into draw cmds
+                 :fov                   #{} ; fov in screen-space
+                 :lantern               [0 0 0]
+                 :night                 [255 255 255]
+                 :palette-cells         []
+                 :light-producing-cells []
+                 :events                [] ; seq of state events translated into draw cmds
                }
         cs     (current-state state)]
     (cond

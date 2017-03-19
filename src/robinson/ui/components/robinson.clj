@@ -1348,9 +1348,10 @@
   (let [bg                  (rcolor/lighting sight-distance)
         light-producing-xys (set (map (juxt :x :y) (get rstate :light-producing-cells)))
         characters          (for [x (range 80)
-                                  y (range 24)
-                                  :when (not (contains? light-producing-xys [x y]))]
-                              {:x x :y y :c \space :fg [0 0 0] :bg bg})]
+                                  y (range 24)]
+                              (if (contains? light-producing-xys [x y])
+                                {:x x :y y :c \space :fg [0 0 0] :bg [255 255 255]}
+                                {:x x :y y :c \space :fg [0 0 0] :bg bg}))]
     (put-chars rstate :lighting characters)))
 
 (defn draw-log [rstate state]

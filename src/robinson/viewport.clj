@@ -165,6 +165,10 @@
   [state xy]
   (-xy xy (viewport-xy state)))
 
+(defn world-pos->screen-pos
+  [state pos]
+  (apply rc/xy->pos (-xy (rc/pos->xy pos) (viewport-xy state))))
+
 (defn viewport-xys
   [state]
   (let [{v-width     :width

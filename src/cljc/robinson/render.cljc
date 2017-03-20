@@ -1344,14 +1344,20 @@
               []
               place-npcs))))
 
-(defn render-lighting [rstate sight-distance]
+;; where fov cells are [cell vx vy wx wy]
+(defn render-lighting [rstate state player-pos sight-distance fov-cells lantern-on]
   (let [bg                  (rcolor/lighting sight-distance)
+        player-spos         (rv/world-pos->screen-pos state player-pos)
         light-producing-xys (set (map (juxt :x :y) (get rstate :light-producing-cells)))
         characters          (for [x (range 80)
                                   y (range 24)]
                               (if (contains? light-producing-xys [x y])
                                 {:x x :y y :c \space :fg [0 0 0] :bg [255 255 255]}
-                                {:x x :y y :c \space :fg [0 0 0] :bg bg}))]
+                                (if lantern-on
+                                  (let [d (rc/distance (rc/xy->pos x y) player-spos)
+                                        bg (rcolor/darken-rgb [255 242 192] (- 1 (/ d sight-distance)))]
+                                    {:x x :y y :c \space :fg [0 0 0] :bg bg})
+                                  {:x x :y y :c \space :fg [0 0 0] :bg bg})))]
     (put-chars rstate :lighting characters)))
 
 (defn draw-log [rstate state]
@@ -1759,7 +1765,7 @@
       (log-render state "debug" "2-draw-ranged-attack-line.xp")
       (draw-npcs state player-pos current-time vx vy sight-distance)
       (log-render state "debug" "3-draw-npcs.xp")
-      (render-lighting sight-distance)
+      (render-lighting state player-pos sight-distance fov-cells lantern-on)
       (render-hud state)
       (log-render state "debug" "4-render-hud.xp")
     #_(log/info "current-state" (current-state state))
@@ -2063,9 +2069,10 @@
   "Render the log as a full screen."
   [rstate state]
   (let [log (get-in state [:world :log])]
-    (doall (map-indexed (fn [idx message]
-                          (put-string rstate :ui 0 idx (get message :text) (get message :color) :black))
-                        log))))
+    (reduce (fn [rstate [idx message]]
+              (put-string rstate :ui 0 idx (get message :text) (get message :color) :black))
+            rstate
+            (map vector (range) log))))
 
 (defn render
   "Pick between the normal render function and the

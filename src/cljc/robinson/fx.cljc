@@ -5,6 +5,7 @@
             [robinson.renderutil :as rutil]
             [robinson.math :as rmath]
             [robinson.color :as rcolor]
+            [robinson.lineofsight :as rlos]
             [robinson.world :as rw]
             [robinson.render :as rr]
             [taoensso.timbre :as log]
@@ -103,17 +104,57 @@
                               palette-cells)})
         (repeatedly (fn []
           ((juxt :palette-cells :current-time) @effects-state-ref))))))
- 
+
+(defn- transpose
+  [m]
+  (if (> (count m) 1)
+    (apply map vector m)
+    m))
+
+(defn- log-coll [coll]
+  (log/info (vec coll))
+  coll)
+
+#_(defn make-transform-effect
+  [layer-id fx-ref]
+  (map vector
+    (repeat 500)
+    (repeatedly (fn []
+      ; FIXME what the hell is going on here
+      (let [transforms (get @fx-ref :transforms [])
+            events     
+        (->>
+          transforms
+          log-coll
+          (map (fn [{:keys [from-xy to-xy ch fg]}]
+                 (map (fn [[x y]]
+                        {:c ch :x x :y y :fg fg :bg [0 0 0]})
+                   (rlos/line-segment-fast-without-endpoints from-xy to-xy))))
+          log-coll
+          transpose
+          log-coll
+        (map (fn [characters]
+               (log/info "characters" characters)
+               (let [event [33 {:layer-id layer-id
+                                :characters characters}]]
+               (log/info "transform-effect event" event)
+               event))))]
+        (log/info "transforms" transforms)
+        (log/info "events" (vec events))
+        events)))))
+
 (defn effects-state []
   (atom {:name-entry-pos nil
          :loading?       false
          :palette-cells  []
-         :current-time   0}))
+         :current-time   0
+         :fx             []}))
 
 (defn effects [effects-state]
   [(silenceable (make-loading-effect :uifx 40 18) (projected-ref effects-state #(get % :loading?)))
    (make-name-entry-blink-effect :uifx (projected-ref effects-state #(get % :name-entry-pos)))
-   (make-cell-palette-effect :mapfx effects-state)])
+   (make-cell-palette-effect :mapfx effects-state)
+   #_(make-transform-effect :mapfx (projected-ref effects-state #(get % :fx)))])
 
 (defn update-effects-state! [effects-state state rstate]
   (cond
@@ -126,5 +167,6 @@
     :else
       (swap! effects-state #(assoc % :loading? false
                                      :name-entry-pos nil
-                                     :palette-cells (get rstate :palette-cells )))))
+                                     :palette-cells (get rstate :palette-cells)
+                                     :fx            (get state :fx)))))
 

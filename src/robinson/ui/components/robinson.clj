@@ -6,6 +6,7 @@
             [robinson.math :as rmath]
             [robinson.color :as rcolor]
             [robinson.renderutil :as rutil]
+            [robinson.animation :as ranimation]
             [robinson.image :as rimage]
             [robinson.scores :as rs]
             [robinson.startgame :as sg]
@@ -42,6 +43,7 @@
             [tinter.core :as tinter]
             [rockpick.core :as rockpick]
             [puget.printer :as pprinter]
+            [clojure.core.async :as async :refer [go go-loop]]
             clojure.set
             [clojure.test :as t :refer [is]]
             [clojure.xml :as xml]
@@ -355,7 +357,7 @@
         [fg bg]  (if invert
                    [bg fg]
                    [fg bg])]
-    (let [characters (markup->chars (int (rmath/ceil x)) (int (rmath/ceil y)) s fg bg )]
+    (let [characters (markup->chars (int (rmath/ceil x)) (int (rmath/ceil y)) s fg bg)]
       (put-chars rstate layer-id characters)))))
 
 (def single-border
@@ -505,7 +507,7 @@
         width    30
         height   23
         lines    (rc/wrap-line 28 text)
-        characters (markup->chars x (inc y) text :black :white #{})
+        characters (markup->chars x (inc y) text :black :white)
         characters (wrap-chars x (inc y) width height characters :black :white #{})]
      (-> rstate
        (put-chars (wrap-chars x y  width 1 (markup->chars x y title :black :white) :black :white))
@@ -764,8 +766,9 @@
   (log/debug "x" x "y" y)
   (log/debug "cell" cell)
   (log/debug "cell-items" cell-items)
-  (render-multi-select rstate "Pick up" selected-hotkeys (translate-identified-items state items))
-  (put-chars rstate :ui (markup->chars 41 20 "<color fg=\"highlight\">space</color>-All" :black :white #{}))))
+  (-> rstate
+    (render-multi-select "Pick up" selected-hotkeys (translate-identified-items state items))
+    (put-chars :ui (markup->chars 41 20 "<color fg=\"highlight\">space</color>-All" :black :white)))))
 
 (defn render-inventory
   "Render the pickup item menu if the world state is `:inventory`."
@@ -1754,28 +1757,17 @@
     #_(log/info "putting chars" characters)
     (-> rstate
       (put-chars :map characters)
-      (log-render state "debug" "0-map-chars.xp")
       (concat-palette-cells fov-cells)
       (concat-light-producing-cells fov-cells)
-    ;; draw character
-    ;(log/debug (-> state :world :player))
+      ;; draw character
       (draw-player state current-time vx vy player player-x player-y)
-      (log-render state "debug" "1-draw-player.xp")
       (draw-ranged-attack-line state player player-x player-y)
-      (log-render state "debug" "2-draw-ranged-attack-line.xp")
       (draw-npcs state player-pos current-time vx vy sight-distance)
-      (log-render state "debug" "3-draw-npcs.xp")
       (render-lighting state player-pos sight-distance fov-cells lantern-on)
       (render-hud state)
-      (log-render state "debug" "4-render-hud.xp")
-    #_(log/info "current-state" (current-state state))
-    #_(println "ui-hint" (get-in state [:world :ui-hint]))
       (draw-log state)
-      (log-render state "debug" "5-render-log.xp")
       (render-traps state)
-      (log-render state "debug" "6-render-traps.xp")
       (render-menus state)
-      (log-render state "debug" "7-render-menus.xp")
       ((fn [rstate]
          ;; draw cursor
          (if-let [cursor-pos (-> state :world :cursor)]
@@ -2080,7 +2072,7 @@
    of the player."
   [state]
   {:pre [(not (nil? state))]
-   :post [renderstate?]}
+   :post [coll?]}
   (log/info "render current-state" (current-state state))
   ;; rstate = render state
   (let [rstate {:layers {
@@ -2096,40 +2088,46 @@
                  :light-producing-cells []
                  :events                [] ; seq of state events translated into draw cmds
                }
-        cs     (current-state state)]
+        cs     (current-state state)
+        immediate (fn [rstate]
+                    (let [rstate-chan (async/chan)]
+                      (async/put! rstate-chan rstate)
+                      rstate-chan))]
     (cond
       (= cs :start)
-        (render-start rstate state)
+        (immediate (render-start rstate state))
       (= cs :configure)
-        (render-configure rstate state)
+        (immediate (render-configure rstate state))
       (= cs :configure-font)
-        (render-configure-font rstate state)
+        (immediate (render-configure-font rstate state))
       (= cs :enter-name)
-        (render-enter-name rstate state)
+        (immediate (render-enter-name rstate state))
       (= cs :start-inventory)
-        (render-start-inventory rstate state)
+        (immediate (render-start-inventory rstate state))
       (= cs :loading)
-        (render-loading rstate state)
+        (immediate (render-loading rstate state))
       (= cs :connecting)
-        (render-connecting rstate state)
+        (immediate (render-connecting rstate state))
       (= cs :connection-failed)
-        (render-connection-failed rstate state)
+        (immediate (render-connection-failed rstate state))
       ;(= (cs) :start-text)
       ;  (render-start-text state)
       ;; Is player dead?
       (contains? #{:game-over-dead :game-over-rescued} cs)
         ;; Render game over
-        (render-game-over rstate state)
+        (immediate (render-game-over rstate state))
       (= cs :share-score)
-        (render-share-score rstate state)
+        (immediate (render-share-score rstate state))
       (= cs :help-controls)
-        (render-keyboardcontrols-help rstate state)
+        (immediate (render-keyboardcontrols-help rstate state))
       (= cs :help-ui)
-        (render-ui-help rstate state)
+        (immediate (render-ui-help rstate state))
       (= cs :help-gameplay)
-        (render-gameplay-help rstate state)
+        (immediate (render-gameplay-help rstate state))
       (= cs :log)
-        (render-full-log rstate state)
-      :else (render-map rstate state))))
+        (immediate (render-full-log rstate state))
+      :else (-> (render-map rstate state)
+              (ranimation/animate state)
+              (ranimation/stream)))))
 
 

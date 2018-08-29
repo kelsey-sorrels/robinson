@@ -1,5 +1,1 @@
-;; Settings
-{
- :font :boxy-24
- :log-level :info
-}
+{:font :boxy-24, :log-level :info, :fx-shader {:brightness 0.0, :contrast 1.0, :noise 0.005}}

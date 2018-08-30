@@ -79,12 +79,31 @@
   {:post [(vector? %)]}
   (mapv (fn [v1 v2] (limit-color 0 (+ v1 v2) 255)) rgb1 rgb2))
 
+(defn lerp [initial final n]
+  (+ initial (* n (- final initial))))
+
+(defn lerp-rgb [initial-rgb final-rgb n]
+  (map #(lerp %1 %2 n) initial-rgb final-rgb))
+
+(defn lighting
+  [sight-distance]
+  (let [night-rgb [(/ 255 4) (/ 255 3) (/ 255 2)]
+        day-rgb   [255 255 255]]
+    (cond
+      (<= sight-distance 4)
+        night-rgb
+      (<= sight-distance 7)
+        (lerp-rgb night-rgb day-rgb (/ (- sight-distance 4) (- 7 4)))
+      :else
+        day-rgb)))
+
 (defn night-tint
   [[r g b] d]
   (if (> d 4)
     [r g b]
     [(/ r 4) (/ g 3) (/ (max r g b) 2)]))
 
+;; returns [char fg bg]
 (defn night-tint-npc
   [[s fg bg] d]
    [s (night-tint (color->rgb (or fg :white)) d) (color->rgb (or bg :black))])

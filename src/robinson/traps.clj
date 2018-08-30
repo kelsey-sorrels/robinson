@@ -441,11 +441,6 @@
       (update-poisonous-gas-trap state idx)
     state))
 
-(defn current-place-traps
-  [state]
-  (let [place-id (rw/current-place-id state)]
-    (get-in state [:world :places place-id :traps] [])))
-
 (defn remove-trap?
   [trap]
   (case (get trap :type)
@@ -458,7 +453,7 @@
   [state]
   (log/info "update-traps")
   (as-> state state
-    (reduce update-trap state (map-indexed vector (current-place-traps state)))
+    (reduce update-trap state (map-indexed vector (rw/current-place-traps state)))
     ;; clean up traps if expired
     (if-let [place-id (rw/current-place-id state)]
       (-> state

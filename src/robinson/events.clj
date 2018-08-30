@@ -5,13 +5,26 @@
             [robinson.fx :as rfx]
             [clojure.core.async :as async :refer [go go-loop]]))
 
+;; For resetting event time when update-state is called
 (defn assoc-event-time [state t]
   (assoc state :event-time t))
 
+;; For adding new events to the end of the event stream
 (defn conj-event [state dt f]
-  (log/info "Conj event")
+  (log/info "conj event")
   (let [event-time (get state :event-time)]
     (update state :events (fn [events] (assoc events f (+ event-time dt))))))
+
+;; For adding new events at the start of the event stream without pushing back existing events
+(defn merge-event [state dt f]
+  (log/info "merge event")
+  ; TODO: implement
+  (let [event-time (get state :event-time)]
+    (update state :events (fn [events] (assoc events f (+ event-time dt))))))
+
+(defn transform->event-fn [transform]
+  ; TODO: implement
+  identity)
 
 (defn- empty-events? [state]
   (-> state

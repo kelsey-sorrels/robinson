@@ -54,8 +54,8 @@
 (defn xy->place-id
   [state x y]
   {:pre [(not (nil? state))
-         (integer? x)
-         (integer? y)]
+         (is (integer? x) (format "x:" x))
+         (is (integer? y) (format "y:" y))]
    :post [(or (string? %) (vector? %))]}
   (or (get-in state [:world :current-place])
     (let [{v-width     :width
@@ -160,6 +160,10 @@
 (defn world-xy->screen-xy
   [state xy]
   (-xy xy (viewport-xy state)))
+
+(defn world-pos->screen-pos
+  [state pos]
+  (apply rc/xy->pos (-xy (rc/pos->xy pos) (viewport-xy state))))
 
 (defn viewport-xys
   [state]

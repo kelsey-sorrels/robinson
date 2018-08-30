@@ -50,7 +50,7 @@
 
   :profiles {
     :demos {:dependencies 
-            [[quil "2.7.1"]]}
+              [[quil "2.7.1"]]}
     :uberjar {:aot [robinson.update
                     robinson.render
                     robinson.npc

@@ -28,7 +28,6 @@
                                             player-infected?]]
             [robinson.describe :as rdesc]
             [robinson.endgame :as rendgame :refer [gen-end-madlib]]
-            [robinson.magic :as rm :refer [get-magical-abilities]]
             [robinson.crafting :as rcrafting :refer [get-recipes]]
             [robinson.itemgen :refer [can-be-wielded?
                                       can-be-wielded-for-ranged-combat?
@@ -39,7 +38,7 @@
                                                fsm-current-state]]
             [robinson.npc :as rnpc :refer [talking-npcs
                                            npcs-in-viewport]]
-            [robinson.traps :as rt]
+            #_[robinson.traps :as rt]
             [robinson.ui.updater :as ruu]
             [zaffre.terminal :as zat]
             [zaffre.animation.wrapper :as zaw]

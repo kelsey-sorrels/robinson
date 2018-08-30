@@ -7,7 +7,6 @@
             [robinson.color :as rcolor]
             [robinson.lineofsight :as rlos]
             [robinson.world :as rw]
-            [robinson.render :as rr]
             [taoensso.timbre :as log]
             [zaffre.animation.wrapper :as zaw]))
 
@@ -87,7 +86,7 @@
          (repeat 11)
          (args-stream 0))))
 
-(defn make-cell-palette-effect
+#_(defn make-cell-palette-effect
   [layer-id effects-state-ref]
     (map vector
       ; FIXME long animation deplays don't work with map movement. change to shorter dt
@@ -153,7 +152,7 @@
 (defn effects [effects-state]
   [(silenceable (make-loading-effect :uifx 40 18) (projected-ref effects-state #(get % :loading?)))
    (make-name-entry-blink-effect :uifx (projected-ref effects-state #(get % :name-entry-pos)))
-   (make-cell-palette-effect :mapfx effects-state)
+   #_(make-cell-palette-effect :mapfx effects-state)
    #_(make-transform-effect :mapfx (projected-ref effects-state #(get % :fx)))])
 
 (defn update-effects-state! [effects-state state rstate]

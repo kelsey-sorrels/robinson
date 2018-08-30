@@ -23,8 +23,6 @@
             [robinson.npc :as rnpc]
             [robinson.combat :as rcombat]
             [robinson.crafting :as rcraft]
-            [robinson.magic :refer [do-magic magic-left magic-down
-                                    magic-up magic-right magic-inventory]]
             [robinson.worldgen :as rworldgen]
             [robinson.lineofsight :as rlos]
             [robinson.renderutil :as rutil]
@@ -3275,7 +3273,6 @@
                            \M          [toggle-mount           :normal          false]
                            \P          [next-party-member      :normal          false]
                            \z          [identity               :craft           true]
-                           \Z          [identity               :magic           true]
                            \v          [identity               :abilities       false]
                            \g          [identity               :player-stats    false]
                            \t          [identity               :throw-inventory false]
@@ -3558,16 +3555,6 @@
                :fishing-down
                           {\.          [rai/do-fishing         rw/current-state true]
                            :else       [pass-state             :normal          false]}
-               :magic     {:escape     [identity               :normal          false]
-                           :else       [do-magic               rw/current-state true]}
-               :magic-direction
-                          {:left       [magic-left             rw/current-state true]
-                           :down       [magic-down             rw/current-state true]
-                           :up         [magic-up               rw/current-state true]
-                           :right      [magic-right            rw/current-state true]}
-               :magic-inventory
-                          {:escape     [identity               :normal          false]
-                           :else       [magic-inventory        :normal          true]}
                :sleep     {:else       [do-sleep               rw/current-state true]}
                :gain-level
                           {:escape     [identity               :normal          false]
@@ -3633,7 +3620,6 @@
     :talk
     :pickup
     :harvest
-    :magic-direction
     :direction-select
     :close})
 

@@ -58,8 +58,8 @@
 (defn xy->place-id
   [state x y]
   {:pre [(not (nil? state))
-         (is (integer? x) (format "x:" x))
-         (is (integer? y) (format "y:" y))]
+         (integer? x)
+         (integer? y)]
    :post [(or (string? %) (vector? %))]}
   (or (get-in state [:world :current-place])
     (let [{v-width     :width

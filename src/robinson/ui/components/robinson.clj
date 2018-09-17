@@ -90,6 +90,12 @@
   (contains? #{:inventory :describe-inventory :pickup-selection :drop :eat} (get-in state [:world :current-state])))
 
 (binding [zc/*updater* ruu/updater]
+(zc/def-component Highlight
+  [this]
+  (let [{:keys [children]} (zc/props this)]
+    (zc/csx
+      [:text {:style {:color [229 155 8 255]}} children])))
+
 (zc/def-component ItemList
   [this]
   (let [{:keys [items]} (zc/props this)]
@@ -99,43 +105,40 @@
             [:view {:style {:fg fg :bg bg :display :block}} [
               [:text {} [s]]]])
             items)])))
-   
+
+(zc/def-component SelectItemListItem
+  [this]
+  (let [{:keys [hotkey selected text]} (zc/props this)]
+    (zc/csx
+      [:text {} [
+        [Highlight {} [(str hotkey " ")]]
+        [:text {} [(format "%s %s"
+                     (if selected
+                       "+"
+                       "-")
+                     text)]]]])))
+
 (zc/def-component SelectItemList
   [this]
   (let [{:keys [title selected-hotkeys use-applicable items]} (zc/props this)]
-    (zc/csx
-      [:view {} (cons
-          [:text {} [title]]
-          (map (fn [item]
-                 {:s (format "%s%s%s%s %s %s"
-                       (or (item :hotkey)
-                           \ )
-                       (if (contains? selected-hotkeys (item :hotkey))
-                         \+
-                         \-)
-                       (if (contains? item :count)
-                         (format "%dx " (int (get item :count)))
-                         "")
-                       (get item :name)
-                       (if (contains? item :utility)
-                         (format "(%d%%)" (int (get item :utility)))
-                         "")
-                       (cond
-                         (contains? item :wielded)
-                           "(wielded)"
-                         (contains? item :wielded-ranged)
-                           "(wielded ranged)"
-                         (contains? item :worn)
-                           "(worn)"
-                         :else
-                           ""))
-                  :fg (if (or (not use-applicable)
-                              (get item :applicable))
-                        :black
-                        :gray)
-                  :bg :white
-                  :style #{}})
-               items))])))
+    (zc/csx [:view {:style {:width "60%"}} [
+              [:text {} [title]]
+              [:view {:style {:top 2 :left 10}} 
+                     (map (fn [item]
+                            (zc/csx [SelectItemListItem {:hotkey 
+                                                           (or (item :hotkey)
+                                                               \ )
+                                                         :selected
+                                                           (contains? selected-hotkeys (get item :hotkey))
+                                                         :text
+                                                           (str (get item :name)
+                                                             (if (contains? item :count)
+                                                               (format " (%dx)" (int (get item :count)))
+                                                               ""))}]))
+                          items)]
+              [:text {:style {:top 5 :left 10}} [
+                [Highlight {} ["enter "]]
+                [:text {} ["to continue"]]]]]])))
 
 #_(defn render-atmo
   [state x y]
@@ -1379,22 +1382,25 @@
                                         line))
                          layer))))
 
-(binding [zc/*updater* ruu/updater]
 (zc/def-component Start
   [this]
   (zc/csx
     [:terminal {} [
       [:group {:id :app} [
+        [:layer {:id :map} [
+          [zcui/Image {:src "/home/santos/src/robinson/images/robinson-mainmenu.jpg"}]]]
         [:layer {:id :ui} [
-          [:view {} [
-              [zcui/Image {:src "/home/santos/src/robinson/images/robinson-mainmenu.jpg"}]
-              [:view {:style {:position-type :absolute
-                              :position-top 30
-                              :position-left 20}} [
-                [:text {} ["Press space to play"]]
-                [:text {} ["c - configure"]]]]]]]]]]]]))
-)
-   
+              [:view {:style {:color [255 255 255 255]
+                              :background-color [0 0 0 0]
+                              :position :fixed
+                              :top 20
+                              :left 30}} [
+                [:text {} [
+                  [:text {} ["Press "]]
+                  [Highlight {}  ["space "]]
+                  [:text {} ["to play"]]]]
+                [:text {} [[Highlight {} ["c"]] [:text  {} [" - configure"]]]]]]]]]]]]))
+
 (zc/def-component Configure
   [this]
   (let [{:keys [state]} (zc/props this)]
@@ -1402,9 +1408,9 @@
 	  [:terminal {} [
 		[:group {:id :app} [
 		  [:layer {:id :ui} [
-			[:view {:style {:position-type :absolute
-							:position-top 30
-							:position-left 20}} [
+			[:view {:style {:position :fixed
+							:top 30
+							:left 20}} [
 			  [:text {} ["Configure"]]
 			  [:text {} ["f - font"]]]]]]]]]])))
 
@@ -1427,67 +1433,96 @@
 
 (zc/def-component EnterName
   [this]
-  (let [{:keys [state]} (zc/props this)]
-    nil
-))
+  (let [{:keys [game-state]} (zc/props this)
+        player-name (get-in game-state [:world :player :name])]
+    (zc/csx
+	  [:terminal {} [
+		[:group {:id :app} [
+		  [:layer {:id :ui} [
+			[:view {:style {:top 10
+							:left 30
+                            :width 80
+                            :display :flex
+                            :flex-direction :row}} [
+              [:text {:style {:width 5}} ["Name:"]]
+              [:view {:style {:position :relative} } [
+			    [zcui/Input {:value player-name
+                             :focused true}]]]]]]]]]]])))
 
 (zc/def-component StartInventory
   [this]
-  (let [{:keys [state]} (zc/props this)
-        player-name      (get-in state [:world :player :name])
-        selected-hotkeys (get-in state [:world :selected-hotkeys])
+  (let [{:keys [game-state]} (zc/props this)
+        player-name      (get-in game-state [:world :player :name])
+        selected-hotkeys (get-in game-state [:world :selected-hotkeys])
         start-inventory  (sg/start-inventory)]
     (zc/csx
 	  [:terminal {} [
 		[:group {:id :app} [
 		  [:layer {:id :ui} [
-            [:text {:style {:position-top 20 :position-left 5}} ["Choose up to three things to take with you:"]]
-            [:view {}
-              (for [item      start-inventory
-                    :let [hotkey    (get item :hotkey)
-                          item-name (get item :name)]]
-                [:text {} [(format "<color fg=\"highlight\">%c</color>%c%s"
-                                                                    hotkey
-                                                                    (if (contains? selected-hotkeys hotkey)
-                                                                      \+
-                                                                      \-)
-                                                                    item-name)]])]]]]]]])))
+            [:view {:style {:align-items :center
+                            :justify-content :center
+                            :position :fixed
+                            :top 2
+                            :left 0}} [
+              [SelectItemList {:title "Choose up to three things to take with you:"
+                               :selected-hotkeys selected-hotkeys
+                               :use-applicable true
+                               :items start-inventory}]]]]]]]]])))
 
 (zc/def-component Loading
   [this]
   (let [{:keys [state]} (zc/props this)]
-    nil
-))
+    (zc/csx 
+	  [:terminal {} [
+		[:group {:id :app} [
+		  [:layer {:id :ui} [
+            [:view {:style {:position :fixed
+                            :top 10
+                            :left 36}} [
+              [:text {} ["Loading..."]]]]]]]]]])))
 
 (zc/def-component Connecting
   [this]
-  (let [{:keys [state]} (zc/props this)]
+  (let [{:keys [game-state]} (zc/props this)]
     nil
 ))
 
 (zc/def-component ConnectionFailed
   [this]
-  (let [{:keys [state]} (zc/props this)]
+  (let [{:keys [game-state]} (zc/props this)]
     nil
 ))
 
+(zc/def-component StartText
+  [this]
+  (let [{:keys [game-state]} (zc/props this)]
+    (zc/csx 
+	  [:terminal {} [
+		[:group {:id :app} [
+		  [:layer {:id :ui} [
+            [:view {:style {:align-items :center
+                            :justify-content :center
+                            :position :fixed
+                            :top 2
+                            :left 30}} [
+              [:text {} ["Start Text"]]]]]]]]]])))
 
 (zc/def-component GameOver
   [this]
-  (let [{:keys [state]} (zc/props this)]
+  (let [{:keys [game-state]} (zc/props this)]
     nil
 ))
 
 (zc/def-component ShareScore
   [this]
-  (let [{:keys [state]} (zc/props this)]
+  (let [{:keys [game-state]} (zc/props this)]
     nil
 ))
 
 (zc/def-component RexPaintFromData
   [this]
-  (let [{:keys [state data-key]} (zc/props this)
-        data (get-in state [:data data-key])]
+  (let [{:keys [game-state data-key]} (zc/props this)
+        data (get-in game-state [:data data-key])]
     (zc/csx
 	  [:terminal {} [
 		[:group {:id :app} [
@@ -1497,27 +1532,27 @@
 
 (zc/def-component KeyboardControlsHelp
   [this]
-  (let [{:keys [state]} (zc/props this)]
+  (let [{:keys [game-state]} (zc/props this)]
     (zc/csx
-	  [RexPaintFromData {:state state :data-key :keyboard-controls}])))
+	  [RexPaintFromData {:state game-state :data-key :keyboard-controls}])))
 
 
 (zc/def-component UIHelp
   [this]
-  (let [{:keys [state]} (zc/props this)]
+  (let [{:keys [game-state]} (zc/props this)]
     (zc/csx
-	  [RexPaintFromData {:state state :data-key :ui}])))
+	  [RexPaintFromData {:state game-state :data-key :ui}])))
 
 (zc/def-component GameplayHelp
   [this]
-  (let [{:keys [state]} (zc/props this)]
+  (let [{:keys [game-state]} (zc/props this)]
     (zc/csx
-	  [RexPaintFromData {:state state :data-key :gameplay}])))
+	  [RexPaintFromData {:game-state game-state :data-key :gameplay}])))
 
 (zc/def-component FullLog
   [this]
-  (let [{:keys [state]} (zc/props this)
-        log (get-in state [:world :log])]
+  (let [{:keys [game-state]} (zc/props this)
+        log (get-in game-state [:world :log])]
     (zc/csx
 	  [:terminal {} [
 		[:group {:id :app} [
@@ -1528,52 +1563,53 @@
 
 (zc/def-component Map
   [this]
-  (let [{:keys [state]} (zc/props this)]
+  (let [{:keys [game-state]} (zc/props this)]
     (zc/csx
 	  [:terminal {} [
 		[:group {:id :app} [
 		  [:layer {:id :ui} [
-            [:view {} [
+            [:view {:style {:top 2 :left 10}} [
               [:text {} ["Map"]]]]]]]]]])))
 
 (zc/def-component Robinson
   [this]
-  (let [state (get (zc/props this) :game-state)]
-    (assert (not (nil? state)))
-    (log/info "render current-state" (current-state state))
+  (let [game-state (get (zc/props this) :game-state)]
+    (assert (not (nil? game-state)))
+    (log/info "render current-state" (current-state game-state))
     (cond
-      (= (current-state state) :start)
+      (= (current-state game-state) :start)
         (zc/csx [Start {}])
-      (= (current-state state) :configure)
-        (zc/csx [Configure {:state state}])
-      (= (current-state state) :configure-font)
-        (zc/csx [ConfigureFont {:state state}])
-      (= (current-state state) :enter-name)
-        (zc/csx [EnterName {:state state}])
-      (= (current-state state) :start-inventory)
-        (zc/csx [StartInventory {:state state}])
-      (= (current-state state) :loading)
-        (zc/csx [Loading {:state state}])
-      (= (current-state state) :connecting)
-        (zc/csx [Connecting {:state state}])
-      (= (current-state state) :connection-failed)
-        (zc/csx [ConnectionFailed {:state state}])
-      ;(= (current-state state) :start-text)
-      ;  (render-start-text state)
+      (= (current-state game-state) :configure)
+        (zc/csx [Configure {:game-state game-state}])
+      (= (current-state game-state) :configure-font)
+        (zc/csx [ConfigureFont {:game-state game-state}])
+      (= (current-state game-state) :enter-name)
+        (zc/csx [EnterName {:game-state game-state}])
+      (= (current-state game-state) :start-inventory)
+        (zc/csx [StartInventory {:game-state game-state}])
+      (= (current-state game-state) :loading)
+        (zc/csx [Loading {:game-state game-state}])
+      (= (current-state game-state) :connecting)
+        (zc/csx [Connecting {:game-state game-state}])
+      (= (current-state game-state) :connection-failed)
+        (zc/csx [ConnectionFailed {:game-state game-state}])
+      (= (current-state game-state) :start-text)
+        (zc/csx [StartText {:game-state game-state}])
+      ;  (render-start-text game-state)
       ;; Is player dead?
-      (contains? #{:game-over-dead :game-over-rescued} (current-state state))
+      (contains? #{:game-over-dead :game-over-rescued} (current-state game-state))
         ;; Render game over
-        (zc/csx [GameOver {:state state}])
-      (= (get-in state [:world :current-state]) :share-score)
-        (zc/csx [ShareScore {:state state}])
-      (= (get-in state [:world :current-state]) :help-controls)
-        (zc/csx [KeyboardControlsHelp {:state state}])
-      (= (get-in state [:world :current-state]) :help-ui)
-        (zc/csx [UIHelp {:state state}])
-      (= (get-in state [:world :current-state]) :help-gameplay)
-        (zc/csx [GameplayHelp {:state state}])
-      (= (get-in state [:world :current-state]) :log)
-        (zc/csx [FullLog {:state state}])
+        (zc/csx [GameOver {:game-state game-state}])
+      (= (get-in game-state [:world :current-state]) :share-score)
+        (zc/csx [ShareScore {:game-state game-state}])
+      (= (get-in game-state [:world :current-state]) :help-controls)
+        (zc/csx [KeyboardControlsHelp {:game-state game-state}])
+      (= (get-in game-state [:world :current-state]) :help-ui)
+        (zc/csx [UIHelp {:game-state game-state}])
+      (= (get-in game-state [:world :current-state]) :help-gameplay)
+        (zc/csx [GameplayHelp {:game-state game-state}])
+      (= (get-in game-state [:world :current-state]) :log)
+        (zc/csx [FullLog {:game-state game-state}])
       :else
-        (zc/csx [Map {:state state}]))))
+        (zc/csx [Map {:game-state game-state}]))))
 )

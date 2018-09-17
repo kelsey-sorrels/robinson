@@ -68,6 +68,7 @@
                        robinson.combat robinson.core robinson.describe robinson.endgame robinson.lineofsight robinson.main robinson.monstergen
                        robinson.player robinson.render robinson.swingterminal robinson.viewport robinson.worldgen]}
   :repl-options {:timeout 920000}
+  :global-vars {*warn-on-reflection* true}
   :jvm-opts [
              ;"-agentpath:/home/santos/bin/yjp-2014-build-14096/bin/linux-x86-64/libyjpagent.so"
              "-Xdebug"

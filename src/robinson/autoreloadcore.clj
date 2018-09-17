@@ -1,103 +1,122 @@
 (ns robinson.autoreloadcore
   (:use ns-tracker.core
         clojure.stacktrace)
-  (:require robinson.main
+  (:require [robinson.main :as main]
             [robinson.world :as rw]
-            ;[robinson.animation :as ranimation]
-            [robinson.aanimatedterminal :as raat]
-            [zaffre.terminal :as zat]
-            [zaffre.animation.wrapper :as zaw]
-            [zaffre.events :as zevents]
+            [zaffre.terminal :as zt]
             [zaffre.glterminal :as zgl]
+            [zaffre.components :as zc]
+            [zaffre.components.events :as zce]
+            [zaffre.components.render :as zcr]
+            [zaffre.tilesets :as ztiles]
+            [zaffre.events :as zevents]
+            [robinson.world :as rw]
+            [robinson.render :as rr]
+            [robinson.ui.updater :as ruu]
+            [robinson.ui.components.robinson :as ruic]
             [clojure.core.async :as async :refer [go go-loop]]
             [clojure.tools.nrepl.server :as nreplserver]
             [taoensso.timbre :as log]))
 
 (defonce server (nreplserver/start-server :port 7888))
 
-(defn check-namespace-changes [track]
- (try
-   (doseq [ns-sym (track)]
-     (when (not (contains? #{"robinson.autoreloadcore"
-                             "robinson.main"
-                             "robinson-tools.worldgen"
-                             "robinson-tools.devtools"} (str ns-sym)))
-     (log/info "Reloading namespace:" ns-sym)
-       (require ns-sym :reload)
-       (log/info "Done.")))
-   (catch Throwable e (log/error e)))
-   (Thread/sleep 500))
+(def default-setup-fn (constantly {}))
+(defn default-tick-fn  [state] (do (println "default tick fn") (Thread/sleep 5000) state))
+(defn default-render-fn [state last-dom] (println "default render fn"))
+
+(def setup-fn (atom default-setup-fn))
+(def tick-fn (atom default-tick-fn))
+(def render-fn (atom default-render-fn))
+
+(defn check-namespace-changes []
+  (let [track (ns-tracker ["src/robinson"])]
+    (while true
+      (try
+        (doseq [ns-sym (track)]
+          (when (not (contains? #{"robinson.autoreloadcore"
+                                  "robinson.main"
+                                  "robinson-tools.worldgen"
+                                  "robinson-tools.devtools"} (str ns-sym)))
+            (log/info "Reloading namespace:" ns-sym)
+            (require ns-sym :reload)
+            (reset! render-fn (resolve 'robinson.render/render))
+            (reset! setup-fn (resolve 'robinson.main/setup))
+            (reset! tick-fn (resolve 'robinson.main/tick))
+            (log/info "Done.")))
+        (catch Throwable e (log/error e)))
+      (Thread/sleep 500))))
 
 (defn start-nstracker []
- (let [track (ns-tracker ["src/clj" "src/cljc"])]
-   (doto
-     (Thread.
-       #(while true
-         (check-namespace-changes track)))
-     (.setDaemon true)
-     (.start))))
+  (doto
+    (Thread. check-namespace-changes)
+    (.setDaemon true)
+    (.start)))
+
+;; Conveinience ref for accessing the last state when in repl.
+(defonce state-ref (atom nil))
+(defonce dom-ref (atom nil))
 
 (defonce done-chan (async/chan))
 
-(defn -main []
-  (let [default-setup-fn (constantly {})
-        default-tick-fn  (fn [state] (do (println "default tick fn") (Thread/sleep 5000) state))
-        get-setup-fn     (fn [] (if-let [f (resolve 'robinson.main/setup)] f default-setup-fn))
-        get-tick-fn      (fn [] (if-let [f (resolve 'robinson.main/tick)] f default-tick-fn))]
+(defn -main
+  "Entry default point to application.
+
+   Uses `setup` and `tick` function from `robinson.main`.
+
+   `setup` returns the initial state of the application.
+
+   `tick` takes the current state of the application and returns
+   the next state after one iteration."
+  []
+  ; start with initial state from setup-fn
+  (let []
+    (reset! render-fn (resolve 'robinson.render/render))
+    (reset! setup-fn (resolve 'robinson.main/setup))
+    (reset! tick-fn (resolve 'robinson.main/tick))
     (start-nstracker)
-    ; start with initial state from setup-fn
-    (let [setup-fn     (get-setup-fn)
-          setup-fn-var (var-get setup-fn)]
-      (setup-fn
-        (fn [state]
-          ; on ticks, this loop will restart. If setup-fn changes,
-          ; the state will be reset through setup-fn but the screen will cary over.
-          (zaw/create-animated-terminal
-            zgl/create-terminal
-            (get state :terminal-groups)
-            (assoc
-              (get state :terminal-opts)
-              :effect-gen-fns
-                [#_ranimation/make-rand-fg-effect
-                 #_ranimation/make-blink-effect
-                 #_ranimation/make-blip-effect
-                 #_ranimation/make-transform-effect
-                 #_ranimation/make-rain-effect]
-              :filters 
-                [#_ranimation/make-lantern-filter
-                 #_ranimation/make-vignette-filter
-                 #_ranimation/make-night-tint-filter])
-            (fn [animated-terminal]
-              (log/info "created animated terminal")
-              (let [; state is used in the input reducing function
-                    state        (atom (assoc state :screen animated-terminal))
-                    ; render state keeps track of the state to be rendered to the screen
-                    last-rendered-state (atom @state)]
-                ;(raat/start! animated-terminal 15)
-                (zat/do-frame animated-terminal 33
-                  (let [render-fn (resolve 'robinson.render/render)]
-                  ;; TODO render
-                    (assert render-fn "render-fn nil")
-                    (assert @last-rendered-state "@last-rendered-state nil")
-                    (render-fn @last-rendered-state)))
-                (log/info "adding keypress event listener")
-                (zevents/add-event-listener animated-terminal :keypress
-                  (fn [keyin]
-                    (log/info "got key" keyin)
-                    (let [new-state (try
-                                      ((resolve 'robinson.update/update-state) @state keyin)
-                                      (catch Throwable e
-                                        (log/error e)
-                                        @state))]
-                      (reset!
-                        state
-                        (loop [new-state new-state]
-                          (cond
-                            (nil? new-state)
-                               (System/exit 0)
-                            (= (rw/current-state new-state) :sleep)
-                              (recur ((get-tick-fn) new-state \,))
-                            (contains? #{:loading :connecting} (rw/current-state state))
-                              (recur ((get-tick-fn) new-state :advance))
-                            :else
-                              new-state))))))))))))))
+    (@setup-fn
+      (fn [state]
+        (zgl/create-terminal
+          (get state :terminal-groups)
+          (get state :terminal-opts)
+          (fn [terminal]
+            (log/info "Create-terminal current-state" (rw/current-state state) (keys state) (get state :world))
+            (add-watch state-ref :advance (fn [_ state-ref old-state new-state]
+                                             (when (= (rw/current-state new-state) :loading)
+                                               (reset! state-ref (@tick-fn new-state :advance)))))
+                                               
+            (reset! state-ref state)
+            (zt/do-frame terminal 33
+              (binding [zc/*updater* ruu/updater]
+                (let [state (or @state-ref state)
+                      _ (assert (not (nil? state)))
+                      ui (@render-fn terminal state @dom-ref)]
+                  (reset! dom-ref ui)
+                  (assert (zc/element? ui))
+                  ;; update component instance states
+                  (log/info "---End Frame---"))))
+              (zevents/add-event-listener terminal :keypress (fn [keyin]
+                (if (nil? state)
+                  (do
+                    (log/info "Got nil state. Exiting.")
+                    (async/>!! done-chan true)
+                    (System/exit 0))
+                  ; tick the old state through the tick-fn to get the new state
+                  (let [state (try
+                                (when (= keyin :exit)
+                                  (System/exit 0))
+                                (if keyin
+                                  (do
+                                    (log/info "Core current-state" (rw/current-state state))
+                                    (log/info "Core got key" keyin)
+                                    (let [new-state (@tick-fn @state-ref keyin)]
+                                      (log/info "End of game loop")
+                                      new-state))
+                                  state)
+                                 (catch Throwable ex
+                                   (log/error ex)
+                                   (print-stack-trace ex)
+                                   state))]
+                     (reset! state-ref state)))))
+            (async/<!! done-chan)))))))
+ 

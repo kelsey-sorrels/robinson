@@ -114,9 +114,9 @@
               new-state       (rm/log-time "update-state" (update-state-fn state keyin))]
           (when new-state
             #_(render-state new-state)
-            (save-state new-state))))
+            (save-state new-state))
           ;(async/thread (spit "save/world.edn" (with-out-str (pprint (new-state :world)))))
-          ;new-state))
+          new-state))
          (catch Exception e
            (do
              (log/error "Caught exception" e)
@@ -178,7 +178,9 @@
                                       (with-open [o (io/input-stream "save/world.edn")]
                                         (nippy/thaw-from-in! (DataInputStream. o)))
                                       {:current-state :start
-                                       :time 0})
+                                       :time 0
+                                       :player {
+                                         :name ""}})
                                     :current-state
                                     (fn [cur-state]
                                       (if (= cur-state :share-score)
@@ -220,25 +222,25 @@
           _ (log/info "Using font settings" font)
           terminal-groups [{:id :app
                             :layers [
-                              #_:map
+                              :map
                               #_:features
                               #_:fx
                               :ui]
                             :columns 80
                             :rows 24
                             :pos [0 0]
-                            :font (constantly tile-font)
-                            #_#_:font (fn [platform]
+                            #_#_:font (constantly tile-font)
+                            :font (fn [platform]
                                     (zfont/->TTFFont
                                       (get font (case platform
                                                   :linux   :linux-font
                                                   :macosx  :macosx-font
                                                   :windows :windows-font))
                                       (get font :font-size)
-                                      false #_(get font :transparent)))}]
+                                      true #_(get font :transparent)))}]
           terminal-opts {:title (format "Robinson - %s@%s" user-id version)
-                         :screen-width (* 80 12)
-                         :screen-height (* 24 16)
+                         :screen-width (* 80 16)
+                         :screen-height (* 24 22)
                          #_#_:default-fg-color [255 255 255 255]
                          #_#_:default-bg-color [5 5 8 128]
                          #_#_:fx-shader {:name     "retro.fs"

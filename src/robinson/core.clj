@@ -18,8 +18,6 @@
             [taoensso.timbre :as log])
      (:gen-class))
 
-(def font ztiles/pastiche-16x16)
-
 (def width 55)
 (def height 40)
 ;; Conveinience ref for accessing the last state when in repl.
@@ -60,6 +58,7 @@
                           terminal
                           @dom-ref
                           ui)]
+                #_(log/info (zc/tree->str dom))
                 ;(zt/refresh! terminal)
                 (reset! dom-ref dom)
                 (assert (zc/element? ui))

@@ -140,32 +140,16 @@
                 [Highlight {} ["enter "]]
                 [:text {} ["to continue"]]]]]])))
 
-#_(defn render-atmo
-  [state x y]
-  (let [screen (get state :screen)
-        atmo   (get-in state [:data :atmo])
-        frames (count atmo)
-        t      (mod (get-in state [:world :time]) frames)
-        frame  (nth atmo t)
-        indexed-colors (map vector (partition 3 frame) (range))]
-    (doseq [[column i] indexed-colors]
-      #_(log/info x i y column)
-      (put-string screen :ui (+ x i) y       "\u2584" (if (contains? #{0 6} i)
-                                                        :black
-                                                        (nth column 0))
-                                                      :black #{:underline} {:mask #{:rain :transform}})
-      (put-string screen :ui (+ x i) (inc y) "\u2584" (nth column 2) (nth column 1) #{:underline} {:mask #{:rain :transform}}))))
-
 (zc/def-component Atmo
   [this]
-  (let [{:keys [state]} (zc/props this)
-        atmo   (get-in state [:data :atmo])
-        frames (count atmo)
-        t      (mod (get-in state [:world :time]) frames)
-        frame  (nth atmo t)
-        indexed-colors (map vector (partition 3 frame) (range))]
+  (let [{:keys [time atmo-data]} (zc/props this)
+        frames (count atmo-data)
+        t      (mod time frames)
+        frame  (nth atmo-data t)
+        indexed-colors (cons (repeat 7 [0 0 0]) (apply map vector (partition 3 frame)))]
     (zc/csx
-      [:view {} []])))
+      [:view {} [
+        [zcui/ListImage {:data indexed-colors}]]])))
 
 #_(defn render-hud
   [state]
@@ -214,24 +198,101 @@
                                                :blue)
                                              #{:underline}
                                              {:mask #{:rain :transform}})))))
+(zc/def-component StatusUI
+  [this]
+  (let [{:keys [wounded poisoned infected style]} (zc/props this)
+        wounded-color (rcolor/color->rgb (if wounded :red :black))
+        poisoned-color (rcolor/color->rgb (if poisoned :green :black))
+        infected-color (rcolor/color->rgb (if infected :yellow :black))
+        gray-color (rcolor/color->rgb :gray)]
+    (zc/csx
+      [:view {:style (merge {:width 7 :background-color gray-color} style)} [
+      [:text {:style {:background-color gray-color}} [
+        [:text {} [" "]]
+        [:text {:style {:color wounded-color}} ["\u2665"]]
+        [:text {} [" "]]
+        [:text {:style {:color poisoned-color}} ["\u2665"]]
+        [:text {} [" "]]
+        [:text {:style {:color infected-color}} ["\u2665"]]
+        [:text {} [" "]]]]]])))
+
     ;    (int (-> state :world :player :hp))
     ;    (-> state :world :player :max-hp)
     ;    (apply str (interpose " " (-> state :world :player :status)))
-(zc/def-component DoubleBarChart
+(zc/def-component DblBarChart
   [this]
-  (let [{:keys [fg-1 fg-2 p1 p2 width direction]} (zc/props this)]
-    (zc/csx
-      [:view {} []])))
-(zc/def-component StatusUI
+  (let [{:keys [fg-1 fg-2 p1 p2 width direction style]} (zc/props this)
+        root (* width (min p1 p2))
+        padding (* width (- 1 (max p1 p2)))
+        diff (- width root padding)
+        black-color (rcolor/color->rgb :black)]
+      (case direction
+        :left
+          (zc/csx
+              [:text {:style style} [
+                #_[:text {} [(format "%.2f %.2f" (float p1) (float p2))]]
+                [:text {:style {:color black-color
+                                :background-color black-color}} [(apply str (repeat padding " "))]]
+                [:text {:style {:color            (if (< p2 p1) fg-1 black-color)
+                                :background-color (if (> p2 p1) fg-2 black-color)}} [(apply str (repeat diff "\u2584"))]]
+                [:text {:style {:color fg-1 :background-color fg-2}} [(apply str (repeat root "\u2584"))]]]])
+        :right
+          (zc/csx
+              [:text {:style style} [
+                #_[:text {} [(format "%.2f %.2f" (float p1) (float p2))]]
+                [:text {:style {:color fg-1 :background-color fg-2}} [(apply str (repeat root "\u2584"))]]
+                [:text {:style {:color            (if (< p2 p1) fg-1 black-color)
+                                :background-color (if (> p2 p1) fg-2 black-color)}} [(apply str (repeat diff "\u2584"))]]
+                [:text {:style {:color black-color
+                                :background-color black-color}} [(apply str (repeat padding " "))]]]]))))
+
+(zc/def-component HpWtlBars
   [this]
-  (let [{:keys [wounded poisoned infected]} (zc/props this)]
+  (let [{:keys [game-state style]} (zc/props this)
+        wtl        (get-in game-state [:world :player :will-to-live])
+        max-wtl    (get-in game-state [:world :player :max-will-to-live])
+        hp         (get-in game-state [:world :player :hp])
+        max-hp     (get-in game-state [:world :player :max-hp])]
     (zc/csx
-      [:view {} []])))
+      [DblBarChart {:fg-1 (rcolor/color->rgb :red)
+                    :fg-2 (rcolor/color->rgb :green)
+                    :p1  (/ hp max-hp)
+                    :p2  (/ wtl max-wtl)
+                    :width 37
+                    :direction :left
+                    :style style}])))
+
+(zc/def-component ThirstHungerBars
+  [this]
+  (let [{:keys [game-state style]} (zc/props this)
+        thirst      (get-in game-state [:world :player :thirst])
+        max-thirst  (get-in game-state [:world :player :max-thirst])
+        hunger      (get-in game-state [:world :player :hunger])
+        max-hunger  (get-in game-state [:world :player :max-hunger])]
+    (zc/csx
+      [DblBarChart {:fg-1 (rcolor/color->rgb :blue)
+                    :fg-2 (rcolor/color->rgb :yellow)
+                    :p1  (- 1 (/ thirst max-thirst))
+                    :p2  (- 1 (/ hunger max-hunger))
+                    :width 37
+                    :direction :right
+                    :style style}])))
+
 (zc/def-component Hud
   [this]
-  (let [{:keys [state]} (zc/props this)]
+  (let [{:keys [game-state]} (zc/props this)]
     (zc/csx
-      [:view {} []])))
+      [:view {:style {:top 20
+                      :left 0
+                      :width 80
+                      :display :flex
+                      :align-items :center}} [
+         [Atmo {:time (rw/get-time game-state)
+                :atmo-data (get-in game-state [:data :atmo])}]
+         [:view {} [
+           [HpWtlBars {:game-state game-state :style {:left 1}}]
+           [StatusUI {:game-state game-state :style {:left 37 :bottom 1}}]
+           [ThirstHungerBars {:game-state game-state :style {:left (+ 37 7) :bottom 2}}]]]]])))
 
 #_(defn render-crushing-wall
   [screen trap]
@@ -1567,9 +1628,11 @@
     (zc/csx
 	  [:terminal {} [
 		[:group {:id :app} [
-		  [:layer {:id :ui} [
+		  [:layer {:id :map} [
             [:view {:style {:top 2 :left 10}} [
-              [:text {} ["Map"]]]]]]]]]])))
+              [:text {} ["Map"]]]]]]
+          [:layer {:id :ui} [
+            [Hud {:game-state game-state}]]]]]]])))
 
 (zc/def-component Robinson
   [this]

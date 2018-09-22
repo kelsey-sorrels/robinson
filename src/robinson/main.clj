@@ -223,8 +223,9 @@
           terminal-groups [{:id :app
                             :layers [
                               :map
-                              #_:features
+                              :features
                               #_:fx
+                              #_:shade
                               :ui]
                             :columns 80
                             :rows 24

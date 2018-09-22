@@ -189,6 +189,23 @@
           y (range v-height)]
       [x y (+ x v-x) (+ y v-y)])))
 
+(defn places-in-viewport
+  [state]
+  (let [{v-width     :width
+         v-height    :height
+         {v-x :x v-y :y} :pos}
+                          (get-in state [:world :viewport])
+        ;; upper left place
+        ul-place-id       (xy->place-id state v-x v-y)
+        [px py]           ul-place-id
+        ur-place-id       [(inc px) py]
+        ll-place-id       [px       (inc py)]
+        lr-place-id       [(inc px) (inc py)]]
+    [(get-in state [:world :places ul-place-id])
+     (get-in state [:world :places ur-place-id])
+     (get-in state [:world :places ll-place-id])
+     (get-in state [:world :places lr-place-id])]))
+
 (defn cells-in-viewport
   "Return a collection of cells in the viewport as a two-dimensional array"
   [state]

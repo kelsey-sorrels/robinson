@@ -1476,9 +1476,312 @@
                            ; Always render player
                            [(zc/csx [:text {:style {:position :fixed
                                                     :top (- (get player-pos :y) vy)
-                                                    :left (- (get player-pos :x) vx)}}
+                                                    :left (- (get player-pos :x) vx)
+                                                    :color (rcolor/color->rgb :white)
+                                                    :background-color (rcolor/color->rgb :black)}}
                                            ["@"]])]
                            npcs)])))
+
+(zc/def-component PickupSelection
+  [this]
+  (let [{:keys [game-state]} (zc/props this)]
+    nil))
+
+
+(zc/def-component MultiSelect
+  [this]
+  (let [default-props {:selected-hotkeys []
+                       :items []
+                       :disable? (fn [_] false)}
+        {:keys [title selected-hotkeys items disable?]} (merge default-props (zc/props this))
+        children (map (fn [item]
+                        (zc/csx [:text {:style {:color (rcolor/color->rgb (if (or (not (disable? item))
+                                                                                  (get item :applicable))
+                                                                            :black
+                                                                            :gray))
+                                                :background-color (rcolor/color->rgb :white)}} [
+                                  [Highlight {} [(str (or (item :hotkey)
+                                                          \space))]]
+                                  [:text {} [(format "%c%s%s %s %s"
+                                               (if (contains? selected-hotkeys (item :hotkey))
+                                                 \+
+                                                 \-)
+                                               (if (contains? item :count)
+                                                 (format "%dx " (int (get item :count)))
+                                                 "")
+                                               (get item :name)
+                                               (if (contains? item :utility)
+                                                 (format "(%d%%)" (int (get item :utility)))
+                                                 "")
+                                               (cond
+                                                 (contains? item :wielded)
+                                                   "(wielded)"
+                                                 (contains? item :wielded-ranged)
+                                                   "(wielded ranged)"
+                                                 (contains? item :worn)
+                                                   "(worn)"
+                                                 :else
+                                                   ""))]]]]))
+                      items)]
+    (zc/csx [:view {} (concat [(zc/csx [:text {:style {:color (rcolor/color->rgb :black)}} [title]])
+                               (zc/csx [:text {} [""]])]
+                              children)])))
+
+(zc/def-component Inventory
+  [this]
+  (let [{:keys [game-state]} (zc/props this)
+        player-items (-> game-state :world :player :inventory)]
+   (zc/csx [:view {:style {:width 40
+                           :height 20
+                           :position :fixed
+                           :left 40
+                           :top 1
+                           :padding 1
+                           :background-color (rcolor/color->rgb :white)}} [
+            [MultiSelect {:title "Inventory"
+                          :items (translate-identified-items game-state player-items)}]]])))
+
+(zc/def-component Abilities
+  [this]
+  (let [{:keys [game-state]} (zc/props this)
+        abilities (rp/player-abilities game-state)
+        height (if (seq abilities)
+                 (+ 3 (* 3 (count abilities)))
+                 4)]
+    (zc/csx [:view {:style {:width 43
+                            :height height
+                            :position :fixed
+                            :left 0
+                            :top 0
+                            :background-color (rcolor/color->rgb :white)}} [
+            (if (seq abilities)
+              (zc/csx [zcui/Popup {} [
+                        [:view {:style {:border 2}} [
+                          [MultiSelect {:title "Abilities"
+                                        :items abilities}]]]]])
+               #_{:s (format "    %s" (get ability :description)) :fg :black :bg :white :style #{}}
+               #_[{:s "" :fg :black :bg :white :style #{}}
+                  {:s "Select hotkey or press <color fg=\"highlight\">Esc</color> to exit." :fg :black :bg :white :style #{}}]
+              (zc/csx [zcui/Popup {} [
+                [:view {} [
+                  [:text {} ["No abilities."]]
+                  [:text {} [""]]
+                  [:text {} [
+                    [:text {} ["Press "]]
+                    [Highlight {} ["Esc "]]
+                    [:text {} ["to exit."]]]]]]]]))]])))
+
+(zc/def-component PlayerStats
+  [this]
+  (let [{:keys [game-state]} (zc/props this)]
+    nil))
+
+(zc/def-component AbilityChoices
+  [this]
+  (let [{:keys [game-state]} (zc/props this)]
+    nil))
+
+(zc/def-component ActionChoices
+  [this]
+  (let [{:keys [game-state]} (zc/props this)]
+    nil))
+
+(zc/def-component Describe
+  [this]
+  (let [{:keys [game-state]} (zc/props this)]
+    nil))
+
+(zc/def-component Apply
+  [this]
+  (let [{:keys [game-state]} (zc/props this)
+        player-items (-> game-state :world :player :inventory)]
+    (zc/csx [:view {:style {:width 40
+                            :height 20
+                            :position :fixed
+                            :left 40
+                            :top 1
+                            :padding 1
+                            :background-color (rcolor/color->rgb :white)}} [
+             [MultiSelect {:title "Apply Inventory"
+                           :items (translate-identified-items game-state player-items)}]]])))
+
+(zc/def-component ApplyTo
+  [this]
+  (let [{:keys [game-state]} (zc/props this)]
+    nil))
+
+(zc/def-component QuaffInventory
+  [this]
+  (let [{:keys [game-state]} (zc/props this)]
+    nil))
+
+(zc/def-component Drop
+  [this]
+  (let [{:keys [game-state]} (zc/props this)]
+    nil))
+
+(zc/def-component DescribeInventory
+  [this]
+  (let [{:keys [game-state]} (zc/props this)]
+    nil))
+
+(zc/def-component ThrowInventory
+  [this]
+  (let [{:keys [game-state]} (zc/props this)]
+    nil))
+
+(zc/def-component Eat
+  [this]
+  (let [{:keys [game-state]} (zc/props this)]
+    nil))
+
+(zc/def-component Quests
+  [this]
+  (let [{:keys [game-state]} (zc/props this)]
+    nil))
+
+(zc/def-component Craft
+  [this]
+  (let [{:keys [game-state]} (zc/props this)]
+    nil))
+
+(zc/def-component CraftWeapon
+  [this]
+  (let [{:keys [game-state]} (zc/props this)]
+    nil))
+
+(zc/def-component CraftSurvival
+  [this]
+  (let [{:keys [game-state]} (zc/props this)]
+    nil))
+
+(zc/def-component CraftShelter
+  [this]
+  (let [{:keys [game-state]} (zc/props this)]
+    nil))
+
+(zc/def-component CraftTransportation
+  [this]
+  (let [{:keys [game-state]} (zc/props this)]
+    nil))
+
+(zc/def-component Wield
+  [this]
+  (let [{:keys [game-state]} (zc/props this)
+        player-items (filter can-be-wielded? (-> game-state :world :player :inventory))]
+   (zc/csx [:view {:style {:width 40
+                           :height 20
+                           :position :fixed
+                           :left 40
+                           :top 1
+                           :padding 1
+                           :background-color (rcolor/color->rgb :white)}} [
+            [MultiSelect {:title "Wield"
+                          :items (translate-identified-items game-state player-items)}]]])))
+
+(zc/def-component WieldRanged
+  [this]
+  (let [{:keys [game-state]} (zc/props this)]
+    nil))
+
+(zc/def-component StartText
+  [this]
+  (let [{:keys [game-state]} (zc/props this)]
+    nil))
+
+(zc/def-component Popover
+  [this]
+  (let [{:keys [game-state]} (zc/props this)]
+    nil))
+
+(zc/def-component RawPopover
+  [this]
+  (let [{:keys [game-state]} (zc/props this)]
+    nil))
+
+(zc/def-component DeadText
+  [this]
+  (let [{:keys [game-state]} (zc/props this)
+        hp             (get-in game-state [:world :player :hp])
+        hunger         (get-in game-state [:world :player :hunger])
+        max-hunger     (get-in game-state [:world :player :max-hunger])
+        thirst         (get-in game-state [:world :player :thirst])
+        max-thirst     (get-in game-state [:world :player :max-thirst])
+        will-to-live   (get-in game-state [:world :player :will-to-live])
+        cause-of-death (or
+                         (get-in game-state [:world :cause-of-death])
+                         (format "%s"
+                           (cond
+                             (<= hp 0)             "massive injuries"
+                             (> hunger max-hunger) "literally starving to death"
+                             (> thirst max-thirst) "not drinking enough water"
+                             (<= will-to-live 0)   "just giving up on life"
+                             :else                 "mysterious causes")))]
+      (zc/csx [zcui/Popup {:style {:position :fixed :top 10}} [
+                [:view {:style {:border 2}} [
+                  [:text {} ["You died."]]
+                  [:text {} [(format "From %s" cause-of-death)]]
+                  [:text {} [""]]
+                  [:text {} [
+                    [:text {} ["Press "]]
+                    [Highlight {} ["space "]]
+                    [:text {} ["to continue."]]]]]]]])))
+
+(zc/def-component RescuedText
+  [this]
+  (let [{:keys [game-state]} (zc/props this)]
+    nil))
+
+(zc/def-component QuitPrompt
+  [this]
+  (let [{:keys [game-state]} (zc/props this)]
+    nil))
+
+(zc/def-component Harvest
+  [this]
+  (let [{:keys [game-state]} (zc/props this)]
+    nil))
+
+(zc/def-component MapUI
+  [this]
+  (let [{:keys [game-state]} (zc/props this)]
+    (case (current-state game-state)
+      :pickup-selection     (zc/csx [PickupSelection {:game-state game-state}])
+      :inventory            (zc/csx [Inventory {:game-state game-state}])
+      :abilities            (zc/csx [Abilities {:game-state game-state}])
+      :player-stats         (zc/csx [PlayerStats {:game-state game-state}])
+      :gain-level           (zc/csx [AbilityChoices {:game-state game-state}])
+      :action-select        (zc/csx [ActionChoices {:game-state game-state}])
+      :describe             (zc/csx [Describe {:game-state game-state}])
+      :apply                (zc/csx [Apply {:game-state game-state}])
+      :apply-item-inventory
+                            (zc/csx [ApplyTo {:game-state game-state}])
+      :quaff-inventory
+                            (zc/csx [QuaffInventory {:game-state game-state}])
+      :drop                 (zc/csx [Drop {:game-state game-state}])
+      :describe-inventory   (zc/csx [DescribeInventory {:game-state game-state}])
+      :throw-inventory      (zc/csx [ThrowInventory {:game-state game-state}])
+      :eat                  (zc/csx [Eat {:game-state game-state}])
+      :quests               (zc/csx [Quests {:game-state game-state}])
+      :craft                (zc/csx [Craft {:game-state game-state}])
+      :craft-weapon         (zc/csx [CraftWeapon {:game-state game-state}])
+      :craft-survival       (zc/csx [CraftSurvival {:game-state game-state}])
+      :craft-shelter        (zc/csx [CraftShelter {:game-state game-state}])
+      :craft-transportation (zc/csx [CraftTransportation {:game-state game-state}])
+      :wield                (zc/csx [Wield {:game-state game-state}])
+      :wield-ranged         (zc/csx [WieldRanged {:game-state game-state}])
+      :start-text           (zc/csx [StartText {:game-state game-state}])
+      :popover              (zc/csx [Popover {:game-state game-state}])
+      :quaff-popover        (zc/csx [RawPopover {:game-state game-state}])
+      :dead                 (zc/csx [DeadText {:game-state game-state}])
+      :rescued              (zc/csx [RescuedText {:game-state game-state}])
+      :quit                 (zc/csx [QuitPrompt {:game-state game-state}])
+      :harvest              (zc/csx [Harvest {:game-state game-state}])
+      (zc/csx [:view {} []]))
+    ;; draw cursor
+    #_(if-let [cursor-pos (-> state :world :cursor)]
+      (move-cursor screen (cursor-pos :x) (cursor-pos :y))
+      (move-cursor screen -1 -1))))
 
 (zc/def-component Map
   [this]
@@ -1508,7 +1811,8 @@
                                      :vy vy
                                      :current-time current-time}]]]]]
           [:layer {:id :ui} [
-            [Hud {:game-state game-state}]]]]]]])))
+            [Hud {:game-state game-state}]
+            [MapUI {:game-state game-state}]]]]]]])))
 
 #_(defn render-enter-name [state]
   (let [screen (state :screen)
@@ -1862,11 +2166,93 @@
                             :left 30}} [
               [:text {} ["Start Text"]]]]]]]]]])))
 
+(zc/def-component GameOverDead
+  [this]
+  (let [{:keys [player cause-of-death madlib days-survived turns-survived points]} (zc/props this)
+        player-name    (get player :name)
+        hp             (get player :hp)
+        hunger         (get player :hunger)
+        max-hunger     (get player :max-hunger)
+        thirst         (get player :thirst)
+        max-thirst     (get player :max-thirst)
+        will-to-live   (get player :will-to-live)
+        cause-of-death (or
+                         cause-of-death
+                         (cond
+                           (<= hp 0)             "massive injuries"
+                           (> hunger max-hunger) "literall starving to death"
+                           (> thirst max-thirst) "not drinking enough water"
+                           (<= will-to-live 0)   "just giving up on life"
+                           :else                 "mysterious causes"))]
+    (zc/csx
+	  [:terminal {} [
+		[:group {:id :app} [
+		  [:layer {:id :ui} [
+            [:view {:style {:left 10}} [
+              [:text {} [(format "%s: %s" player-name madlib)]]
+              [:text {} [(format "%s: %s" player-name madlib)]]
+              [:text {} [""]]
+              [:text {} [(format "Points: %s." points)]]
+              [:text {} [(format "Survived for %d %s. (%d turns)"
+                                   days-survived
+                                   (if (> 1 days-survived) "days" "day")
+                                   turns-survived)]]
+              [:text {} [(format "Died from %s" cause-of-death)]]
+              [:text {} [""]]
+              [:text {} ["Inventory:"]]
+              [:view {} 
+                (map-indexed
+                  (fn [idx item]
+                    (zc/csx [:text {} [(format "%s%s" (if (pos? (get item :count 0))
+                                                        (format "%dx " (get item :count))
+                                                        "")
+                                                      (item :name))]]))
+                  (get player :inventory))]]]
+              [:text {} [""]]
+              [:view {:style {:left 10}} [
+                [:text {} [[:text {} ["Play again? ["]]
+                           [Highlight {} ["y"]]
+                           [:text {} ["/"]]
+                           [Highlight {} ["n"]]
+                           [:text {} ["] "]]
+                           [Highlight {} ["space "]]
+                           [:text {} ["- share and compare with other players"]]]]]]]]]]]])))
+
+(zc/def-component GameOverRescued
+  [this]
+  (let [{:keys [game-state]} (zc/props this)
+        rescue-mode (rendgame/rescue-mode game-state)]
+    ;; Title
+    ;(put-string (game-state :screen) :ui 10 1 (format "%s: %s." player-name madlib))
+    ;(put-string (game-state :screen) :ui 18 2 (format "Rescued by %s after surviving for %d days." rescue-mode days-survived))
+    ;(put-string (game-state :screen) :ui 10 3 (format "Points: %s." points))
+    ;(put-string (game-state :screen) :ui 10 4 "Inventory:")
+    ;(doall (map-indexed
+    ;  (fn [idx item] (put-string (game-state :screen) :ui 18 (+ idx 5) (item :name)))
+    ;  (-> game-state :world :player :inventory)))
+    ;(put-string (game-state :screen) :ui 10 22 "Play again? [yn]")))
+))
+
 (zc/def-component GameOver
   [this]
-  (let [{:keys [game-state]} (zc/props this)]
-    nil
-))
+  (let [{:keys [game-state]} (zc/props this)
+        cur-state      (current-state game-state)
+        points         (rs/state->points game-state)
+        turns-survived  (get-time game-state)
+        turns-per-day   (count (get-in game-state [:data :atmo]))
+        days-survived   (int (/ turns-survived turns-per-day))
+        player-name     (get-in game-state [:world :player :name])
+        madlib          (gen-end-madlib game-state)]
+    (case cur-state
+      :game-over-dead
+        (zc/csx [GameOverDead {:player (get-in game-state [:world :player])
+                               :days-survived days-survived
+                               :turns-survived turns-survived
+                               :points points
+                               :cause-of-death (get-in game-state [:world :cause-of-death])
+                               :madlib madlib}])
+      :game-over-rescued
+        (zc/csx [GameOverRescued {:game-state game-state}]))))
 
 (zc/def-component ShareScore
   [this]
@@ -1889,14 +2275,14 @@
   [this]
   (let [{:keys [game-state]} (zc/props this)]
     (zc/csx
-	  [RexPaintFromData {:state game-state :data-key :keyboard-controls}])))
+	  [RexPaintFromData {:game-state game-state :data-key :keyboard-controls}])))
 
 
 (zc/def-component UIHelp
   [this]
   (let [{:keys [game-state]} (zc/props this)]
     (zc/csx
-	  [RexPaintFromData {:state game-state :data-key :ui}])))
+	  [RexPaintFromData {:game-state game-state :data-key :ui}])))
 
 (zc/def-component GameplayHelp
   [this]

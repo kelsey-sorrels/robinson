@@ -1686,8 +1686,22 @@
 
 (zc/def-component StartText
   [this]
-  (let [{:keys [game-state]} (zc/props this)]
-    nil))
+  (let [{:keys [game-state]} (zc/props this)
+        start-text (sg/start-text game-state)]
+    (zc/csx
+	  [:terminal {} [
+		[:group {:id :app} [
+		  [:layer {:id :ui} [
+			[:view {:style {:position :fixed
+							:top 4
+							:left 20}} [
+              [:text {:style {:width 40}} [(str start-text)]]
+              [:text {:style {:top 10}} [
+                [:text {} ["Press "]]
+                [Highlight {} ["any key "]]
+                [:text {} ["to continue and "]]
+                [Highlight {} ["? "]]
+                [:text {} ["to view help."]]]]]]]]]]]])))
 
 (zc/def-component Popover
   [this]
@@ -2151,20 +2165,6 @@
   (let [{:keys [game-state]} (zc/props this)]
     nil
 ))
-
-(zc/def-component StartText
-  [this]
-  (let [{:keys [game-state]} (zc/props this)]
-    (zc/csx 
-	  [:terminal {} [
-		[:group {:id :app} [
-		  [:layer {:id :ui} [
-            [:view {:style {:align-items :center
-                            :justify-content :center
-                            :position :fixed
-                            :top 2
-                            :left 30}} [
-              [:text {} ["Start Text"]]]]]]]]]])))
 
 (zc/def-component GameOverDead
   [this]

@@ -38,6 +38,7 @@
                                                fsm-current-state]]
             [robinson.npc :as rnpc :refer [talking-npcs
                                            npcs-in-viewport]]
+            [robinson.noise :as rnoise]
             #_[robinson.traps :as rt]
             [robinson.ui.updater :as ruu]
             [zaffre.terminal :as zat]
@@ -58,7 +59,7 @@
   {:fire                   [:red :orange]
    :water                  [:blue :dark-blue]
    :surf                   [:white :sea-foam :blue-green]
-   :shallow-water          [:white :sea-foam :blue-green]
+   :shallow-water          [:white :sea-foam :blue-green :blue-green]
    :swamp                  [:white :sea-foam :blue-green]
    :lava                   [:red :orange :yellow]
    :bamboo-water-collector [:blue :light-blue :dark-blue]
@@ -66,9 +67,17 @@
    :freshwater-hole        [:blue :light-blue :dark-blue]
    :saltwater-hole         [:blue :light-blue :dark-blue]})
 
+(def palette-noise (rnoise/create-noise))
 (defn cell-type->color
-  [cell-type]
-  (rand-nth (get cell-type-palette cell-type)))
+  [wx wy cell-type]
+  (let [r (rnoise/noise3d palette-noise wx wy (mod (/ (System/currentTimeMillis) 1000) 10000))
+        palette (get cell-type-palette cell-type)
+        start-idx (int (* r (count palette)))
+        end-idx (mod (inc start-idx) (count palette))
+        start (nth palette start-idx)
+        end (nth palette end-idx)]
+    (rand-nth palette)
+    start))
 
 (defn has-palette?
   [cell-type]
@@ -95,6 +104,13 @@
   (let [{:keys [children]} (zc/props this)]
     (zc/csx
       [:text {:style {:color [229 155 8 255]}} children])))
+
+
+(zc/def-component ActionPrompt
+  [this]
+  (let [{:keys [children]} (zc/props this)]
+    (zc/csx
+      [:view {:style {:position :fixed :top 0 :left 0 :hight 1}} children])))
 
 (zc/def-component ItemList
   [this]
@@ -1171,203 +1187,214 @@
 
 (defn fill-put-string-color-style-defaults
   ([string]
-    (fill-put-string-color-style-defaults string :white :black #{}))
-  ([string fg]
-    (fill-put-string-color-style-defaults string fg :black #{}))
-  ([string fg bg]
-    (fill-put-string-color-style-defaults string fg bg #{}))
-  ([string fg bg styles]
+    (fill-put-string-color-style-defaults 0 0 string :white :black #{}))
+  ([wx wy string]
+    (fill-put-string-color-style-defaults wx wy string :white :black #{}))
+  ([wx wy string fg]
+    (fill-put-string-color-style-defaults wx wy string fg :black #{}))
+  ([wx wy string fg bg]
+    (fill-put-string-color-style-defaults wx wy string fg bg #{}))
+  ([wx wy string fg bg styles]
    {:pre [(clojure.set/superset? #{:underline :bold} styles)]}
    (let [new-fg (rcolor/color->rgb (if (has-palette? fg)
-                                     (cell-type->color fg)
+                                     (cell-type->color wx wy fg)
                                      fg))
          bg     (rcolor/color->rgb bg)]
      {:c string :fg new-fg :bg bg})))
 
-(defn render-cell [cell current-time]
+(defn render-cell [cell wx wy current-time]
   {:post [(char? (get % :c))
           (vector? (get % :fg))
           (vector (get % :bg))]}
   (let [cell-items (get cell :items)
         in-view? (= current-time (get cell :discovered 0))
-        has-been-discovered? (> (get cell :discovered 0) 1)]
+        has-been-discovered? (> (get cell :discovered 0) 1)
+        harvestable? (contains? cell :harvestable)
+        apply? (fn [pred f]
+                 (if pred
+                   f
+                   identity))]
     (if (or in-view? has-been-discovered?)
-      ((if in-view?
-         identity
-         (fn [{:keys [c fg bg]}] {:c c :fg (rcolor/rgb->mono fg) :bg (rcolor/rgb->mono bg)}))
-       (apply fill-put-string-color-style-defaults
-         (rcolor/color-bloodied-char 
-           (< current-time (get cell :bloodied 0))
-           (if (and cell-items
-                    (seq cell-items)
-                    (= (cell :discovered) current-time))
-             (if (contains? #{:chest :artifact-chest} (get cell :type))
-               [\■ :dark-beige :black]
-               [(rutil/item->char (first cell-items))
-                (rutil/item->fg   (first cell-items))
-                :black])
-             (case (cell :type)
-              :floor           [\·]
-              :open-door       [\-  :brown  :black #{:bold}]
-              :close-door      [\+  :brown  :black #{:bold}]
-              :corridor        [\#] 
-              :down-stairs     [\>] 
-              :up-stairs       [\<] 
-              :fire            [\u2240 (if (= (cell :discovered) current-time)
-                                          :fire
-                                          :red) :black] ;; ≀ 
-              :water           [\u2248 (if (= (cell :discovered) current-time)
-                                          :water
-                                          :blue) :black] ;; ≈ 
-              :surf            [\~ (if (= (cell :discovered) current-time)
-                                      :surf
-                                      :light-blue) :black]
-              :shallow-water   [\~ (if (= (cell :discovered) current-time)
-                                      :shallow-water
-                                      :light-blue) :black]
-              :swamp           [\~ (if (= (cell :discovered) current-time)
-                                      :swamp
-                                      :light-blue) :black]
-              :lava            [\~ (if (= (cell :discovered) current-time)
-                                      :lava
-                                      :light-blue) :black]
-              :mountain        [\u2206 :gray :black] ;; ∆
-              :sand            [\·  :beige      :black]
-              :dirt            [\·  :brown      :black]
-              :dune            [\u1d16  :light-brown :black] ;; ᴖ
-              :rocky-shore     [\u1d16  :dark-gray  :black] ;; ᴖ
-              :gravel          [\·  :gray       :black]
-              :short-grass     [\·  :green      :black]
-              :tall-grass      [\" :dark-green :black]
-              :tree            [\T  :dark-green :black]
-              :bamboo          [\u01c1 :light-green :black] ;; ∥ 
-              :palisade        [\# :brown :black]
-              :ramada          [\# :beige :black]
-              :tarp-shelter    [\# :blue  :black]
-              :lean-to         [\# :light-green :black]
-              :campfire        [\^ :brown :black]
-              :bamboo-water-collector
-                               (if (< 10 (get cell :water 0))
-                                 [\O :bamboo-water-collector :black]
-                                 [\O])
-              :solar-still
-                               (if (< 10 (get cell :water 0))
-                                 [\O :solar-still :black]
-                                 [\O])
-              :palm-tree       [\7  :dark-green :black]
-              :fruit-tree      [\u2648  :light-green :black] ;; ♈
-              :freshwater-hole (if (< 10 (get cell :water 0))
-                                 [\~ :freshwater-hole :black]
-                                 [\O])
-              :saltwater-hole  (if (< 10 (get cell :water 0))
-                                 [\~ :saltwater-hole :black]
-                                 [\O])
-              :dry-hole        [\O]
-              ;; pirate ship cell types
-              :bulkhead        [\◘ :brown :black]
-              :wheel           [\○ :dark-brown :black]
-              :bulkhead2       [\◘ :brown :black]
-              :wooden-wall     [\# :ship-brown :black]
-              :railing         [\# :ship-brown :black]
-              :hammock-v       [\) :brown :black]
-              :hammock-h       [\- :brown :black]
-              :deck            [\· :dark-brown :black]
-              :canon-breach    [\║ :gray :dark-brown]
-              :tackle          [\º :brown :black]
-              :canon           [\║ :gray :black]
-              :grate           [\╬ :dark-beige :black]
-              :table           [\╤ :ship-light-brown :black]
-              :chair           [\╥ :ship-light-brown :black]
-              :mast            [\╨ :ship-light-brown :black]
-              :beam            [\═ :brown :black]
-              :canon-truck-1   [\▄ :dark-brown :black]
-              :locker          [\▌ :brown :black]
-              :locker2         [\▐ :brown :black]
-              :canon-truck-2   [\▀ :dark-brown :black]
-              :ships-wheel     [\Φ :brown :black]
-              :ladder          [\≡ :dark-beige :black]
-              :porthole        [\° :brown :black]
-              :chest           [\■ :ship-dark-brown :black]
-              :artifact-chest  [\■ :dark-beige :black]
-              ;; ruined temple cell types
-              :vertical-wall   [\║ :temple-beige :black]
-              :horizontal-wall [\═ :temple-beige :black]
-              :vertical-wall-alt [\° :white :black]
-              :horizontal-wall-alt [\° :white :black]
-              :upper-left-1    [\╔ :temple-beige :black]
-              :upper-right-1   [\╗ :temple-beige :black]
-              :bottom-left-1   [\╚ :temple-beige :black]
-              :bottom-right-1  [\╝ :temple-beige :black]
-              :upper-left-2    [\◙ :temple-beige :black]
-              :upper-right-2   [\◙ :temple-beige :black]
-              :bottom-left-2   [\◙ :temple-beige :black]
-              :bottom-right-2  [\◙ :temple-beige :black]
-              :altar           [\┬ :white :black]
-              :vine            [\⌠ :moss-green :black]
-              :moss-corridor   [\# :moss-green :black]
-              :moss-vertical-wall  [\║ :moss-green :black]
-              :moss-horizontal-wall [\═ :moss-green :black]
-              :moss-vertical-wall-alt [\° :white :black]
-              :moss-horizontal-wall-alt [\° :white :black]
-              :moss-upper-left-1 [\╔ :moss-green :black]
-              :moss-upper-right-1 [\╗ :moss-green :black]
-              :moss-bottom-left-1 [\╚ :moss-green :black]
-              :moss-bottom-right-1 [\╝ :moss-green :black]
-              :moss-upper-left-2 [\◙ :moss-green :black]
-              :moss-upper-right-2 [\◙ :moss-green :black]
-              :moss-bottom-left-2 [\◙ :moss-green :black]
-              :moss-bottom-right-2 [\◙ :moss-green :black]
-              :white-corridor  [\# :white :black]
-              :white-vertical-wall   [\║ :white :black]
-              :white-horizontal-wall [\═ :white :black]
-              :white-vertical-wall-alt [\° :white :black]
-              :white-horizontal-wall-alt [\° :white :black]
-              :white-upper-left-1 [\╔ :white :black]
-              :white-upper-right-1 [\╗ :white :black]
-              :white-bottom-left-1 [\╚ :white :black]
-              :white-bottom-right-1 [\╝ :white :black]
-              :white-upper-left-2 [\◙ :white :black]
-              :white-upper-right-2 [\◙ :white :black]
-              :white-bottom-left-2 [\◙ :white :black]
-              :white-bottom-right-2 [\◙ :white :black]
-              :empty                [\space :black :black]
-              :crushing-wall-trigger
-                                (if (get cell :trap-found)
-                                  [\^]
-                                  [\·])
-              :wall-darts-trigger
-                                (if (get cell :trap-found)
-                                  [\^]
-                                  [\·])
-              :poisonous-gas-trigger
-                                (if (get cell :trap-found)
-                                  [\^]
-                                  [\·])
-              :spike-pit
-                                (if (get cell :trap-found)
-                                  [\^]
-                                  [\·])
-              :snakes-trigger
-                                (if (get cell :trap-found)
-                                  [\^]
-                                  [\·])
-         
-              (do (log/info (format "unknown type: %s %s" (str (get cell :type)) (str cell)))
-              [\?]))))))
-         {:c \  :fg [0 0 0 0] :bg [0 0 0 0]})))
+      (->
+        (apply fill-put-string-color-style-defaults
+          wx wy
+          (rcolor/color-bloodied-char 
+            (< current-time (get cell :bloodied 0))
+            (if (and cell-items
+                     (seq cell-items)
+                     (= (cell :discovered) current-time))
+              (if (contains? #{:chest :artifact-chest} (get cell :type))
+                [\■ :dark-beige :black]
+                [(rutil/item->char (first cell-items))
+                 (rutil/item->fg   (first cell-items))
+                 :black])
+              (case (cell :type)
+               :floor           [\·]
+               :open-door       [\-  :brown  :black #{:bold}]
+               :close-door      [\+  :brown  :black #{:bold}]
+               :corridor        [\#] 
+               :down-stairs     [\>] 
+               :up-stairs       [\<] 
+               :fire            [\u2240 (if (= (cell :discovered) current-time)
+                                           :fire
+                                           :red) :black] ;; ≀ 
+               :water           [\u2248 (if (= (cell :discovered) current-time)
+                                           :water
+                                           :blue) :black] ;; ≈ 
+               :surf            [\~ (if (= (cell :discovered) current-time)
+                                       :surf
+                                       :light-blue) :black]
+               :shallow-water   [\~ (if (= (cell :discovered) current-time)
+                                       :shallow-water
+                                       :light-blue) :black]
+               :swamp           [\~ (if (= (cell :discovered) current-time)
+                                       :swamp
+                                       :light-blue) :black]
+               :lava            [\~ (if (= (cell :discovered) current-time)
+                                       :lava
+                                       :light-blue) :black]
+               :mountain        [\u2206 :gray :black] ;; ∆
+               :sand            [\·  :beige      :black]
+               :dirt            [\·  :brown      :black]
+               :dune            [\u1d16  :light-brown :black] ;; ᴖ
+               :rocky-shore     [\u1d16  :dark-gray  :black] ;; ᴖ
+               :gravel          [\·  :gray       :black]
+               :short-grass     [\·  :green      :black]
+               :tall-grass      [\" :dark-green :black]
+               :tree            [\T  :dark-green :black]
+               :bamboo          [\u01c1 :light-green :black] ;; ∥ 
+               :palisade        [\# :brown :black]
+               :ramada          [\# :beige :black]
+               :tarp-shelter    [\# :blue  :black]
+               :lean-to         [\# :light-green :black]
+               :campfire        [\^ :brown :black]
+               :bamboo-water-collector
+                                (if (< 10 (get cell :water 0))
+                                  [\O :bamboo-water-collector :black]
+                                  [\O])
+               :solar-still
+                                (if (< 10 (get cell :water 0))
+                                  [\O :solar-still :black]
+                                  [\O])
+               :palm-tree       [\7  :dark-green :black]
+               :fruit-tree      [\u2648  :light-green :black] ;; ♈
+               :freshwater-hole (if (< 10 (get cell :water 0))
+                                  [\~ :freshwater-hole :black]
+                                  [\O])
+               :saltwater-hole  (if (< 10 (get cell :water 0))
+                                  [\~ :saltwater-hole :black]
+                                  [\O])
+               :dry-hole        [\O]
+               ;; pirate ship cell types
+               :bulkhead        [\◘ :brown :black]
+               :wheel           [\○ :dark-brown :black]
+               :bulkhead2       [\◘ :brown :black]
+               :wooden-wall     [\# :ship-brown :black]
+               :railing         [\# :ship-brown :black]
+               :hammock-v       [\) :brown :black]
+               :hammock-h       [\- :brown :black]
+               :deck            [\· :dark-brown :black]
+               :canon-breach    [\║ :gray :dark-brown]
+               :tackle          [\º :brown :black]
+               :canon           [\║ :gray :black]
+               :grate           [\╬ :dark-beige :black]
+               :table           [\╤ :ship-light-brown :black]
+               :chair           [\╥ :ship-light-brown :black]
+               :mast            [\╨ :ship-light-brown :black]
+               :beam            [\═ :brown :black]
+               :canon-truck-1   [\▄ :dark-brown :black]
+               :locker          [\▌ :brown :black]
+               :locker2         [\▐ :brown :black]
+               :canon-truck-2   [\▀ :dark-brown :black]
+               :ships-wheel     [\Φ :brown :black]
+               :ladder          [\≡ :dark-beige :black]
+               :porthole        [\° :brown :black]
+               :chest           [\■ :ship-dark-brown :black]
+               :artifact-chest  [\■ :dark-beige :black]
+               ;; ruined temple cell types
+               :vertical-wall   [\║ :temple-beige :black]
+               :horizontal-wall [\═ :temple-beige :black]
+               :vertical-wall-alt [\° :white :black]
+               :horizontal-wall-alt [\° :white :black]
+               :upper-left-1    [\╔ :temple-beige :black]
+               :upper-right-1   [\╗ :temple-beige :black]
+               :bottom-left-1   [\╚ :temple-beige :black]
+               :bottom-right-1  [\╝ :temple-beige :black]
+               :upper-left-2    [\◙ :temple-beige :black]
+               :upper-right-2   [\◙ :temple-beige :black]
+               :bottom-left-2   [\◙ :temple-beige :black]
+               :bottom-right-2  [\◙ :temple-beige :black]
+               :altar           [\┬ :white :black]
+               :vine            [\⌠ :moss-green :black]
+               :moss-corridor   [\# :moss-green :black]
+               :moss-vertical-wall  [\║ :moss-green :black]
+               :moss-horizontal-wall [\═ :moss-green :black]
+               :moss-vertical-wall-alt [\° :white :black]
+               :moss-horizontal-wall-alt [\° :white :black]
+               :moss-upper-left-1 [\╔ :moss-green :black]
+               :moss-upper-right-1 [\╗ :moss-green :black]
+               :moss-bottom-left-1 [\╚ :moss-green :black]
+               :moss-bottom-right-1 [\╝ :moss-green :black]
+               :moss-upper-left-2 [\◙ :moss-green :black]
+               :moss-upper-right-2 [\◙ :moss-green :black]
+               :moss-bottom-left-2 [\◙ :moss-green :black]
+               :moss-bottom-right-2 [\◙ :moss-green :black]
+               :white-corridor  [\# :white :black]
+               :white-vertical-wall   [\║ :white :black]
+               :white-horizontal-wall [\═ :white :black]
+               :white-vertical-wall-alt [\° :white :black]
+               :white-horizontal-wall-alt [\° :white :black]
+               :white-upper-left-1 [\╔ :white :black]
+               :white-upper-right-1 [\╗ :white :black]
+               :white-bottom-left-1 [\╚ :white :black]
+               :white-bottom-right-1 [\╝ :white :black]
+               :white-upper-left-2 [\◙ :white :black]
+               :white-upper-right-2 [\◙ :white :black]
+               :white-bottom-left-2 [\◙ :white :black]
+               :white-bottom-right-2 [\◙ :white :black]
+               :empty                [\space :black :black]
+               :crushing-wall-trigger
+                                 (if (get cell :trap-found)
+                                   [\^]
+                                   [\·])
+               :wall-darts-trigger
+                                 (if (get cell :trap-found)
+                                   [\^]
+                                   [\·])
+               :poisonous-gas-trigger
+                                 (if (get cell :trap-found)
+                                   [\^]
+                                   [\·])
+               :spike-pit
+                                 (if (get cell :trap-found)
+                                   [\^]
+                                   [\·])
+               :snakes-trigger
+                                 (if (get cell :trap-found)
+                                   [\^]
+                                   [\·])
+          
+               (do (log/info (format "unknown type: %s %s" (str (get cell :type)) (str cell)))
+               [\?])))))
+        ((apply? (not in-view?)
+           (fn [{:keys [c fg bg]}] {:c c :fg (rcolor/rgb->mono fg) :bg (rcolor/rgb->mono bg)})))
+        ((apply? (and in-view? harvestable?)
+           (fn [{:keys [c fg bg]}] {:c c :fg bg :bg fg}))))
+      {:c \  :fg [0 0 0 0] :bg [0 0 0 0]})))
 
 (zc/def-component MapInViewport
   [this]
   (let [{:keys [cells current-time]} (zc/props this)]
     (zc/csx [:img {:width 80 :height 23}
-                  (mapv (fn [line]
-                            (mapv (fn [cell]
-                              (render-cell cell current-time))
+                  (map-indexed (fn [y line]
+                            (map-indexed (fn [x cell]
+                              (render-cell cell x y current-time))
                               line))
                           cells)])))
 
 (defn render-npc [npc current-time]
   (apply fill-put-string-color-style-defaults
+    0 0
     (rcolor/color-bloodied-char 
       (< current-time (get npc :bloodied 0))
       (case (get npc :race)
@@ -1448,7 +1475,7 @@
   
 (zc/def-component CharactersInViewport
   [this]
-  (let [{:keys [npcs player-pos vx vy current-time]} (zc/props this)]
+  (let [{:keys [npcs player-pos player-bloodied vx vy current-time]} (zc/props this)]
     (zc/csx [:view {}
                    (reduce (fn [children npc]
                              (let [x         (-> npc :pos :x)
@@ -1459,25 +1486,18 @@
                                    ;                  target-pos             (nth target-ranged-pos-coll target-ranged-index)]
                                    ;              (= target-pos (get npc :pos))))
                                    ;t       (rw/get-time state)
-                                   visible (and (not (farther-than?
-                                                       player-pos
-                                                       {:x x :y y}
-                                                       8))
-                                                #_(= (get (rw/get-cell state x y) :discovered) t))
                                    {:keys [c fg bg]} (render-npc npc current-time)]
                                ;(log/debug "npc@" x y "visible?" visible)
-                               (if (or visible true)
-                                 (conj children (zc/csx [:text {:style {:position :fixed
-                                                                        :top (- y vy)
-                                                                        :left (- x vx)
-                                                                        :color fg
-                                                                        :background-color bg}} [(str c)]]))
-                                 children)))
+                               (conj children (zc/csx [:text {:style {:position :fixed
+                                                                      :top (- y vy)
+                                                                      :left (- x vx)
+                                                                      :color fg
+                                                                      :background-color bg}} [(str c)]]))))
                            ; Always render player
                            [(zc/csx [:text {:style {:position :fixed
                                                     :top (- (get player-pos :y) vy)
                                                     :left (- (get player-pos :x) vx)
-                                                    :color (rcolor/color->rgb :white)
+                                                    :color (rcolor/color->rgb (if player-bloodied :dark-red :white))
                                                     :background-color (rcolor/color->rgb :black)}}
                                            ["@"]])]
                            npcs)])))
@@ -1571,10 +1591,35 @@
                     [Highlight {} ["Esc "]]
                     [:text {} ["to exit."]]]]]]]]))]])))
 
+; Render the player character stats  menu if the world state is `:player-stats`.
 (zc/def-component PlayerStats
   [this]
-  (let [{:keys [game-state]} (zc/props this)]
-    nil))
+  (let [{:keys [game-state]} (zc/props this)
+        x             18
+        y             5
+        height        11
+        player-name   (rp/get-player-attribute game-state :name)
+        max-hp        (int (rp/player-max-hp game-state))
+        level         (rp/player-level game-state)
+        xp            (or (rp/xp-acc-for-next-level game-state) -9)
+        xp-next-level (or (rp/xp-for-next-level game-state) -99)
+        strength      (int (rp/get-player-attribute game-state :strength))
+        dexterity     (rp/get-player-attribute game-state :dexterity)
+        toughness     (rp/get-player-attribute game-state :toughness)]
+    (zc/csx [zcui/Popup {:style {:top 5}} [
+        [:text {} [(format "Name:      %s" player-name)]]
+        [:text {} [(format "Level:     %d (%d/%d)" level xp xp-next-level)]]
+        [:text {} [""]]
+        [:text {} [(format "Max HP:    %d" max-hp )]]
+        [:text {} [""]]
+        [:text {} [(format "Strength:  %d" strength )]]
+        [:text {} [(format "Dexterity: %d" dexterity )]]
+        [:text {} [(format "Toughness: %d" toughness )]]
+        [:text {} [""]]
+        [:text {} [
+          [:text {} ["Press "]]
+          [Highlight {} ["Esc "]]
+          [:text {} ["to exit."]]]]]])))
 
 (zc/def-component AbilityChoices
   [this]
@@ -1749,7 +1794,13 @@
 (zc/def-component QuitPrompt
   [this]
   (let [{:keys [game-state]} (zc/props this)]
-    nil))
+    (zc/csx [zcui/Popup {:style {:position :fixed :top 10}} [
+              [:text {} [
+                [:text {} ["quit? ["]]
+                [Highlight {} ["y"]]
+                [:text {} ["/"]]
+                [Highlight {} ["n"]]
+                [:text {} ["]"]]]]]])))
 
 (zc/def-component Harvest
   [this]
@@ -1789,7 +1840,7 @@
       :quaff-popover        (zc/csx [RawPopover {:game-state game-state}])
       :dead                 (zc/csx [DeadText {:game-state game-state}])
       :rescued              (zc/csx [RescuedText {:game-state game-state}])
-      :quit                 (zc/csx [QuitPrompt {:game-state game-state}])
+      :quit?                (zc/csx [QuitPrompt {:game-state game-state}])
       :harvest              (zc/csx [Harvest {:game-state game-state}])
       (zc/csx [:view {} []]))
     ;; draw cursor
@@ -1797,15 +1848,65 @@
       (move-cursor screen (cursor-pos :x) (cursor-pos :y))
       (move-cursor screen -1 -1))))
 
+(zc/def-component Message
+  [this]
+  ;; draw log
+  (let [{:keys [game-state]} (zc/props this)
+        current-time     (dec (rw/get-time game-state))
+        log-idx          (get-in game-state [:world :log-idx] 0)
+        num-logs         (count (filter #(= current-time (get % :time)) (get-in game-state [:world :log])))
+        up-arrow-char    "\u2191"
+        down-arrow-char  "\u2193"
+        msg-above?       (< log-idx (dec num-logs))
+        msg-below?       (pos? log-idx)
+        up-arrow-color   (if msg-above?
+                           (rcolor/color->rgb (get (nth (reverse (get-in game-state [:world :log])) (inc log-idx)) :color))
+                           (rcolor/color->rgb :white))
+        down-arrow-color (if msg-below?
+                           (rcolor/color->rgb (get (nth (reverse (get-in game-state [:world :log])) (dec log-idx)) :color))
+                           (rcolor/color->rgb :white))
+        message          (if (zero? num-logs)
+                           {:message "" :time 0 :color :black} 
+                           (nth (reverse (get-in game-state [:world :log])) log-idx))
+        darken-factor    (inc  (* (/ -1 5) (- current-time (message :time))))
+        log-color        (rcolor/darken-rgb (rcolor/color->rgb (get message :color)) darken-factor)]
+    (zc/csx
+        [:view {} [
+          [:text {:style {:position :fixed :top -4 :left 0}} [
+            (if msg-above?
+              (zc/csx [:text {} [
+                        [Highlight {} ["/"]]
+                        [:text {} ["-"]]
+                        [:text {:style {:color up-arrow-color}} [up-arrow-char]]]])
+              (zc/csx [:text {} ["   "]]))
+            (if msg-below?
+              (zc/csx [:text {} [
+                        [Highlight {} ["*"]]
+                        [:text {} ["-"]]
+                        [:text {:style {:color down-arrow-color}} [down-arrow-char]]]])
+              (zc/csx [:text {} ["   "]]))
+            (if (get message :text)
+              (zc/csx [:text {:style {:color (rcolor/color->rgb :white #_(name (get message :color)))}} [(str (get message :text))]])
+              (zc/csx [:text {} [""]]))]]]])))
+
 (zc/def-component Map
   [this]
   (let [{:keys [game-state]} (zc/props this)
         [columns rows] [80 24]
         current-time (get-in game-state [:world :time])
-        {{player-x :x player-y :y} :pos :as player} (rp/get-player game-state)
+        {{player-x :x player-y :y :as player-pos}
+         :pos :as player}                           (rp/get-player game-state)
         d                                           (rlos/sight-distance game-state)
         cells                                       (rv/cells-in-viewport game-state)
-        npcs                                        (npcs-in-viewport game-state)
+        visible-npcs                                (filter (fn [npc]
+                                                              (let [{npc-x :x npc-y :y :as npc-pos} (get npc :pos)]
+                                                                (and (not (farther-than?
+                                                                             player-pos
+                                                                             (get npc :pos)
+                                                                             8))
+                                                                     (= (get (rw/get-cell game-state npc-x npc-y) :discovered)
+                                                                        current-time))))
+                                                            (npcs-in-viewport game-state))
         place-id                                    (rw/current-place-id game-state)
         vx                                          (if place-id 0 (-> game-state :world :viewport :pos :x))
         vy                                          (if place-id 0 (-> game-state :world :viewport :pos :y))
@@ -1819,13 +1920,15 @@
               [MapInViewport {:cells cells :current-time current-time}]]]]]
 		  [:layer {:id :features} [
             [:view {:style {:top 0 :left 0}} [
-              [CharactersInViewport {:npcs npcs
+              [CharactersInViewport {:npcs visible-npcs
                                      :player-pos (rp/player-pos game-state)
+                                     :player-bloodied (get player :bloodied)
                                      :vx vx
                                      :vy vy
                                      :current-time current-time}]]]]]
           [:layer {:id :ui} [
             [Hud {:game-state game-state}]
+            [Message {:game-state game-state}]
             [MapUI {:game-state game-state}]]]]]]])))
 
 #_(defn render-enter-name [state]

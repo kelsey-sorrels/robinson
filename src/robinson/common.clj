@@ -24,6 +24,14 @@
   [pos]
   (= #{:x :y} (-> pos keys set)))
 
+(defn add-pos [pos & poss]
+  {:x (reduce + (pos :x) (map :x poss))
+   :y (reduce + (pos :y) (map :y poss))})
+
+(defn sub-pos [pos & poss]
+  {:x (reduce - (pos :x) (map :x poss))
+   :y (reduce - (pos :y) (map :y poss))})
+
 (defn pos->xy
   [{x :x y :y}]
   [x y])

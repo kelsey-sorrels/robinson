@@ -10,6 +10,7 @@
             [zaffre.components.render :as zcr]
             [zaffre.tilesets :as ztiles]
             [zaffre.events :as zevents]
+            [robinson.events :as revents]
             [robinson.world :as rw]
             [robinson.render :as rr]
             [robinson.ui.updater :as ruu]
@@ -102,21 +103,21 @@
                     (async/>!! done-chan true)
                     (System/exit 0))
                   ; tick the old state through the tick-fn to get the new state
-                  (let [state (try
-                                (when (= keyin :exit)
-                                  (System/exit 0))
-                                (if keyin
-                                  (do
-                                    (log/info "Core current-state" (rw/current-state state))
-                                    (log/info "Core got key" keyin)
-                                    (let [new-state (@tick-fn @state-ref keyin)]
-                                      (log/info "End of game loop")
-                                      new-state))
-                                  state)
-                                 (catch Throwable ex
-                                   (log/error ex)
-                                   (print-stack-trace ex)
-                                   state))]
-                     (reset! state-ref state)))))
+                  (try
+                    (when (= keyin :exit)
+                      (System/exit 0))
+                    (if keyin
+                      (do
+                        (log/info "Core current-state" (rw/current-state state))
+                        (log/info "Core got key" keyin)
+                        (let [new-state (@tick-fn @state-ref keyin)
+                              state-stream (revents/stream new-state)]
+                          (doseq [state (revents/chan-seq state-stream)]
+                            (reset! state-ref state))
+                          (log/info "End of game loop"))))
+                     (catch Throwable ex
+                       (log/error ex)
+                       (print-stack-trace ex)
+                       state)))))
             (async/<!! done-chan)))))))
  

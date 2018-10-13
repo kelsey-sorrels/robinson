@@ -10,7 +10,7 @@
             [robinson.describe :as rdesc]
             [robinson.npc :as rnpc]
             [robinson.combat :as rcombat]
-            [robinson.events :as revents]
+            [robinson.actors :as ractors]
             [robinson.fx :as rfx]
             [robinson.dynamiccharacterproperties :as dcp]
             [taoensso.timbre :as log]))
@@ -195,16 +195,18 @@
                 trigger-cell-path [:world :places place-id y x]
                 npc-path          (rnpc/npc->keys state (get obj :npc))]
             (-> state
-              (rfx/conj-fx-transform [x y] (rc/pos->xy (get obj :pos)) (ig/gen-item :blowdart))
-              (revents/conj-event 100 (fn [state]
+              ; FIXME: undo this, make work with actors
+              #_(rfx/conj-fx-transform [x y] (rc/pos->xy (get obj :pos)) (ig/gen-item :blowdart))
+              #_(revents/conj-event 100 (fn [state]
                 (rcombat/attack state src-trap  npc-path)))))
         (contains? obj :player)
           (let [[x y]             (rc/pos->xy (get cell :src-pos))
                 place-id          (rw/current-place-id state)
                 trigger-cell-path [:world :places place-id y x]]
             (-> state
-              (rfx/conj-fx-transform [x y] (rp/player-xy state) (ig/gen-item :blowdart))
-              (revents/conj-event 100 (fn [state]
+              ; FIXME: undo this, make work with actors
+              #_(rfx/conj-fx-transform [x y] (rp/player-xy state) (ig/gen-item :blowdart))
+              #_(revents/conj-event 100 (fn [state]
                 (rcombat/attack state src-trap [:world :player])))))
         (contains? obj :cell)
           (rc/append-log state (format "Schwaff! Thump! The dart hits %s." (rdesc/describe-cell-type (get obj :cell))))

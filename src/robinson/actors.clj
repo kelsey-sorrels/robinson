@@ -25,20 +25,17 @@
     :actors
     empty?))
 
+(defprotocol Actor
+  (receive [this state]))
+
+(defn fn->actor [f]
+  (reify Actor
+    (receive [this state] (f this state))))
+
 (defn tick-actors [state]
   "Return a new state after all actors have been processed"
   (reduce (fn [state [actor-id actor]]
-            ((get actor :fn) actor state))
+            (receive actor state))
           state
           (get state :actors)))
-
-(defn create-airborn-item-actor [item-pos-ks velocity ttl]
-  {:velocity velocity
-   :ttl ttl
-   :fn (fn [self state]
-         (-> state
-           ; move item
-           (update-in state item-pos-ks (partial rc/add-pos velocity))
-           ; update ttl
-           (update-actor self :ttl dec)))})
 

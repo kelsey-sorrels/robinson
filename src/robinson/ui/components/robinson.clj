@@ -28,6 +28,7 @@
                                             player-infected?]]
             [robinson.describe :as rdesc]
             [robinson.endgame :as rendgame :refer [gen-end-madlib]]
+            [robinson.fx :as rfx]
             [robinson.crafting :as rcrafting :refer [get-recipes]]
             [robinson.itemgen :refer [can-be-wielded?
                                       can-be-wielded-for-ranged-combat?
@@ -1254,6 +1255,26 @@
                (zc/csx [:view {} []])))
             traps)])))
 
+(zc/def-component CharacterFx
+  [this]
+  (let [{:keys [fx]} (zc/props this)
+        {:keys [pos]} fx]
+    (zc/csx [:view {:style {:position :absolute
+                            :top (get pos :y)
+                            :left (get pos :x)}} [
+              [:text {} [(str (get fx :ch))]]]])))
+
+(zc/def-component FX
+  [this]
+  (let [{:keys [fx]} (zc/props this)]
+    (zc/csx [:view {}
+      (map (fn [effect]
+             (case (get fx :type)
+               :character-fx
+                 (zc/csx [CharacterFx effect])
+               (zc/csx [:view {} []])))
+            fx)])))
+
 (zc/def-component MultiSelect
   [this]
   (let [default-props {:selected-hotkeys []
@@ -1840,7 +1861,9 @@
                                      :player-bloodied (get player :bloodied)
                                      :vx vx
                                      :vy vy
-                                     :current-time current-time}]]]]]
+                                     :current-time current-time}]]]
+            [:view {:style {:top 0 :left 0}} [
+              [FX {:fx (rfx/fx game-state)}]]]]]
           [:layer {:id :ui} [
             [Hud {:game-state game-state}]
             [Message {:game-state game-state}]
@@ -2263,9 +2286,9 @@
 	  [:terminal {} [
 		[:group {:id :app} [
 		  [:layer {:id :ui} [
-            [:view {} 
-              (for [{:keys [text color]} log]
-                [:text {:style {:fg color}} [text]])]]]]]]])))
+            [:view {}
+              (for [{:keys [text color]} (reverse (take 23 log))]
+                (zc/csx [:text {:style {:color (rcolor/color->rgb color)}} [(str text)]]))]]]]]]])))
 
 (zc/def-component Robinson
   [this]

@@ -26,7 +26,6 @@
             [robinson.worldgen :as rworldgen]
             [robinson.lineofsight :as rlos]
             [robinson.renderutil :as rutil]
-            [robinson.events :as revents]
             [robinson.fx :as rfx]
             [robinson.feedback :as rf]
             robinson.macros
@@ -1716,8 +1715,9 @@
         ;; dec ranged weapon ammunition
         (rp/dec-item-count state (ig/item->ranged-combat-ammunition-item-id ranged-weapon-item))
         state)
-      (rfx/conj-fx-transform state (rp/player-xy state) (rc/pos->xy target-pos) ranged-weapon-item)
-      (revents/conj-event state dt (fn [state]
+      ;FIXME: redo this with actors
+      #_(rfx/conj-fx-transform state (rp/player-xy state) (rc/pos->xy target-pos) ranged-weapon-item)
+      #_(revents/conj-event state dt (fn [state]
         ;; do combat
         (rcombat/attack state [:world :player] (rnpc/npc->keys state npc) ranged-weapon-item))))))
 
@@ -1976,8 +1976,9 @@
         (-> state
           (free-cursor)
           (rp/dec-item-count (get item :id))
-          (rfx/conj-fx-transform (rp/player-xy state) [target-x target-y] item)
-          (revents/conj-event dt (fn [state]
+          ; FIXME: redo this with actors
+          #_(rfx/conj-fx-transform (rp/player-xy state) [target-x target-y] item)
+          #_(revents/conj-event dt (fn [state]
             (-> state
               (rcombat/attack [:world :player] (rnpc/npc->keys state (get obj :npc)) item)
               (rw/conj-cell-items (get-in obj [:pos :x]) (get-in obj [:pos :y]) (assoc item :count 1))))))
@@ -1988,13 +1989,15 @@
           (rp/dec-item-count state (get item :id))
           (if (= (get-in obj [:cell :type]) :fire)
             (-> state
-              (rfx/conj-fx-transform (rp/player-xy state) [target-x target-y] item)
-              (revents/conj-event state dt (fn [state]
+              ; FIXME: redo this with actors
+              #_(rfx/conj-fx-transform (rp/player-xy state) [target-x target-y] item)
+              #_(revents/conj-event state dt (fn [state]
                 (rw/update-cell (get-in obj [:pos :x]) (get-in obj [:pos :y]) (fn [cell] (update-in cell [:fuel] (partial + (ig/id->fuel (get item :id)))))))))
               (let [{x :x y :y} (get obj :prev-pos)]
                 (-> state
-                  (rfx/conj-fx-transform (rp/player-xy state) [x y] item)
-                  (revents/conj-event dt (fn [state]
+                  ; FIXME: redo this with actors
+                  #_(rfx/conj-fx-transform (rp/player-xy state) [x y] item)
+                  #_(revents/conj-event dt (fn [state]
                     (rw/conj-cell-items state
                                         x
                                         y
@@ -2007,8 +2010,9 @@
           free-cursor
           (rc/append-log "You throw it at the trap.")
           (rp/dec-item-count (get item :id))
-          (rfx/conj-fx-transform (rp/player-xy state) [target-x target-y] item)
-          (revents/conj-event dt (fn [state]
+          ; FIXME: redo this with actors
+          #_(rfx/conj-fx-transform (rp/player-xy state) [target-x target-y] item)
+          #_(revents/conj-event dt (fn [state]
             (log/info "triggering trap")
             (rt/trigger-if-trap state [target-x target-y]))))
       :else
@@ -2016,8 +2020,9 @@
         (-> state
           (free-cursor)
           (rp/dec-item-count (get item :id))
-          (rfx/conj-fx-transform (rp/player-xy state) [target-x target-y] item)
-          (revents/conj-event dt (fn [state]
+          ; FIXME: redo this with actors
+          #_(rfx/conj-fx-transform (rp/player-xy state) [target-x target-y] item)
+          #_(revents/conj-event dt (fn [state]
             (rw/conj-cell-items state target-x target-y (assoc item :count 1))))))))
 
 (defn craft-weapon
@@ -3286,7 +3291,19 @@
                                             (rw/assoc-current-state state :dead)
                                             state))
                                                                        rw/current-state true]
+                          ;; spawn trap
                           \3           [(fn [state]
+                                          (if (get-in state [:world :dev-mode])
+                                            (let [{:keys [x y]} (rp/player-pos state)
+                                                  trap {:type :wall-darts-trigger
+                                                        :difficulty 1
+                                                        :direction :right
+                                                        :src-pos {:x (+ x 5) :y y}}]
+                                              (log/info "spawning trap " trap)
+                                              (rw/update-cell state x (inc y) (fn [cell] (merge cell trap))))
+                                            state))            :normal          true]
+                          ; add flint to inventory
+                          #_#_\3           [(fn [state]
                                           (if (get-in state [:world :dev-mode])
                                             (rp/add-to-inventory state [(ig/gen-item :flint)])
                                             state))            :normal          true]
@@ -3635,8 +3652,9 @@
             new-time  (inc (get-in state [:world :time]))
             state     (-> state
                         rc/clear-ui-hint
-                        rfx/clear-fx
-                        (revents/assoc-event-time 0))
+                        ; FIXME: redo this with actors
+                        #_rfx/clear-fx
+                        #_(revents/assoc-event-time 0))
                             
             state     (transition-fn state)
             ;; apply effect on :enter-name state

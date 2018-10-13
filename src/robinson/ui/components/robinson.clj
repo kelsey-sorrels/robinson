@@ -39,7 +39,7 @@
             [robinson.npc :as rnpc :refer [talking-npcs
                                            npcs-in-viewport]]
             [robinson.noise :as rnoise]
-            #_[robinson.traps :as rt]
+            [robinson.traps :as rt]
             [robinson.ui.updater :as ruu]
             [zaffre.terminal :as zat]
             [zaffre.animation.wrapper :as zaw]
@@ -263,36 +263,6 @@
            [StatusUI {:game-state game-state :style {:left 37 :bottom 1}}]
            [ThirstHungerBars {:game-state game-state :style {:left (+ 37 7) :bottom 2}}]]]]])))
 
-#_(defn render-crushing-wall
-  [screen trap]
-  (let [ch (case (get trap :direction)
-             :up    \╧
-             :down  \╤
-             :left  \╢
-             :right \╟)]
-    (put-chars screen :features (for [[x y] (first (get trap :locations))]
-                                  {:x x :y y :c ch :fg [90 90 90] :bg [0 0 0]}))))
-
-#_(defn render-poisonous-gas
-  [screen state trap]
-  (let [current-time (rw/get-time state)]
-    (doseq [[x y] (keys (get trap :locations))]
-      (when (= (get (rw/get-cell state x y) :discovered) current-time)
-        (let [bg (rcolor/color->rgb (rand-nth [:beige :temple-beige :light-brown]))]
-          (set-bg! screen :map x y bg))))))
-
-#_(defn render-traps
-  [state]
-  (when-let [traps (rt/current-place-traps state)]
-    (let [screen (get state :screen)]
-      (doseq [trap traps]
-        (case (get trap :type)
-          :crushing-wall
-            (render-crushing-wall screen trap)
-          :poisonous-gas
-            (render-poisonous-gas screen state trap)
-          nil)))))
-
 (defn translate-identified-items
   [state items]
   (let [identified (get-in state [:world :fruit :identified])
@@ -306,204 +276,6 @@
                       item))
          items)))
 
-#_(defn render-pick-up-selection
-  "Render the pickup item menu if the world state is `:pickup-selection`."
-  [state]
-  (let [screen           (state :screen)
-        direction        (get-in state [:world :pickup-direction])
-        {x :x y :y}      (rw/player-adjacent-pos state direction)
-        cell             (get-cell state x y)
-        cell-items       (or (cell :items) [])
-        hotkeys          (-> state :world :remaining-hotkeys)
-        selected-hotkeys (-> state :world :selected-hotkeys)
-        items            (fill-missing (fn missing [item] (not (contains? item :hotkey)))
-                                       (fn apply-hotkey [item hotkey] (assoc item :hotkey hotkey))
-                                       hotkeys
-                                       cell-items)]
-  (log/debug "x" x "y" y)
-  (log/debug "cell" cell)
-  (log/debug "cell-items" cell-items)
-  (render-multi-select screen "Pick up" selected-hotkeys (translate-identified-items state items))
-  (put-chars screen :ui (markup->chars 41 20 "<color fg=\"highlight\">space</color>-All" :black :white #{}))))
-
-#_(defn render-inventory
-  "Render the pickup item menu if the world state is `:inventory`."
-  [state]
-  (render-multi-select (state :screen) "Inventory" [] (translate-identified-items state (-> state :world :player :inventory))))
-
-#_(defn render-abilities
-  "Render the player abilities menu if the world state is `:abilities`."
-  [state]
-  (let [screen (get state :screen)
-        abilities (rp/player-abilities state)
-        height (if (seq abilities)
-                 (+ 3 (* 3 (count abilities)))
-                 4)]  
-    (render-list screen :ui 17 4 43 height
-      (if (seq abilities)
-        (concat
-          (mapcat
-            (fn [ability]
-              [{:s (format "<color fg=\"highlight\">%s</color> - %s" (get ability :hotkey) (get ability :name))
-                :fg :black
-                :bg :white
-                :style #{}}
-               {:s (format "    %s" (get ability :description)) :fg :black :bg :white :style #{}}
-               {:s "" :fg :black :bg :white :style #{}}])
-            abilities)
-          [{:s "" :fg :black :bg :white :style #{}}
-           {:s "Select hotkey or press <color fg=\"highlight\">Esc</color> to exit." :fg :black :bg :white :style #{}}])
-        [{:s "No abilities." :fg :black :bg :white :style #{}}
-         {:s "" :fg :black :bg :white :style #{}}
-         {:s "Press <color fg=\"highlight\">Esc</color> to exit." :fg :black :bg :white :style #{}}]))
-        
-    (render-rect-double-border screen 16 3 43 height :black :white)
-    (put-string screen :ui 33 3 "Abilities" :black :white)))
-
-#_(defn render-ability-choices 
-  "Render the player ability choice menu if the world state is `:gain-level`."
-  [state]
-  (let [screen (get state :screen)
-        abilities (get-in state [:world :ability-choices])
-        height (+ 3 (* 3 (count abilities)))]
-    (render-list screen :ui 17 4 43 height
-      (concat
-        (mapcat
-          (fn [ability]
-            [{:s (format "<color fg=\"highlight\">%s</color> - %s" (get ability :hotkey) (get ability :name))
-              :fg :black
-              :bg :white
-              :style #{}}
-             {:s (format "    %s" (get ability :description)) :fg :black :bg :white :style #{}}
-             {:s "" :fg :black :bg :white :style #{}}])
-          abilities)
-        [{:s "" :fg :black :bg :white :style #{}}
-         {:s "Select hotkey." :fg :black :bg :white :style #{}}]))
-    (render-rect-double-border screen 16 3 43 height :black :white)
-    (put-string screen :ui 29 3 "Choose New Ability" :black :white)))
-
-#_(defn render-action-choices
-  "Render the player action choices menu if the world state is `:action-select`."
-  [state]
-  (let [screen (get state :screen)
-        abilities (get-in state [:world :action-select])
-        height (if (seq abilities)
-                 (+ 3 (* 3 (count abilities)))
-                 4)]  
-    (render-list screen :ui 17 4 43 height
-      (if (seq abilities)
-        (concat
-          (mapcat
-            (fn [ability]
-              [{:s (format "<color fg=\"highlight\">%s</color> - %s" (get ability :hotkey) (get ability :name))
-                :fg :black
-                :bg :white
-                :style #{}}
-               {:s "" :fg :black :bg :white :style #{}}])
-            abilities)
-          [{:s "" :fg :black :bg :white :style #{}}
-           {:s "Select hotkey or press <color fg=\"highlight\">Esc</color> to exit." :fg :black :bg :white :style #{}}])
-        [{:s "Nothing to do." :fg :black :bg :white :style #{}}
-         {:s "" :fg :black :bg :white :style #{}}
-         {:s "Press <color fg=\"highlight\">Esc</color> to exit." :fg :black :bg :white :style #{}}]))
-        
-    (render-rect-double-border screen 16 3 43 height :black :white)
-    (put-string screen :ui 30 3 "Choose Action" :black :white)))
-
-
-#_(defn render-player-stats
-  "Render the player character stats  menu if the world state is `:player-stats`."
-  [state]
-  (let [screen        (get state :screen)
-        x             18
-        y             5
-        height        11
-        player-name   (rp/get-player-attribute state :name)
-        max-hp        (int (rp/player-max-hp state))
-        level         (rp/player-level state)
-        xp            (or (rp/xp-acc-for-next-level state) -9)
-        xp-next-level (or (rp/xp-for-next-level state) -99)
-        strength      (int (rp/get-player-attribute state :strength))
-        dexterity     (rp/get-player-attribute state :dexterity)
-        toughness     (rp/get-player-attribute state :toughness)]
-  
-    (render-list screen :ui (inc x) (inc y) 43 height
-        [{:s (format "Name:      %s" player-name) :fg :black :bg :white :style #{}}
-         {:s (format "Level:     %d (%d/%d)" level xp xp-next-level) :fg :black :bg :white :style #{}}
-         {:s "" :fg :black :bg :white :style #{}}
-         {:s (format "Max HP:    %d" max-hp ) :fg :black :bg :white :style #{}}
-         {:s "" :fg :black :bg :white :style #{}}
-         {:s (format "Strength:  %d" strength ) :fg :black :bg :white :style #{}}
-         {:s (format "Dexterity: %d" dexterity ) :fg :black :bg :white :style #{}}
-         {:s (format "Toughness: %d" toughness ) :fg :black :bg :white :style #{}}
-         {:s "" :fg :black :bg :white :style #{}}
-         {:s "Press <color fg=\"highlight\">Esc</color> to exit." :fg :black :bg :white :style #{}}])
-    (render-rect-double-border screen x y 43 height :black :white)
-    (put-string screen :ui (+ x 16) y "Player Info" :black :white)))
-
-#_(defn render-describe
-  "Render the describe info pane if the world state is `:describe`."
-  [state]
-  (let [{cursor-x :x
-         cursor-y :y} (get-in state [:world :cursor])
-        [x y]         (rv/viewport-xy state)
-        [w _]         (rv/viewport-wh state)
-        _             (println "cursor-x" cursor-x "w" w)
-        position      (if (< cursor-x (/ w 2))
-                        :right
-                        :left)
-        description   (rdesc/describe-cell-at-xy state (+ x cursor-x) (+ y cursor-y))]
-  (render-text (state :screen) position "Look" (if (get-in state [:world :dev-mode])
-                                                 (str description "[" (+ x cursor-x) " " (+ y cursor-y) "]"
-                                                      (get-cell state (+ x cursor-x) (+ y cursor-y)))
-                                                 description))))
-
-#_(defn render-apply
-  "Render the inventory menu with `Apply` as the title."
-  [state]
-  (render-multi-select (state :screen) "Apply Inventory" [] (translate-identified-items state (-> state :world :player :inventory))))
-
-#_(defn render-apply-to
-  "Render the inventory menu with `Apply To` as the title."
-  [state]
-  (render-multi-select (state :screen) "Apply To" [] (translate-identified-items state (-> state :world :player :inventory))))
-
-#_(defn render-quaff-inventory
-  "Render the inventory menu with `Quaff` as the title."
-  [state]
-  (render-multi-select (state :screen) "Quaff To" [] (translate-identified-items state (filter ig/is-quaffable?
-                                                             (-> state :world :player :inventory)))))
-
-#_(defn render-magic
-  "Render the pickup item menu if the world state is `:magic`."
-  [state]
-  (render-multi-select (state :screen) "Magic" [] (get-magical-abilities (-> state :world :player))))
-
-#_(defn render-drop
-  "Render the pickup item menu if the world state is `:pickup`."
-  [state]
-  (render-multi-select (state :screen) "Drop Inventory" [] (translate-identified-items state (-> state :world :player :inventory))))
-
-#_(defn render-describe-inventory
-  "Render the pickup item menu if the world state is `:pickup`."
-  [state]
-  (render-multi-select (state :screen) "Describe" [] (translate-identified-items state (-> state :world :player :inventory))))
-
-#_(defn render-throw-inventory
-  "Render the throw item menu if the world state is `:throw-inventory`."
-  [state]
-  (render-multi-select (state :screen) "Throw" [] (translate-identified-items state (-> state :world :player :inventory))))
-
-#_(defn render-eat
-  "Render the eat item menu if the world state is `:pickup`."
-  [state]
-  (render-multi-select (state :screen)
-                       "Eat Inventory"
-                       []
-                       (translate-identified-items state
-                         (filter #(contains? % :hunger)
-                               (inventory-and-player-cell-items state)))))
-
 #_(defn render-quests
   "Render the pickup item menu if the world state is `:pickup`."
   [state]
@@ -513,23 +285,6 @@
                        (filter (fn [quest]
                                  (not (nil? (get-in state [:world  :quests (quest :id) :stage] nil))))
                                (:quests state))))
-
-#_(defn render-quit?
-  "Render the pickup item menu if the world state is `:pickup`."
-  [state]
-  (put-string (state :screen) :ui 1 0 "quit? [yn]"))
-
-#_(defn render-craft
-  "Render the craft menu if the world state is `:craft`."
-  [state]
-  (let [screen (state :screen)]
-    (render-multi-select screen nil [] [{:name "Weapons" :hotkey \w}
-                                        {:name "Survival" :hotkey \s}
-                                        {:name "Shelter" :hotkey \c}
-                                        {:name "Transportation" :hotkey \t}]
-                                        30 6 20 5)
-    (render-rect-single-border screen 29 5 20 5 :black :white)
-    (put-string screen :ui 37 5 "Craft" :black :white)))
 
 #_(defn render-craft-submenu
   "Render the craft submenu"
@@ -626,20 +381,6 @@
   [state]
   (render-multi-select (state :screen) "Wield Ranged" [] (filter can-be-wielded-for-ranged-combat? (-> state :world :player :inventory))))
 
-#_(defn render-start-text [state]
-  (let [screen     (state :screen)
-        start-text (sg/start-text state)
-        width      (reduce max (map markup->length (clojure.string/split-lines start-text)))]
-    (render-list screen :ui 16 4 width 6
-      (concat
-        [{:s "" :fg :black :bg :white :style #{}}]
-        (map
-          (fn [line] {:s line :fg :black :bg :white :style #{:center}})
-          (remove empty? (clojure.string/split-lines start-text)))
-        [{:s "" :fg :black :bg :white :style #{}}
-         {:s "  Press <color fg=\"highlight\">any key</color> to continue and <color fg=\"highlight\">?</color> to view help." :fg :black :bg :white :style #{}}]))
-    (render-rect-double-border screen 15 4 (inc width) 6 :black :white)))
-
 #_(defn render-raw-popover [state]
   (let [screen     (state :screen)
         message    (rpop/get-popover-message state)
@@ -680,35 +421,6 @@
          {:s "  Press <color fg=\"highlight\">space</color> to continue." :fg :black :bg :white :style #{:center}}]))
     (render-rect-double-border screen (dec popover-x) popover-y (inc width) (+ 4 height) :black :white)))
 
-
-#_(defn render-dead-text [state]
-  (let [screen         (state :screen)
-        hp             (get-in state [:world :player :hp])
-        hunger         (get-in state [:world :player :hunger])
-        max-hunger     (get-in state [:world :player :max-hunger])
-        thirst         (get-in state [:world :player :thirst])
-        max-thirst     (get-in state [:world :player :max-thirst])
-        will-to-live   (get-in state [:world :player :will-to-live])
-        cause-of-death (or
-                         (get-in state [:world :cause-of-death])
-                         (format "%s"
-                           (cond
-                             (<= hp 0)             "massive injuries"
-                             (> hunger max-hunger) "literally starving to death"
-                             (> thirst max-thirst) "not drinking enough water"
-                             (<= will-to-live 0)   "just giving up on life"
-                             :else                 "mysterious causes")))
-        width          (max 25 (+ 7 (markup->length cause-of-death)))]
-    (render-list screen :ui 27 4 width 6
-      (concat
-        [{:s "" :fg :black :bg :white :style #{}}]
-        (map
-          (fn [line] {:s line :fg :black :bg :white :style #{:center}})
-          ["You died."
-           (format "From %s" cause-of-death)
-           ""
-           "Press <color fg=\"highlight\">space</color> to continue."])))
-    (render-rect-double-border screen 26 4 width 6 :black :white)))
 
 #_(defn render-rescued-text [state]
   (let [screen      (state :screen)
@@ -1502,11 +1214,45 @@
                                            ["@"]])]
                            npcs)])))
 
-(zc/def-component PickupSelection
+(zc/def-component CrushingWall
   [this]
-  (let [{:keys [game-state]} (zc/props this)]
+  (let [{:keys [trap]} (zc/props this)]
     nil))
+#_(defn render-crushing-wall
+  [screen trap]
+  (let [ch (case (get trap :direction)
+             :up    \╧
+             :down  \╤
+             :left  \╢
+             :right \╟)]
+    (put-chars screen :features (for [[x y] (first (get trap :locations))]
+                                  {:x x :y y :c ch :fg [90 90 90] :bg [0 0 0]}))))
 
+(zc/def-component PoisonousGas
+  [this]
+  (let [{:keys [trap]} (zc/props this)]
+    nil))
+#_(defn render-poisonous-gas
+  [screen state trap]
+  (let [current-time (rw/get-time state)]
+    (doseq [[x y] (keys (get trap :locations))]
+      (when (= (get (rw/get-cell state x y) :discovered) current-time)
+        (let [bg (rcolor/color->rgb (rand-nth [:beige :temple-beige :light-brown]))]
+          (set-bg! screen :map x y bg))))))
+
+(zc/def-component Traps
+  [this]
+  (let [{:keys [game-state]} (zc/props this)
+        traps (rw/current-place-traps game-state)]
+    (zc/csx [:view {}
+      (map (fn [trap]
+             (case (get trap :type)
+               :crushing-wall
+                 (zc/csx [CrushingWall trap])
+               :poisonous-gas
+                 (zc/csx [PoisonousGas trap])
+               (zc/csx [:view {} []])))
+            traps)])))
 
 (zc/def-component MultiSelect
   [this]
@@ -1546,6 +1292,31 @@
     (zc/csx [:view {} (concat [(zc/csx [:text {:style {:color (rcolor/color->rgb :black)}} [title]])
                                (zc/csx [:text {} [""]])]
                               children)])))
+
+; Render the pickup item menu if the world state is `:pickup-selection`.
+(zc/def-component PickupSelection
+  [this]
+  (let [{:keys [game-state]} (zc/props this)
+        direction        (get-in game-state [:world :pickup-direction])
+        {x :x y :y}      (rw/player-adjacent-pos game-state direction)
+        cell             (get-cell game-state x y)
+        cell-items       (or (cell :items) [])
+        hotkeys          (-> game-state :world :remaining-hotkeys)
+        selected-hotkeys (-> game-state :world :selected-hotkeys)
+        items            (fill-missing (fn missing [item] (not (contains? item :hotkey)))
+                                       (fn apply-hotkey [item hotkey] (assoc item :hotkey hotkey))
+                                       hotkeys
+                                       cell-items)]
+   (zc/csx [:view {:style {:width 40
+                           :height 20
+                           :position :fixed
+                           :left 40
+                           :top 1
+                           :padding 1
+                           :background-color (rcolor/color->rgb :white)}} [
+            [MultiSelect {:title "Pick up"
+                          :items (concat (translate-identified-items game-state items)
+                                         [{:name "All" :hotkey \space}])}]]])))
 
 (zc/def-component Inventory
   [this]
@@ -1625,16 +1396,85 @@
   [this]
   (let [{:keys [game-state]} (zc/props this)]
     nil))
+#_(defn render-ability-choices 
+  "Render the player ability choice menu if the world state is `:gain-level`."
+  [state]
+  (let [screen (get state :screen)
+        abilities (get-in state [:world :ability-choices])
+        height (+ 3 (* 3 (count abilities)))]
+    (render-list screen :ui 17 4 43 height
+      (concat
+        (mapcat
+          (fn [ability]
+            [{:s (format "<color fg=\"highlight\">%s</color> - %s" (get ability :hotkey) (get ability :name))
+              :fg :black
+              :bg :white
+              :style #{}}
+             {:s (format "    %s" (get ability :description)) :fg :black :bg :white :style #{}}
+             {:s "" :fg :black :bg :white :style #{}}])
+          abilities)
+        [{:s "" :fg :black :bg :white :style #{}}
+         {:s "Select hotkey." :fg :black :bg :white :style #{}}]))
+    (render-rect-double-border screen 16 3 43 height :black :white)
+    (put-string screen :ui 29 3 "Choose New Ability" :black :white)))
+
 
 (zc/def-component ActionChoices
   [this]
   (let [{:keys [game-state]} (zc/props this)]
     nil))
 
+#_(defn render-action-choices
+  "Render the player action choices menu if the world state is `:action-select`."
+  [state]
+  (let [screen (get state :screen)
+        abilities (get-in state [:world :action-select])
+        height (if (seq abilities)
+                 (+ 3 (* 3 (count abilities)))
+                 4)]  
+    (render-list screen :ui 17 4 43 height
+      (if (seq abilities)
+        (concat
+          (mapcat
+            (fn [ability]
+              [{:s (format "<color fg=\"highlight\">%s</color> - %s" (get ability :hotkey) (get ability :name))
+                :fg :black
+                :bg :white
+                :style #{}}
+               {:s "" :fg :black :bg :white :style #{}}])
+            abilities)
+          [{:s "" :fg :black :bg :white :style #{}}
+           {:s "Select hotkey or press <color fg=\"highlight\">Esc</color> to exit." :fg :black :bg :white :style #{}}])
+        [{:s "Nothing to do." :fg :black :bg :white :style #{}}
+         {:s "" :fg :black :bg :white :style #{}}
+         {:s "Press <color fg=\"highlight\">Esc</color> to exit." :fg :black :bg :white :style #{}}]))
+        
+    (render-rect-double-border screen 16 3 43 height :black :white)
+    (put-string screen :ui 30 3 "Choose Action" :black :white)))
+
+
 (zc/def-component Describe
   [this]
   (let [{:keys [game-state]} (zc/props this)]
     nil))
+#_(defn render-describe
+  "Render the describe info pane if the world state is `:describe`."
+  [state]
+  (let [{cursor-x :x
+         cursor-y :y} (get-in state [:world :cursor])
+        [x y]         (rv/viewport-xy state)
+        [w _]         (rv/viewport-wh state)
+        _             (println "cursor-x" cursor-x "w" w)
+        position      (if (< cursor-x (/ w 2))
+                        :right
+                        :left)
+        description   (rdesc/describe-cell-at-xy state (+ x cursor-x) (+ y cursor-y))]
+  (render-text (state :screen) position "Look" (if (get-in state [:world :dev-mode])
+                                                 (str description "[" (+ x cursor-x) " " (+ y cursor-y) "]"
+                                                      (get-cell state (+ x cursor-x) (+ y cursor-y)))
+                                                 description))))
+
+
 
 (zc/def-component Apply
   [this]
@@ -1652,33 +1492,89 @@
 
 (zc/def-component ApplyTo
   [this]
-  (let [{:keys [game-state]} (zc/props this)]
-    nil))
+  (let [{:keys [game-state]} (zc/props this)
+        player-items (-> game-state :world :player :inventory)]
+    (zc/csx [:view {:style {:width 40
+                            :height 20
+                            :position :fixed
+                            :left 40
+                            :top 1
+                            :padding 1
+                            :background-color (rcolor/color->rgb :white)}} [
+             [MultiSelect {:title "Apply To"
+                           :items (translate-identified-items game-state player-items)}]]])))
+
 
 (zc/def-component QuaffInventory
   [this]
   (let [{:keys [game-state]} (zc/props this)]
-    nil))
+    (zc/csx [:view {:style {:width 40
+                            :height 20
+                            :position :fixed
+                            :left 40
+                            :top 1
+                            :padding 1
+                            :background-color (rcolor/color->rgb :white)}} [
+             [MultiSelect {:title "Quaff"
+                           :items (translate-identified-items game-state (filter ig/is-quaffable?
+                                                                           (-> game-state :world :player :inventory)))}]]])))
 
 (zc/def-component Drop
   [this]
-  (let [{:keys [game-state]} (zc/props this)]
-    nil))
+  (let [{:keys [game-state]} (zc/props this)
+        player-items (-> game-state :world :player :inventory)]
+    (zc/csx [:view {:style {:width 40
+                            :height 20
+                            :position :fixed
+                            :left 40
+                            :top 1
+                            :padding 1
+                            :background-color (rcolor/color->rgb :white)}} [
+             [MultiSelect {:title "Drop Inventory"
+                           :items (translate-identified-items game-state player-items)}]]])))
 
 (zc/def-component DescribeInventory
   [this]
-  (let [{:keys [game-state]} (zc/props this)]
-    nil))
+  (let [{:keys [game-state]} (zc/props this)
+        player-items (-> game-state :world :player :inventory)]
+    (zc/csx [:view {:style {:width 40
+                            :height 20
+                            :position :fixed
+                            :left 40
+                            :top 1
+                            :padding 1
+                            :background-color (rcolor/color->rgb :white)}} [
+             [MultiSelect {:title "Describe"
+                           :items (translate-identified-items game-state player-items)}]]])))
 
 (zc/def-component ThrowInventory
   [this]
   (let [{:keys [game-state]} (zc/props this)]
-    nil))
+  (let [{:keys [game-state]} (zc/props this)
+        player-items (-> game-state :world :player :inventory)]
+    (zc/csx [:view {:style {:width 40
+                            :height 20
+                            :position :fixed
+                            :left 40
+                            :top 1
+                            :padding 1
+                            :background-color (rcolor/color->rgb :white)}} [
+             [MultiSelect {:title "Throw"
+                           :items (translate-identified-items game-state player-items)}]]]))))
 
 (zc/def-component Eat
   [this]
   (let [{:keys [game-state]} (zc/props this)]
-    nil))
+    (zc/csx [:view {:style {:width 40
+                            :height 20
+                            :position :fixed
+                            :left 40
+                            :top 1
+                            :padding 1
+                            :background-color (rcolor/color->rgb :white)}} [
+             [MultiSelect {:title "Eat Inventory"
+                           :items (filter #(contains? % :hunger)
+                                         (inventory-and-player-cell-items game-state))}]]])))
 
 (zc/def-component Quests
   [this]
@@ -1689,6 +1585,18 @@
   [this]
   (let [{:keys [game-state]} (zc/props this)]
     nil))
+#_(defn render-craft
+  "Render the craft menu if the world state is `:craft`."
+  [state]
+  (let [screen (state :screen)]
+    (render-multi-select screen nil [] [{:name "Weapons" :hotkey \w}
+                                        {:name "Survival" :hotkey \s}
+                                        {:name "Shelter" :hotkey \c}
+                                        {:name "Transportation" :hotkey \t}]
+                                        30 6 20 5)
+    (render-rect-single-border screen 29 5 20 5 :black :white)
+    (put-string screen :ui 37 5 "Craft" :black :white)))
+
 
 (zc/def-component CraftWeapon
   [this]
@@ -1925,6 +1833,13 @@
                                      :player-bloodied (get player :bloodied)
                                      :vx vx
                                      :vy vy
+                                     :current-time current-time}]]]
+            [:view {:style {:top 0 :left 0}} [
+              [Traps {:traps visible-npcs
+                                     :player-pos (rp/player-pos game-state)
+                                     :player-bloodied (get player :bloodied)
+                                     :vx vx
+                                     :vy vy
                                      :current-time current-time}]]]]]
           [:layer {:id :ui} [
             [Hud {:game-state game-state}]
@@ -1998,59 +1913,6 @@
     (clear screen)
     (put-string screen 30 12 :ui (format "Connecting%s" (apply str (repeat (mod (swap! connecting-index inc) 4) "."))))
     (refresh screen)))
-
-#_(defn render-game-over
-  "Render the game over screen."
-  [state]
-  (let [cur-state      (current-state state)
-        points         (rs/state->points state)
-        turns-survived  (get-time state)
-        turns-per-day   (count (get-in state [:data :atmo]))
-        days-survived   (int (/ turns-survived turns-per-day))
-        player-name     (get-in state [:world :player :name])
-        madlib          (gen-end-madlib state)]
-    (clear (state :screen))
-    (case cur-state
-      :game-over-dead
-        (let [hp             (get-in state [:world :player :hp])
-              hunger         (get-in state [:world :player :hunger])
-              max-hunger     (get-in state [:world :player :max-hunger])
-              thirst         (get-in state [:world :player :thirst])
-              max-thirst     (get-in state [:world :player :max-thirst])
-              will-to-live   (get-in state [:world :player :will-to-live])
-              cause-of-death (or
-                               (get-in state [:world :cause-of-death])
-                               (cond
-                                 (<= hp 0)             "massive injuries"
-                                 (> hunger max-hunger) "literall starving to death"
-                                 (> thirst max-thirst) "not drinking enough water"
-                                 (<= will-to-live 0)   "just giving up on life"
-                                 :else                 "mysterious causes"))]
-          ;; Title
-          (put-string (state :screen) :ui 10 1 (format "%s: %s" player-name madlib))
-          (put-string (state :screen) :ui 10 3 (format "Survived for %d %s. (%d turns)" days-survived (if (> 1 days-survived) "days" "day") turns-survived))
-          (put-string (state :screen) :ui 10 4 (format "Died from %s" cause-of-death))
-          (put-string (state :screen) :ui 10 6 (format "Points: %s." points))
-          (put-string (state :screen) :ui 10 8 "Inventory:")
-          (doall (map-indexed
-            (fn [idx item] (put-string (state :screen) :ui 20 (+ idx 8) (format "%s%s" (if (pos? (get item :count 0))
-                                                                                     (format "%dx " (get item :count))
-                                                                                     "")
-                                                                                    (item :name))))
-            (-> state :world :player :inventory)))
-          (put-chars (state :screen) :ui (markup->chars 10 22 "Play again? [<color fg=\"highlight\">y</color>/<color fg=\"highlight\">n</color>] <color fg=\"highlight\">space</color>-share and compare with other players")))
-      :game-over-rescued
-        (let [rescue-mode (rendgame/rescue-mode state)]
-          ;; Title
-          (put-string (state :screen) :ui 10 1 (format "%s: %s." player-name madlib))
-          (put-string (state :screen) :ui 18 2 (format "Rescued by %s after surviving for %d days." rescue-mode days-survived))
-          (put-string (state :screen) :ui 10 3 (format "Points: %s." points))
-          (put-string (state :screen) :ui 10 4 "Inventory:")
-          (doall (map-indexed
-            (fn [idx item] (put-string (state :screen) :ui 18 (+ idx 5) (item :name)))
-            (-> state :world :player :inventory)))
-          (put-string (state :screen) :ui 10 22 "Play again? [yn]")))
-    (refresh (state :screen))))
 
 (defn cp437->unicode
   [c]
@@ -2204,7 +2066,7 @@
 			  [:text {} ["Configure Font"]]
 			  [:text {} ["Font: " (get font :name)]]
 			  [:text {} ["n - next font" (get font :name)]]
-			  [:text {} ["p - precious dont" (get font :name)]]
+			  [:text {} ["p - previous font" (get font :name)]]
 			  [:text {} ["s - save and apply" (get font :name)]]]]]]]]]])))
 
 (zc/def-component EnterName

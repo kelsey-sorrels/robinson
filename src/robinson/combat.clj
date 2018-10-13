@@ -463,7 +463,8 @@
             (ce/on-hit defender state)
             (log-with-line state "10")
             ;; show fx
-            (if hit
+            ;; FIXME: Make blip actor and use character FX
+            #_(if hit
               (rfx/conj-fx-blip state (rc/pos->xy (get defender :pos))
                                       [{:time 0
                                         :ch \♥
@@ -500,7 +501,8 @@
               ;; remove defender
               (rc/remove-in (butlast defender-path) (partial = defender))
               ;; show fx
-              (rfx/conj-fx-blip (rc/pos->xy (get defender :pos))
+              ; FIXME: use character fx
+              #_(rfx/conj-fx-blip (rc/pos->xy (get defender :pos))
                                 [{:time 0
                                   :ch \☻
                                   :fg (rcolor/color->rgb :red)}

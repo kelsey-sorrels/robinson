@@ -104,6 +104,17 @@
   (or (is-direction? keyin)
       (contains? #{:up-left :up-right :down-left :down-right} keyin)))
 
+(defn direction->offset-pos [direction]
+  {:x
+    (case direction
+      (:left :up-left :down-left) -1
+      (:right :up-right :down-right) 1
+      0)
+   :y
+    (case direction
+      (:up :up-left :up-right) -1
+      (:down :down-left :down-right) 1
+      0)})
 
 (defn fill-missing
   "For each item in coll for which (pred item) returns true, replace that

@@ -188,13 +188,20 @@
       (rw/assoc-cell state x y :trap-found     true
                                :last-triggered (rw/get-time state))
       (rc/append-log state "You find a trap")
-      (cond
+      (let [src-pos           (get cell :src-pos)
+            [x y]             (rc/pos->xy src-pos)
+            place-id          (rw/current-place-id state)
+            trigger-cell-path [:world :places place-id y x]
+            npc-path          (rnpc/npc->keys state (get obj :npc))
+            fx-id             (rfx/fx-id)]
+        (rfx/conj-fx-airborn-item
+          state 
+          (ig/gen-item :blowdart) 
+          src-pos
+          (rc/direction->offset-pos direction)
+          5)
+      #_(cond
         (contains? obj :npc)
-          (let [[x y]             (rc/pos->xy (get cell :src-pos))
-                place-id          (rw/current-place-id state)
-                trigger-cell-path [:world :places place-id y x]
-                npc-path          (rnpc/npc->keys state (get obj :npc))]
-            (-> state
               ; FIXME: undo this, make work with actors
               #_(rfx/conj-fx-transform [x y] (rc/pos->xy (get obj :pos)) (ig/gen-item :blowdart))
               #_(revents/conj-event 100 (fn [state]
@@ -211,7 +218,7 @@
         (contains? obj :cell)
           (rc/append-log state (format "Schwaff! Thump! The dart hits %s." (rdesc/describe-cell-type (get obj :cell))))
         :else
-          state))))
+          state)))
 
 (defn trigger-poisonous-gas
   [state x y cell]

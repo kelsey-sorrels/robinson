@@ -57,11 +57,13 @@
    (limit-rgb [avg avg avg] [6 6 11])))
 
 (defn color->rgb
-  [color]
+  ([color]
+    (color->rgb color 255))
+  ([color alpha]
   {:post [(vector? %)
-          (= (count %) 3)
+          (= (count %) 4)
           (every? number? %)]}
-  (get color-to-rgb-map color color))
+  (conj (get color-to-rgb-map color color) alpha)))
 
 
 (defn darken-rgb

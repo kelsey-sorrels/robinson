@@ -1341,7 +1341,7 @@
         ;; let the player choose the direction
         (-> state
           (rw/assoc-current-state :direction-select)
-          (rc/ui-hint (format "Pick a direction. (<color fg=\"highlight\">%s</color>)" (apply str (map direction->unicode-char (keys directions)))))))))
+          (rc/ui-hint (format "Pick a direction. (<%s>)" (apply str (map direction->unicode-char (keys directions)))))))))
 
 (defn do-selected-direction
   [state keyin]
@@ -1416,7 +1416,7 @@
     (update-in state [:world :player :thirst] (fn [thirst] (min 0 (- thirst water))))))
 
 (def quaff-popover-message
-  "This water is not potable. Are you sure?\n \n[<color fg=\"highlight\">y</color>/<color fg=\"highlight\">n</color>]")
+  "This water is not potable. Are you sure?")
 
 (defn quaff-select
   "Select the next state depending on what quaffable items are available."
@@ -1670,10 +1670,10 @@
               (assoc-in [:world :target-ranged-pos-coll] (map :pos npcs-by-distance))
               (assoc-in [:world :target-ranged-index] 0)
               (rw/assoc-current-state :select-ranged-target)
-              (rc/ui-hint "<color fg=\"highlight\">Tab</color>/<color fg=\"highlight\">n</color>-next target. <color fg=\"highlight\">p</color>-previous target"))
+              (rc/ui-hint "<Tab>/<n>-next target. <p>-previous target"))
             (rc/ui-hint state "No targets in range")))
-          (rc/ui-hint state "Must reload (<color fg=\"hightlight\">r</color>) weapon first."))
-        (rc/ui-hint state "Must wield ranged weapon first (<color fg=\"highlight\">W</color>)"))))
+          (rc/ui-hint state "Must reload (<r>) weapon first."))
+        (rc/ui-hint state "Must wield ranged weapon first (<W>)"))))
 
 (defn reload-ranged-weapon
   [state]
@@ -1699,7 +1699,7 @@
             (rc/ui-hint state "You do not have the required ammunition."))
           (rc/ui-hint state "You do not need to reload this weapon."))
         (rc/ui-hint state "The weapon is already loaded."))
-      (rc/ui-hint state "Must weild ranged weapon first (<color fg=\"highlight\">W</color>)."))))
+      (rc/ui-hint state "Must weild ranged weapon first (<W>)."))))
 
 (defn select-next-ranged-target
   [state]
@@ -2224,7 +2224,7 @@
             (let [dwtl       0.0 ;; you've been on the island. It sucks and you want to get off.
                   ;; if it is night and the player is not within range of a fire, things are extra tough.
                   dwtl       (if (and (rw/is-night? state)
-                                      (not-any? #(= (get % :type) :fire)
+                                      (not-any? #( (get % :type) :fire)
                                                 (rw/cells-in-range-of-player state 3)))
                                (+ dwtl 0.5)
                                dwtl)
@@ -3685,10 +3685,6 @@
                         #_(revents/assoc-event-time 0))
                             
             state     (transition-fn state)
-            ;; apply effect on :enter-name state
-            state     (if (= (rw/current-state state) :enter-name)
-                        (rfx/conj-fx-blink state [(+ 25 (count (get-in state [:world :player :name]))) 7])
-                        state)
             ;; some states conditionally advance time by calling (advance-time state)
             ;; check to see if this has occurred if advance-time was not set in the state transition entry
             advance-time (if-not advance-time

@@ -16,3 +16,4 @@ save/*
 
 # Intermediate data
 frames/*
+*.log

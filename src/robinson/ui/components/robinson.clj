@@ -1215,6 +1215,32 @@
                                            ["@"]])]
                            npcs)])))
 
+(zc/def-component HighlightNpcs
+  [this]
+  (let [{:keys [visible-npcs vx vy start-pos end-pos]} (zc/props this)
+        [start-x start-y] (rc/pos->xy start-pos)
+        [end-x end-y] (rc/pos->xy end-pos)
+        points (set (rlos/line-segment-fast-without-endpoints
+                      [start-x start-y]
+                      [end-x end-y]))]
+    (log/info "Highlight npcs" visible-npcs)
+    (zc/csx [:view {}
+                   (reduce (fn [children npc]
+                             (let [sx         (- (-> npc :pos :x) vx)
+                                   sy         (- (-> npc :pos :y) vy)
+                                   targeted? (contains? points [sx sy])
+                                   {:keys [c fg bg]} (render-npc npc 0)]
+                               (log/info "npc@" sx sy)
+                               (if targeted?
+                                 (conj children (zc/csx [:text {:style {:position :fixed
+                                                                        :top sy
+                                                                        :left sx
+                                                                        :color (rcolor/color->rgb :black)
+                                                                        :background-color (rcolor/color->rgb :green)}} [(str c)]]))
+                                 children)))
+                           []
+                           visible-npcs)])))
+
 (zc/def-component CrushingWall
   [this]
   (let [{:keys [trap]} (zc/props this)]
@@ -1257,23 +1283,51 @@
 
 (zc/def-component CharacterFx
   [this]
-  (let [{:keys [fx]} (zc/props this)
-        {:keys [pos]} fx]
-    (zc/csx [:view {:style {:position :absolute
-                            :top (get pos :y)
-                            :left (get pos :x)}} [
-              [:text {} [(str (get fx :ch))]]]])))
+  (let [{:keys [fx vx vy]} (zc/props this)
+        {:keys [pos ch]} fx
+        {:keys [x y]} pos]
+    (log/info "rendering CharacterFX")
+    (zc/csx [:text {:style {:position :fixed :top (- y vy) :left (- x vx)}} [(str ch)]])))
 
 (zc/def-component FX
   [this]
-  (let [{:keys [fx]} (zc/props this)]
+  (let [{:keys [fx vx vy]} (zc/props this)]
     (zc/csx [:view {}
       (map (fn [effect]
-             (case (get fx :type)
+             (case (get effect :type)
                :character-fx
-                 (zc/csx [CharacterFx effect])
+                 (zc/csx [CharacterFx {:fx effect :vx vx :vy vy}])
                (zc/csx [:view {} []])))
             fx)])))
+
+(zc/def-component Line
+  [this]
+  (let [{:keys [ch color background-color start-pos end-pos]} (zc/props this)
+        [start-x start-y] (rc/pos->xy start-pos)
+        [end-x end-y] (rc/pos->xy end-pos)]
+            ;(put-string screen :ui sx sy "\u25CF" :green :black))))
+    (zc/csx [:view {}
+      (map (fn [[x y]]
+               (zc/csx [:view {} [
+                 [:text {:style {:position :fixed :top y :left x
+                                 :color (or color [0 255 0 255])
+                                 :background-color (or background-color [0 0 0 0])}} [(or (str ch) "*")]]]]))
+        (rlos/line-segment-fast-without-endpoints
+          [start-x start-y]
+          [end-x end-y]))])))
+
+(zc/def-component Cursor
+  [this]
+  (let [{:keys [pos]} (zc/props this)
+        [x y] (rc/pos->xy pos)
+        [color background-color]   (if (< (mod (/ (System/currentTimeMillis) 300) 2) 1)
+                                     [[0 0 0 0] [0 0 0 0]]
+                                     [(rcolor/color->rgb :highlight 255)
+                                      (rcolor/color->rgb :black 255)])]
+    (zc/csx [:view {} [
+              [:text {:style {:position :fixed :top y :left x
+                              :color color
+                              :background-color background-color}} ["\u2592"]]]])))
 
 (zc/def-component MultiSelect
   [this]
@@ -1682,10 +1736,18 @@
   (let [{:keys [game-state]} (zc/props this)]
     nil))
 
-(zc/def-component RawPopover
+(zc/def-component YesNoPopover
   [this]
-  (let [{:keys [game-state]} (zc/props this)]
-    nil))
+  (let [{:keys [game-state]} (zc/props this)
+        message    (rpop/get-popover-message game-state)]
+    (zc/csx [zcui/Popup {} [
+              [:text {} [message]]
+              [:text {} [
+                [:text {} ["["]]
+                [Highlight {} ["y"]]
+                [:text {} ["/"]]
+                [Highlight {} ["n"]]
+                [:text {} ["]"]]]]]])))
 
 (zc/def-component DeadText
   [this]
@@ -1766,7 +1828,7 @@
       :wield-ranged         (zc/csx [WieldRanged {:game-state game-state}])
       :start-text           (zc/csx [StartText {:game-state game-state}])
       :popover              (zc/csx [Popover {:game-state game-state}])
-      :quaff-popover        (zc/csx [RawPopover {:game-state game-state}])
+      :quaff-popover        (zc/csx [YesNoPopover {:game-state game-state}])
       :dead                 (zc/csx [DeadText {:game-state game-state}])
       :rescued              (zc/csx [RescuedText {:game-state game-state}])
       :quit?                (zc/csx [QuitPrompt {:game-state game-state}])
@@ -1818,6 +1880,19 @@
               (zc/csx [:text {:style {:color (rcolor/color->rgb :white #_(name (get message :color)))}} [(str (get message :text))]])
               (zc/csx [:text {} [""]]))]]]])))
 
+(defn target-pos [game-state]
+  (case (current-state game-state)
+    :select-ranged-target
+      (let [target-ranged-index (get-in game-state [:world :target-ranged-index])
+            target-ranged-pos-coll (get-in game-state [:world :target-ranged-pos-coll])
+            target-pos             (nth target-ranged-pos-coll target-ranged-index)]
+        (log/debug "target-ranged-index" target-ranged-index)
+        (log/debug "target-ranged-pos-coll" (get-in game-state [:world :target-ranged-pos-coll]))
+        (log/debug "target-pos" target-pos)
+        (rv/world-pos->screen-pos game-state target-pos))
+    :select-throw-target
+      (rv/get-cursor-pos game-state)))
+
 (zc/def-component Map
   [this]
   (let [{:keys [game-state]} (zc/props this)
@@ -1837,8 +1912,8 @@
                                                                         current-time))))
                                                             (npcs-in-viewport game-state))
         place-id                                    (rw/current-place-id game-state)
-        vx                                          (if place-id 0 (-> game-state :world :viewport :pos :x))
-        vy                                          (if place-id 0 (-> game-state :world :viewport :pos :y))
+        viewport-pos                                (if place-id {:x 0 :y 0} (-> game-state :world :viewport :pos))
+        [vx vy]                                     (rc/pos->xy viewport-pos)
         lantern-on                                  (when-let [lantern (rp/inventory-id->item game-state :lantern)]
                                                       (get lantern game-state :off))]
     (zc/csx
@@ -1855,7 +1930,7 @@
                                      :vx vx
                                      :vy vy
                                      :current-time current-time}]]]
-            [:view {:style {:top 0 :left 0}} [
+            #_[:view {:style {:top 0 :left 0}} [
               [Traps {:traps visible-npcs
                                      :player-pos (rp/player-pos game-state)
                                      :player-bloodied (get player :bloodied)
@@ -1863,10 +1938,36 @@
                                      :vy vy
                                      :current-time current-time}]]]
             [:view {:style {:top 0 :left 0}} [
-              [FX {:fx (rfx/fx game-state)}]]]]]
+              [FX {:vx vx
+                   :vy vy
+                   :fx (rfx/fx game-state)}]]]]]
           [:layer {:id :ui} [
+            (if-let [cursor-pos (-> game-state :world :cursor)]
+              (zc/csx [:view {} [
+                        [Cursor {:pos cursor-pos}]
+                        (if (contains? #{:select-ranged-target :select-throw-target} (current-state game-state))
+                          (zc/csx [:view {} [
+                                   [Line {:ch "\u25CF"
+                                         :color (rcolor/color->rgb :green 255)
+                                         :background-color [0 0 0 0]
+                                         :start-pos  (rv/world-pos->screen-pos game-state player-pos)
+                                         :end-pos (target-pos game-state)}]
+                                    [HighlightNpcs {:visible-npcs visible-npcs
+                                                    :vx vx
+                                                    :vy vy
+                                                    :start-pos  (rv/world-pos->screen-pos game-state player-pos)
+                                                    :end-pos (target-pos game-state)}]]])
+                          (zc/csx [:view {}]))]])
+              (zc/csx [:view {}]))
+            (if-let [ui-hint (get-in game-state [:world :ui-hint])]
+              ;; ui-hint
+              (zc/csx [:view {} [
+                [:text {:style {:position :fixed :top 1 :left 1
+                                :background-color [0 0 0 0]}} [
+                          [:text {:style {:background-color [0 0 0]}} [ui-hint]]]]]])
+              ;; regular concise message log
+              (zc/csx [Message {:game-state game-state}]))
             [Hud {:game-state game-state}]
-            [Message {:game-state game-state}]
             [MapUI {:game-state game-state}]]]]]]])))
 
 #_(defn render-enter-name [state]

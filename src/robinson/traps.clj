@@ -199,26 +199,7 @@
           (ig/gen-item :blowdart) 
           src-pos
           (rc/direction->offset-pos direction)
-          5)
-      #_(cond
-        (contains? obj :npc)
-              ; FIXME: undo this, make work with actors
-              #_(rfx/conj-fx-transform [x y] (rc/pos->xy (get obj :pos)) (ig/gen-item :blowdart))
-              #_(revents/conj-event 100 (fn [state]
-                (rcombat/attack state src-trap  npc-path)))))
-        (contains? obj :player)
-          (let [[x y]             (rc/pos->xy (get cell :src-pos))
-                place-id          (rw/current-place-id state)
-                trigger-cell-path [:world :places place-id y x]]
-            (-> state
-              ; FIXME: undo this, make work with actors
-              #_(rfx/conj-fx-transform [x y] (rp/player-xy state) (ig/gen-item :blowdart))
-              #_(revents/conj-event 100 (fn [state]
-                (rcombat/attack state src-trap [:world :player])))))
-        (contains? obj :cell)
-          (rc/append-log state (format "Schwaff! Thump! The dart hits %s." (rdesc/describe-cell-type (get obj :cell))))
-        :else
-          state)))
+          5)))))
 
 (defn trigger-poisonous-gas
   [state x y cell]

@@ -1704,6 +1704,9 @@
         npc                 (rnpc/npc-at-pos state target-pos)
         ranged-weapon-item  (first (filter (fn [item] (get item :wielded-ranged))
                                                 (rp/player-inventory state)))
+        [target-x
+         target-y]          (rc/pos->xy target-pos)
+        path                (rlos/line-segment (rp/player-xy state) [target-x target-y])
         dt                  (* 60 (rp/player-distance-from-pos state target-pos))]
     (log/info "target-ranged-index" target-ranged-index)
     (log/info "target-ranged-pos-coll" (get-in state [:world :target-ranged-pos-coll]))
@@ -1715,11 +1718,9 @@
         ;; dec ranged weapon ammunition
         (rp/dec-item-count state (ig/item->ranged-combat-ammunition-item-id ranged-weapon-item))
         state)
-      ;FIXME: redo this with actors
-      #_(rfx/conj-fx-transform state (rp/player-xy state) (rc/pos->xy target-pos) ranged-weapon-item)
-      #_(revents/conj-event state dt (fn [state]
-        ;; do combat
-        (rcombat/attack state [:world :player] (rnpc/npc->keys state npc) ranged-weapon-item))))))
+      (rfx/conj-effect :airborn-item ranged-weapon-item path (count path))
+      ;; FIXME remove? do combat
+      #_(rcombat/attack state [:world :player] (rnpc/npc->keys state npc) ranged-weapon-item))))
 
 (defn free-cursor
   "Dissassociate the cursor from the world."
@@ -3602,12 +3603,7 @@
             command-seq (get-in state [:world :command-seq] [])
             _ (log/debug "type of npcs" (type (get-in state [:world :npcs])))
             new-time  (inc (get-in state [:world :time]))
-            state     (-> state
-                        rc/clear-ui-hint
-                        ; FIXME: redo this with actors
-                        #_rfx/clear-fx
-                        #_(revents/assoc-event-time 0))
-                            
+            state     (rc/clear-ui-hint state)
             state     (transition-fn state)
             ;; some states conditionally advance time by calling (advance-time state)
             ;; check to see if this has occurred if advance-time was not set in the state transition entry

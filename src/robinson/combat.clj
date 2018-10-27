@@ -463,7 +463,7 @@
             (ce/on-hit defender state)
             (log-with-line state "10")
             ;; show fx
-            ;; FIXME: Make blip actor and use character FX
+            ;; Make blip actor and use character FX
             (if hit
               (rfx/conj-effect state :blip (get defender :pos)
                                         \♥
@@ -501,12 +501,11 @@
               ;; remove defender
               (rc/remove-in (butlast defender-path) (partial = defender))
               ;; show fx
-              ; FIXME: use character fx
-              #_(rfx/conj-fx-blip (rc/pos->xy (get defender :pos))
-                                [{:time 0
-                                  :ch \☻
-                                  :fg (rcolor/color->rgb :red)}
-                                 {:time 5}])
+              (rfx/conj-effect state :blip (get defender :pos)
+                                        \☻
+                                        (rcolor/color->rgb :red)
+                                        [0 0 0 0]
+                                        2)
               ;; maybe add corpse
               (rw/update-cell-items x y
                 (fn [items]

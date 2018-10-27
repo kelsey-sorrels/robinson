@@ -1,4 +1,4 @@
-;; Functions that manipulate state to do what the user commands.)
+;; Functions that manipulate state to do what the user commands.))
 (ns robinson.combat
   (:require [robinson.common :as rc]
             [robinson.random :as rr]
@@ -464,17 +464,17 @@
             (log-with-line state "10")
             ;; show fx
             ;; FIXME: Make blip actor and use character FX
-            #_(if hit
-              (rfx/conj-fx-blip state (rc/pos->xy (get defender :pos))
-                                      [{:time 0
-                                        :ch \♥
-                                        :fg (rcolor/color->rgb :red)}
-                                       {:time 5}])
-              (rfx/conj-fx-blip state (rc/pos->xy (get defender :pos))
-                                      [{:time 0
-                                        :ch \/
-                                        :fg (rcolor/color->rgb :blue)}
-                                       {:time 5}]))
+            (if hit
+              (rfx/conj-effect state :blip (get defender :pos)
+                                        \♥
+                                        (rcolor/color->rgb :red)
+                                        [0 0 0 0]
+                                        2)
+              (rfx/conj-effect state :blip (get defender :pos)
+                                       \/
+                                       (rcolor/color->rgb :blue)
+                                       [0 0 0 0]
+                                       2))
             ;; some thrown items can stun npcs
             (if (and (= attack-type :thrown-item)
                      hit

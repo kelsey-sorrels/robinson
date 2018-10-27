@@ -7,6 +7,7 @@
             [robinson.color :as rcolor]
             [robinson.actors :as ractors]
             [robinson.world :as rw]
+            [robinson.npc :as rnpc]
             [taoensso.timbre :as log]
             [zaffre.animation.wrapper :as zaw]))
 
@@ -20,7 +21,7 @@
   ([state fx]
    (conj-fx state fx (fx-id)))
   ([state fx id]
-    (let [new-state (rc/conj-in state [::fx id] fx)]
+    (let [new-state (assoc-in state [::fx id] fx)]
       (log/info "conj-fx-transform" (keys new-state) (get new-state ::fx))
       new-state)))
 
@@ -33,37 +34,17 @@
 
 (defn fx [state] (get state ::fx))
 
-(defn character-fx [ch pos]
-  {:type :character-fx
-   :pos pos
-   :ch ch})
+(defn character-fx
+ ([ch pos]
+   (character-fx ch pos [255 255 255 255] [0 0 0 0]))
+ ([ch pos fg bg]
+   {:type :character-fx
+    :pos pos
+    :ch ch
+    :color fg
+    :background-color bg}))
 
+(defmulti conj-effect (fn [state effect-type & more] effect-type))
+(defmethod conj-effect :default [state effect-type & more]
+  (log/warn (str "Unhandled effect-type in conj-effect " effect-type "vaLid effect-type: "  (methods conj-effect))))
 
-(defrecord AirbornItemActor [velocity ttl fx-ks]
-  ractors/Actor
-  (receive [this state]
-    (let [next-state
-            (-> state
-              ; move item
-              (update-in state fx-ks (partial rc/add-pos velocity))
-              ; update ttl
-              (ractors/update-actor this :ttl dec))]
-      (if (zero? ttl)
-        (-> state
-          (ractors/remove-actor this)
-          (rc/dissoc-in fx-ks))
-        next-state))))
-
-(defn conj-fx-airborn-item [state item pos velocity ttl]
-  (let [fx-id (fx-id)
-        actor (->AirbornItemActor velocity ttl (fx-ks fx-id))]
-    (-> state
-        ; create a character fx
-        (conj-fx (character-fx \- pos) fx-id)
-        ; create a corresponding actor that controls the fx
-        (ractors/add-actor actor))))
-
-
-; FIXME: Implement
-(defn conj-fx-blink [state] state)
- 

@@ -225,7 +225,7 @@
                               :map
                               :features
                               #_:fx
-                              #_:shade
+                              :shading
                               :ui]
                             :columns 80
                             :rows 24

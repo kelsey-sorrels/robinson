@@ -192,10 +192,10 @@
             [x y]             (rc/pos->xy src-pos)
             place-id          (rw/current-place-id state)
             trigger-cell-path [:world :places place-id y x]
-            npc-path          (rnpc/npc->keys state (get obj :npc))
-            fx-id             (rfx/fx-id)]
-        (rfx/conj-fx-airborn-item
+            npc-path          (rnpc/npc->keys state (get obj :npc))]
+        (rfx/conj-fx
           state 
+          :airborn-item
           (ig/gen-item :blowdart) 
           src-pos
           (rc/direction->offset-pos direction)

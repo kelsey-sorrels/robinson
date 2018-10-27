@@ -15,6 +15,9 @@
             [robinson.render :as rr]
             [robinson.ui.updater :as ruu]
             [robinson.ui.components.robinson :as ruic]
+            ;; Force loading of fx namespaces to eval defmethods
+            [robinson.fx.airborn-item :as rfxai]
+            [robinson.fx.blip :as rfxblip]
             [clojure.core.async :as async :refer [go go-loop]]
             [clojure.tools.nrepl.server :as nreplserver]
             [taoensso.timbre :as log]))
@@ -83,7 +86,7 @@
           (fn [terminal]
             (log/info "Create-terminal current-state" (rw/current-state state) (keys state) (get state :world))
             (add-watch state-ref :advance (fn [_ state-ref old-state new-state]
-                                             (when (= (rw/current-state new-state) :loading)
+                                             (when (contains? #{:loading :connecting} (rw/current-state new-state))
                                                (reset! state-ref (@tick-fn new-state :advance)))))
                                                
             (reset! state-ref state)
@@ -113,7 +116,9 @@
                         (let [new-state (@tick-fn @state-ref keyin)
                               state-stream (revents/stream new-state)]
                           (doseq [state (revents/chan-seq state-stream)]
+                            (log/info "got new state from stream")
                             (reset! state-ref state))
+                            (log/info "got new state from stream")
                           (log/info "End of game loop"))))
                      (catch Throwable ex
                        (log/error ex)

@@ -19,7 +19,8 @@
           ; actors to process, tick
           (do
             ; process actors at 60fps
-            (async/<! (async/timeout (/ 1000 60)))
+            (async/<! (async/timeout (/ 1000 20)))
+            (log/info "ticking actors")
             (let [new-state (ractors/tick-actors state)]
               (async/>! state-chan new-state)
               (recur new-state)))))

@@ -57,6 +57,7 @@
          (integer? x)
          (integer? y)]
    :post [(or (string? %) (vector? %))]}
+  #_(log/info "x" x "y" y)
   (or (get-in state [:world :current-place])
     (let [{v-width     :width
            v-height    :height}

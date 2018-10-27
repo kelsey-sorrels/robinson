@@ -1968,62 +1968,13 @@
   (let [item           (get-throw-item state)
         [target-x
          target-y]     (rv/get-cursor-world-xy state)
-        obj            (rw/first-collidable-object state (rlos/target->cellsxy state target-x target-y))
-        dt             (* 60 (rp/player-distance-from-pos state (or (get obj :pos) (rc/xy->pos target-x target-y))))]
-    (cond
-      (contains? obj :npc)
-        ;; do attack
-        (-> state
-          (free-cursor)
-          (rp/dec-item-count (get item :id))
-          ; FIXME: redo this with actors
-          #_(rfx/conj-fx-transform (rp/player-xy state) [target-x target-y] item)
-          #_(revents/conj-event dt (fn [state]
-            (-> state
-              (rcombat/attack [:world :player] (rnpc/npc->keys state (get obj :npc)) item)
-              (rw/conj-cell-items (get-in obj [:pos :x]) (get-in obj [:pos :y]) (assoc item :count 1))))))
-      (contains? obj :cell)
-        ;; drop item into cell before hitting colliding cell
-        (as-> state state
-          (free-cursor state)
-          (rp/dec-item-count state (get item :id))
-          (if (= (get-in obj [:cell :type]) :fire)
-            (-> state
-              ; FIXME: redo this with actors
-              #_(rfx/conj-fx-transform (rp/player-xy state) [target-x target-y] item)
-              #_(revents/conj-event state dt (fn [state]
-                (rw/update-cell (get-in obj [:pos :x]) (get-in obj [:pos :y]) (fn [cell] (update-in cell [:fuel] (partial + (ig/id->fuel (get item :id)))))))))
-              (let [{x :x y :y} (get obj :prev-pos)]
-                (-> state
-                  ; FIXME: redo this with actors
-                  #_(rfx/conj-fx-transform (rp/player-xy state) [x y] item)
-                  #_(revents/conj-event dt (fn [state]
-                    (rw/conj-cell-items state
-                                        x
-                                        y
-                                        (if (get item :rot-time)
-                                          (assoc item :rot-time (inc (rw/get-time state)))
-                                          (assoc item :count 1)))))))))
-      (contains? obj :trap)
-        ;; remove item and trigger trap
-        (-> state
-          free-cursor
-          (rc/append-log "You throw it at the trap.")
-          (rp/dec-item-count (get item :id))
-          ; FIXME: redo this with actors
-          #_(rfx/conj-fx-transform (rp/player-xy state) [target-x target-y] item)
-          #_(revents/conj-event dt (fn [state]
-            (log/info "triggering trap")
-            (rt/trigger-if-trap state [target-x target-y]))))
-      :else
-        ;; didn't hit anything, drop into cell at max-distance
-        (-> state
-          (free-cursor)
-          (rp/dec-item-count (get item :id))
-          ; FIXME: redo this with actors
-          #_(rfx/conj-fx-transform (rp/player-xy state) [target-x target-y] item)
-          #_(revents/conj-event dt (fn [state]
-            (rw/conj-cell-items state target-x target-y (assoc item :count 1))))))))
+        path           (rlos/line-segment (rp/player-xy state) [target-x target-y])]
+    (-> state
+      (free-cursor)
+      ; remove the item from inventory
+      (rp/dec-item-count (get item :id))
+      ; Add airborn item effect
+      (rfx/conj-effect :airborn-item item path 5))))
 
 (defn craft-weapon
   [state]
@@ -3340,6 +3291,7 @@
                                                               :error :debug)]
                                             (log/set-level! new-level)))
                                           state)               :normal          false]
+                          ;; skip time
                           \8           [(fn [state]
                                           (if (get-in state [:world :dev-mode])
                                             (update-in state [:world :time] (partial + 100))

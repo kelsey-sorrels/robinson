@@ -196,7 +196,7 @@
         (rfx/conj-fx
           state 
           :airborn-item
-          (ig/gen-item :blowdart) 
+          (assoc (ig/gen-item :blowdart) :attacker src-trap)
           src-pos
           (rc/direction->offset-pos direction)
           5)))))

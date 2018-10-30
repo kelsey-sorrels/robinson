@@ -303,7 +303,7 @@
        ~v))
 
 (defn assert-msg
-  [v msg]
+  [v & msg]
   (assert v msg)
   v)
 
@@ -489,24 +489,30 @@
           (if (contains? (set defender-path) :npcs)
             ;; defender is npc
             (-> state
+              (assert-msg "state nil")
               ;; attacks use wielded weapons
-              (as-> state
+              #_(as-> state
                 (if attack-item
                   (rp/dec-item-utility state (get attack-item :hotkey))
                   state))
+              (assert-msg "state nil")
               ;; update stats and will-to-live
               (rp/update-npc-killed defender attack)
+              (assert-msg "state nil")
               ;; trigger on-death script for defender
               ((partial ce/on-death defender))
+              (assert-msg "state nil")
               ;; remove defender
               (rc/remove-in (butlast defender-path) (partial = defender))
+              (assert-msg "state nil")
               ;; show fx
-              (rfx/conj-effect state :blip (get defender :pos)
-                                        \☻
-                                        (rcolor/color->rgb :red)
-                                        [0 0 0 0]
-                                        2)
+              (rfx/conj-effect :blip (get defender :pos)
+                                \☻
+                                (rcolor/color->rgb :red)
+                                [0 0 0 0]
+                                2)
               ;; maybe add corpse
+              (assert-msg "state nil")
               (rw/update-cell-items x y
                 (fn [items]
                   (if (> (rr/next-float! rr/*rnd*) 0.8)

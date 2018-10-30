@@ -1226,18 +1226,14 @@
 (zc/def-component Craft
   [this]
   (let [{:keys [game-state]} (zc/props this)]
-    nil))
-#_(defn render-craft
-  "Render the craft menu if the world state is `:craft`."
-  [state]
-  (let [screen (state :screen)]
-    (render-multi-select screen nil [] [{:name "Weapons" :hotkey \w}
-                                        {:name "Survival" :hotkey \s}
-                                        {:name "Shelter" :hotkey \c}
-                                        {:name "Transportation" :hotkey \t}]
-                                        30 6 20 5)
-    (render-rect-single-border screen 29 5 20 5 :black :white)
-    (put-string screen :ui 37 5 "Craft" :black :white)))
+    (zc/csx [zcui/Popup {} [
+              [MultiSelect {:title "Craft"
+                            :items [{:name "Weapons" :hotkey \w}
+                                    {:name "Survival" :hotkey \s}
+                                    {:name "Shelter" :hotkey \c}
+                                    {:name "Transportation" :hotkey \t}]}]]])
+   #_ (render-rect-single-border screen 29 5 20 5 :black :white)
+    #_(put-string screen :ui 37 5 "Craft" :black :white)))
 
 
 (zc/def-component CraftWeapon

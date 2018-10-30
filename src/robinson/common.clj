@@ -170,7 +170,7 @@
 (defn map-in
   [m ks f]
   (fn-in (fn [coll _] (if (vector? coll)
-                        (vec (map f coll))
+                        (mapv f coll)
                         (map f coll)))
          m ks nil))
 

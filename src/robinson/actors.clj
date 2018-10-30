@@ -5,15 +5,18 @@
             [taoensso.timbre :as log]
             [clojure.core.async :as async :refer [go go-loop]]))
 
+(defn actor-ks [state actor]
+  [::actors (get actor ::id)])
+
 (defn update-actor [state actor k f]
-   (update-in state [::actors (get actor ::id) k] f))
+   (update-in state (conj (actor-ks state actor) k) f))
 
 ;; For adding new events to the end of the event stream
 (defn add-actor
   [state actor]
-   (log/info "conj actor")
-   (let [actor-id (.toString (java.util.UUID/randomUUID))]
-     (update state ::actors (fn [actors] (assoc actors actor-id (assoc actor ::id actor-id))))))
+  (log/info "conj actor")
+  (let [actor-id (.toString (java.util.UUID/randomUUID))]
+    (update state ::actors (fn [actors] (assoc actors actor-id (assoc actor ::id actor-id))))))
 
 ;; For adding new events at the start of the event stream without pushing back existing events
 (defn remove-actor [state actor]

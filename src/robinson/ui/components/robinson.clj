@@ -287,6 +287,59 @@
                                  (not (nil? (get-in state [:world  :quests (quest :id) :stage] nil))))
                                (:quests state))))
 
+
+(zc/def-component CraftSubmenu
+  [this]
+  (let [{:keys [game-state recipe-type]} (zc/props this)
+        selected-recipe-path (get-in game-state [:world :craft-recipe-path])
+        hotkey               (when selected-recipe-path
+                               (last selected-recipe-path))
+        recipes              (get (get-recipes game-state) recipe-type)]
+    (log/info hotkey)
+    (zc/csx [:view {:style {:width 40
+                            :height 10
+                            :padding 1
+                            :bottom 1
+                            :background-color (rcolor/color->rgb :white)}} [
+              [MultiSelect {:title " Types"
+                            :selected-hotkeys [hotkey]
+                            :items (map (fn [recipe]
+                                           (log/info (get recipe :hotkey))
+                                           {:name (get recipe :name) :hotkey (get recipe :hotkey)})
+                                        recipes)}]
+              [:view {:style {:top -10 :left 30}} [
+                ;; render recipe-info
+                (if hotkey
+                  (let [matching-recipes   (filter (fn [recipe] (= (get recipe :hotkey) hotkey))
+                                                   recipes)
+                        recipe             (get (first matching-recipes) :recipe)
+                        exhaust            (get recipe :exhaust [])
+                        have               (get recipe :have-or [])
+                        inventory-id-freqs (rp/inventory-id-freqs game-state)]
+                    (log/info "exhaust" exhaust "have" have)
+                    (zc/csx [ItemList {:items
+                                        (concat
+                                          [{:s "" :fg :black :bg :white :style #{}}
+                                           {:s "Consumes" :fg :black :bg :white :style #{}}]
+                                          (if (empty? exhaust)
+                                            [{:s "N/A" :fg :black :bg :white :style #{}}]
+                                            (let [idx-ids (mapcat (fn [ids]
+                                                             (map-indexed vector ids))
+                                                           (partition-by identity (sort exhaust)))]
+                                              (println "idx-ids" idx-ids)
+                                              (reduce (fn [lines [idx id]]
+                                                        (conj lines
+                                                              (if (< idx (get inventory-id-freqs id 0))
+                                                                {:s (id->name id) :fg :black :bg :white :style #{}}
+                                                                {:s (id->name id) :fg :gray :bg :white :style #{}})))
+                                                     []
+                                                     idx-ids)))
+                                          [{:s "" :fg :black :bg :white :style #{}}
+                                           {:s "Required tools" :fg :black :bg :white :style #{}}]
+                                          (if (empty? have)
+                                            [{:s "N/A" :fg :black :bg :white :style #{}}]
+                                            (map (fn [id] {:s (id->name id) :fg :black :bg :white :style #{}}) have)))}]))
+                                          [:text {} ["Select a recipe"]])]]]])))
 #_(defn render-craft-submenu
   "Render the craft submenu"
   [state recipe-type]
@@ -352,26 +405,6 @@
   (put-string screen :ui 40 20 "\u2534" :black :white)
   (put-string screen :ui 37 5 "Craft" :black :white)))
           
-#_(defn render-craft-weapon
-  "Render the craft weapon menu if the world state is `:craft-weapon`."
-  [state]
-  (render-craft-submenu state :weapons))
-
-#_(defn render-craft-survival
-  "Render the craft menu if the world state is `:craft-survival`."
-  [state]
-  (render-craft-submenu state :survival))
-
-#_(defn render-craft-shelter
-  "Render the craft menu if the world state is `:craft-shelter`."
-  [state]
-  (render-craft-submenu state :shelter))
-
-#_(defn render-craft-transportation
-  "Render the craft menu if the world state is `:craft-transportation`."
-  [state]
-  (render-craft-submenu state :transportation))
-
 #_(defn render-wield
   "Render the wield item menu if the world state is `:wield`."
   [state]
@@ -911,7 +944,7 @@
                                   [Highlight {} [(str (or (item :hotkey)
                                                           \space))]]
                                   [:text {} [(format "%c%s%s %s %s"
-                                               (if (contains? selected-hotkeys (item :hotkey))
+                                               (if (contains? (set selected-hotkeys) (get item :hotkey))
                                                  \+
                                                  \-)
                                                (if (contains? item :count)
@@ -1226,35 +1259,50 @@
 (zc/def-component Craft
   [this]
   (let [{:keys [game-state]} (zc/props this)]
-    (zc/csx [zcui/Popup {} [
-              [MultiSelect {:title "Craft"
-                            :items [{:name "Weapons" :hotkey \w}
-                                    {:name "Survival" :hotkey \s}
-                                    {:name "Shelter" :hotkey \c}
-                                    {:name "Transportation" :hotkey \t}]}]]])
-   #_ (render-rect-single-border screen 29 5 20 5 :black :white)
-    #_(put-string screen :ui 37 5 "Craft" :black :white)))
-
+    (zc/csx [zcui/Popup {:style {:position :fixed :top 1
+                                 :color (rcolor/color->rgb :black)
+                                 :background-color (rcolor/color->rgb :white)}} [
+                [MultiSelect {:title "Craft"
+                              :items [{:name "Weapons" :hotkey \w}
+                                      {:name "Survival" :hotkey \s}
+                                      {:name "Shelter" :hotkey \c}
+                                      {:name "Transportation" :hotkey \t}]}]]])))
 
 (zc/def-component CraftWeapon
   [this]
   (let [{:keys [game-state]} (zc/props this)]
-    nil))
+    (zc/csx [zcui/Popup {:style {:position :relative :top -15
+                                 :color (rcolor/color->rgb :black)
+                                 :background-color (rcolor/color->rgb :white)}} [
+              [:text {:style {:bottom 1}} ["| Craft Weapon |"]]
+              [CraftSubmenu {:game-state game-state :recipe-type :weapons}]]])))
 
 (zc/def-component CraftSurvival
   [this]
   (let [{:keys [game-state]} (zc/props this)]
-    nil))
+    (zc/csx [zcui/Popup {:style {:position :relative :top -15
+                                 :color (rcolor/color->rgb :black)
+                                 :background-color (rcolor/color->rgb :white)}} [
+              [:text {:style {:bottom 1}} ["| Craft Survival |"]]
+    (zc/csx [CraftSubmenu {:game-state game-state :recipe-type :survival}])]])))
 
 (zc/def-component CraftShelter
   [this]
   (let [{:keys [game-state]} (zc/props this)]
-    nil))
+    (zc/csx [zcui/Popup {:style {:position :relative :top -15
+                                 :color (rcolor/color->rgb :black)
+                                 :background-color (rcolor/color->rgb :white)}} [
+              [:text {:style {:bottom 1}} ["| Craft Shelter |"]]
+    (zc/csx [CraftSubmenu {:game-state game-state :recipe-type :shelter}])]])))
 
 (zc/def-component CraftTransportation
   [this]
   (let [{:keys [game-state]} (zc/props this)]
-    nil))
+    (zc/csx [zcui/Popup {:style {:position :relative :top -15
+                                 :color (rcolor/color->rgb :black)
+                                 :background-color (rcolor/color->rgb :white)}} [
+              [:text {:style {:bottom 1}} ["| Craft Transportation |"]]
+    (zc/csx [CraftSubmenu {:game-state game-state :recipe-type :transportation}])]])))
 
 (zc/def-component Wield
   [this]

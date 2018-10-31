@@ -491,7 +491,7 @@
             (-> state
               (assert-msg "state nil")
               ;; attacks use wielded weapons
-              #_(as-> state
+              (as-> state
                 (if attack-item
                   (rp/dec-item-utility state (get attack-item :hotkey))
                   state))

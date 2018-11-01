@@ -287,6 +287,46 @@
                                  (not (nil? (get-in state [:world  :quests (quest :id) :stage] nil))))
                                (:quests state))))
 
+(zc/def-component MultiSelect
+  [this]
+  (let [{:keys [style]} (zc/props this)
+        default-props {:selected-hotkeys []
+                       :items []
+                       :disable? (fn [_] false)}
+        {:keys [title selected-hotkeys items disable?]} (merge default-props (zc/props this))
+        children (map (fn [item]
+                        (zc/csx [:text {:style {:color (rcolor/color->rgb (if (or (not (disable? item))
+                                                                                  (get item :applicable))
+                                                                            :black
+                                                                            :gray))
+                                                :background-color (rcolor/color->rgb :white)}} [
+                                  [Highlight {} [(str (or (item :hotkey)
+                                                          \space))]]
+                                  [:text {} [(format "%c%s%s %s %s"
+                                               (if (contains? (set selected-hotkeys) (get item :hotkey))
+                                                 \+
+                                                 \-)
+                                               (if (contains? item :count)
+                                                 (format "%dx " (int (get item :count)))
+                                                 "")
+                                               (get item :name)
+                                               (if (contains? item :utility)
+                                                 (format "(%d%%)" (int (get item :utility)))
+                                                 "")
+                                               (cond
+                                                 (contains? item :wielded)
+                                                   "(wielded)"
+                                                 (contains? item :wielded-ranged)
+                                                   "(wielded ranged)"
+                                                 (contains? item :worn)
+                                                   "(worn)"
+                                                 :else
+                                                   ""))]]]]))
+                      items)]
+    (zc/csx [:view {:style (or style {})} (concat [(zc/csx [:text {:style {:color (rcolor/color->rgb :black)}} [title]])
+                               (zc/csx [:text {} [""]])]
+                              children)])))
+
 
 (zc/def-component CraftSubmenu
   [this]
@@ -300,14 +340,19 @@
                             :height 10
                             :padding 1
                             :bottom 1
+                            :display :flex
+                            :flex-direction :row
+                            :align-itmes :stretch
                             :background-color (rcolor/color->rgb :white)}} [
-              [MultiSelect {:title " Types"
-                            :selected-hotkeys [hotkey]
-                            :items (map (fn [recipe]
-                                           (log/info (get recipe :hotkey))
-                                           {:name (get recipe :name) :hotkey (get recipe :hotkey)})
-                                        recipes)}]
-              [:view {:style {:top -10 :left 30}} [
+              [:view {:style {:flex 1}} [
+                [MultiSelect {:style {:width 30}
+                              :title " Types"
+                              :selected-hotkeys [hotkey]
+                              :items (map (fn [recipe]
+                                             (log/info (get recipe :hotkey))
+                                             {:name (get recipe :name) :hotkey (get recipe :hotkey)})
+                                          recipes)}]]]
+              [:view {:style {:flex 1}} [
                 ;; render recipe-info
                 (if hotkey
                   (let [matching-recipes   (filter (fn [recipe] (= (get recipe :hotkey) hotkey))
@@ -340,85 +385,7 @@
                                             [{:s "N/A" :fg :black :bg :white :style #{}}]
                                             (map (fn [id] {:s (id->name id) :fg :black :bg :white :style #{}}) have)))}]))
                                           [:text {} ["Select a recipe"]])]]]])))
-#_(defn render-craft-submenu
-  "Render the craft submenu"
-  [state recipe-type]
-  (let [screen               (state :screen)
-        selected-recipe-path (get-in state [:world :craft-recipe-path])
-        hotkey               (when selected-recipe-path
-                               (last selected-recipe-path))
-        recipes              (get (get-recipes state) recipe-type)]
-  (log/info "recipe-type" recipe-type)
-  (log/info "recipes" (get-recipes state))
-  (log/info "selected recipes" recipes)
-  ;; render recipes
-  (render-list screen :ui 11 6 29 15
-    (concat
-      [{:s (name recipe-type) :fg :black :bg :white :style #{:underline}}]
-       (map (fn [recipe]
-              {:s (format "%c-%s"
-                    (get recipe :hotkey)
-                    (get recipe :name))
-               :fg (if (contains? recipe :applicable)
-                     :black
-                     :gray)
-               :bg :white
-               :style (if (= (get recipe :hotkey) hotkey)
-                         #{:invert}
-                         #{})})
-            recipes)))
-  ;; render recipe-info
-  (if hotkey
-    (let [matching-recipes   (filter (fn [recipe] (= (get recipe :hotkey) hotkey))
-                                     recipes)
-          recipe             (get (first matching-recipes) :recipe)
-          exhaust            (get recipe :exhaust [])
-          have               (get recipe :have-or [])
-          inventory-id-freqs (rp/inventory-id-freqs state)]
-      (log/info "exhaust" exhaust "have" have)
-      (render-list screen :ui 41 6 29 15
-      (concat
-        [{:s "" :fg :black :bg :white :style #{}}
-         {:s "Consumes" :fg :black :bg :white :style #{}}]
-        (if (empty? exhaust)
-          [{:s "N/A" :fg :black :bg :white :style #{}}]
-          (let [idx-ids (mapcat (fn [ids]
-                           (map-indexed vector ids))
-                         (partition-by identity (sort exhaust)))]
-            (println "idx-ids" idx-ids)
-            (reduce (fn [lines [idx id]]
-                      (conj lines
-                            (if (< idx (get inventory-id-freqs id 0))
-                              {:s (id->name id) :fg :black :bg :white :style #{}}
-                              {:s (id->name id) :fg :gray :bg :white :style #{}})))
-                   []
-                   idx-ids)))
-        [{:s "" :fg :black :bg :white :style #{}}
-         {:s "Required tools" :fg :black :bg :white :style #{}}]
-        (if (empty? have)
-          [{:s "N/A" :fg :black :bg :white :style #{}}]
-          (map (fn [id] {:s (id->name id) :fg :black :bg :white :style #{}}) have)))))
-    (render-list screen :ui 41 6 29 15
-        [{:s "Select a recipe" :fg :black :bg :white :style #{}}]))
-  (render-rect-single-border screen 10 5 60 15 :black :white)
-  (render-vertical-border screen 40 6 15 :black :white)
-  (put-string screen :ui 40 20 "\u2534" :black :white)
-  (put-string screen :ui 37 5 "Craft" :black :white)))
-          
-#_(defn render-wield
-  "Render the wield item menu if the world state is `:wield`."
-  [state]
-  (render-multi-select (state :screen) "Wield" [] (filter can-be-wielded? (-> state :world :player :inventory))))
-
-#_(defn render-wield-ranged
-  "Render the wield ranged  item menu if the world state is `:wield-ranged`."
-  [state]
-  (render-multi-select (state :screen) "Wield Ranged" [] (filter can-be-wielded-for-ranged-combat? (-> state :world :player :inventory))))
-
-#_(defn render-harvest
-  "Render the harvest prompt if the world state is `:harvest`."
-  [state]
-  (put-string (state :screen) :ui 0 0 "Pick a direction to harvest."))
+ 
 
 ; FIXME render raft
 ; ; FIXME render raft
@@ -929,45 +896,6 @@
                               :color color
                               :background-color background-color}} ["\u2592"]]]])))
 
-(zc/def-component MultiSelect
-  [this]
-  (let [default-props {:selected-hotkeys []
-                       :items []
-                       :disable? (fn [_] false)}
-        {:keys [title selected-hotkeys items disable?]} (merge default-props (zc/props this))
-        children (map (fn [item]
-                        (zc/csx [:text {:style {:color (rcolor/color->rgb (if (or (not (disable? item))
-                                                                                  (get item :applicable))
-                                                                            :black
-                                                                            :gray))
-                                                :background-color (rcolor/color->rgb :white)}} [
-                                  [Highlight {} [(str (or (item :hotkey)
-                                                          \space))]]
-                                  [:text {} [(format "%c%s%s %s %s"
-                                               (if (contains? (set selected-hotkeys) (get item :hotkey))
-                                                 \+
-                                                 \-)
-                                               (if (contains? item :count)
-                                                 (format "%dx " (int (get item :count)))
-                                                 "")
-                                               (get item :name)
-                                               (if (contains? item :utility)
-                                                 (format "(%d%%)" (int (get item :utility)))
-                                                 "")
-                                               (cond
-                                                 (contains? item :wielded)
-                                                   "(wielded)"
-                                                 (contains? item :wielded-ranged)
-                                                   "(wielded ranged)"
-                                                 (contains? item :worn)
-                                                   "(worn)"
-                                                 :else
-                                                   ""))]]]]))
-                      items)]
-    (zc/csx [:view {} (concat [(zc/csx [:text {:style {:color (rcolor/color->rgb :black)}} [title]])
-                               (zc/csx [:text {} [""]])]
-                              children)])))
-
 ; Render the pickup item menu if the world state is `:pickup-selection`.
 (zc/def-component PickupSelection
   [this]
@@ -1259,8 +1187,7 @@
 (zc/def-component Craft
   [this]
   (let [{:keys [game-state]} (zc/props this)]
-    (zc/csx [zcui/Popup {:style {:position :fixed :top 1
-                                 :color (rcolor/color->rgb :black)
+    (zc/csx [zcui/Popup {:style {:color (rcolor/color->rgb :black)
                                  :background-color (rcolor/color->rgb :white)}} [
                 [MultiSelect {:title "Craft"
                               :items [{:name "Weapons" :hotkey \w}
@@ -1271,7 +1198,7 @@
 (zc/def-component CraftWeapon
   [this]
   (let [{:keys [game-state]} (zc/props this)]
-    (zc/csx [zcui/Popup {:style {:position :relative :top -15
+    (zc/csx [zcui/Popup {:style {:margin-top 5
                                  :color (rcolor/color->rgb :black)
                                  :background-color (rcolor/color->rgb :white)}} [
               [:text {:style {:bottom 1}} ["| Craft Weapon |"]]
@@ -1280,7 +1207,8 @@
 (zc/def-component CraftSurvival
   [this]
   (let [{:keys [game-state]} (zc/props this)]
-    (zc/csx [zcui/Popup {:style {:position :relative :top -15
+    (zc/csx [zcui/Popup {:style {:margin-top 5
+                                 :height 17
                                  :color (rcolor/color->rgb :black)
                                  :background-color (rcolor/color->rgb :white)}} [
               [:text {:style {:bottom 1}} ["| Craft Survival |"]]
@@ -1289,7 +1217,7 @@
 (zc/def-component CraftShelter
   [this]
   (let [{:keys [game-state]} (zc/props this)]
-    (zc/csx [zcui/Popup {:style {:position :relative :top -15
+    (zc/csx [zcui/Popup {:style {:margin-top 5
                                  :color (rcolor/color->rgb :black)
                                  :background-color (rcolor/color->rgb :white)}} [
               [:text {:style {:bottom 1}} ["| Craft Shelter |"]]
@@ -1298,7 +1226,8 @@
 (zc/def-component CraftTransportation
   [this]
   (let [{:keys [game-state]} (zc/props this)]
-    (zc/csx [zcui/Popup {:style {:position :relative :top -15
+    (zc/csx [zcui/Popup {:style {:margin-top 5
+                                 :height 15
                                  :color (rcolor/color->rgb :black)
                                  :background-color (rcolor/color->rgb :white)}} [
               [:text {:style {:bottom 1}} ["| Craft Transportation |"]]
@@ -1320,8 +1249,17 @@
 
 (zc/def-component WieldRanged
   [this]
-  (let [{:keys [game-state]} (zc/props this)]
-    nil))
+  (let [{:keys [game-state]} (zc/props this)
+        player-items (filter can-be-wielded-for-ranged-combat? (-> game-state :world :player :inventory))]
+   (zc/csx [:view {:style {:width 40
+                           :height 20
+                           :position :fixed
+                           :left 40
+                           :top 1
+                           :padding 1
+                           :background-color (rcolor/color->rgb :white)}} [
+            [MultiSelect {:title "Wield"
+                          :items (translate-identified-items game-state player-items)}]]])))
 
 (zc/def-component StartText
   [this]
@@ -1388,15 +1326,14 @@
                              (> thirst max-thirst) "not drinking enough water"
                              (<= will-to-live 0)   "just giving up on life"
                              :else                 "mysterious causes")))]
-      (zc/csx [zcui/Popup {:style {:position :fixed :top 10}} [
-                [:view {:style {:border 2}} [
+      (zc/csx [zcui/Popup {:style {:border 2}} [
                   [:text {} ["You died."]]
                   [:text {} [(format "From %s" cause-of-death)]]
                   [:text {} [""]]
                   [:text {} [
                     [:text {} ["Press "]]
                     [Highlight {} ["space "]]
-                    [:text {} ["to continue."]]]]]]]])))
+                    [:text {} ["to continue."]]]]]])))
 
 (zc/def-component QuitPrompt
   [this]
@@ -1494,7 +1431,7 @@
                         [:text {:style {:color down-arrow-color}} [down-arrow-char]]]])
               (zc/csx [:text {} ["   "]]))
             (if (get message :text)
-              (zc/csx [:text {:style {:color (rcolor/color->rgb :white #_(name (get message :color)))}} [(str (get message :text))]])
+              (zc/csx [:text {:style {:color (rcolor/color->rgb (get message :color))}} [(str (get message :text))]])
               (zc/csx [:text {} [""]]))]]]])))
 
 (defn target-pos [game-state]
@@ -1595,15 +1532,6 @@
               (zc/csx [Message {:game-state game-state}]))
             [Hud {:game-state game-state}]
             [MapUI {:game-state game-state}]]]]]]])))
-
-#_(defn render-enter-name [state]
-  (let [screen (state :screen)
-        player-name (get-in state [:world :player :name])]
-    (clear (state :screen))
-    (put-string screen :ui 30 5 "Robinson")
-    (put-string screen :ui 20 7 "Name:___________________")
-    (put-string screen :ui 25 7 (str player-name "\u2592"))
-    (refresh screen)))
 
 (def loading-index (atom 0))
 (def loading-tidbits

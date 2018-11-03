@@ -71,7 +71,7 @@
 (def palette-noise (rnoise/create-noise))
 (defn cell-type->color
   [wx wy cell-type]
-  (let [r (rnoise/noise3d palette-noise wx wy (mod (/ (System/currentTimeMillis) 1000) 10000))
+  (let [r (rnoise/noise3d palette-noise wx wy (mod (/ (System/currentTimeMillis) 4000) 10000))
         palette (get cell-type-palette cell-type)
         start-idx (int (* r (count palette)))
         end-idx (mod (inc start-idx) (count palette))
@@ -850,7 +850,11 @@
   (if (light-producing? (get cell :type))
     [0 0 0 0]
     (if lantern-on
-      [255 242 192 (* 255 (- 1 (/ distance sight-distance)))]
+      (let [r1 (rnoise/noise3d palette-noise 0 0 (mod (/ (System/currentTimeMillis) 1000) 10000))
+            r2 (rnoise/noise3d palette-noise 0 0 (mod (/ (System/currentTimeMillis) 100) 10000))
+            r (max 0 (min 1 (+ 0.4 (* 0.5 r1) (* 0.1 r2))))]
+        #_(log/info r a)
+        [(* r 255) (* r 204) (* r 124) (min 255 (* 255 (/ distance (+ 1 (* r sight-distance))))) ])
       (rcolor/lighting sight-distance))))
 
 (zc/def-component ShadeImg
@@ -1338,9 +1342,9 @@
 (zc/def-component QuitPrompt
   [this]
   (let [{:keys [game-state]} (zc/props this)]
-    (zc/csx [zcui/Popup {:style {:position :fixed :top 10}} [
+    (zc/csx [zcui/Popup {} [
               [:text {} [
-                [:text {} ["quit? ["]]
+                [:text {} ["Quit? ["]]
                 [Highlight {} ["y"]]
                 [:text {} ["/"]]
                 [Highlight {} ["n"]]
@@ -1471,7 +1475,7 @@
         sight-distance                              (rlos/sight-distance game-state)
         [vx vy]                                     (rc/pos->xy viewport-pos)
         lantern-on                                  (when-let [lantern (rp/inventory-id->item game-state :lantern)]
-                                                      (get lantern game-state :off))]
+                                                      (= (get lantern :state :off) :on))]
     (zc/csx
 	  [:terminal {} [
 		[:group {:id :app} [

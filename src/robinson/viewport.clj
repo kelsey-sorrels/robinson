@@ -214,77 +214,80 @@
 (defn cells-in-viewport
   "Return a collection of cells in the viewport as a two-dimensional array"
   [state]
-  (let [{v-width     :width
-         v-height    :height
-         {v-x :x v-y :y} :pos}
-                          (get-in state [:world :viewport])
-        ;; upper left place
-        ul-place-id       (xy->place-id state v-x v-y)
-        [px py]           ul-place-id
-        ur-place-id       [(inc px) py]
-        ll-place-id       [px       (inc py)]
-        lr-place-id       [(inc px) (inc py)]
-        ;_ (log/info "ul-place-id" (str ul-place-id))
-        ;_ (log/info "ur-place-id" (str ur-place-id))
-        ;_ (log/info "ll-place-id" (str ll-place-id))
-        ;_ (log/info "lr-place-id" (str lr-place-id))
-        [ax ay] (place-id->anchor-xy state lr-place-id)
-        ;_ (log/info "v-x" v-x "v-y" v-y)
-        ;_ (log/info "v-width" v-width "v-height" v-height)
-        ;_ (log/info "ax" ax "ay" ay)
-        start-x            (- v-width (- ax v-x))
-        start-y            (- v-height (- ay v-y))
-        ;start-x           (mod v-x v-width)
-        ;start-y           (mod v-y v-height)
-        ;start-x           (if (pos? v-x)
-        ;                    start-x
-        ;                    (- v-width start-x))
-        ;start-y           (if (pos? v-y)
-        ;                    start-y
-        ;                    (- v-height start-y))
-        ;_ (log/info "start-x" start-x "start-y" start-y)
-        ;_ (log/info "place-ids" (str (keys (get-in state [:world :places]))))
-        ul-cells          (get-in state [:world :places ul-place-id :cells])
-        ur-cells          (get-in state [:world :places ur-place-id :cells])
-        ll-cells          (get-in state [:world :places ll-place-id :cells])
-        lr-cells          (get-in state [:world :places lr-place-id :cells])
-        ;_ (log/info "ul-place-0" (str (type (get-in state [:world ]))))
-        ;_ (log/info "ul-place-1" (str (type (get-in state [:world :places ]))))
-        ;_ (log/info "ul-place-2" (str (type (get-in state [:world :places ul-place-id]))))
-        ;_ (log/info "ur-place" (str ur-place))
-        ;_ (log/info "ll-place" (str ll-place))
-        ;_ (log/info "lr-place" (str lr-place))
-    cells (concat 
-      (map (fn [line1 line2]
-           (when-not (vector? line1)
-              (log/info "line1 not vector" line1)
-              (throw (Exception. (spit line2))))
-           (when-not (vector? line2)
-              (log/info "line2 not vector" line2)
-              (throw (Exception. (spit line2))))
-           (concat (subvec line1 start-x)
-                   (subvec line2 0 start-x)))
-           
-           (subvec ul-cells start-y)
-           (subvec ur-cells start-y))
-      (map (fn [line3 line4] (concat (subvec line3 start-x)
-                                     (subvec line4 0 start-x)))
-           (subvec ll-cells 0 start-y)
-           (subvec lr-cells 0 start-y)))]
-    ;(log/info "ul-place-id" ul-place-id)
-    ;(log/info "ur-place-id" ur-place-id)
-    ;(log/info "lr-place-id" lr-place-id)
-    ;(log/info "ll-place-id" ll-place-id)
-    ;(log/info "ul-place" ul-place)
-    ;(log/info "\n\n")
-    ;(log/info "ur-place" ur-place)
-    ;(log/info "\n\n")
-    ;(log/info "ll-place" ll-place)
-    ;(log/info "\n\n")
-    ;(log/info "lr-place" lr-place)
-    ;(log/info "\n\n")
-    ;(log/info "cells" cells)
-    cells))
+  (log/info "current-place" (get-in state [:world :current-place]))
+  (if-let [current-place (get-in state [:world :current-place])]
+    (get-in state [:world :places current-place :cells])
+    (let [{v-width     :width
+           v-height    :height
+           {v-x :x v-y :y} :pos}
+                            (get-in state [:world :viewport])
+          ;; upper left place
+          ul-place-id       (xy->place-id state v-x v-y)
+          [px py]           ul-place-id
+          ur-place-id       [(inc px) py]
+          ll-place-id       [px       (inc py)]
+          lr-place-id       [(inc px) (inc py)]
+          ;_ (log/info "ul-place-id" (str ul-place-id))
+          ;_ (log/info "ur-place-id" (str ur-place-id))
+          ;_ (log/info "ll-place-id" (str ll-place-id))
+          ;_ (log/info "lr-place-id" (str lr-place-id))
+          [ax ay] (place-id->anchor-xy state lr-place-id)
+          ;_ (log/info "v-x" v-x "v-y" v-y)
+          ;_ (log/info "v-width" v-width "v-height" v-height)
+          ;_ (log/info "ax" ax "ay" ay)
+          start-x            (- v-width (- ax v-x))
+          start-y            (- v-height (- ay v-y))
+          ;start-x           (mod v-x v-width)
+          ;start-y           (mod v-y v-height)
+          ;start-x           (if (pos? v-x)
+          ;                    start-x
+          ;                    (- v-width start-x))
+          ;start-y           (if (pos? v-y)
+          ;                    start-y
+          ;                    (- v-height start-y))
+          ;_ (log/info "start-x" start-x "start-y" start-y)
+          ;_ (log/info "place-ids" (str (keys (get-in state [:world :places]))))
+          ul-cells          (get-in state [:world :places ul-place-id :cells])
+          ur-cells          (get-in state [:world :places ur-place-id :cells])
+          ll-cells          (get-in state [:world :places ll-place-id :cells])
+          lr-cells          (get-in state [:world :places lr-place-id :cells])
+          ;_ (log/info "ul-place-0" (str (type (get-in state [:world ]))))
+          ;_ (log/info "ul-place-1" (str (type (get-in state [:world :places ]))))
+          ;_ (log/info "ul-place-2" (str (type (get-in state [:world :places ul-place-id]))))
+          ;_ (log/info "ur-place" (str ur-place))
+          ;_ (log/info "ll-place" (str ll-place))
+          ;_ (log/info "lr-place" (str lr-place))
+      cells (concat 
+        (map (fn [line1 line2]
+             (when-not (vector? line1)
+                (log/info "line1 not vector" line1)
+                (throw (Exception. (spit line2))))
+             (when-not (vector? line2)
+                (log/info "line2 not vector" line2)
+                (throw (Exception. (spit line2))))
+             (concat (subvec line1 start-x)
+                     (subvec line2 0 start-x)))
+             
+             (subvec ul-cells start-y)
+             (subvec ur-cells start-y))
+        (map (fn [line3 line4] (concat (subvec line3 start-x)
+                                       (subvec line4 0 start-x)))
+             (subvec ll-cells 0 start-y)
+             (subvec lr-cells 0 start-y)))]
+      ;(log/info "ul-place-id" ul-place-id)
+      ;(log/info "ur-place-id" ur-place-id)
+      ;(log/info "lr-place-id" lr-place-id)
+      ;(log/info "ll-place-id" ll-place-id)
+      ;(log/info "ul-place" ul-place)
+      ;(log/info "\n\n")
+      ;(log/info "ur-place" ur-place)
+      ;(log/info "\n\n")
+      ;(log/info "ll-place" ll-place)
+      ;(log/info "\n\n")
+      ;(log/info "lr-place" lr-place)
+      ;(log/info "\n\n")
+      ;(log/info "cells" cells)
+      cells)))
 
 (defn place->cellxys
   [place]

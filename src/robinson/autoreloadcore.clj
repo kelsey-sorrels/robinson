@@ -86,8 +86,12 @@
           (fn [terminal]
             (log/info "Create-terminal current-state" (rw/current-state state) (keys state) (get state :world))
             (add-watch state-ref :advance (fn [_ state-ref old-state new-state]
-                                             (when (contains? #{:loading :connecting} (rw/current-state new-state))
-                                               (reset! state-ref (@tick-fn new-state :advance)))))
+                                            (when (= :quit (rw/current-state new-state))
+                                                (log/info "Got quit state. Exiting.")
+                                                (async/>!! done-chan true)
+                                                (System/exit 0))
+                                            (when (contains? #{:loading :connecting} (rw/current-state new-state))
+                                              (reset! state-ref (@tick-fn new-state :advance)))))
                                                
             (reset! state-ref state)
             (zt/do-frame terminal 33
@@ -100,29 +104,24 @@
                   ;; update component instance states
                   (log/info "---End Frame---"))))
               (zevents/add-event-listener terminal :keypress (fn [keyin]
-                (if (nil? state)
-                  (do
-                    (log/info "Got nil state. Exiting.")
-                    (async/>!! done-chan true)
+                ; tick the old state through the tick-fn to get the new state
+                (try
+                  (when (= keyin :exit)
                     (System/exit 0))
-                  ; tick the old state through the tick-fn to get the new state
-                  (try
-                    (when (= keyin :exit)
-                      (System/exit 0))
-                    (if keyin
-                      (do
-                        (log/info "Core current-state" (rw/current-state state))
-                        (log/info "Core got key" keyin)
-                        (let [new-state (@tick-fn @state-ref keyin)
-                              state-stream (revents/stream new-state)]
-                          (doseq [state (revents/chan-seq state-stream)]
-                            (log/info "got new state from stream")
-                            (reset! state-ref state))
-                            (log/info "got new state from stream")
-                          (log/info "End of game loop"))))
-                     (catch Throwable ex
-                       (log/error ex)
-                       (print-stack-trace ex)
-                       state)))))
+                  (if keyin
+                    (do
+                      (log/info "Core current-state" (rw/current-state state))
+                      (log/info "Core got key" keyin)
+                      (let [new-state (@tick-fn @state-ref keyin)
+                            state-stream (revents/stream new-state)]
+                        (doseq [state (revents/chan-seq state-stream)]
+                          (log/info "got new state from stream")
+                          (reset! state-ref state))
+                          (log/info "got new state from stream")
+                        (log/info "End of game loop"))))
+                   (catch Throwable ex
+                     (log/error ex)
+                     (print-stack-trace ex)
+                     state))))
             (async/<!! done-chan)))))))
  

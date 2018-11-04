@@ -455,7 +455,7 @@
                :floor           [\·]
                :open-door       [\-  :brown  :black #{:bold}]
                :close-door      [\+  :brown  :black #{:bold}]
-               :corridor        [\#] 
+               :corridor        [\# :light-gray :black] 
                :down-stairs     [\>] 
                :up-stairs       [\<] 
                :fire            [\u2240 (if (= (cell :discovered) current-time)
@@ -562,7 +562,7 @@
                :moss-upper-right-2 [\◙ :moss-green :black]
                :moss-bottom-left-2 [\◙ :moss-green :black]
                :moss-bottom-right-2 [\◙ :moss-green :black]
-               :white-corridor  [\# :white :black]
+               :white-corridor  [\# :light-gray :black]
                :white-vertical-wall   [\║ :white :black]
                :white-horizontal-wall [\═ :white :black]
                :white-vertical-wall-alt [\° :white :black]
@@ -753,41 +753,52 @@
 
 (zc/def-component CrushingWall
   [this]
-  (let [{:keys [trap]} (zc/props this)]
-    nil))
-#_(defn render-crushing-wall
-  [screen trap]
-  (let [ch (case (get trap :direction)
-             :up    \╧
-             :down  \╤
-             :left  \╢
-             :right \╟)]
-    (put-chars screen :features (for [[x y] (first (get trap :locations))]
-                                  {:x x :y y :c ch :fg [90 90 90] :bg [0 0 0]}))))
+  (let [{:keys [game-state trap vx vy]} (zc/props this)
+        current-time (rw/get-time game-state)
+        ch (case (get trap :direction)
+             :up    "╧"
+             :down  "╤"
+             :left  "╢"
+             :right "╟")]
+    (zc/csx [:view {} 
+              (for [[x y] (first (get trap :locations))
+                    :when (= (get (rw/get-cell game-state x y) :discovered) current-time)]
+                    (zc/csx [:view {:style {:position :fixed
+                                            :max-width 1 :max-height 1
+                                            :left (- x vx) :top (- y vy)
+                                            :color (rcolor/color->rgb :gray)}} [
+                              [:text {} [ch]]]]))])))
 
 (zc/def-component PoisonousGas
   [this]
-  (let [{:keys [trap]} (zc/props this)]
-    nil))
-#_(defn render-poisonous-gas
-  [screen state trap]
-  (let [current-time (rw/get-time state)]
-    (doseq [[x y] (keys (get trap :locations))]
-      (when (= (get (rw/get-cell state x y) :discovered) current-time)
-        (let [bg (rcolor/color->rgb (rand-nth [:beige :temple-beige :light-brown]))]
-          (set-bg! screen :map x y bg))))))
+  (let [{:keys [game-state trap vx vy]} (zc/props this)
+        current-time (rw/get-time game-state)]
+    (zc/csx [:view {} 
+              (for [[x y] (keys (get trap :locations))
+                    :when (= (get (rw/get-cell game-state x y) :discovered) current-time)]
+                  (let [r1 (rnoise/noise3d palette-noise x y (mod (/ (System/currentTimeMillis) 10000) 10000))
+                        r2 (rnoise/noise3d palette-noise x y (mod (/ (System/currentTimeMillis) 5001) 10000))
+                        bg (rcolor/color->rgb (nth [:yellow :yellow :light-green :green :dark-green] (int (* r1 5))))
+                        ch (nth ["\u2591" "\u2592" "\u2593"] (int (* r2 3)))]
+                    (zc/csx [:view {:style {:position :fixed
+                                            :max-width 1 :max-height 1
+                                            :left (- x vx) :top (- y vy)
+                                            :color (rcolor/color->rgb :black)
+                                            :background-color bg}} [
+                              [:text {} [ch]]]])))])))
 
 (zc/def-component Traps
   [this]
-  (let [{:keys [game-state]} (zc/props this)
+  (let [{:keys [game-state vx vy]} (zc/props this)
         traps (rw/current-place-traps game-state)]
     (zc/csx [:view {}
       (map (fn [trap]
              (case (get trap :type)
                :crushing-wall
-                 (zc/csx [CrushingWall trap])
+                 (zc/csx [CrushingWall {:game-state game-state :trap trap :vx vx :vy vy}])
+                 #_(zc/csx [PoisonousGas {:game-state game-state :trap trap :vx vx :vy vy}])
                :poisonous-gas
-                 (zc/csx [PoisonousGas trap])
+                 (zc/csx [PoisonousGas {:game-state game-state :trap trap :vx vx :vy vy}])
                (zc/csx [:view {} []])))
             traps)])))
 
@@ -1490,13 +1501,13 @@
                                      :vx vx
                                      :vy vy
                                      :current-time current-time}]]]
-            #_[:view {:style {:top 0 :left 0}} [
-              [Traps {:traps visible-npcs
-                                     :player-pos (rp/player-pos game-state)
-                                     :player-bloodied (get player :bloodied)
-                                     :vx vx
-                                     :vy vy
-                                     :current-time current-time}]]]
+            [:view {:style {:top 0 :left 0}} [
+              [Traps {:game-state game-state
+                      :player-pos (rp/player-pos game-state)
+                      :player-bloodied (get player :bloodied)
+                      :vx vx
+                      :vy vy
+                      :current-time current-time}]]]
             [FishingPole {:game-state game-state}]
             [:view {:style {:top 0 :left 0}} [
               [FX {:vx vx

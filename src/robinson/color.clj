@@ -13,8 +13,10 @@
    :black       [6 6 11]
    :white       [255 255 255]
    :gray        [128 128 128]
-   :light-gray  [64 64 64]
-   :dark-gray   [192 192 192]
+   :dark-gray  [64 64 64]
+   :darker-gray [32 32 32]
+   :light-gray   [192 192 192]
+   :lighter-gray   [225 225 225]
    :red         [190 38 51];(vec (tinter/hex-str-to-dec "D31C00"))
    :dark-red    [110 18 21];(vec (tinter/hex-str-to-dec "D31C00"))
    :orange      [235 137 49];(vec (tinter/hex-str-to-dec "D36C00"))

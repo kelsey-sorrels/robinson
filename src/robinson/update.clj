@@ -3255,7 +3255,7 @@
                           \0           [(fn [state]
                                           (-> state
                                             (rp/player-update-xp (partial + 100))
-                                            (rp/player-update-wtl (partial + 10))
+                                            #_(rp/player-update-wtl (partial + 10))
                                             (rp/player-update-hunger (fn [hunger] 0))
                                             (rp/player-update-thirst (fn [thirst] 0)))) :normal false]
                           \1           [(fn [state]

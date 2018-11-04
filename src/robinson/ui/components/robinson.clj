@@ -993,28 +993,6 @@
                                        {:name (get ability :description)}
                                        {:name ""}])
                                     abilities))}]]])))
-#_(defn render-ability-choices 
-  "Render the player ability choice menu if the world state is `:gain-level`."
-  [state]
-  (let [screen (get state :screen)
-        abilities (get-in state [:world :ability-choices])
-        height (+ 3 (* 3 (count abilities)))]
-    (render-list screen :ui 17 4 43 height
-      (concat
-        (mapcat
-          (fn [ability]
-            [{:s (format "<color fg=\"highlight\">%s</color> - %s" (get ability :hotkey) (get ability :name))
-              :fg :black
-              :bg :white
-              :style #{}}
-             {:s (format "    %s" (get ability :description)) :fg :black :bg :white :style #{}}
-             {:s "" :fg :black :bg :white :style #{}}])
-          abilities)
-        [{:s "" :fg :black :bg :white :style #{}}
-         {:s "Select hotkey." :fg :black :bg :white :style #{}}]))
-    (render-rect-double-border screen 16 3 43 height :black :white)
-    (put-string screen :ui 29 3 "Choose New Ability" :black :white)))
-
 
 (zc/def-component ActionChoices
   [this]
@@ -1052,24 +1030,24 @@
 
 (zc/def-component Describe
   [this]
-  (let [{:keys [game-state]} (zc/props this)]
-    nil))
-#_(defn render-describe
-  "Render the describe info pane if the world state is `:describe`."
-  [state]
-  (let [{cursor-x :x
-         cursor-y :y} (get-in state [:world :cursor])
-        [x y]         (rv/viewport-xy state)
-        [w _]         (rv/viewport-wh state)
-        _             (println "cursor-x" cursor-x "w" w)
+  (let [{:keys [game-state]} (zc/props this)
+        {cursor-x :x
+         cursor-y :y} (get-in game-state [:world :cursor])
+        [x y]         (rv/viewport-xy game-state)
+        [w _]         (rv/viewport-wh game-state)
+        _             (log/info "cursor-x" cursor-x "w" w)
         position      (if (< cursor-x (/ w 2))
                         :right
                         :left)
-        description   (rdesc/describe-cell-at-xy state (+ x cursor-x) (+ y cursor-y))]
-  (render-text (state :screen) position "Look" (if (get-in state [:world :dev-mode])
-                                                 (str description "[" (+ x cursor-x) " " (+ y cursor-y) "]"
-                                                      (get-cell state (+ x cursor-x) (+ y cursor-y)))
-                                                 description))))
+        description   (rdesc/describe-cell-at-xy game-state (+ x cursor-x) (+ y cursor-y))
+        text          (if (get-in game-state [:world :dev-mode])
+                         (str description "[" (+ x cursor-x) " " (+ y cursor-y) "]"
+                              (get-cell game-state (+ x cursor-x) (+ y cursor-y)))
+                         description)
+        cursor-x      (if (= position :left)
+                        (dec (- cursor-x (count text)))
+                        (inc cursor-x))]
+  (zc/csx [:text {:style {:position :fixed :top cursor-y :left cursor-x}} [text]])))
 
 
 

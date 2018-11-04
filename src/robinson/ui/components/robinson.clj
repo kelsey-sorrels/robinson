@@ -303,9 +303,11 @@
                                   [Highlight {} [(str (or (item :hotkey)
                                                           \space))]]
                                   [:text {} [(format "%c%s%s %s %s"
-                                               (if (contains? (set selected-hotkeys) (get item :hotkey))
-                                                 \+
-                                                 \-)
+                                               (if-let [hotkey (get item :hotkey)]
+                                                 (if (contains? (set selected-hotkeys) hotkey)
+                                                   \+
+                                                   \-)
+                                                 \space)
                                                (if (contains? item :count)
                                                  (format "%dx " (int (get item :count)))
                                                  "")
@@ -668,37 +670,9 @@
         :giant-snake     [\u00A7 :green :black] ;;§
         :human           [\@ :white :black]))))
 
-(defn render-player [player current-time]
-  (apply fill-put-string-color-style-defaults
-    (rcolor/color-bloodied-char 
-      (< current-time (get player :bloodied 0))
-      ["@" :white :black])))
-   ; TODO: draw raft? draw fishing pole?
-        #_(if (contains? (set (map :id (get (first (player-cellxy state)) :items))) :raft)
-          :brown
-          :black)
-        ;; if character is fishing, draw pole
-        #_(condp = (current-state state)
-          :fishing-left  (put-string screen :ui (dec (-> state :world :player :pos :x))
-                                            (-> state :world :player :pos :y)
-                                            "\\"
-                                            :white :black)
-          :fishing-right (put-string screen :ui (inc (-> state :world :player :pos :x))
-                                            (-> state :world :player :pos :y)
-                                            "/"
-                                            :white :black)
-          :fishing-up    (put-string screen :ui (-> state :world :player :pos :x)
-                                            (dec (-> state :world :player :pos :y))
-                                            "/"
-                                            :white :black)
-          :fishing-down  (put-string screen :ui (-> state :world :player :pos :x)
-                                            (inc (-> state :world :player :pos :y))
-                                            "\\"
-                                            :white :black))
-  
 (zc/def-component CharactersInViewport
   [this]
-  (let [{:keys [npcs player-pos player-bloodied vx vy current-time]} (zc/props this)]
+  (let [{:keys [npcs player-pos player-bloodied player-on-raft? vx vy current-time]} (zc/props this)]
     (zc/csx [:view {}
                    (reduce (fn [children npc]
                              (let [x         (-> npc :pos :x)
@@ -721,7 +695,9 @@
                                                     :top (- (get player-pos :y) vy)
                                                     :left (- (get player-pos :x) vx)
                                                     :color (rcolor/color->rgb (if player-bloodied :dark-red :white))
-                                                    :background-color (rcolor/color->rgb :black)}}
+                                                    :background-color (rcolor/color->rgb (if player-on-raft?
+                                                                                            :brown
+                                                                                            :black))}}
                                            ["@"]])]
                            npcs)])))
 
@@ -796,16 +772,10 @@
              (case (get trap :type)
                :crushing-wall
                  (zc/csx [CrushingWall {:game-state game-state :trap trap :vx vx :vy vy}])
-                 #_(zc/csx [PoisonousGas {:game-state game-state :trap trap :vx vx :vy vy}])
                :poisonous-gas
                  (zc/csx [PoisonousGas {:game-state game-state :trap trap :vx vx :vy vy}])
                (zc/csx [:view {} []])))
             traps)])))
-
-   ; TODO: draw raft? draw fishing pole?
-        #_(if (contains? (set (map :id (get (first (player-cellxy state)) :items))) :raft)
-          :brown
-          :black)
 
 (zc/def-component CharacterFx
   [this]
@@ -851,7 +821,7 @@
                  (let [[x y] (rc/pos->xy (get effect :pos))]
                    (zc/csx [CharacterFx {:fx effect :vx vx :vy vy }]))
                (zc/csx [:view {} []])))
-            fx #_[{:type :character-fx :pos {:x -18 :y -239} :ch \-}])])))
+            fx)])))
 
 (defn light-producing?
   [cell-type]
@@ -864,7 +834,6 @@
       (let [r1 (rnoise/noise3d palette-noise 0 0 (mod (/ (System/currentTimeMillis) 1000) 10000))
             r2 (rnoise/noise3d palette-noise 0 0 (mod (/ (System/currentTimeMillis) 100) 10000))
             r (max 0 (min 1 (+ 0.4 (* 0.5 r1) (* 0.1 r2))))]
-        #_(log/info r a)
         [(* r 255) (* r 204) (* r 124) (min 255 (* 255 (/ distance (+ 1 (* r sight-distance))))) ])
       (rcolor/lighting sight-distance))))
 
@@ -968,9 +937,6 @@
                         [:view {:style {:border 2}} [
                           [MultiSelect {:title "Abilities"
                                         :items abilities}]]]]])
-               #_{:s (format "    %s" (get ability :description)) :fg :black :bg :white :style #{}}
-               #_[{:s "" :fg :black :bg :white :style #{}}
-                  {:s "Select hotkey or press <color fg=\"highlight\">Esc</color> to exit." :fg :black :bg :white :style #{}}]
               (zc/csx [zcui/Popup {} [
                 [:view {} [
                   [:text {} ["No abilities."]]
@@ -1012,8 +978,21 @@
 
 (zc/def-component AbilityChoices
   [this]
-  (let [{:keys [game-state]} (zc/props this)]
-    nil))
+  (let [{:keys [game-state]} (zc/props this)
+        abilities (get-in game-state [:world :ability-choices])]
+    (zc/csx [zcui/Popup {:style {:top -5
+                                 :color (rcolor/color->rgb :black)
+                                 :background-color (rcolor/color->rgb :white)}} [
+                [MultiSelect {:title "Choose A New Ability"
+                              :items
+                                (concat
+                                  (mapcat
+                                    (fn [ability]
+                                      [{:name (get ability :name)
+                                        :hotkey (get ability :hotkey)}
+                                       {:name (get ability :description)}
+                                       {:name ""}])
+                                    abilities))}]]])))
 #_(defn render-ability-choices 
   "Render the player ability choice menu if the world state is `:gain-level`."
   [state]
@@ -1498,6 +1477,7 @@
               [CharactersInViewport {:npcs visible-npcs
                                      :player-pos (rp/player-pos game-state)
                                      :player-bloodied (get player :bloodied)
+                                     :player-on-raft? (contains? (set (map :id (get (first (player-cellxy game-state)) :items))) :raft)
                                      :vx vx
                                      :vy vy
                                      :current-time current-time}]]]
@@ -1919,8 +1899,8 @@
                                             :fg fg
                                             :bg (rcolor/color->rgb :black)})
                                            {:s "..."
-                                            :fg [255 255 255 255] #_(rcolor/color->rgb :white)
-                                            :bg [0 0 0 0] #_(rcolor/color->rgb :black)
+                                            :fg (rcolor/color->rgb :white)
+                                            :bg (rcolor/color->rgb :black)
                                             :style nil}))
                                      top-10-scores)}]
                  [:view {:style {:top 1 :left 0}} [

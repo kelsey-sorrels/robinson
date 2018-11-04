@@ -996,37 +996,35 @@
 
 (zc/def-component ActionChoices
   [this]
-  (let [{:keys [game-state]} (zc/props this)]
-    nil))
-
-#_(defn render-action-choices
-  "Render the player action choices menu if the world state is `:action-select`."
-  [state]
-  (let [screen (get state :screen)
-        abilities (get-in state [:world :action-select])
+  (let [{:keys [game-state]} (zc/props this)
+        abilities (get-in game-state [:world :action-select])
         height (if (seq abilities)
                  (+ 3 (* 3 (count abilities)))
                  4)]  
-    (render-list screen :ui 17 4 43 height
-      (if (seq abilities)
-        (concat
-          (mapcat
-            (fn [ability]
-              [{:s (format "<color fg=\"highlight\">%s</color> - %s" (get ability :hotkey) (get ability :name))
-                :fg :black
-                :bg :white
-                :style #{}}
-               {:s "" :fg :black :bg :white :style #{}}])
-            abilities)
-          [{:s "" :fg :black :bg :white :style #{}}
-           {:s "Select hotkey or press <color fg=\"highlight\">Esc</color> to exit." :fg :black :bg :white :style #{}}])
-        [{:s "Nothing to do." :fg :black :bg :white :style #{}}
-         {:s "" :fg :black :bg :white :style #{}}
-         {:s "Press <color fg=\"highlight\">Esc</color> to exit." :fg :black :bg :white :style #{}}]))
-        
-    (render-rect-double-border screen 16 3 43 height :black :white)
-    (put-string screen :ui 30 3 "Choose Action" :black :white)))
-
+    (zc/csx [zcui/Popup {:style {:top -5
+                                 :color (rcolor/color->rgb :black)
+                                 :background-color (rcolor/color->rgb :white)}} [
+                (if (seq abilities)
+                  (zc/csx [MultiSelect {:title "Choose Action"
+                                        :items
+                                          (concat
+                                            (mapcat
+                                              (fn [ability]
+                                                [{:name (get ability :name)
+                                                  :hotkey (get ability :hotkey)}
+                                                 {:name (get ability :description)}
+                                                 {:name ""}])
+                                              abilities)
+                                            [{:name ""}
+                                             {:name "Select hotkey or press Esc to exit."}])}])
+                (zc/csx
+                  [:view {} [
+                    [:text {} ["Nothing to do."]]
+                    [:text {} [""]]
+                    [:text {} [
+                      [:text {} ["Press "]]
+                      [Highlight {} ["Esc "]]
+                      [:text {} ["to exit."]]]]]]))]])))
 
 (zc/def-component Describe
   [this]
@@ -1506,64 +1504,6 @@
             [Hud {:game-state game-state}]
             [MapUI {:game-state game-state}]]]]]]])))
 
-(def loading-index (atom 0))
-(def loading-tidbits
-  ["rat swarm"
-   "poisonous frog"
-   "coconut"
-   "palm tree"
-   "human blood"
-   "monkey"
-   "island"
-   "terrain"
-   "lava"
-   "volcano"
-   "abandoned hut"
-   "lair"
-   "pirate"
-   "clam"
-   "leaf"
-   "ancient temple"
-   "beaches"
-   "crab legs. (8) check."
-   "cannibal"
-   "beeshive"
-   "monkey ambush"
-   "cave"
-   "spider tunnel"
-   "insane castaway"
-   "watering hole"
-   "other survivor"
-   "goat"
-   "hurricane"])
-(def tidbit-freqs (atom (zipmap (range (count loading-tidbits)) (repeat 0))))
-
-#_(defn render-loading [state]
-  (let [screen     (state :screen)
-        n          (->> (sort-by val @tidbit-freqs)
-                        (partition-by val)
-                        first
-                        rand-nth
-                        first)]
-    (swap! tidbit-freqs (fn [freqs] (update freqs n inc)))
-    (clear (state :screen))
-    (put-string screen :ui 30 12 (format "Generating %s..." (nth loading-tidbits n)))
-    (put-string screen :ui 40 18 (nth ["/" "-" "\\" "|"] (mod (swap! loading-index inc) 4)))
-    (refresh screen)))
-
-#_(defn render-connection-failed [state]
-  (let [screen     (state :screen)]
-    (clear screen)
-    (put-string screen 30 12 :ui "Connection failed")
-          (put-chars (state :screen) :ui (markup->chars 30 22 "Play again? [<color fg=\"highlight\">y</color>/<color fg=\"highlight\">n</color>]"))
-    (refresh screen)))
-
-(def connecting-index (atom 0))
-#_(defn render-connecting [state]
-  (let [screen     (state :screen)]
-    (clear screen)
-    (put-string screen 30 12 :ui (format "Connecting%s" (apply str (repeat (mod (swap! connecting-index inc) 4) "."))))
-    (refresh screen)))
 
 (defn cp437->unicode
   [c]
@@ -1721,9 +1661,48 @@
                                :use-applicable true
                                :items start-inventory}]]]]]]]]])))
 
+(def loading-index (atom 0))
+(def loading-tidbits
+  ["rat swarm"
+   "poisonous frog"
+   "coconut"
+   "palm tree"
+   "human blood"
+   "monkey"
+   "island"
+   "terrain"
+   "lava"
+   "volcano"
+   "abandoned hut"
+   "lair"
+   "pirate"
+   "clam"
+   "leaf"
+   "ancient temple"
+   "beaches"
+   "crab legs. (8) check."
+   "cannibal"
+   "beeshive"
+   "monkey ambush"
+   "cave"
+   "spider tunnel"
+   "insane castaway"
+   "watering hole"
+   "other survivor"
+   "goat"
+   "hurricane"])
+(def tidbit-freqs (atom (zipmap (range (count loading-tidbits)) (repeat 0))))
+
 (zc/def-component Loading
   [this]
-  (let [{:keys [state]} (zc/props this)]
+  (let [{:keys [state]} (zc/props this)
+        r (mod (/ (System/currentTimeMillis) 4000) (count loading-tidbits))
+        n          (->> (sort-by val @tidbit-freqs)
+                        (partition-by val)
+                        first
+                        (#(nth % r))
+                        first)]
+    (swap! tidbit-freqs (fn [freqs] (update freqs n inc)))
     (zc/csx 
 	  [:terminal {} [
 		[:group {:id :app} [
@@ -1731,7 +1710,11 @@
             [:view {:style {:position :fixed
                             :top 10
                             :left 36}} [
-              [:text {} ["Loading..."]]]]]]]]]])))
+              [:text {} ["Loading..."]]
+              [:text {} [""]]
+              [:text {} [(format "Generating %s..." (nth loading-tidbits n))]]
+              [:text {} [""]]
+              [:text {} [(nth ["/" "-" "\\" "|"] (mod (swap! loading-index inc) 4))]]]]]]]]]])))
 
 (zc/def-component Connecting
   [this]
@@ -1755,8 +1738,13 @@
             [:view {:style {:position :fixed
                             :top 10
                             :left 36}} [
-              [:text {} ["Connection Failed."]]]]]]]]]])))
-
+              [:text {} ["Connection Failed."]]
+              [:text {} [""]]
+              [:text {} [[:text {} ["Play again? ["]]
+                         [Highlight {} ["y"]]
+                         [:text {} ["/"]]
+                         [Highlight {} ["n"]]
+                         [:text {} ["] "]]]]]]]]]]]])))
 
 (zc/def-component GameOverDead
   [this]

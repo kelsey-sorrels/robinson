@@ -7,7 +7,10 @@
                  [lein-marginalia "0.8.0"]
                  [lein-kibit "0.0.8"]
                  [lein-cloverage "1.0.2"]
-                 [lein-tarsier "0.10.0"]]
+                 [lein-tarsier "0.10.0"]
+                 [lein-jlink "0.2.0"]
+                 [lein-binplus "0.6.4"]
+                 [lein-launch4j "0.1.2"]]
   :dependencies [[org.clojure/clojure "1.9.0"]
                  [org.clojure/core.async "0.4.474"]
                  [org.clojure/core.cache "0.7.1"]
@@ -39,29 +42,46 @@
                  [clojure-watch "0.1.14"]
                  [overtone/at-at "1.2.0"]
                  [rm-hull/monet "0.2.2"]]
-  :main robinson.core
+  :main robinson.autoreloadcore
   :manifest {"SplashScreen-Image" "icon.png"}
   :repl-init robinson.core
   :test-paths
   ["test/clj"
    "test/cljc"]
 
+  :uberjar-exclusions [;#"cljs.*"
+                       ;#"clojurescript.*"
+                       ;#"clojure.core.typed.*"
+                       #"robinson-tools.worldgen"
+                       #"externs.*"
+                       #"goog.*"
+                      ]
   ;:auto-clean false
 
   :profiles {
     :demos {:dependencies 
               [[quil "2.7.1"]]}
-    :uberjar {:aot [robinson.update
-                    robinson.render
-                    robinson.npc
-                    robinson.core]
-              :keep-non-project-classes true
-              :uberjar-exclusions [;#"cljs.*"
-                                   ;#"clojurescript.*"
-                                   ;#"clojure.core.typed.*"
-                                   #"externs.*"
-                                   #"goog.*"
-                                  ]}}
+    :uberjar {:aot [#"robinson\..*"]
+              :main robinson.autoreloadcore
+              :keep-non-project-classes true}
+    :jlink-linux-x64 {
+      :target-path "target/linux-x64"}
+    :bin-linux-x64 {
+      :bin {
+        :custom-preamble ":;exec $(dirname $0)/bin/java {{{jvm-opts}}} -D{{{project-name}}}.version={{{version}}} -jar $0 \"$@\"\n"
+}}
+    :jlink-osx-x64 {
+      :target-path "target/osx-x64"}
+    :bin-osx-x64 {
+      :bin {
+        :custom-preamble ":;exec $dirname $0)/bin/java {{{jvm-opts}}} -D{{{project-name}}}.version={{{version}}} -jar $0 \"$@\"\n"
+}}
+    :jlink-windows-x64 {
+      :target-path "target/windows-x64"}
+    :bin-windows-x64 {
+      :bin {
+        :custom-preamble "@echo off\r\njava {{{win-jvm-opts}}} -D{{{project-name}}}.version={{{version}}} -jar \"%~f0\" %*\r\ngoto :eof\r\n\")"
+}}}
   :filespecs [{:type :path :path "images/icon.png"}]
 
   :core.typed {:check [robinson.common robinson.crafting robinson.itemgen robinson.mapgen robinson.npc robinson.startgame robinson.update robinson.world
@@ -69,6 +89,9 @@
                        robinson.player robinson.render robinson.swingterminal robinson.viewport robinson.worldgen]}
   :repl-options {:timeout 920000}
   :global-vars {*warn-on-reflection* true}
+  :jlink-modules ["java.base" "java.desktop" "java.sql" "java.naming" "jdk.unsupported"]
+  :launch4j-install-dir "/home/santos/bin/launch4j"
+  :launch4j-config-file "dev-resources/config.xml"
   :jvm-opts [
              ;"-agentpath:/home/santos/bin/yjp-2014-build-14096/bin/linux-x86-64/libyjpagent.so"
              "-Xdebug"

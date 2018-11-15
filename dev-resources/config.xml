@@ -1,0 +1,46 @@
+<launch4jConfig>
+  <headerType>gui</headerType>
+  <outfile>robinson.exe</outfile>
+  <jar>robinson.jar</jar>
+  <dontWrapJar>true</dontWrapJar>
+  <errTitle>Robinson</errTitle>
+  <downloadUrl>https://aaron-santos.com/robinson/download</downloadUrl>
+  <supportUrl>https://aaron-santos.com/robison/support</supportUrl>
+  <icon>../images/icon.ico</icon>
+  <singleInstance>
+    <mutexName>robinson</mutexName>
+    <windowTitle>Robinson</windowTitle>
+  </singleInstance> 
+  <jre>
+    <!-- Specify path or minVersion or both. -->
+    <path>%EXEDIR%</path>
+    <bundledJre64Bit>true</bundledJre64Bit>
+    <!--<minVersion>11.0.1</minVersion>-->
+    <runtimeBits>64</runtimeBits>
+  </jre>
+  <!--<splash>
+    <file>../images/icon.bmp</file>
+    <waitForWindow>true</waitForWindow>
+    <timeout>120</timeout>
+    <timeoutErr>false</timeoutErr>
+  </splash>-->
+  <versionInfo>
+    <fileVersion>1.1.0.0</fileVersion>
+    <txtFileVersion>1.1.0.0</txtFileVersion>
+    <fileDescription>Robinson</fileDescription>
+    <copyright>2018</copyright>
+    <productVersion>1.1.0.0</productVersion>
+    <txtProductVersion>1.1.0</txtProductVersion>
+    <productName>Robinson</productName>
+    <internalName>robinson</internalName>
+    <originalFilename>robinson.exe</originalFilename>
+  </versionInfo>
+  <messages>
+    <startupErr>Error starting Robinson</startupErr>
+    <bundledJreErr>Error using bundled JRE</bundledJreErr>
+    <jreVersionErr>JRE version error</jreVersionErr>
+    <launcherErr>Error launching Robinson</launcherErr>
+    <!-- Used by console header only. -->
+    <instanceAlreadyExistsMsg>Robinson already running</instanceAlreadyExistsMsg>
+  </messages>
+</launch4jConfig>

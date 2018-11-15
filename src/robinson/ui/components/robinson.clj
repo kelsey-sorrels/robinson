@@ -388,28 +388,6 @@
                                             (map (fn [id] {:s (id->name id) :fg :black :bg :white :style #{}}) have)))}]))
                                           [:text {} ["Select a recipe"]])]]]])))
  
-
-; FIXME render raft
-; ; FIXME render raft
-(comment
-   ;; shade character based on visibility, harvestableness, raft
-   shaded-out-char (cond
-                     (not= (cell :discovered) current-time)
-                       (-> out-char
-                         (update-in [1] (fn [c] (rcolor/rgb->mono (rcolor/darken-rgb c 0.18))))
-                         (update-in [2] (fn [c] (rcolor/rgb->mono (rcolor/darken-rgb c 0.15)))))
-                     (contains? cell :harvestable)
-                       (let [[chr fg bg] out-char]
-                         [chr bg (rcolor/night-tint (rcolor/color->rgb fg) d)])
-                     (contains? (set (map :id cell-items)) :raft)
-                       (let [[chr fg bg] out-char]
-                         (log/info "raft-cell" out-char cell-items)
-                         (if (> (count cell-items) 1)
-                           [chr fg (rcolor/color->rgb :brown)]
-                           [\u01c1 (rcolor/color->rgb :black) (rcolor/color->rgb :brown)]))
-                     :else
-                       out-char))
-
 (defn fill-put-string-color-style-defaults
   ([string]
     (fill-put-string-color-style-defaults 0 0 string :white :black #{}))
@@ -1696,12 +1674,11 @@
 (zc/def-component Loading
   [this]
   (let [{:keys [state]} (zc/props this)
-        r (mod (/ (System/currentTimeMillis) 4000) (count loading-tidbits))
-        n          (->> (sort-by val @tidbit-freqs)
+        values (->> (sort-by val @tidbit-freqs)
                         (partition-by val)
-                        first
-                        (#(nth % r))
-                        first)]
+                        first)
+        r (mod (/ (System/currentTimeMillis) 4000) (count values))
+        n (first (nth values r))]
     (swap! tidbit-freqs (fn [freqs] (update freqs n inc)))
     (zc/csx 
 	  [:terminal {} [

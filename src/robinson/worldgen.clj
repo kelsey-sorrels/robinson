@@ -16,6 +16,7 @@
             [robinson.dungeons.pirateship :as psg]
             [robinson.dungeons.temple :as tg]
             [robinson.macros :as rm]
+            [robinson.fs :as rfs]
             [taoensso.nippy :as nippy]
             [clojure.core.async :as async :refer [go go-loop]]
             [clojure.java.io :as io])
@@ -495,8 +496,8 @@
   (log/info "loading" id)
   ;; load the place into state. From file if exists or gen a new random place.
   (let [place
-    (if (.exists (io/as-file (format "save/%s.place.edn" (str id))))
-      (with-open [o (io/input-stream (format "save/%s.place.edn" (str id)))]
+    (if (.exists (io/as-file (rfs/cwd-path (format "save/%s.place.edn" (str id)))))
+      (with-open [o (io/input-stream (rfs/cwd-path (format "save/%s.place.edn" (str id))))]
         (nippy/thaw-from-in! (DataInputStream. o)))
       (let [[ax ay]            (rv/place-id->anchor-xy state id)
             [v-width v-height] (rv/viewport-wh state)
@@ -510,8 +511,8 @@
   ([state id place-type gen-args]
     ;; use id or generate 8 character hex encoded id string
     (let [id    (or id (format "%x" (long (rand (bit-shift-left 1 32)))))
-          place (if (.exists (io/as-file (format "save/%s.place.edn" (str id))))
-                  (with-open [o (io/input-stream (format "save/%s.place.edn" (str id)))]
+          place (if (.exists (io/as-file (rfs/cwd-path (format "save/%s.place.edn" (str id)))))
+                  (with-open [o (io/input-stream (rfs/cwd-path (format "save/%s.place.edn" (str id))))]
                     (nippy/thaw-from-in! (DataInputStream. o)))
                   (case place-type
                     :pirate-ship
@@ -529,7 +530,7 @@
 (go-loop []
   (let [[id place] (async/<! save-place-chan)]
     (log/info "Saving" id)
-    (with-open [o (io/output-stream (format "save/%s.place.edn" (str id)))]
+    (with-open [o (io/output-stream (rfs/cwd-path (format "save/%s.place.edn" (str id))))]
       (nippy/freeze-to-out! (DataOutputStream. o) place))
     (recur)))
 

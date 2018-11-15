@@ -9,6 +9,7 @@
             [robinson.update :as ru]
             [robinson.monstergen :as mg]
             [robinson.render :as rrender]
+            [robinson.fs :as rfs]
             [zaffre.tilesets :as ztiles]
             [robinson.events :as revents]
             clojure.data.priority-map
@@ -54,7 +55,7 @@
   (let [state (async/<! save-chan)]
     (log/info "World saved at time" (get-in state [:world :time]))
        (try
-         (with-open [o (io/output-stream "save/world.edn")]
+         (with-open [o (io/output-stream (rfs/cwd-path "save/world.edn"))]
            (nippy/freeze-to-out! (DataOutputStream. o) (get state :world)))
          (catch Throwable e (log/error "Error saving" e)))
     ;(as-> state state
@@ -145,8 +146,8 @@
    * `quests` that are loaded dynamically on startup."
   ([f] (setup nil f))
   ([screen f]
-    (when (.exists (io/file "config/.feedbackparticipant"))
-      (when (not (.exists (io/file "config/.userid")))
+    (when (.exists (rfs/cwd-file "config/.feedbackparticipant"))
+      (when (not (.exists (rfs/cwd-file "config/.userid")))
         (spit "config/.userid" (doto (java.util.UUID/randomUUID)
                                             (.toString)))))
     (let [data (apply hash-map
@@ -163,19 +164,19 @@
                               [map-key
                                map-value]))
                             (filter #(not (.isDirectory %))
-                                    (.listFiles (clojure.java.io/file "data")))))
-          feedback-participant (.exists (io/file "config/.feedbackparticipant"))
-          version              (if (.exists (io/file "VERSION"))
-                                 (slurp "VERSION")
+                                    (.listFiles (rfs/cwd-file "data")))))
+          feedback-participant (.exists (rfs/cwd-file "config/.feedbackparticipant"))
+          version              (if (.exists (rfs/cwd-file "VERSION"))
+                                 (slurp (rfs/cwd-path "VERSION"))
                                  "SNAPSHOT")
-          user-id              (if (.exists (io/file "config/.userid"))
-                                 (slurp "config/.userid")
+          user-id              (if (.exists (rfs/cwd-file "config/.userid"))
+                                 (slurp (rfs/cwd-path "config/.userid"))
                                  "unknown")
           _                    (when (get data :seed)
                                  (rr/set-rnd! (rr/create-random (get data :seed))))
           world                (update
-                                    (if (.exists (clojure.java.io/file "save/world.edn"))
-                                      (with-open [o (io/input-stream "save/world.edn")]
+                                    (if (.exists (rfs/cwd-file "save/world.edn"))
+                                      (with-open [o (io/input-stream (rfs/cwd-path "save/world.edn"))]
                                         (nippy/thaw-from-in! (DataInputStream. o)))
                                       {:current-state :start
                                        :time 0
@@ -204,7 +205,7 @@
           ;                         (apply merge (map :dialog quests))))
           ;;_ (debug "loaded data" data)
           settings (clojure.edn/read-string
-                     (slurp "config/settings.edn"))
+                     (slurp (rfs/cwd-path "config/settings.edn")))
           fonts       (apply sorted-map
                         (mapcat (fn [file]
                                   (let [file-name (.getName file)
@@ -216,7 +217,7 @@
                                                     (clojure.edn/read-string))]
                                   [map-key
                                    map-value]))
-                                (.listFiles (clojure.java.io/file "config/fonts"))))
+                                (.listFiles (rfs/cwd-file "config/fonts"))))
           font      (get fonts (get settings :font))
           fx-shader (get settings :fx-shader)
           _ (log/info "Using font settings" font)
@@ -233,10 +234,11 @@
                             #_#_:font (constantly tile-font)
                             :font (fn [platform]
                                     (zfont/->TTFFont
-                                      (get font (case platform
-                                                  :linux   :linux-font
-                                                  :macosx  :macosx-font
-                                                  :windows :windows-font))
+                                      (rfs/cwd-path
+                                        (get font (case platform
+                                                    :linux   :linux-font
+                                                    :macosx  :macosx-font
+                                                    :windows :windows-font)))
                                       (get font :font-size)
                                       true #_(get font :transparent)))}]
           terminal-opts {:title (format "Robinson - %s@%s" user-id version)

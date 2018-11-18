@@ -38,14 +38,25 @@ function upload() {
       echo "Wrote $file_name"
     fi
 }
+
+MACOS_STUB_URL='https://raw.githubusercontent.com/tofi86/universalJavaApplicationStub/v3.0.4/src/universalJavaApplicationStub'
 function osx-package-extra() {
     local target_path=$1
+    local platform=$2
     local app_root=$target_path/../dmg/Robinson.app
+
+    # Download universalJavaApplicationStub
+    wget $MACOS_STUB_URL -nc -O "jvms/universalJavaApplicationStub"
 
     mkdir -p $app_root/Contents/{MacOS,Resources}
     cp -r $target_path/* $app_root/Contents/Resources
-    # copy libjli.dylib
-    cp  "${JAVA_HOMES[osx-x64]}../MacOS/libjli.dylib" $app_root/Contents/MacOS/
+
+    # copy jlink image into Robinson.app/Contents/Java
+    cp -r $target_path/../jlink $app_root/Contents/Java
+
+    # copy univeralJavaApplicationStub into Robinson.app/Contents/MacOS
+    cp jvms/universalJavaApplicationStub $app_root/Contents/MacOS/
+
     # copy Info.plist
     cp dev-resources/Info.plist $app_root/Contents/
     # create PkgInfo
@@ -53,14 +64,17 @@ function osx-package-extra() {
     # copy .icns to Resources...
     cp images/AppIcon.icns $app_root/Contents/Resources/
     # Create dmg
-    #genisoimage -V robinson -D -R -apple -no-pad -o target/robinson-$VERSION.dmg $target_path/../dmg 
+    genisoimage -V robinson -D -R -apple -no-pad -o target/robinson-$VERSION.dmg $target_path/../dmg 
 
     upload target/robinson-$VERSION.dmg
 }
 
 function windows-package-extra() {
     local target_path=$1
+    local platform=$2
 
+    # copy jvm image into target_path
+    cp $target_path/../jlink/* $target_path
     # make exe launcher
     lein launch4j
 
@@ -75,6 +89,12 @@ function windows-package-extra() {
 }
 
 function linux-package-extra() {
+    local target_path=$1
+    local platform=$2
+
+    # copy jvm image into target_path
+    cp $target_path/../jlink/* $target_path
+
     # make zip
     cd $target_path/..
     mv jlink robinson-$platform-$VERSION
@@ -83,11 +103,15 @@ function linux-package-extra() {
     upload target/$platform/robinson-$platform-$VERSION.zip
 }
 
+# Moves resouces into $target_path and then calls platform-specific bundling function
 function package()
 {
     local target_path=$1
     local platform=$2
 
+    # Copy binary into dist
+    cp "target/robinson-0.0.1-SNAPSHOT" $target_path/robinson.jar
+        
     chmod +x $target_path/robinson.jar
 
     #copy resources
@@ -118,11 +142,11 @@ function package()
     touch $target_path/config/.feedbackparticipant
 
     if [[ "$platform" == "osx-x64" ]]; then
-        osx-package-extra $target_path
+        osx-package-extra $target_path $platform
     elif [[ "$platform" == "windows-x64" ]]; then
-        windows-package-extra $target_path
+        windows-package-extra $target_path $platform
     elif [[ "$platform" == "linux-x64" ]]; then
-        linux-package-extra $target_path
+        linux-package-extra $target_path $platform
     else
         echo "Platform not recognized $platform"
     fi
@@ -171,11 +195,9 @@ if [[ $LEINUBERJAR == 1 ]]; then
         echo "jlink JAVA_HOME=$JAVA_HOME"
         lein with-profile jlink-$PLATFORM jlink init
 
-        # Copy binary into image
-        cp "target/robinson-0.0.1-SNAPSHOT" target/$PLATFORM/jlink/robinson.jar
-        
+        mkdir -p target/$PLATFORM/dist
         #copy assets/conf to target dir
-        package target/$PLATFORM/jlink $PLATFORM
+        package target/$PLATFORM/dist $PLATFORM
 
 
     done

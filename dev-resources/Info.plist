@@ -27,7 +27,7 @@
   <key>JavaX</key>
   <dict>
     <key>WorkingDirectory</key>
-    <string>$APP_PACKAGE/Contents/MacOS</string>
+    <string>$APP_PACKAGE/Contents/Resources</string>
     <key>ClassPath</key>
     <string> robinson.jar</string>
     <key>MainClass</key>

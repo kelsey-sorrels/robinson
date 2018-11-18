@@ -17,3 +17,6 @@ save/*
 # Intermediate data
 frames/*
 *.log
+
+# Build data
+jvms/

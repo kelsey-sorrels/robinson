@@ -48,8 +48,10 @@ function osx-package-extra() {
     cp  "${JAVA_HOMES[osx-x64]}../MacOS/libjli.dylib" $app_root/Contents/MacOS/
     # copy Info.plist
     cp dev-resources/Info.plist $app_root/Contents/
+    # create PkgInfo
+    echo "APPL????" > $app_root/Contents/MacOS/PkgInfo
     # copy .icns to Resources...
-    cp images/AppIcon $app_root/Contents/Resources/
+    cp images/AppIcon.icns $app_root/Contents/Resources/
     # Create dmg
     #genisoimage -V robinson -D -R -apple -no-pad -o target/robinson-$VERSION.dmg $target_path/../dmg 
 

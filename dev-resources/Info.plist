@@ -5,15 +5,7 @@
   <key>CFBundleDevelopmentRegion</key>
   <string>English</string>
   <key>CFBundleExecutable</key>
-  <string>libjli.dylib</string>
-  <key>Program</key>
-    <string>/Applications/Robinson.app/Contents/MacOS/libjli.dylib</string>
-  <key>ProgramArguments</key>
-    <array>
-        <string>/Applications/Robinson.app/Contents/MacOS/libjli.dylib</string>
-        <string>-jar</string>
-        <string>robinson.jar</string>
-    </array>
+  <string>universalJavaApplicationStub</string>
   <key>CFBundleIconFile</key>
   <string>AppIcon.icns</string>
   <key>CFBundleGetInfoString</key>
@@ -32,6 +24,22 @@
   <string>????</string>
   <key>CFBundleVersion</key>
   <string>1.1.0</string>
+  <key>JavaX</key>
+  <dict>
+    <key>WorkingDirectory</key>
+    <string>$APP_PACKAGE/Contents/MacOS</string>
+    <key>ClassPath</key>
+    <string> robinson.jar</string>
+    <key>MainClass</key>
+    <string>robinson.autoreloadcore</string>
+    <key>StartOnMainThread</key>
+    <string>true</string>
+  </dict>
+  <key>LSEnvironment</key>
+  <dict>
+    <key>JAVA_HOME</key>
+    <string>Contents/Java</string>
+  </dict>
   <key>NSHighResolutionCapable</key>
   <true/>
 </dict>

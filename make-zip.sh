@@ -16,9 +16,9 @@ do
 done
 
 declare -A PLATFORMS
-#PLATFORMS[linux-x64]='openjdk-11.0.1_linux-x64_bin.tar.gz'
+PLATFORMS[linux-x64]='openjdk-11.0.1_linux-x64_bin.tar.gz'
 PLATFORMS[osx-x64]='openjdk-11.0.1_osx-x64_bin.tar.gz'
-#PLATFORMS[windows-x64]='openjdk-11.0.1_windows-x64_bin.zip'
+PLATFORMS[windows-x64]='openjdk-11.0.1_windows-x64_bin.zip'
 
 declare -A JAVA_HOMES
 JAVA_HOMES[linux-x64]='jvms/linux-x64/jdk-11.0.1/'
@@ -56,6 +56,7 @@ function osx-package-extra() {
 
     # copy univeralJavaApplicationStub into Robinson.app/Contents/MacOS
     cp jvms/universalJavaApplicationStub $app_root/Contents/MacOS/
+    chmod +x $app_root/Contents/MacOS/universalJavaApplicationStub
 
     # copy Info.plist
     cp dev-resources/Info.plist $app_root/Contents/
@@ -74,7 +75,8 @@ function windows-package-extra() {
     local platform=$2
 
     # copy jvm image into target_path
-    cp $target_path/../jlink/* $target_path
+    cp -r $target_path/../jlink/* $target_path
+
     # make exe launcher
     lein launch4j
 
@@ -82,7 +84,7 @@ function windows-package-extra() {
 
     # make zip
     cd $target_path/..
-    mv jlink robinson-$platform-$VERSION
+    mv $(basename $target_path) robinson-$platform-$VERSION
     zip -r robinson-$platform-$VERSION.zip robinson-$platform-$VERSION
     cd -
     upload target/$platform/robinson-$platform-$VERSION.zip
@@ -93,11 +95,11 @@ function linux-package-extra() {
     local platform=$2
 
     # copy jvm image into target_path
-    cp $target_path/../jlink/* $target_path
+    cp -r $target_path/../jlink/* $target_path
 
     # make zip
     cd $target_path/..
-    mv jlink robinson-$platform-$VERSION
+    mv $(basename $target_path) robinson-$platform-$VERSION
     zip -r robinson-$platform-$VERSION.zip robinson-$platform-$VERSION
     cd -
     upload target/$platform/robinson-$platform-$VERSION.zip

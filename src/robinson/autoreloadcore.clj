@@ -33,26 +33,26 @@
 (def tick-fn (atom default-tick-fn))
 (def render-fn (atom default-render-fn))
 
+(def track (ns-tracker ["src/robinson"]))
 (defn check-namespace-changes []
-  (let [track (ns-tracker ["src/robinson"])]
-    (try
-      (doseq [ns-sym (track)]
-        (when (not (contains? #{"robinson.autoreloadcore"
-                                "robinson.main"
-                                "robinson-tools.worldgen"
-                                "robinson-tools.devtools"} (str ns-sym)))
-          (log/info "Reloading namespace:" ns-sym)
-          (require ns-sym :reload)
-          (reset! render-fn (resolve 'robinson.render/render))
-          (reset! setup-fn (resolve 'robinson.main/setup))
-          (reset! tick-fn (resolve 'robinson.main/tick))
-          (log/info "Done.")))
-      (catch Throwable e (log/error e)))))
+  (try
+    (doseq [ns-sym (track)]
+      (when (not (contains? #{"robinson.autoreloadcore"
+                              "robinson.main"
+                              "robinson-tools.worldgen"
+                              "robinson-tools.devtools"} (str ns-sym)))
+        (log/info "Reloading namespace:" ns-sym)
+        (require ns-sym :reload)
+        (reset! render-fn (resolve 'robinson.render/render))
+        (reset! setup-fn (resolve 'robinson.main/setup))
+        (reset! tick-fn (resolve 'robinson.main/tick))
+        (log/info "Done.")))
+    (catch Throwable e (log/error e))))
 
 (defn start-nstracker []
   (go-loop []
     (check-namespace-changes)
-    (async/<! async/timeout 500)
+    (async/<! (async/timeout 500))
     (recur)))
 
 ;; Conveinience ref for accessing the last state when in repl.

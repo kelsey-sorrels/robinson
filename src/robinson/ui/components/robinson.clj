@@ -49,6 +49,7 @@
             [zaffre.util :as zutil]
             [tinter.core :as tinter]
             clojure.set
+            [clojure.core.async :as async :refer [go-loop]]
             [clojure.xml :as xml]
             [clojure.zip :as zip]
             [clojure.pprint :as pprint]
@@ -1669,17 +1670,22 @@
    "other survivor"
    "goat"
    "hurricane"])
-(def tidbit-freqs (atom (zipmap (range (count loading-tidbits)) (repeat 0))))
+(def tidbit-index (atom 0))
+(go-loop [tidbit-freqs (zipmap (range (count loading-tidbits)) (repeat 0))]
+  (let [values (->> (sort-by val tidbit-freqs)
+                    (partition-by val)
+                    first)
+        r (mod (int (/ (System/currentTimeMillis) 4000)) (count values))
+        n (first (nth values r))]
+    (log/info r)
+    (log/info n)
+    (reset! tidbit-index n)
+    (async/<! (async/timeout (rand-nth [1200 600])))
+    (recur (update tidbit-freqs n inc))))
 
 (zc/def-component Loading
   [this]
-  (let [{:keys [state]} (zc/props this)
-        values (->> (sort-by val @tidbit-freqs)
-                        (partition-by val)
-                        first)
-        r (mod (/ (System/currentTimeMillis) 4000) (count values))
-        n (first (nth values r))]
-    (swap! tidbit-freqs (fn [freqs] (update freqs n inc)))
+  (let [{:keys [state]} (zc/props this)]
     (zc/csx 
 	  [:terminal {} [
 		[:group {:id :app} [
@@ -1689,7 +1695,7 @@
                             :left 36}} [
               [:text {} ["Loading..."]]
               [:text {} [""]]
-              [:text {} [(format "Generating %s..." (nth loading-tidbits n))]]
+              [:text {} [(format "Generating %s..." (nth loading-tidbits @tidbit-index))]]
               [:text {} [""]]
               [:text {} [(nth ["/" "-" "\\" "|"] (mod (swap! loading-index inc) 4))]]]]]]]]]])))
 

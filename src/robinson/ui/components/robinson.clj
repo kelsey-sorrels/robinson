@@ -302,7 +302,7 @@
                                                                             :gray))
                                                 :background-color (rcolor/color->rgb :white)}} [
                                   [Highlight {} [(str (or (item :hotkey)
-                                                          \space))]]
+                                                          "space"))]]
                                   [:text {} [(format "%c%s%s %s %s"
                                                (if-let [hotkey (get item :hotkey)]
                                                  (if (contains? (set selected-hotkeys) hotkey)
@@ -940,7 +940,7 @@
         strength      (int (rp/get-player-attribute game-state :strength))
         dexterity     (rp/get-player-attribute game-state :dexterity)
         toughness     (rp/get-player-attribute game-state :toughness)]
-    (zc/csx [zcui/Popup {:style {:top 5}} [
+    (zc/csx [zcui/Popup {:style {:top -5}} [
         [:text {} [(format "Name:      %s" player-name)]]
         [:text {} [(format "Level:     %d (%d/%d)" level xp xp-next-level)]]
         [:text {} [""]]
@@ -1366,7 +1366,7 @@
         log-color        (rcolor/darken-rgb (rcolor/color->rgb (get message :color)) darken-factor)]
     (zc/csx
         [:view {} [
-          [:text {:style {:position :fixed :top -4 :left 0}} [
+          [:text {:style {:position :fixed :top 1 :left 0}} [
             (if msg-above?
               (zc/csx [:text {} [
                         [Highlight {} ["/"]]
@@ -1677,8 +1677,6 @@
                     first)
         r (mod (int (/ (System/currentTimeMillis) 4000)) (count values))
         n (first (nth values r))]
-    (log/info r)
-    (log/info n)
     (reset! tidbit-index n)
     (async/<! (async/timeout (rand-nth [1200 600])))
     (recur (update tidbit-freqs n inc))))

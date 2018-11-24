@@ -4,8 +4,8 @@
   <jar>robinson.jar</jar>
   <dontWrapJar>true</dontWrapJar>
   <errTitle>Robinson</errTitle>
-  <downloadUrl>https://aaron-santos.com/robinson/download</downloadUrl>
-  <supportUrl>https://aaron-santos.com/robison/support</supportUrl>
+  <downloadUrl>https://aaron-santos.com/index.php/robinson-downloads/</downloadUrl>
+  <supportUrl>https://aaron-santos.com/index.php/robinson-support/</supportUrl>
   <icon>../images/icon.ico</icon>
   <singleInstance>
     <mutexName>robinson</mutexName>

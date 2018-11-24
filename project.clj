@@ -60,6 +60,8 @@
 
   :profiles {
     :dev {:dependencies [[org.clojure/test.check "0.9.0"]]}
+    :test {:dependencies [[mvxcvi/puget "1.0.1"]
+                          [fipp "0.6.8"]]}
     :demos {:dependencies 
               [[quil "2.7.1"]]}
     :uberjar {:aot [#"robinson\..*"]

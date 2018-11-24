@@ -1,13 +1,13 @@
 (ns robinson.update-test
-  (:require [robinson.update-specs :refer :all]
+  (:require #_[robinson.update-specs :refer :all]
+            robinson.update
             [taoensso.timbre :as log]
             [puget.printer :as puget]
-            [fipp.repl :as fr]
-            [fipp.visit :as fv]
             [clojure.string :as str]
             [clojure.test :as t :refer-macros [deftest is]] 
-            [clojure.spec.test :as stest]))
+            [clojure.spec.test.alpha :as stest]))
 
+(comment
 (defmulti print-handler identity)
 (defmethod print-handler Throwable [_]
   (fn [printer t]
@@ -30,7 +30,7 @@
     (get puget/common-handlers typ)))
 
 (def opts {:seq-limit 10
-           :print-handlers print-handler})
+           :print-handlers print-handler}))
 #_(try
   (let [results (group-by #(contains? % :fatal)
                           (log/with-level :info (stest/check)))
@@ -61,18 +61,18 @@
    (when t/*load-tests*
      `(def ~(vary-meta name assoc
                        :test `(fn []
-                                (let [check-results# (clojure.spec.test/check ~sym-or-syms ~opts)
+                                (let [check-results# (clojure.spec.test.alpha/check ~sym-or-syms ~opts)
                                       checks-passed?# (every? nil? (map :failure check-results#))]
                                   (if checks-passed?#
                                     (t/do-report {:type    :pass
                                                   :message (str "Generative tests pass for "
                                                                 (str/join ", " (map :sym check-results#)))})
                                     (doseq [failed-check# (filter :failure check-results#)
-                                            :let [r# (clojure.spec.test/abbrev-result failed-check#)
+                                            :let [r# (clojure.spec.test.alpha/abbrev-result failed-check#)
                                                   failure# (:failure r#)]]
                                       (t/do-report
                                         {:type     :fail
-                                         :message  (with-out-str (clojure.spec/explain-out failure#))
+                                         :message  (with-out-str (clojure.spec.alpha/explain-out failure#))
                                          :expected (->> r# :spec rest (apply hash-map) :ret)
                                          :actual   (if (instance?  Throwable failure#)
                                                      failure#

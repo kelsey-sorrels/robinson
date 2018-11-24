@@ -31,10 +31,10 @@
                  [ns-tracker "0.3.1"]
                  [tailrecursion/cljson "1.0.7"]
                  [servant "0.1.5"]
-                 [rockpick "0.1.0-SNAPSHOT"]
-                 [aaron-santos/tinter "0.1.1-SNAPSHOT"]
+                 [rockpick "0.1.0"]
+                 [aaron-santos/tinter "0.1.1"]
                  [aaron-santos/clj-tiny-astar "0.1.1-SNAPSHOT"]
-                 [zaffre "0.4.0-SNAPSHOT"]
+                 [zaffre "0.4.0-b1"]
                  [alandipert/enduro "1.2.0"]
                  [dorothy "0.0.7"]
                  [com.taoensso/nippy "2.14.0"]
@@ -59,6 +59,7 @@
   ;:auto-clean false
 
   :profiles {
+    :dev {:dependencies [[org.clojure/test.check "0.9.0"]]}
     :demos {:dependencies 
               [[quil "2.7.1"]]}
     :uberjar {:aot [#"robinson\..*"]

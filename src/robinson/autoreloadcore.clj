@@ -95,6 +95,9 @@
             (reset! state-ref state)
             (zt/do-frame terminal 33
               (binding [zc/*updater* ruu/updater]
+                (when (zt/destroyed? terminal)
+                  (log/info "terminal destroyed")
+                  (System/exit 0))
                 (let [state (or @state-ref state)
                       _ (assert (not (nil? state)))
                       ui (@render-fn terminal state @dom-ref)]
@@ -122,5 +125,6 @@
                      (log/error ex)
                      (print-stack-trace ex)
                      state))))
+              (zevents/add-event-listener terminal :close (fn [keyin] (log/info "received :close") (System/exit 0)))
             (async/<!! done-chan)))))))
  

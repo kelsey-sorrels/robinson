@@ -3172,6 +3172,7 @@
   ;;         state         symbol      fn                     state            time?
   (let [table {:start     {:space      [identity               :enter-name      false]
                            \c          [identity               :configure       false]
+                           \q          [identity               :quit            false]
                            :else       [pass-state             rw/current-state false]}
                :configure
                           {\f          [identity               :configure-font  false]
@@ -3578,7 +3579,7 @@
                :share-score
                           {\y          [identity               :start-inventory false]
                            \n          [identity               :start           false]}
-               :quit?     {\y          [identity               :quit            false]
+               :quit?     {\y          [identity               :start           false]
                            :else       [pass-state             :normal          false]}}
         expander-fn (fn [table] table)]
     (expander-fn table)))

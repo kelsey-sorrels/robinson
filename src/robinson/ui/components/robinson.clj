@@ -190,14 +190,11 @@
           [:text {:style {:color infected-color}} ["\u2665"]]
           [:text {} [" "]]]]]])))
 
-    ;    (int (-> state :world :player :hp))
-    ;    (-> state :world :player :max-hp)
-    ;    (apply str (interpose " " (-> state :world :player :status)))
 (zc/def-component DblBarChart
   [this]
   (let [{:keys [fg-1 fg-2 p1 p2 width direction style]} (zc/props this)
-        root (* width (min p1 p2))
-        padding (* width (- 1 (max p1 p2)))
+        root (int (* width (min p1 p2)))
+        padding (int (* width (- 1 (max p1 p2))))
         diff (- width root padding)
         black-color (rcolor/color->rgb :black)]
       (case direction
@@ -256,7 +253,7 @@
   [this]
   (let [{:keys [game-state]} (zc/props this)]
     (zc/csx
-      [:view {:style {:top 20
+      [:view {:style {:top 21
                       :left 0
                       :width 80
                       :display :flex
@@ -264,7 +261,7 @@
          [Atmo {:time (rw/get-time game-state)
                 :atmo-data (get-in game-state [:data :atmo])}]
          [:view {} [
-           [HpWtlBars {:game-state game-state :style {:left 1}}]
+           [HpWtlBars {:game-state game-state}]
            [StatusUI {:wounded (rp/player-wounded? game-state)
                       :poisoned (rp/player-poisoned? game-state)
                       :infected (rp/player-infected? game-state)
@@ -889,7 +886,7 @@
                            :height 20
                            :position :fixed
                            :left 40
-                           :top 1
+                           :top 0
                            :padding 1
                            :display :flex
                            :flex-direction :column
@@ -911,7 +908,7 @@
                            :height 20
                            :position :fixed
                            :left 40
-                           :top 1
+                           :top 0
                            :padding 1
                            :background-color (rcolor/color->rgb :white)}} [
             [MultiSelect {:title "Inventory"
@@ -1055,7 +1052,7 @@
                             :height 20
                             :position :fixed
                             :left 40
-                            :top 1
+                            :top 0
                             :padding 1
                             :background-color (rcolor/color->rgb :white)}} [
              [MultiSelect {:title "Apply Inventory"
@@ -1069,7 +1066,7 @@
                             :height 20
                             :position :fixed
                             :left 40
-                            :top 1
+                            :top 0
                             :padding 1
                             :background-color (rcolor/color->rgb :white)}} [
              [MultiSelect {:title "Apply To"
@@ -1083,7 +1080,7 @@
                             :height 20
                             :position :fixed
                             :left 40
-                            :top 1
+                            :top 0
                             :padding 1
                             :background-color (rcolor/color->rgb :white)}} [
              [MultiSelect {:title "Quaff"
@@ -1098,7 +1095,7 @@
                             :height 20
                             :position :fixed
                             :left 40
-                            :top 1
+                            :top 0
                             :padding 1
                             :background-color (rcolor/color->rgb :white)}} [
              [MultiSelect {:title "Drop Inventory"
@@ -1112,7 +1109,7 @@
                             :height 20
                             :position :fixed
                             :left 40
-                            :top 1
+                            :top 0
                             :padding 1
                             :background-color (rcolor/color->rgb :white)}} [
              [MultiSelect {:title "Describe"
@@ -1127,7 +1124,7 @@
                             :height 20
                             :position :fixed
                             :left 40
-                            :top 1
+                            :top 0
                             :padding 1
                             :background-color (rcolor/color->rgb :white)}} [
              [MultiSelect {:title "Throw"
@@ -1140,7 +1137,7 @@
                             :height 20
                             :position :fixed
                             :left 40
-                            :top 1
+                            :top 0
                             :padding 1
                             :background-color (rcolor/color->rgb :white)}} [
              [MultiSelect {:title "Eat Inventory"
@@ -1209,7 +1206,7 @@
                            :height 20
                            :position :fixed
                            :left 40
-                           :top 1
+                           :top 0
                            :padding 1
                            :background-color (rcolor/color->rgb :white)}} [
             [MultiSelect {:title "Wield"
@@ -1223,7 +1220,7 @@
                            :height 20
                            :position :fixed
                            :left 40
-                           :top 1
+                           :top 0
                            :padding 1
                            :background-color (rcolor/color->rgb :white)}} [
             [MultiSelect {:title "Wield"
@@ -1385,7 +1382,7 @@
         log-color        (rcolor/darken-rgb (rcolor/color->rgb (get message :color)) darken-factor)]
     (zc/csx
         [:view {} [
-          [:text {:style {:position :fixed :top 1 :left 0}} [
+          [:text {:style {:position :fixed :top 0 :left 0}} [
             (if msg-above?
               (zc/csx [:text {} [
                         [Highlight {} ["/"]]
@@ -1494,7 +1491,7 @@
             (if-let [ui-hint (get-in game-state [:world :ui-hint])]
               ;; ui-hint
               (zc/csx [:view {} [
-                [:text {:style {:position :fixed :top 1 :left 1
+                [:text {:style {:position :fixed :top 0 :left 0
                                 :background-color [0 0 0 0]}} [
                           [:text {:style {:background-color [0 0 0]}} [ui-hint]]]]]])
               ;; regular concise message log
@@ -1583,13 +1580,15 @@
               [:view {:style {:color [255 255 255 255]
                               :background-color [0 0 0 0]
                               :position :fixed
-                              :top 20
+                              :top 18
                               :left 30}} [
                 [:text {} [
                   [:text {} ["Press "]]
                   [Highlight {}  ["space "]]
                   [:text {} ["to play"]]]]
-                [:text {} [[Highlight {} ["c"]] [:text  {} [" - configure"]]]]]]]]]]]]))
+                [:text {} [""]]
+                [:text {} [[Highlight {} ["c"]] [:text  {} [" - configure"]]]]
+                [:text {} [[Highlight {} ["q"]] [:text  {} [" - quit"]]]]]]]]]]]]))
 
 (zc/def-component Configure
   [this]

@@ -107,22 +107,25 @@
 (defn save-and-apply-font
   [state]
   (let [fonts        (sort-by :name (get state :fonts))
-        current-font (get state :new-font (get (rc/get-settings state) :font))
-        font         (get-in state [:fonts current-font])
+        new-font     (get state :new-font (get (rc/get-settings state) :font))
+        font         (get-in state [:fonts new-font])
         screen ^robinson.terminal.Terminal (get state :screen)]
-    (when-not (= current-font (get (rc/get-settings state) :font))
+    (log/info (keys state))
+    (log/info fonts)
+    (when-not (= new-font (get (rc/get-settings state) :font))
       ;; send new settings to screen
       (zat/alter-group-font! screen :app
         (fn [platform]
           (case platform
             :linux
-              (zfont/->TTFFont (get font :else-font) (get font :font-size))
+              (zfont/->TTFFont (get font :linux-font) (get font :font-size) true)
             :macosx
-              (zfont/->TTFFont (get font :else-font) (get font :font-size))
+              (zfont/->TTFFont (get font :macosx-font) (get font :font-size) true)
             :windows
-              (zfont/->TTFFont (get font :windows-font) (get font :font-size)))))
+              (zfont/->TTFFont (get font :windows-font) (get font :font-size) true)
+            (assert false (str "Unknown platform requested" platform)))))
       ;; persist
-      (rc/reset-settings! state (assoc (rc/get-settings state) :font current-font)))
+      (rc/reset-settings! state (assoc (rc/get-settings state) :font new-font)))
     ;; cleanup temp new-font value
     (dissoc state :new-font)))
 
@@ -748,9 +751,9 @@
           selected-items     (vec (divided-items :selected))
           not-selected-items (vec (divided-items :not-selected))
           remaining-hotkeys  (vec (remove #(some (partial = %) (map :hotkey selected-items)) remaining-hotkeys))]
-      (log/debug "divided-items" divided-items)
-      (log/debug "selected-items" selected-items)
-      (log/debug "not-selected-items" not-selected-items)
+      (log/info "divided-items" divided-items)
+      (log/info "selected-items" selected-items)
+      (log/info "not-selected-items" not-selected-items)
       (if (seq selected-items)
         (let [new-state (-> state
                           (rc/append-log "You pick up:")

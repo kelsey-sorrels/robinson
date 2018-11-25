@@ -114,7 +114,7 @@
                     (do
                       (log/info "Core current-state" (rw/current-state state))
                       (log/info "Core got key" keyin)
-                      (let [new-state (@tick-fn @state-ref keyin)
+                      (let [new-state (@tick-fn (assoc @state-ref :screen terminal) keyin)
                             state-stream (revents/stream new-state)]
                         (doseq [state (revents/chan-seq state-stream)]
                           (log/info "got new state from stream")

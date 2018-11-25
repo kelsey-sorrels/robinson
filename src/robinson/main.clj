@@ -64,30 +64,6 @@
     ;  (spit "save/world.edn.out" state))
     (recur)))
 
-#_(go-loop [interrupted-state nil]
-  (if-let [state (or interrupted-state
-                     (async/alt!
-                       render-chan ([v] v)
-                       :default @last-rendered-state))]
-    (do
-      (reset! last-rendered-state state)
-      (log/info "Rendering world at time" (get-in state [:world :time]))
-      (try
-        ;(rm/log-time "render" (rrender/render state))
-        (let [render-fn (resolve 'robinson.render/render)
-              dom (render-fn state @last-rendered-dom)]
-          (reset! last-rendered-dom dom))
-           (catch Throwable e
-             (log/error "Error rendering" e)
-             (st/print-stack-trace e)
-             (st/print-cause-trace e)))
-      (recur (async/<! render-chan) #_(async/alt!
-               (async/timeout 600) nil
-               render-chan ([v] v))))
-    (recur (async/<! render-chan) #_(async/alt!
-             (async/timeout 600) nil
-             render-chan ([v] v)))))
-
 (defn save-state [state]
   (async/>!! save-chan state))
   
@@ -114,7 +90,6 @@
               _ (log/info "update-state-fn" update-state-fn)
               new-state       (rm/log-time "update-state" (update-state-fn state keyin))]
           (when new-state
-            #_(render-state new-state)
             (save-state new-state))
           ;(async/thread (spit "save/world.edn" (with-out-str (pprint (new-state :world)))))
           new-state))
@@ -231,7 +206,6 @@
                             :columns 80
                             :rows 24
                             :pos [0 0]
-                            #_#_:font (constantly tile-font)
                             :font (fn [platform]
                                     (zfont/->TTFFont
                                       (rfs/cwd-path

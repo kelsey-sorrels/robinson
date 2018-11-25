@@ -2,8 +2,9 @@
 {
  ;; Use DejaVu Sans Mono font
  :name "Deja Vu 22"
+ :linux-font    "fonts/dejavu-fonts-ttf-2.35/ttf/DejaVuSansMono.ttf"
+ :macosx-font    "fonts/dejavu-fonts-ttf-2.35/ttf/DejaVuSansMono.ttf"
  :windows-font "fonts/dejavu-fonts-ttf-2.35/ttf/DejaVuSansMono.ttf"
- :else-font    "fonts/dejavu-fonts-ttf-2.35/ttf/DejaVuSansMono.ttf"
  :font-size    22
  :antialias    true
 }

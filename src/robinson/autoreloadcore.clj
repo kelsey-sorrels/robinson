@@ -126,5 +126,14 @@
                      (print-stack-trace ex)
                      state))))
               (zevents/add-event-listener terminal :close (fn [keyin] (log/info "received :close") (System/exit 0)))
+              (zevents/add-event-listener terminal :font-change (fn [{:keys [character-width
+                                                                             character-height]}]
+                                                                  (let [{:keys [columns rows]} (get (zt/groups terminal) :app)]
+                                                                  (log/info "received :font-change")
+                                                                  (log/info "terminal shape" columns rows)
+                                                                  (log/info "font dims" character-width character-height)
+                                                                  (zt/set-window-size! terminal
+                                                                                       {:width (* columns character-width)
+                                                                                        :height (* rows character-height)}))))
             (async/<!! done-chan)))))))
  

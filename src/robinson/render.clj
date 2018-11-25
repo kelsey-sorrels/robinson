@@ -10,8 +10,6 @@
             [robinson.ui.components.robinson :as ruic]
             [clojure.stacktrace :as st]))
 
-(set! *warn-on-reflection* true)
-
 (defn render [terminal state last-dom]
   (binding [zc/*updater* ruu/updater]
     (try
@@ -20,7 +18,6 @@
                   terminal
                   last-dom
                   ui)]
-        #_(zt/refresh! terminal)
         (assert (zc/element? ui))
         ;; update component instance states
         (zc/update-state! zc/*updater*)

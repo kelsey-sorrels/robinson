@@ -176,16 +176,19 @@
         poisoned-color (rcolor/color->rgb (if poisoned :green :black))
         infected-color (rcolor/color->rgb (if infected :yellow :black))
         gray-color (rcolor/color->rgb :gray)]
+    (log/info wounded)
+    (log/info poisoned)
+    (log/info infected)
     (zc/csx
       [:view {:style (merge {:width 7 :background-color gray-color} style)} [
-      [:text {:style {:background-color gray-color}} [
-        [:text {} [" "]]
-        [:text {:style {:color wounded-color}} ["\u2665"]]
-        [:text {} [" "]]
-        [:text {:style {:color poisoned-color}} ["\u2665"]]
-        [:text {} [" "]]
-        [:text {:style {:color infected-color}} ["\u2665"]]
-        [:text {} [" "]]]]]])))
+        [:text {:style {:background-color gray-color}} [
+          [:text {} [" "]]
+          [:text {:style {:color wounded-color}} ["\u2665"]]
+          [:text {} [" "]]
+          [:text {:style {:color poisoned-color}} ["\u2665"]]
+          [:text {} [" "]]
+          [:text {:style {:color infected-color}} ["\u2665"]]
+          [:text {} [" "]]]]]])))
 
     ;    (int (-> state :world :player :hp))
     ;    (-> state :world :player :max-hp)
@@ -262,7 +265,10 @@
                 :atmo-data (get-in game-state [:data :atmo])}]
          [:view {} [
            [HpWtlBars {:game-state game-state :style {:left 1}}]
-           [StatusUI {:game-state game-state :style {:left 37 :bottom 1}}]
+           [StatusUI {:wounded (rp/player-wounded? game-state)
+                      :poisoned (rp/player-poisoned? game-state)
+                      :infected (rp/player-infected? game-state)
+                      :style {:left 37 :bottom 1}}]
            [ThirstHungerBars {:game-state game-state :style {:left (+ 37 7) :bottom 2}}]]]]])))
 
 (defn translate-identified-items
@@ -288,6 +294,13 @@
                                  (not (nil? (get-in state [:world  :quests (quest :id) :stage] nil))))
                                (:quests state))))
 
+(defn hotkey->str [hotkey]
+  (cond 
+    (= hotkey \space)
+      "space"
+    :default
+      (str hotkey)))
+
 (zc/def-component MultiSelect
   [this]
   (let [{:keys [style]} (zc/props this)
@@ -301,8 +314,7 @@
                                                                             :black
                                                                             :gray))
                                                 :background-color (rcolor/color->rgb :white)}} [
-                                  [Highlight {} [(str (or (item :hotkey)
-                                                          "space"))]]
+                                  [Highlight {} [(hotkey->str (get item :hotkey))]]
                                   [:text {} [(format "%c%s%s %s %s"
                                                (if-let [hotkey (get item :hotkey)]
                                                  (if (contains? (set selected-hotkeys) hotkey)
@@ -879,10 +891,17 @@
                            :left 40
                            :top 1
                            :padding 1
+                           :display :flex
+                           :flex-direction :column
                            :background-color (rcolor/color->rgb :white)}} [
             [MultiSelect {:title "Pick up"
+                          :selected-hotkeys selected-hotkeys
                           :items (concat (translate-identified-items game-state items)
-                                         [{:name "All" :hotkey \space}])}]]])))
+                                         [{:name "All" :hotkey \space}])
+                          :style {:min-height "100%" :flex 1}}]
+            [:text {:style {:color (rcolor/color->rgb :black) :top -2}} [
+              [Highlight {} ["Enter "]]
+              [:text {} ["to pick up."]]]]]])))
 
 (zc/def-component Inventory
   [this]
@@ -913,7 +932,7 @@
                             :background-color (rcolor/color->rgb :white)}} [
             (if (seq abilities)
               (zc/csx [zcui/Popup {} [
-                        [:view {:style {:border 2}} [
+                        [:view {} [
                           [MultiSelect {:title "Abilities"
                                         :items abilities}]]]]])
               (zc/csx [zcui/Popup {} [
@@ -1275,7 +1294,7 @@
                              (> thirst max-thirst) "not drinking enough water"
                              (<= will-to-live 0)   "just giving up on life"
                              :else                 "mysterious causes")))]
-      (zc/csx [zcui/Popup {:style {:border 2}} [
+      (zc/csx [zcui/Popup {} [
                   [:text {} ["You died."]]
                   [:text {} [(format "From %s" cause-of-death)]]
                   [:text {} [""]]
@@ -1580,27 +1599,43 @@
 		[:group {:id :app} [
 		  [:layer {:id :ui} [
 			[:view {:style {:position :fixed
-							:top 30
-							:left 20}} [
+							:top 3
+							:left 35}} [
 			  [:text {} ["Configure"]]
-			  [:text {} ["f - font"]]]]]]]]]])))
+			  [:text {} [
+                [Highlight {} ["f "]]
+                [:text {} ["- font"]]]]
+			  [:text {} [
+                [Highlight {} ["Esc "]]
+                [:text {} ["- back"]]]]]]]]]]]])))
 
 (zc/def-component ConfigureFont
   [this]
-  (let [{:keys [state]} (zc/props this)
-        font   (get-in state [:fonts (get state :new-font (get (rc/get-settings state) :font))])]
+  (let [{:keys [game-state]} (zc/props this)
+        font   (get-in game-state [:fonts (get game-state :new-font (get (rc/get-settings game-state) :font))])]
     (zc/csx
 	  [:terminal {} [
 		[:group {:id :app} [
 		  [:layer {:id :ui} [
-			[:view {:style {:position-type :absolute
-							:position-top 30
-							:position-left 20}} [
+			[:view {:style {:position :fixed
+							:top 3
+							:left 35}} [
 			  [:text {} ["Configure Font"]]
-			  [:text {} ["Font: " (get font :name)]]
-			  [:text {} ["n - next font" (get font :name)]]
-			  [:text {} ["p - previous font" (get font :name)]]
-			  [:text {} ["s - save and apply" (get font :name)]]]]]]]]]])))
+              [:text {} [""]]
+			  [:text {} [(str "Font: " (get font :name))]]
+              [:text {} [""]]
+			  [:text {} [
+                [Highlight {} ["n "]]
+                [:text {} ["- next font"]]]]
+			  [:text {} [
+                [Highlight {} ["p "]]
+                [:text {} ["- previous font"]]]]
+			  [:text {} [
+                [Highlight {} ["s "]]
+                [:text {} ["- save and apply"]]]]
+			  [:text {} [
+                [Highlight {} ["Esc "]]
+                [:text {} ["- back"]]]]]]]]]]]])))
 
 (zc/def-component EnterName
   [this]
@@ -1618,7 +1653,8 @@
               [:text {:style {:width 5}} ["Name:"]]
               [:view {:style {:position :relative} } [
 			    [zcui/Input {:value player-name
-                             :focused true}]]]]]]]]]]])))
+                             :focused true
+                             :style {:cursor-fg (rcolor/color->rgb :highlight)}}]]]]]]]]]]])))
 
 (zc/def-component StartInventory
   [this]
@@ -1750,7 +1786,6 @@
 		[:group {:id :app} [
 		  [:layer {:id :ui} [
             [:view {:style {:left 10}} [
-              [:text {} [(format "%s: %s" player-name madlib)]]
               [:text {} [(format "%s: %s" player-name madlib)]]
               [:text {} [""]]
               [:text {} [(format "Points: %s." points)]]

@@ -820,7 +820,7 @@
       (let [r1 (rnoise/noise3d palette-noise 0 0 (mod (/ (System/currentTimeMillis) 1000) 10000))
             r2 (rnoise/noise3d palette-noise 0 0 (mod (/ (System/currentTimeMillis) 100) 10000))
             r (max 0 (min 1 (+ 0.4 (* 0.5 r1) (* 0.1 r2))))]
-        [(* r 255) (* r 204) (* r 124) (min 255 (* 255 (/ distance (+ 1 (* r sight-distance))))) ])
+        (zcolor/color (* r 255) (* r 204) (* r 124) (min 255 (* 255 (/ distance (+ 1 (* r sight-distance)))))))
       (rcolor/lighting sight-distance))))
 
 (zc/def-component ShadeImg
@@ -1233,16 +1233,17 @@
 	  [:terminal {} [
 		[:group {:id :app} [
 		  [:layer {:id :ui} [
-			[:view {:style {:position :fixed
-							:top 4
-							:left 20}} [
-              [:text {:style {:width 40}} [(str start-text)]]
-              [:text {:style {:top 10}} [
-                [:text {} ["Press "]]
-                [Highlight {} ["any key "]]
-                [:text {} ["to continue and "]]
-                [Highlight {} ["? "]]
-                [:text {} ["to view help."]]]]]]]]]]]])))
+            [:view {:style {:width "100%" :height "100%" :background-color (rcolor/color->rgb :black)}} [
+              [:view {:style {:position :fixed
+                              :top 4
+                              :left 20}} [
+                [:text {:style {:width 40}} [(str start-text)]]
+                [:text {:style {:top 10}} [
+                  [:text {} ["Press "]]
+                  [Highlight {} ["any key "]]
+                  [:text {} ["to continue and "]]
+                  [Highlight {} ["? "]]
+                  [:text {} ["to view help."]]]]]]]]]]]]]])))
 
 (zc/def-component ContinuePopover
   [this]
@@ -1643,16 +1644,17 @@
 	  [:terminal {} [
 		[:group {:id :app} [
 		  [:layer {:id :ui} [
-			[:view {:style {:top 10
-							:left 30
-                            :width 80
-                            :display :flex
-                            :flex-direction :row}} [
-              [:text {:style {:width 5}} ["Name:"]]
-              [:view {:style {:position :relative} } [
-			    [zcui/Input {:value player-name
-                             :focused true
-                             :style {:cursor-fg (rcolor/color->rgb :highlight)}}]]]]]]]]]]])))
+            [:view {:style {:width "100%" :height "100%" :background-color (rcolor/color->rgb :black)}} [
+              [:view {:style {:top 10
+                              :left 30
+                              :width 80
+                              :display :flex
+                              :flex-direction :row}} [
+                [:text {:style {:width 5}} ["Name:"]]
+                [:view {:style {:position :relative} } [
+                  [zcui/Input {:value player-name
+                               :focused true
+                               :style {:cursor-fg (rcolor/color->rgb :highlight)}}]]]]]]]]]]]]])))
 
 (zc/def-component StartInventory
   [this]
@@ -1664,15 +1666,16 @@
 	  [:terminal {} [
 		[:group {:id :app} [
 		  [:layer {:id :ui} [
-            [:view {:style {:align-items :center
-                            :justify-content :center
-                            :position :fixed
-                            :top 2
-                            :left 0}} [
-              [SelectItemList {:title "Choose up to three things to take with you:"
-                               :selected-hotkeys selected-hotkeys
-                               :use-applicable true
-                               :items start-inventory}]]]]]]]]])))
+            [:view {:style {:width "100%" :height "100%" :background-color (rcolor/color->rgb :black)}} [
+              [:view {:style {:align-items :center
+                              :justify-content :center
+                              :position :fixed
+                              :top 2
+                              :left 0}} [
+                [SelectItemList {:title "Choose up to three things to take with you:"
+                                 :selected-hotkeys selected-hotkeys
+                                 :use-applicable true
+                                 :items start-inventory}]]]]]]]]]]])))
 
 (def loading-index (atom 0))
 (def loading-tidbits
@@ -1722,14 +1725,15 @@
 	  [:terminal {} [
 		[:group {:id :app} [
 		  [:layer {:id :ui} [
-            [:view {:style {:position :fixed
-                            :top 10
-                            :left 36}} [
-              [:text {} ["Loading..."]]
-              [:text {} [""]]
-              [:text {} [(format "Generating %s..." (nth loading-tidbits @tidbit-index))]]
-              [:text {} [""]]
-              [:text {} [(nth ["/" "-" "\\" "|"] (mod (swap! loading-index inc) 4))]]]]]]]]]])))
+            [:view {:style {:width "100%" :height "100%" :background-color (rcolor/color->rgb :black)}} [
+              [:view {:style {:position :fixed
+                              :top 10
+                              :left 36}} [
+                [:text {} ["Loading..."]]
+                [:text {} [""]]
+                [:text {} [(format "Generating %s..." (nth loading-tidbits @tidbit-index))]]
+                [:text {} [""]]
+                [:text {} [(nth ["/" "-" "\\" "|"] (mod (swap! loading-index inc) 4))]]]]]]]]]]]])))
 
 (zc/def-component Connecting
   [this]
@@ -1738,10 +1742,11 @@
 	  [:terminal {} [
 		[:group {:id :app} [
 		  [:layer {:id :ui} [
-            [:view {:style {:position :fixed
-                            :top 10
-                            :left 36}} [
-              [:text {} ["Connecting..."]]]]]]]]]])))
+            [:view {:style {:width "100%" :height "100%" :background-color (rcolor/color->rgb :black)}} [
+              [:view {:style {:position :fixed
+                              :top 10
+                              :left 36}} [
+                [:text {} ["Connecting..."]]]]]]]]]]]])))
 
 (zc/def-component ConnectionFailed
   [this]
@@ -1750,16 +1755,17 @@
 	  [:terminal {} [
 		[:group {:id :app} [
 		  [:layer {:id :ui} [
-            [:view {:style {:position :fixed
-                            :top 10
-                            :left 36}} [
-              [:text {} ["Connection Failed."]]
-              [:text {} [""]]
-              [:text {} [[:text {} ["Play again? ["]]
-                         [Highlight {} ["y"]]
-                         [:text {} ["/"]]
-                         [Highlight {} ["n"]]
-                         [:text {} ["] "]]]]]]]]]]]])))
+            [:view {:style {:width "100%" :height "100%" :background-color (rcolor/color->rgb :black)}} [
+              [:view {:style {:position :fixed
+                              :top 10
+                              :left 36}} [
+                [:text {} ["Connection Failed."]]
+                [:text {} [""]]
+                [:text {} [[:text {} ["Play again? ["]]
+                           [Highlight {} ["y"]]
+                           [:text {} ["/"]]
+                           [Highlight {} ["n"]]
+                           [:text {} ["] "]]]]]]]]]]]]]])))
 
 (zc/def-component GameOverDead
   [this]
@@ -1783,34 +1789,35 @@
 	  [:terminal {} [
 		[:group {:id :app} [
 		  [:layer {:id :ui} [
-            [:view {:style {:left 10}} [
-              [:text {} [(format "%s: %s" player-name madlib)]]
-              [:text {} [""]]
-              [:text {} [(format "Points: %s." points)]]
-              [:text {} [(format "Survived for %d %s. (%d turns)"
-                                   days-survived
-                                   (if (> 1 days-survived) "days" "day")
-                                   turns-survived)]]
-              [:text {} [(format "Died from %s" cause-of-death)]]
-              [:text {} [""]]
-              [:text {} ["Inventory:"]]
-              [:view {} 
-                (map-indexed
-                  (fn [idx item]
-                    (zc/csx [:text {} [(format "%s%s" (if (pos? (get item :count 0))
-                                                        (format "%dx " (get item :count))
-                                                        "")
-                                                      (item :name))]]))
-                  (get player :inventory))]]]
-              [:text {} [""]]
+            [:view {:style {:width "100%" :height "100%" :background-color (rcolor/color->rgb :black)}} [
               [:view {:style {:left 10}} [
-                [:text {} [[:text {} ["Play again? ["]]
-                           [Highlight {} ["y"]]
-                           [:text {} ["/"]]
-                           [Highlight {} ["n"]]
-                           [:text {} ["] "]]
-                           [Highlight {} ["space "]]
-                           [:text {} ["- share and compare with other players"]]]]]]]]]]]])))
+                [:text {} [(format "%s: %s" player-name madlib)]]
+                [:text {} [""]]
+                [:text {} [(format "Points: %s." points)]]
+                [:text {} [(format "Survived for %d %s. (%d turns)"
+                                     days-survived
+                                     (if (> 1 days-survived) "days" "day")
+                                     turns-survived)]]
+                [:text {} [(format "Died from %s" cause-of-death)]]
+                [:text {} [""]]
+                [:text {} ["Inventory:"]]
+                [:view {} 
+                  (map-indexed
+                    (fn [idx item]
+                      (zc/csx [:text {} [(format "%s%s" (if (pos? (get item :count 0))
+                                                          (format "%dx " (get item :count))
+                                                          "")
+                                                        (item :name))]]))
+                    (get player :inventory))]]]
+                [:text {} [""]]
+                [:view {:style {:left 10}} [
+                  [:text {} [[:text {} ["Play again? ["]]
+                             [Highlight {} ["y"]]
+                             [:text {} ["/"]]
+                             [Highlight {} ["n"]]
+                             [:text {} ["] "]]
+                             [Highlight {} ["space "]]
+                             [:text {} ["- share and compare with other players"]]]]]]]]]]]]]])))
 
 (zc/def-component GameOverRescued
   [this]
@@ -1858,59 +1865,60 @@
 	  [:terminal {} [
 		[:group {:id :app} [
 		  [:layer {:id :ui} [
-			[:view {:style {:top 2
-							:left 2
-                            :display :flex
-                            :flex-direction :row}} [
-               ;; Title
-               [:text {} ["Top scores"]]
-               [:view {:style {:position :fixed :top 3 :left 0}} [
-                 [ItemList {:items (map-indexed
-                                     (fn [index score]
-                                       (if score
-                                         (let [player-name    (get score "player-name" "?name?")
-                                               points         (get score "points" 0)
-                                               days-survived  (get score :days-survived 0 )
-                                               turns-survived (get score :turns-survived 0 )
-                                               fg (rcolor/color->rgb (if (= player-name (get (rp/get-player game-state) :name))
-                                                                       :highlight
-                                                                       :white))]
-                                           {:s (format "%-2d.%-20s (%-5d points)" (inc index) player-name points)
-                                            :fg fg
-                                            :bg (rcolor/color->rgb :black)})
-                                           {:s "..."
-                                            :fg (rcolor/color->rgb :white)
-                                            :bg (rcolor/color->rgb :black)
-                                            :style nil}))
-                                     top-10-scores)}]
-                 [:view {:style {:top 1 :left 0}} [
-                   [:text {} [[:text {} ["Play again? ["]]
-                              [Highlight {} ["y"]]
-                              [:text {} ["/"]]
-                              [Highlight {} ["n"]]
-                              [:text {} ["] "]]]]]]]]
-               [:view {:style {:position :fixed :top 0 :left 40}} [
-                 [:text {} ["Performance"]]
+            [:view {:style {:width "100%" :height "100%" :background-color (rcolor/color->rgb :black)}} [
+              [:view {:style {:top 2
+                              :left 2
+                              :display :flex
+                              :flex-direction :row}} [
+                 ;; Title
+                 [:text {} ["Top scores"]]
                  [:view {:style {:position :fixed :top 3 :left 0}} [
-                   [Histogram {:title "Points"
-                               :value     (get game-state :points)
-                               :histogram (get game-state :point-data)}]]]
-                 [:view {:style {:position :fixed :top 3 :left 10}} [
-                   [Histogram {:title "Turns"
-                               :value     (rw/get-time game-state)
-                               :histogram (get game-state :time-data)}]]]
-                 [:view {:style {:position :fixed :top 11 :left 0}} [
-                   [Histogram {:title "Kills"
-                               :value     (reduce + 0 (map second (get-in game-state [:world :player :stats :num-animals-killed])))
-                               :histogram (get game-state :kills-data)}]]]
-                 [:view {:style {:position :fixed :top 11 :left 10}} [
-                   [Histogram {:title "Items Crafted"
-                               :value     (reduce + 0 (map second (get-in game-state [:world :player :stats :num-items-crafted])))
-                               :histogram (get game-state :crafted-data)}]]]
-                 [:view {:style {:position :fixed :top 19 :left 0}} [
-                   [:text {} [
-                     [:text {} ["Your Performance "]]
-                     [Highlight {} ["^"]]]]]]]]]]]]]]]])))
+                   [ItemList {:items (map-indexed
+                                       (fn [index score]
+                                         (if score
+                                           (let [player-name    (get score "player-name" "?name?")
+                                                 points         (get score "points" 0)
+                                                 days-survived  (get score :days-survived 0 )
+                                                 turns-survived (get score :turns-survived 0 )
+                                                 fg (rcolor/color->rgb (if (= player-name (get (rp/get-player game-state) :name))
+                                                                         :highlight
+                                                                         :white))]
+                                             {:s (format "%-2d.%-20s (%-5d points)" (inc index) player-name points)
+                                              :fg fg
+                                              :bg (rcolor/color->rgb :black)})
+                                             {:s "..."
+                                              :fg (rcolor/color->rgb :white)
+                                              :bg (rcolor/color->rgb :black)
+                                              :style nil}))
+                                       top-10-scores)}]
+                   [:view {:style {:top 1 :left 0}} [
+                     [:text {} [[:text {} ["Play again? ["]]
+                                [Highlight {} ["y"]]
+                                [:text {} ["/"]]
+                                [Highlight {} ["n"]]
+                                [:text {} ["] "]]]]]]]]
+                 [:view {:style {:position :fixed :top 0 :left 40}} [
+                   [:text {} ["Performance"]]
+                   [:view {:style {:position :fixed :top 3 :left 0}} [
+                     [Histogram {:title "Points"
+                                 :value     (get game-state :points)
+                                 :histogram (get game-state :point-data)}]]]
+                   [:view {:style {:position :fixed :top 3 :left 10}} [
+                     [Histogram {:title "Turns"
+                                 :value     (rw/get-time game-state)
+                                 :histogram (get game-state :time-data)}]]]
+                   [:view {:style {:position :fixed :top 11 :left 0}} [
+                     [Histogram {:title "Kills"
+                                 :value     (reduce + 0 (map second (get-in game-state [:world :player :stats :num-animals-killed])))
+                                 :histogram (get game-state :kills-data)}]]]
+                   [:view {:style {:position :fixed :top 11 :left 10}} [
+                     [Histogram {:title "Items Crafted"
+                                 :value     (reduce + 0 (map second (get-in game-state [:world :player :stats :num-items-crafted])))
+                                 :histogram (get game-state :crafted-data)}]]]
+                   [:view {:style {:position :fixed :top 19 :left 0}} [
+                     [:text {} [
+                       [:text {} ["Your Performance "]]
+                       [Highlight {} ["^"]]]]]]]]]]]]]]]]]])))
 
 (zc/def-component RexPaintFromData
   [this]
@@ -1950,9 +1958,10 @@
 	  [:terminal {} [
 		[:group {:id :app} [
 		  [:layer {:id :ui} [
-            [:view {}
-              (for [{:keys [text color]} (reverse (take 23 log))]
-                (zc/csx [:text {:style {:color (rcolor/color->rgb color)}} [(str text)]]))]]]]]]])))
+            [:view {:style {:width "100%" :height "100%" :background-color (rcolor/color->rgb :black)}} [
+              [:view {}
+                (for [{:keys [text color]} (reverse (take 23 log))]
+                  (zc/csx [:text {:style {:color (rcolor/color->rgb color)}} [(str text)]]))]]]]]]]]])))
 
 (zc/def-component Robinson
   [this]

@@ -45,7 +45,7 @@
   ([v]
     (limit-channel 0 v 255))
   ([min-v v max-v]
-    (min (max min-v v) max-v)))
+    (unchecked-byte (min (max min-v v) max-v))))
 
 (defn map-rgb [f rgba]
   (zcolor/color
@@ -109,7 +109,7 @@
   (+ initial (* n (- final initial))))
 
 (defn lerp-rgb [initial-rgb final-rgb n]
-  (map-colors #(lerp %1 %2 n) initial-rgb final-rgb))
+  (map-colors #(unchecked-byte (int (lerp %1 %2 n))) initial-rgb final-rgb))
 
 (defn lighting
   [sight-distance]

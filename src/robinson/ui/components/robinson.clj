@@ -815,12 +815,16 @@
 
 (defn render-lighting [cell distance sight-distance lantern-on]
   (if (light-producing? (get cell :type))
-    [0 0 0 0]
+    (zcolor/color 0 0 0 0)
     (if lantern-on
       (let [r1 (rnoise/noise3d palette-noise 0 0 (mod (/ (System/currentTimeMillis) 1000) 10000))
             r2 (rnoise/noise3d palette-noise 0 0 (mod (/ (System/currentTimeMillis) 100) 10000))
             r (max 0 (min 1 (+ 0.4 (* 0.5 r1) (* 0.1 r2))))]
-        (zcolor/color (* r 255) (* r 204) (* r 124) (min 255 (* 255 (/ distance (+ 1 (* r sight-distance)))))))
+        (zcolor/color
+          (unchecked-byte (* r 255))
+          (unchecked-byte (* r 204))
+          (unchecked-byte (* r 124))
+          (unchecked-byte (min 255 (* 255 (/ distance (+ 1 (* r sight-distance))))))))
       (rcolor/lighting sight-distance))))
 
 (zc/def-component ShadeImg

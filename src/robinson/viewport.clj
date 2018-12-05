@@ -214,7 +214,7 @@
 (defn cells-in-viewport
   "Return a collection of cells in the viewport as a two-dimensional array"
   [state]
-  (log/info "current-place" (get-in state [:world :current-place]))
+  (log/trace "current-place" (get-in state [:world :current-place]))
   (if-let [current-place (get-in state [:world :current-place])]
     (get-in state [:world :places current-place :cells])
     (let [{v-width     :width

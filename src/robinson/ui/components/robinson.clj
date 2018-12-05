@@ -43,6 +43,7 @@
             [robinson.traps :as rt]
             [robinson.ui.updater :as ruu]
             [zaffre.terminal :as zat]
+            [zaffre.color :as zcolor]
             [zaffre.animation.wrapper :as zaw]
             [zaffre.components :as zc]
             [zaffre.components.ui :as zcui]
@@ -176,9 +177,6 @@
         poisoned-color (rcolor/color->rgb (if poisoned :green :black))
         infected-color (rcolor/color->rgb (if infected :yellow :black))
         gray-color (rcolor/color->rgb :gray)]
-    (log/info wounded)
-    (log/info poisoned)
-    (log/info infected)
     (zc/csx
       [:view {:style (merge {:width 7 :background-color gray-color} style)} [
         [:text {:style {:background-color gray-color}} [
@@ -417,8 +415,8 @@
 
 (defn render-cell [cell wx wy current-time]
   {:post [(char? (get % :c))
-          (vector? (get % :fg))
-          (vector (get % :bg))]}
+          (integer? (get % :fg))
+          (integer? (get % :bg))]}
   (let [cell-items (get cell :items)
         in-view? (= current-time (get cell :discovered 0))
         has-been-discovered? (> (get cell :discovered 0) 1)
@@ -593,7 +591,7 @@
            (fn [{:keys [c fg bg]}] {:c c :fg (rcolor/rgb->mono fg) :bg (rcolor/rgb->mono bg)})))
         ((apply? (and in-view? harvestable?)
            (fn [{:keys [c fg bg]}] {:c c :fg bg :bg fg}))))
-      {:c \  :fg [0 0 0 0] :bg [0 0 0 0]})))
+      {:c \  :fg (zcolor/color 0 0 0 0) :bg (zcolor/color 0 0 0 0)})))
 
 (zc/def-component MapInViewport
   [this]
@@ -904,15 +902,16 @@
   [this]
   (let [{:keys [game-state]} (zc/props this)
         player-items (-> game-state :world :player :inventory)]
-   (zc/csx [:view {:style {:width 40
+   (zc/csx [MultiSelect {:title "Inventory"
+                         :items (translate-identified-items game-state player-items)
+                         :style {
+                           :width 40
                            :height 20
                            :position :fixed
                            :left 40
                            :top 0
                            :padding 1
-                           :background-color (rcolor/color->rgb :white)}} [
-            [MultiSelect {:title "Inventory"
-                          :items (translate-identified-items game-state player-items)}]]])))
+                           :background-color (rcolor/color->rgb :white)}}])))
 
 (zc/def-component Abilities
   [this]
@@ -1959,7 +1958,7 @@
   [this]
   (let [game-state (get (zc/props this) :game-state)]
     (assert (not (nil? game-state)))
-    (log/info "render current-state" (current-state game-state))
+    (log/debug "render current-state" (current-state game-state))
     (cond
       (= (current-state game-state) :start)
         (zc/csx [Start {}])

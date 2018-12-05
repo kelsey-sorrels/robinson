@@ -216,8 +216,8 @@
                                       (get font :font-size)
                                       true #_(get font :transparent)))}]
           terminal-opts {:title (format "Robinson - %s@%s" user-id version)
-                         :screen-width (* 80 18)
-                         :screen-height (* 24 22)
+                         :screen-width (* 80 17)
+                         :screen-height (* 24 24)
                          :default-fg-color [255 255 255 255]
                          :default-bg-color [5 5 8 128]
                          #_#_:fx-shader {:name     "retro.fs"
@@ -229,7 +229,7 @@
                                                 ["contrast" (or (get fx-shader :contrast) 2.46)]]}}]
       (log/info "Creating terminal in thread:" (.getName (Thread/currentThread)))
       (log/info "Loaded data:" (keys data))
-      (log/info "World: " world)
+      (log/debug "World: " world)
       ;; set log level
       (log/set-level! (get settings :log-level))
       ;; tick once to render frame

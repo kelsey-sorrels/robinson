@@ -1,98 +1,120 @@
 (ns robinson.color
-  (:require [tinter.core :as tinter]))
+  (:require [zaffre.color :as zcolor]
+            [tinter.core :as tinter]))
 
 ;; RBG color definitions.
 ;; It's easier to use names than numbers.
 (def color-to-rgb-map
-  {:brown       [139 69 19]
-   :dark-brown  [70 44 9]
-   :ship-brown  [67 51 30]
-   :ship-light-brown  [131 88 32]
-   :ship-dark-brown  [33 25 15]
-   ;;:black       [0 0 0]
-   :black       [6 6 11]
-   :white       [255 255 255]
-   :gray        [128 128 128]
-   :dark-gray  [64 64 64]
-   :darker-gray [32 32 32]
-   :light-gray   [192 192 192]
-   :lighter-gray   [225 225 225]
-   :red         [190 38 51];(vec (tinter/hex-str-to-dec "D31C00"))
-   :dark-red    [110 18 21];(vec (tinter/hex-str-to-dec "D31C00"))
-   :orange      [235 137 49];(vec (tinter/hex-str-to-dec "D36C00"))
-   :yellow      [247 226 107];(vec (tinter/hex-str-to-dec "D3B100"))
-   ;:highlight   [229 165 8];(vec (tinter/hex-str-to-dec "D3B100"))
-   :highlight   (mapv (partial * 0.8) [229 155 8]);(vec (tinter/hex-str-to-dec "D3B100"))
-   :background  [6 8 12]
-   :sea-foam    [144 213 184]
-   :light-green [163 206 39]
-   :green       [68 137 26];(vec (tinter/hex-str-to-dec "81D300"))
-   :dark-green  (vec (tinter/hex-str-to-dec "406900"))
-   :moss-green  [1 140 1]
-   :temple-beige [191 171 143]
-   :blue-green  [55 148 110];(vec (tinter/hex-str-to-dec "19B4D7"))
-   :blue        [0 87 132];(vec (tinter/hex-str-to-dec "00ACD3"))
-   :light-blue  [203 219 252];(vec (tinter/hex-str-to-dec "19B4D7"))
-   :dark-blue   [0 63 116]
-   :purple      (vec (tinter/hex-str-to-dec "8500D3"))
-   :fushia      (vec (tinter/hex-str-to-dec "D30094"))
-   :light-brown (vec (tinter/hex-str-to-dec "D8C474"))
-   :beige       (vec (tinter/hex-str-to-dec "C8B464"))
-   :dark-beige  (vec (tinter/hex-str-to-dec "7C612D"))})
+  {:brown             (zcolor/color 139 69 19)
+   :dark-brown        (zcolor/color 70 44 9)
+   :ship-brown        (zcolor/color 67 51 30)
+   :ship-light-brown  (zcolor/color 131 88 32)
+   :ship-dark-brown   (zcolor/color 33 25 15)
+   ;;:black           (zcolor/color 0 0 0]
+   :black             (zcolor/color 6 6 11)
+   :white             (zcolor/color 255 255 255)
+   :gray              (zcolor/color 128 128 128)
+   :dark-gray         (zcolor/color 64 64 64)
+   :darker-gray       (zcolor/color 32 32 32)
+   :light-gray        (zcolor/color 192 192 192)
+   :lighter-gray      (zcolor/color 225 225 225)
+   :red               (zcolor/color 190 38 51);(vec (tinter/hex-str-to-dec "D31C00"))
+   :dark-red          (zcolor/color 110 18 21);(vec (tinter/hex-str-to-dec "D31C00"))
+   :orange            (zcolor/color 235 137 49);(vec (tinter/hex-str-to-dec "D36C00"))
+   :yellow            (zcolor/color 247 226 107);(vec (tinter/hex-str-to-dec "D3B100"))
+   ;:highlight         [229 165 8];(vec (tinter/hex-str-to-dec "D3B100"))
+   :highlight         (zcolor/color 183 124 7);(vec (tinter/hex-str-to-dec "D3B100"))
+   :background        (zcolor/color 6 8 12)
+   :sea-foam          (zcolor/color 144 213 184)
+   :light-green       (zcolor/color 163 206 39)
+   :green             (zcolor/color 68 137 26);(vec (tinter/hex-str-to-dec "81D300"))
+   :dark-green        (zcolor/color 64 105 00)
+   :moss-green        (zcolor/color 1 140 1)
+   :temple-beige      (zcolor/color 191 171 143)
+   :blue-green        (zcolor/color 55 148 110);(vec (tinter/hex-str-to-dec "19B4D7"))
+   :blue              (zcolor/color 0 87 132);(vec (tinter/hex-str-to-dec "00ACD3"))
+   :light-blue        (zcolor/color 203 219 252);(vec (tinter/hex-str-to-dec "19B4D7"))
+   :dark-blue         (zcolor/color 0 63 116)
+   :purple            (zcolor/color 133 0 211)
+   :fushia            (zcolor/color 211 0 148)
+   :light-brown       (zcolor/color 216 196 116)
+   :beige             (zcolor/color 200 180 100)
+   :dark-beige        (zcolor/color 124 97 45)})
 
-(defn limit-color
+(defn limit-channel
   ([v]
-    (limit-color 0 v 255))
+    (limit-channel 0 v 255))
   ([min-v v max-v]
     (min (max min-v v) max-v)))
 
-(defn limit-rgb
-  [color limit]
-  (mapv (fn [c min-v]
-          (limit-color min-v c 255))
-        color
-        limit))
+(defn map-rgb [f rgba]
+  (zcolor/color
+    (limit-channel (f (zcolor/red rgba)))
+    (limit-channel (f (zcolor/green rgba)))
+    (limit-channel (f (zcolor/blue rgba)))
+    (zcolor/alpha rgba)))
 
+(defn map-rgba [f rgba]
+  (zcolor/color
+    (limit-channel (f (zcolor/red rgba)))
+    (limit-channel (f (zcolor/green rgba)))
+    (limit-channel (f (zcolor/blue rgba)))
+    (limit-channel (f (zcolor/alpha rgba)))))
+    
+(defn map-colors [f rgba1 rgba2]
+  (zcolor/color
+    (f (zcolor/red rgba1) (zcolor/red rgba2))
+    (f (zcolor/green rgba1) (zcolor/green rgba2))
+    (f (zcolor/blue rgba1) (zcolor/blue rgba2))
+    (f (zcolor/alpha rgba1) (zcolor/alpha rgba2))))
+
+(defn min-color [rgba1 rgba2]
+  (map-colors min rgba1 rgba2))
+
+(defn max-color [rgba1 rgba2]
+  (map-colors max rgba1 rgba2))
+
+(defn min-rgb [rgba]
+  (min (min (zcolor/red rgba) (zcolor/green rgba)) (zcolor/blue rgba)))
+
+(defn max-rgb [rgba]
+  (max (max (zcolor/red rgba) (zcolor/green rgba)) (zcolor/blue rgba)))
+
+(def min-mono (zcolor/const-color 6 6 11))
 (defn rgb->mono
-  [[r g b]]
-  (let [avg (bit-shift-right (+ (max r g b) (min r g b)) 1)]
-   (limit-rgb [avg avg avg] [6 6 11])))
+  [rgba]
+  (let [avg (int (/  (+ (max-rgb rgba) (min-rgb rgba)) 2))]
+   (max-color (zcolor/color avg avg avg)
+              min-mono)))
 
 (defn color->rgb
   ([color]
     (color->rgb color 255))
   ([color alpha]
-  {:post [(vector? %)
-          (= (count %) 4)
-          (every? number? %)]}
-  (conj (get color-to-rgb-map color color) alpha)))
+  {:post [(integer? %)]}
+  (zcolor/with-alpha (get color-to-rgb-map color color) alpha)))
 
-
+(def min-dark (zcolor/const-color 5 5 7))
 (defn darken-rgb
-  ([rgb]
-  (mapv #(int (/ % 10)) rgb))
-  ([rgb d]
-  (assert (vector? rgb) (str "rgb not a vector"))
-  (assert (number? (nth rgb 0)) (str (nth rgb 0) " not a number"))
-  (assert (number? (nth rgb 1)) (str (nth rgb 1) " not a number"))
-  (assert (number? (nth rgb 2)) (str (nth rgb 2) " not a number"))
-  (mapv (fn [v min-v] (int (limit-color min-v (* v d) 255))) rgb [5 5 7])))
+  [rgb d]
+  (assert (integer? rgb) (str "rgb not a color (integer)"))
+  (max-color (map-rgba (partial * d) rgb) min-dark))
 
 (defn add-rgb
   [rgb1 rgb2]
   {:post [(vector? %)]}
-  (mapv (fn [v1 v2] (limit-color 0 (+ v1 v2) 255)) rgb1 rgb2))
+  (map-colors (comp limit-channel +) rgb1 rgb2))
 
 (defn lerp [initial final n]
   (+ initial (* n (- final initial))))
 
 (defn lerp-rgb [initial-rgb final-rgb n]
-  (mapv #(lerp %1 %2 n) initial-rgb final-rgb))
+  (map-colors #(lerp %1 %2 n) initial-rgb final-rgb))
 
 (defn lighting
   [sight-distance]
-  (let [night-rgb [(/ 255 2) (/ 255 2) (/ 255 3) 255]
-        day-rgb   [255 255 255 0]]
+  (let [night-rgb (zcolor/color (byte (/ 255 2)) (byte (/ 255 2)) (byte (/ 255 3)) 255)
+        day-rgb   (zcolor/color 255 255 255 0)]
     (cond
       (<= sight-distance 4)
         night-rgb
@@ -102,10 +124,13 @@
         day-rgb)))
 
 (defn night-tint
-  [[r g b] d]
+  [rgb d]
   (if (> d 4)
-    [r g b]
-    [(/ r 4) (/ g 3) (/ (max r g b) 2)]))
+    rgb
+    (zcolor/color
+      (/ (zcolor/red rgb) 4)
+      (/ (zcolor/green rgb) 3)
+      (/ (max-rgb rgb) 2))))
 
 ;; returns [char fg bg]
 (defn night-tint-npc

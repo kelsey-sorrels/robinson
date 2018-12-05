@@ -52,7 +52,7 @@
 
 (defn delete-save-game []
   ;; delete the save game on player death
-  (doseq [file (filter (fn [file] (re-matches #".*edn" (.getName file))) (file-seq (io/file "save")))]
+  (doseq [file (filter (fn [^java.io.File file] (re-matches #".*edn" (.getName file))) (file-seq (io/file "save")))]
     (log/info "Deleting" file)
     (.delete file)))
 
@@ -2226,7 +2226,7 @@
   {:pre [(not (nil? state))]
    :post [(not (nil? %))]}
   (let [dwtl (- prev-will-to-live (get-in state [:world :player :will-to-live]))]
-    (if (> (Math/abs dwtl) 1.5)
+    (if (> (Math/abs (float dwtl)) 1.5)
       (if (neg? dwtl)
         (rc/append-log state (format "You feel %s." (rr/rand-nth ["happy" "happier" "glad" "elated" "great" "good"])))
         (rc/append-log state (format "You feel %s." (rr/rand-nth ["sad" "sadder" "down" "unhappy" "bummed" "bad"]))))

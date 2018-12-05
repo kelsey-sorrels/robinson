@@ -20,6 +20,7 @@
             [robinson.fx.blip :as rfxblip]
             [clojure.core.async :as async :refer [go go-loop]]
             [clojure.tools.nrepl.server :as nreplserver]
+            [overtone.at-at :as atat]
             [taoensso.timbre :as log])
     (:gen-class))
 
@@ -72,7 +73,7 @@
    the next state after one iteration."
   []
   ; start with initial state from setup-fn
-  (let []
+  (let [frames (atom 0)]
     (reset! render-fn (resolve 'robinson.render/render))
     (reset! setup-fn (resolve 'robinson.main/setup))
     (reset! tick-fn (resolve 'robinson.main/tick))
@@ -83,7 +84,21 @@
           (get state :terminal-groups)
           (get state :terminal-opts)
           (fn [terminal]
-            (log/info "Create-terminal current-state" (rw/current-state state) (keys state) (get state :world))
+            (log/info "Create-terminal current-state" (rw/current-state state) (keys state) #_(get state :world))
+            (let [groups (zt/groups terminal)
+                  {:keys [columns
+                          rows
+                          character-width
+                          character-height]} (get groups :app)
+                          fps-fn (atat/every 1000
+								   #(do
+									 (log/info "frames " @frames)
+									 (reset! frames 0))
+								   zc/*pool*)]
+              (log/info "Terminal groups" groups)
+              (zt/set-window-size! terminal
+                                   {:width (* columns character-width)
+                                    :height (* rows character-height)}))
             (add-watch state-ref :advance (fn [_ state-ref old-state new-state]
                                             (when (= :quit (rw/current-state new-state))
                                                 (log/info "Got quit state. Exiting.")
@@ -93,7 +108,7 @@
                                               (reset! state-ref (@tick-fn new-state :advance)))))
                                                
             (reset! state-ref state)
-            (zt/do-frame terminal 33
+            (zt/do-frame terminal 16
               (binding [zc/*updater* ruu/updater]
                 (when (zt/destroyed? terminal)
                   (log/info "terminal destroyed")
@@ -102,9 +117,10 @@
                       _ (assert (not (nil? state)))
                       ui (@render-fn terminal state @dom-ref)]
                   (reset! dom-ref ui)
+                  (swap! frames inc)
                   (assert (zc/element? ui))
                   ;; update component instance states
-                  (log/info "---End Frame---"))))
+                  (log/debug "---End Frame---"))))
               (zevents/add-event-listener terminal :keypress (fn [keyin]
                 ; tick the old state through the tick-fn to get the new state
                 (try

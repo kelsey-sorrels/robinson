@@ -434,11 +434,17 @@
             (if (and cell-items
                      (seq cell-items)
                      (= (cell :discovered) current-time))
-              (if (contains? #{:chest :artifact-chest} (get cell :type))
-                [\■ :dark-beige :black]
-                [(rutil/item->char (first cell-items))
-                 (rutil/item->fg   (first cell-items))
-                 :black])
+              (cond
+                (contains? #{:chest :artifact-chest} (get cell :type))
+                  [\■ :dark-beige :black]
+                (some (fn [item] (= (get item :id) :raft)) cell-items)
+                  [\░ :beige :brown]
+                :default
+                  (do
+                    (log/info cell-items)
+                  [(rutil/item->char (first cell-items))
+                   (rutil/item->fg   (first cell-items))
+                   :black]))
               (case (cell :type)
                :floor           [\·]
                :open-door       [\-  :brown  :black #{:bold}]
@@ -1256,8 +1262,8 @@
               [:text {} [message]]
               [:text {} [
                 [:text {} ["Press "]]
-                [Highlight {} ["space"]]
-                [:text {} [" to continue."]]]]]])))
+                [Highlight {} ["space "]]
+                [:text {} ["to continue."]]]]]])))
 
 (zc/def-component YesNoPopover
   [this]
@@ -1825,18 +1831,47 @@
 
 (zc/def-component GameOverRescued
   [this]
-  (let [{:keys [game-state]} (zc/props this)
-        rescue-mode (rendgame/rescue-mode game-state)]
-    ;; Title
-    ;(put-string (game-state :screen) :ui 10 1 (format "%s: %s." player-name madlib))
-    ;(put-string (game-state :screen) :ui 18 2 (format "Rescued by %s after surviving for %d days." rescue-mode days-survived))
-    ;(put-string (game-state :screen) :ui 10 3 (format "Points: %s." points))
-    ;(put-string (game-state :screen) :ui 10 4 "Inventory:")
-    ;(doall (map-indexed
-    ;  (fn [idx item] (put-string (game-state :screen) :ui 18 (+ idx 5) (item :name)))
-    ;  (-> game-state :world :player :inventory)))
-    ;(put-string (game-state :screen) :ui 10 22 "Play again? [yn]")))
-))
+  (let [{:keys [player rescue-mode madlib days-survived turns-survived points]} (zc/props this)
+        player-name    (get player :name)
+        hp             (get player :hp)
+        hunger         (get player :hunger)
+        max-hunger     (get player :max-hunger)
+        thirst         (get player :thirst)
+        max-thirst     (get player :max-thirst)
+        will-to-live   (get player :will-to-live)]
+    (zc/csx
+	  [:terminal {} [
+		[:group {:id :app} [
+		  [:layer {:id :ui} [
+            [:view {:style {:width "100%" :height "100%" :background-color (rcolor/color->rgb :black)}} [
+              [:view {:style {:left 10}} [
+                [:text {} [(format "%s: %s" player-name madlib)]]
+                [:text {} [""]]
+                [:text {} [(format "Points: %s." points)]]
+                [:text {} [(format "Survived for %d %s. (%d turns)"
+                                     days-survived
+                                     (if (> 1 days-survived) "days" "day")
+                                     turns-survived)]]
+                [:text {} [(format "Rescued by %s after surviving for %d days." rescue-mode days-survived)]]
+                [:text {} [""]]
+                [:text {} ["Inventory:"]]
+                [:view {} 
+                  (map-indexed
+                    (fn [idx item]
+                      (zc/csx [:text {} [(format "%s%s" (if (pos? (get item :count 0))
+                                                          (format "%dx " (get item :count))
+                                                          "")
+                                                        (item :name))]]))
+                    (get player :inventory))]]]
+                [:text {} [""]]
+                [:view {:style {:left 10}} [
+                  [:text {} [[:text {} ["Play again? ["]]
+                             [Highlight {} ["y"]]
+                             [:text {} ["/"]]
+                             [Highlight {} ["n"]]
+                             [:text {} ["] "]]
+                             [Highlight {} ["space "]]
+                             [:text {} ["- share and compare with other players"]]]]]]]]]]]]]])))
 
 (zc/def-component GameOver
   [this]
@@ -1857,7 +1892,12 @@
                                :cause-of-death (get-in game-state [:world :cause-of-death])
                                :madlib madlib}])
       :game-over-rescued
-        (zc/csx [GameOverRescued {:game-state game-state}]))))
+        (zc/csx [GameOverRescued {:player (get-in game-state [:world :player])
+                                  :days-survived days-survived
+                                  :turns-survived turns-survived
+                                  :points points
+                                  :rescue-mode (rendgame/rescue-mode game-state)
+                                  :madlib madlib}]))))
 
 (zc/def-component ShareScore
   [this]

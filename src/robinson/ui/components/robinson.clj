@@ -14,7 +14,7 @@
                                             wrap-line
                                             fill-missing
                                             xy->pos]]
-                                            
+            [robinson.fs :as rfs]
             [robinson.world :as rw :refer [current-state
                                            get-time
                                            get-cell
@@ -44,7 +44,6 @@
             [robinson.ui.updater :as ruu]
             [zaffre.terminal :as zat]
             [zaffre.color :as zcolor]
-            [zaffre.animation.wrapper :as zaw]
             [zaffre.components :as zc]
             [zaffre.components.ui :as zcui]
             [zaffre.util :as zutil]
@@ -1585,7 +1584,7 @@
     [:terminal {} [
       [:group {:id :app} [
         [:layer {:id :map} [
-          [zcui/Image {:src "/home/santos/src/robinson/images/robinson-mainmenu.jpg"}]]]
+          [zcui/Image {:src (rfs/cwd-path "images/robinson-mainmenu.jpg")}]]]
         [:layer {:id :ui} [
               [:view {:style {:color [255 255 255 255]
                               :background-color [0 0 0 0]

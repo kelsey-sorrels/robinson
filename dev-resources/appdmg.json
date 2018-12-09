@@ -1,0 +1,9 @@
+{
+  "title": "Robinson",
+  "icon": "images/AppIcon.icns",
+  "background": "images/RobinsonDmg.png",
+  "contents": [
+    { "x": 418, "y": 334, "type": "link", "path": "/Applications" },
+    { "x": 172, "y": 334, "type": "file", "path": "/Applications/Robinson.app" }
+  ]
+}

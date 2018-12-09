@@ -11,6 +11,7 @@
                    .getProtectionDomain
                    .getCodeSource
                    .getLocation
+                   .toURI
                    .getPath)]
     (if (clojure.string/includes? jar-path "robinson.jar")
       (->

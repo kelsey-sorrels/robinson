@@ -14,8 +14,7 @@
             [robinson.itemgen :as ig]
             [robinson.traps :as rt]
             [robinson.combat :as rcombat]
-            [taoensso.timbre :as log]
-            [zaffre.animation.wrapper :as zaw]))
+            [taoensso.timbre :as log]))
 
 (defrecord AirbornItemActor [item xy-path ttl fx-ks]
   ractors/Actor

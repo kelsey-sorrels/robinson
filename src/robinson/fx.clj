@@ -8,8 +8,7 @@
             [robinson.actors :as ractors]
             [robinson.world :as rw]
             [robinson.npc :as rnpc]
-            [taoensso.timbre :as log]
-            [zaffre.animation.wrapper :as zaw]))
+            [taoensso.timbre :as log]))
 
 (defn fx-id []
   (.toString (java.util.UUID/randomUUID)))

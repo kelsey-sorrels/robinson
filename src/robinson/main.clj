@@ -65,7 +65,7 @@
     (recur)))
 
 (defn save-state [state]
-  (async/>!! save-chan state))
+  (async/put! save-chan state))
   
 (defn render-state [state]
   (async/>!! render-chan state))

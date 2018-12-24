@@ -1373,7 +1373,8 @@
   (let [{:keys [game-state]} (zc/props this)
         current-time     (dec (rw/get-time game-state))
         log-idx          (get-in game-state [:world :log-idx] 0)
-        num-logs         (count (filter #(= current-time (get % :time)) (get-in game-state [:world :log])))
+        current-logs     (filter #(<= current-time (get % :time)) (get-in game-state [:world :log]))
+        num-logs         (count current-logs)
         up-arrow-char    "\u2191"
         down-arrow-char  "\u2193"
         msg-above?       (< log-idx (dec num-logs))
@@ -1386,7 +1387,7 @@
                            (rcolor/color->rgb :white))
         message          (if (zero? num-logs)
                            {:message "" :time 0 :color :black} 
-                           (nth (reverse (get-in game-state [:world :log])) log-idx))
+                           (nth (reverse current-logs) log-idx))
         darken-factor    (inc  (* (/ -1 5) (- current-time (message :time))))
         log-color        (rcolor/darken-rgb (rcolor/color->rgb (get message :color)) darken-factor)]
     (zc/csx

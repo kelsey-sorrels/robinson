@@ -2016,7 +2016,7 @@
   [state]
   (let [t        (rw/get-time state)
         log-idx  (get-in state [:world :log-idx])
-        num-logs (count (filter #(= t (get % :time)) (get-in state [:world :log])))]
+        num-logs (count (filter #(<= t (get % :time)) (get-in state [:world :log])))]
     (update-in state [:world :log-idx] (fn [idx] (min (dec num-logs) (inc log-idx))))))
 
 (defn scroll-log-down
@@ -3367,6 +3367,13 @@
                            \b          [(fn [state]
                                         (rai/apply-item state translate-directions \b))
                                                                :normal          true]}
+               :apply-item-message
+                          {:escape     [identity               :normal          false]
+                           :enter      [identity               :apply-item-message false]
+                           :else       [(fn [state
+                                             keyin]
+                                          (rai/apply-item-message state keyin))
+                                                               rw/current-state true]}
                :pickup    {:left       [pickup-left            rw/current-state false]
                            :down       [pickup-down            rw/current-state false]
                            :up         [pickup-up              rw/current-state false]
@@ -3507,17 +3514,29 @@
                            :else       [choose-ability         rw/current-state false]}
                :help-controls
                           {\n          [identity               :help-ui         false]
+                           :up-right    [identity               :help-ui         false]
+                           \9          [identity               :help-ui         false]
                            \p          [identity               :help-gameplay   false]
+                           :up-left    [identity               :help-gameplay   false]
+                           \7          [identity               :help-gameplay   false]
                            :escape     [identity               :normal          false]
                            :else       [pass-state             rw/current-state false]}
                :help-ui
                           {\n          [identity               :help-gameplay   false]
+                           :up-right    [identity               :help-gameplay   false]
+                           \9          [identity               :help-gameplay   false]
                            \p          [identity               :help-controls   false]
+                           :up-left    [identity               :help-controls   false]
+                           \7          [identity               :help-controls   false]
                            :escape     [identity               :normal          false]
                            :else       [pass-state             rw/current-state false]}
                :help-gameplay
                           {\n          [identity               :help-controls   false]
+                           :up-right    [identity               :help-controls   false]
+                           \9          [identity               :help-controls   false]
                            \p          [identity               :help-ui         false]
+                           :up-left    [identity               :help-ui         false]
+                           \7          [identity               :help-ui         false]
                            :escape     [identity               :normal          false]
                            :else       [pass-state             rw/current-state false]}
                :close     {:left       [close-left             :normal          true]

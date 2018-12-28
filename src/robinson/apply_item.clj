@@ -172,6 +172,21 @@
       (rp/add-to-inventory [(ig/gen-item :sharpened-stick)]))
     state))
 
+(defn apply-pen
+  "Apply a pen to the inventory item."
+  [state item]
+  (log/info "applying pen item to" item)
+  (case (get item :id)
+    :paper
+    (-> state
+      (rp/dec-item-count (get item :id))
+      (rp/add-to-inventory [(ig/gen-item :note)]))
+    :stick
+    (-> state
+      (rp/dec-item-count (get item :id))
+      (rp/add-to-inventory [(ig/gen-item :sharpened-stick)]))
+    state))
+
 (defn apply-rock
   "Apply a rock to the inventory item."
   [state item]
@@ -229,9 +244,26 @@
                                            (str "-tipped-arrow")
                                            keyword))))
       (rc/append-log state "You rub it all over but nothing happens."))))
-(defn apply-item
+
+(defmulti apply-item-multi
   "Applies the selected item."
-  [state translate-directions keyin]
+  (fn [state translate-directions keyin]
+    (let [item (get-apply-item state)
+          trans->dir? (comp rc/is-direction? translate-directions)]
+      (log/info "apply-item" [item keyin])
+      (log/info "is-direction?" ((comp rc/is-direction? translate-directions) keyin))
+      [(get item :id)
+       ((comp rc/is-direction? translate-directions) keyin)])))
+
+(defmethod apply-item-multi [:fishing-pole :direction] [state translate-directions keyin] state)
+
+(defn apply-pen [state item] state)
+(defn apply-item-message [state keyin] state)
+(defn apply-flare-gun [state item] state)
+(defn apply-locator-beacon [state item] state)
+(defn apply-signal-mirror [state item] state)
+
+(defn apply-item [state translate-directions keyin]
   {:pre  [(not (nil? state))]
    :post [(not (nil? %))]}
   (let [item (get-apply-item state)
@@ -280,6 +312,10 @@
       [:flint-and-steel trans->dir?] (-> state
                                        (start-fire (translate-directions keyin))
                                        (rw/assoc-current-state :normal))
+      [:pen             :*         ] (apply-pen state item)
+      [:flare-gun       \<         ] (apply-flare-gun state item)
+      [:locator-beacon  :*         ] (apply-locator-beacon state item)
+      [:signal-mirror   :*         ] (apply-signal-mirror state item)
       [ig/id-is-sharp?  :*         ] (if-let [item (rp/inventory-hotkey->item state keyin)]
                                        (-> state
                                          (apply-sharp-item item)

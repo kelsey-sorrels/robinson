@@ -167,6 +167,14 @@
    {:id  :bedroll                 :name  "bedroll"                    :name-plural "bedrolls"}
    {:id  :tarp                    :name  "tarp"                       :name-plural "tarps"}
    {:id  :saw                     :name  "saw"                        :name-plural "saws" :utility 100}
+   {:id  :glass-bottle            :name  "glass bottle"               :name-plural "glass-bottles"}
+   {:id  :paper                   :name  "paper"                      :name-plural "pages of paper"}
+   {:id  :pen                     :name  "pen"                        :name-plural "pens" :utility 1}
+   {:id  :radio                   :name  "radio"                      :name-plural "radios" :utility 1}
+   {:id  :flare-gun               :name  "flare gun"                  :name-plural "flare guns" :utility 1}
+   {:id  :signal-mirror           :name  "signal mirror"              :name-plural "signal mirrors" :utility 100}
+   {:id  :flag                    :name  "flag"                       :name-plural "flags"}
+   {:id  :locator-beacon          :name  "locator beacon"             :name-plural "locator beacons" :utility 100}
    ;; pirate ship items
    {:id  :spices                  :name "spices"                      :name-plural "spices"}
    {:id  :sail                    :name "sail"                        :name-plural "sails"}

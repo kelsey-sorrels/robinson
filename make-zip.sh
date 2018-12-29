@@ -115,7 +115,7 @@ function package()
     local platform=$2
 
     # Copy binary into dist
-    cp "target/robinson-0.0.1-SNAPSHOT" $target_path/robinson.jar
+    cp "target/$platform-robinson.jar" $target_path/robinson.jar
         
     chmod +x $target_path/robinson.jar
 
@@ -164,8 +164,6 @@ if [[ $LEINUBERJAR == 1 ]]; then
 
 
     mkdir "jvms"
-    # Download Packr
-    wget $PACKR_URL -nc -O "jvms/packr-2.1.jar"
     # Download jdks
     for PLATFORM in "${!PLATFORMS[@]}"; do
         echo $PLATFORM
@@ -189,7 +187,7 @@ if [[ $LEINUBERJAR == 1 ]]; then
             fi
         fi
         
-        if [[ ! -f "target/robinson-0.0.1-SNAPSHOT" ]]; then
+        if [[ ! -f "target/$PLATFORM-robinson.jar" ]]; then
             # Build standalone binary
             lein with-profile bin-$PLATFORM bin
         fi

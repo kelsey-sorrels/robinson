@@ -33,7 +33,7 @@
                  [servant "0.1.5"]
                  [rockpick "0.1.0"]
                  [aaron-santos/tinter "0.1.1"]
-                 [aaron-santos/clj-tiny-astar "0.1.1-SNAPSHOT"]
+                 [aaron-santos/clj-tiny-astar "0.1.1"]
                  [zaffre "0.4.0-b4"]
                  [alandipert/enduro "1.2.0"]
                  [dorothy "0.0.7"]
@@ -72,18 +72,21 @@
       :target-path "target/linux-x64"}
     :bin-linux-x64 {
       :bin {
+        :name "linux-x64-robinson.jar"
         :custom-preamble ":;exec $(dirname $0)/bin/java {{{jvm-opts}}} -D{{{project-name}}}.version={{{version}}} -jar $0 \"$@\"\n"
 }}
     :jlink-osx-x64 {
       :target-path "target/osx-x64"}
     :bin-osx-x64 {
       :bin {
+        :name "osx-x64-robinson.jar"
         :custom-preamble ":;exec $(dirname $0)/bin/java {{{jvm-opts}}} -D{{{project-name}}}.version={{{version}}} -jar $0 \"$@\"\n"
 }}
     :jlink-windows-x64 {
       :target-path "target/windows-x64"}
     :bin-windows-x64 {
       :bin {
+        :name "windows-x64-robinson.jar"
         :custom-preamble "@echo off\r\njava {{{win-jvm-opts}}} -D{{{project-name}}}.version={{{version}}} -jar \"%~f0\" %*\r\ngoto :eof\r\n\")"
 }}}
   :filespecs [{:type :path :path "images/icon.png"}]

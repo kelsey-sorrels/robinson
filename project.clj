@@ -59,7 +59,8 @@
   ;:auto-clean false
 
   :profiles {
-    :dev {:dependencies [[org.clojure/test.check "0.9.0"]]}
+    :dev {:dependencies [[org.clojure/test.check "0.9.0"]]
+          :jvm-opts ["-Xdebug"]}
     :test {:dependencies [[mvxcvi/puget "1.0.1"]
                           [fipp "0.6.8"]]}
     :demos {:dependencies 
@@ -77,7 +78,7 @@
       :target-path "target/osx-x64"}
     :bin-osx-x64 {
       :bin {
-        :custom-preamble ":;exec $dirname $0)/bin/java {{{jvm-opts}}} -D{{{project-name}}}.version={{{version}}} -jar $0 \"$@\"\n"
+        :custom-preamble ":;exec $(dirname $0)/bin/java {{{jvm-opts}}} -D{{{project-name}}}.version={{{version}}} -jar $0 \"$@\"\n"
 }}
     :jlink-windows-x64 {
       :target-path "target/windows-x64"}
@@ -96,13 +97,7 @@
   :launch4j-install-dir "/home/santos/bin/launch4j"
   :launch4j-config-file "dev-resources/config.xml"
   :jvm-opts [
-             ;"-agentpath:/home/santos/bin/yjp-2014-build-14096/bin/linux-x86-64/libyjpagent.so"
-             "-Xdebug"
-             ;"-Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=5005"
-             ;"-XX:+UnlockCommercialFeatures"
-             ;"-XX:+FlightRecorder"
              "-XX:-OmitStackTraceInFastThrow"
              "-XX:MaxGCPauseMillis=20"
              "-Dhttps.protocols=TLSv1"
-             ;"-Dsun.java2d.trace=log"
 ])

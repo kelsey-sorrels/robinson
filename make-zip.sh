@@ -97,12 +97,15 @@ function linux-package-extra() {
     # copy jvm image into target_path
     cp -r $target_path/../jlink/* $target_path
 
-    # make zip
+    # cp run.sh
+    cp dev-resources/run.sh $target_path
+
+    # make tar.gz
     cd $target_path/..
     mv $(basename $target_path) robinson-$platform-$VERSION
-    zip -r robinson-$platform-$VERSION.zip robinson-$platform-$VERSION
+    tar -zcvf robinson-$platform-$VERSION.tar.gz robinson-$platform-$VERSION
     cd -
-    upload target/$platform/robinson-$platform-$VERSION.zip
+    upload target/$platform/robinson-$platform-$VERSION.tar.gz
 }
 
 # Moves resouces into $target_path and then calls platform-specific bundling function

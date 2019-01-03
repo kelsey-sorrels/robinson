@@ -1,4 +1,4 @@
-(defproject robinson "0.2.0"
+(defproject robinson "0.3.0-SNAPSHOT"
   :description "robinson"
   :plugins      [[lein-autoreload "0.1.0"]
                  [lein-bikeshed "0.1.8"]

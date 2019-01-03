@@ -53,16 +53,19 @@
 
 (go-loop []
   (let [state (async/<! save-chan)]
-    (log/info "World saved at time" (get-in state [:world :time]))
-       (try
-         (with-open [o (io/output-stream (rfs/cwd-path "save/world.edn"))]
-           (nippy/freeze-to-out! (DataOutputStream. o) (get state :world)))
-         (catch Throwable e (log/error "Error saving" e)))
-    ;(as-> state state
-    ;  (get state :world)
-    ;  (pp/write state :stream nil)
-    ;  (spit "save/world.edn.out" state))
-    (recur)))
+    (if-not (contains? #{:quit} (rw/current-state state))
+      (do
+        (log/info "World saved at time" (get-in state [:world :time]))
+           (try
+             (with-open [o (io/output-stream (rfs/cwd-path "save/world.edn"))]
+               (nippy/freeze-to-out! (DataOutputStream. o) (get state :world)))
+             (catch Throwable e (log/error "Error saving" e)))
+        ;(as-> state state
+        ;  (get state :world)
+        ;  (pp/write state :stream nil)
+        ;  (spit "save/world.edn.out" state))
+        (recur))
+      (recur))))
 
 (defn save-state [state]
   (async/put! save-chan state))

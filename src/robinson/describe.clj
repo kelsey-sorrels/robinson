@@ -171,7 +171,9 @@
                       "")]
 
     (cond
-      (not= (get cell :discovered) (rw/get-time state))
+      (let [discovered (get cell :discovered)]
+          (or (nil? discovered)
+              (< discovered (rw/get-time state))))
         (format "You can't see that.")
       (and npc (seq items))
         (format "There is %s, and %s.%s"

@@ -439,11 +439,9 @@
                 (some (fn [item] (= (get item :id) :raft)) cell-items)
                   [\░ :beige :brown]
                 :default
-                  (do
-                    (log/info cell-items)
                   [(rutil/item->char (first cell-items))
                    (rutil/item->fg   (first cell-items))
-                   :black]))
+                   :black])
               (case (cell :type)
                :floor           [\·]
                :open-door       [\-  :brown  :black #{:bold}]
@@ -1048,7 +1046,8 @@
         cursor-x      (if (= position :left)
                         (dec (- cursor-x (count text)))
                         (inc cursor-x))]
-  (zc/csx [:text {:style {:position :fixed :top cursor-y :left cursor-x}} [text]])))
+  (zc/csx [:text {:style {:position :fixed :top cursor-y :left cursor-x
+                          :background-color (zcolor/with-alpha (rcolor/color->rgb :black) 246)}} [text]])))
 
 
 

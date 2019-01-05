@@ -766,8 +766,14 @@
                                                             (fn [_ hotkey] hotkey)
                                                             remaining-hotkeys
                                                             (map :hotkey items))))
-          selected-items     (vec (divided-items :selected))
-          not-selected-items (vec (divided-items :not-selected))
+          selected-items     (if (= (count items) 1)
+                               ;; if just one item, then auto select it and pick it up
+                               items
+                               (vec (divided-items :selected)))
+          not-selected-items (if (= (count items) 1)
+                               ;; if just one item, then auto select it and not-selected is empty
+                               []
+                               (vec (divided-items :not-selected)))
           remaining-hotkeys  (vec (remove #(some (partial = %) (map :hotkey selected-items)) remaining-hotkeys))]
       (log/info "divided-items" divided-items)
       (log/info "selected-items" selected-items)
@@ -784,7 +790,9 @@
                               remaining-hotkeys)
                           ;; reset selected-hotkeys
                           (assoc-in [:world :selected-hotkeys] #{}))]
-          new-state)
+          (if (= (count items) 1)
+            (rw/assoc-current-state new-state :normal)
+            new-state))
         state)))
 
 (defn pickup-directions
@@ -1173,7 +1181,9 @@
           (rc/append-log "Nothing to pick up.")
           (rw/assoc-current-state :normal))
       (= (count directions) 1)
-        (assoc-pickup-target state (first directions))
+        (-> state
+          (assoc-pickup-target (first directions))
+          pick-up)
       :else
         (rw/assoc-current-state state :pickup))))
 

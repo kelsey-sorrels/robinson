@@ -3598,6 +3598,8 @@
     :direction-select
     :close})
 
+(def modifier-keys #{:lshift :lcontrol :rshift :rcontrol})
+
 (defn update-state
   "Use the stage transtion table defined above to call the appropriate
    transition function and assign the appropriate final state value.
@@ -3623,7 +3625,8 @@
                         (translate-directions keyin)
                         keyin)]
     ;(log/debug "current-state" current-state)
-    (if (or (contains? table keyin) (contains? table :else))
+    (if (and (or (contains? table keyin) (contains? table :else))
+             (not (contains? modifier-keys keyin)))
       (let [[transition-fn new-state advance-time] (if (contains? table keyin) (get table keyin) (get table :else))
             ;; if the table contains keyin, then pass through transition-fn assuming arity-1 [state]
             ;; else the transition-fn takes [state keyin]. Bind keying so that it becomes arity-1 [state]

@@ -1396,16 +1396,22 @@
               (zc/csx [:text {} [
                         [Highlight {} ["/"]]
                         [:text {} ["-"]]
-                        [:text {:style {:color up-arrow-color}} [up-arrow-char]]]])
+                        [:text {:style {:color up-arrow-color
+                                        :background-color (zcolor/with-alpha (rcolor/color->rgb :black) 242)}}
+                               [up-arrow-char]]]])
               (zc/csx [:text {} ["   "]]))
             (if msg-below?
               (zc/csx [:text {} [
                         [Highlight {} ["*"]]
                         [:text {} ["-"]]
-                        [:text {:style {:color down-arrow-color}} [down-arrow-char]]]])
+                        [:text {:style {:color down-arrow-color
+                                        :background-color (zcolor/with-alpha (rcolor/color->rgb :black) 242)}}
+                               [down-arrow-char]]]])
               (zc/csx [:text {} ["   "]]))
             (if (get message :text)
-              (zc/csx [:text {:style {:color (rcolor/color->rgb (get message :color))}} [(str (get message :text))]])
+              (zc/csx [:text {:style {:color (rcolor/color->rgb (get message :color))
+                                      :background-color (zcolor/with-alpha (rcolor/color->rgb :black) 242)}}
+                             [(str (get message :text))]])
               (zc/csx [:text {} [""]]))]]]])))
 
 (defn target-pos [game-state]

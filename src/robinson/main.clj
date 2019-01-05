@@ -52,14 +52,24 @@
 ;(def world-storage (atom nil))
 
 (go-loop []
-  (let [state (async/<! save-chan)]
+  (let [state (async/<! save-chan)
+        tmp-file (rfs/cwd-file "save/world.edn.tmp")
+        target-file(rfs/cwd-file "save/world.edn")]
     (if-not (contains? #{:quit} (rw/current-state state))
       (do
-        (log/info "World saved at time" (get-in state [:world :time]))
-           (try
-             (with-open [o (io/output-stream (rfs/cwd-path "save/world.edn"))]
-               (nippy/freeze-to-out! (DataOutputStream. o) (get state :world)))
-             (catch Throwable e (log/error "Error saving" e)))
+        (log/info "World saved at time" (get-in state [:world :time]) tmp-file target-file)
+        (try
+          (with-open [o (io/output-stream tmp-file)]
+            (nippy/freeze-to-out! (DataOutputStream. o) (get state :world)))
+          (catch Throwable e (log/error "Error saving" e)))
+
+        ;; copy tmp file to permenent store atomically
+        (java.nio.file.Files/move (.toPath tmp-file)
+                                  (.toPath target-file)
+                                  (into-array java.nio.file.CopyOption
+                                            [(java.nio.file.StandardCopyOption/ATOMIC_MOVE)
+                                             (java.nio.file.StandardCopyOption/REPLACE_EXISTING)]))
+
         ;(as-> state state
         ;  (get state :world)
         ;  (pp/write state :stream nil)

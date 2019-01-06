@@ -2010,8 +2010,11 @@
 		  [:layer {:id :ui} [
             [:view {:style {:width "100%" :height "100%" :background-color (rcolor/color->rgb :black)}} [
               [:view {}
-                (for [{:keys [text color] :as log-item} (reverse (take 23 log))]
-                  (zc/csx [:text {:style {:color (rcolor/color->rgb color)}} [(str (get log-item :time 0) " "  text)]]))]]]]]]]]])))
+                ;; debug log
+                #_(for [{:keys [text color] :as log-item} (reverse (take 23 log))]
+                  (zc/csx [:text {:style {:color (rcolor/color->rgb color)}} [(str (get log-item :time 0) " "  text)]]))
+                (for [{:keys [text color]} (reverse (take 23 log))]
+                  (zc/csx [:text {:style {:color (rcolor/color->rgb color)}} [(str text)]]))]]]]]]]]])))
 
 (zc/def-component Robinson
   [this]

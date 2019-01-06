@@ -6,6 +6,7 @@
             [robinson.scores :as rs]
             [robinson.world :as rw]
             [robinson.viewport :as rv]
+            [robinson.log :as rlog]
             [zaffre.terminal :as zat]
             [zaffre.font :as zfont]
             [robinson.describe :as rdesc]
@@ -82,21 +83,6 @@
     (\b :numpad1) :down-left
     (\n :numpad3) :down-right
     keyin))
-
-;; Indicate that the player action advanced time (this will include getting hungrier/thirstier, updating visibility, monsters attacking, updating cells, etc.
-(defn inc-time
-  [state]
-  (log/info "inc-time=true")
-  (assoc-in state [:world :inc-time] true))
-
-(defn inc-time?
-  [state]
-  (get-in state [:world :inc-time] false))
-
-(defn clear-inc-time
-  [state]
-  (log/info "inc-time = false")
-  (rc/dissoc-in state [:world :inc-time]))
 
 (defn next-font
   [state]
@@ -381,11 +367,12 @@
       (rp/player-paralyzed? state)
         (-> state
           (rc/append-log "You can not move (paralyzed).")
-          inc-time)
+          rc/inc-time)
       ;; Open space (may include npc) and not on raft?
       (and (not (rw/collide? state target-x target-y {:include-npcs? false}))
            (not (rw/player-mounted-on-raft? state)))
         (as-> state state
+          (rc/inc-time state)
           (if (rw/npc-at-xy state target-x target-y)
             ;; collided with npc. Engage in combat.
             (let [npc (rw/npc-at-xy state target-x target-y)]
@@ -393,6 +380,7 @@
               (-> state
                 (rcombat/attack [:world :player] (rnpc/npc->keys state npc))
                 (rw/assoc-current-state :normal)))
+            ;; regular move
             (as-> state state
               (if (and (not (rv/xy-in-safe-zone? state target-x target-y))
                        (not= :fixed (get-in state [:world :places (rw/current-place-id state) :movement])))
@@ -407,8 +395,7 @@
                     items (get cell :items)]
                 (if (seq items)
                   (rdesc/search state)
-                  state))))
-          (inc-time state))
+                  state)))))
       ;; Swap places with party members
       (= (get (rw/npc-at-xy state target-x target-y) :in-party?) true)
         (-> state
@@ -416,7 +403,7 @@
           (assoc-in [:world :player :pos :y] target-y)
           pick-up-gold
           (rw/assoc-current-state :normal)
-          inc-time
+          rc/inc-time
           (rc/map-in [:world :npcs]
                      (fn [npc] (if (and (= (-> npc :pos :x) target-x)
                                         (= (-> npc :pos :y) target-y))
@@ -435,7 +422,7 @@
             state)
           (rp/assoc-player-pos state (rc/xy->pos target-x target-y))
           (rw/assoc-current-state state :normal)
-          (inc-time state)
+          (rc/inc-time state)
           ;; rafting = more hunger
           (update-in state [:world :player :hunger] (partial + 0.05 ))
           ;;
@@ -449,7 +436,7 @@
         (-> state
           (destroy-cell target-x target-y)
           (rw/assoc-current-state :normal)
-          inc-time)
+          rc/inc-time)
       ;; collided with a wall or door, nothing to be done.
       :else
         state)))
@@ -925,7 +912,7 @@
       (-> state
         (rp/update-inventory-item-by-id :lantern (fn [item] (assoc item :state :off)))
         (rc/append-log "You turn the lantern off.")
-        (inc-time)
+        (rc/inc-time)
         ;TODO: remove?
         (update-visibility)
         (assoc-in [:world :current-state] :normal))
@@ -934,13 +921,13 @@
         (-> state
           (rp/update-inventory-item-by-id :lantern (fn [item] (assoc item :state :on)))
           (rc/append-log "You turn the lantern on.")
-          (inc-time)
+          (rc/inc-time)
           ;TODO: remove?
           (update-visibility)
           (assoc-in [:world :current-state] :normal))
         (-> state
           ;TODO: remove?
-          (inc-time)
+          (rc/inc-time)
           (rc/append-log state "You try turning the lantern on, but nothing happens."))))))
 
 (defn wear-clothes
@@ -1046,14 +1033,14 @@
                                                   [x y])
                                                 (repeat {:discovered (rw/get-time state)})))
                         (rc/append-log "You learn the temple's secrets.")
-                        inc-time))
+                        rc/inc-time))
                     ;; otherwise choose between identifying fruit and flavor text
                     (let [text-id (ig/gen-text-id state)
                           item    (rp/inventory-id->item state id)]
                       (if (rp/player-status-contains? state text-id)
                         (-> state
                           (rc/append-log "You've already read that story.")
-                          inc-time)
+                          rc/inc-time)
                         (as-> state state
                           (if (ig/is-fruit-text-id? text-id)
                             ;; identified fruit
@@ -1063,7 +1050,7 @@
                             state)
                           (-> state
                            (rc/append-log (format "You peice together a story about %s." (rdesc/gen-temple-text text-id)))
-                           inc-time)))))
+                           rc/inc-time)))))
                   (rp/dec-item-count state id)
                   (rw/assoc-current-state state :normal))
               ;; pirate items
@@ -1708,7 +1695,7 @@
               ;; dec ranged weapon ammunition
               (rp/dec-item-count (ig/item->ranged-combat-ammunition-item-id ranged-weapon-item))
               ;; successful reloading takes a turn
-              (inc-time))
+              (rc/inc-time))
             (rc/ui-hint state "You do not have the required ammunition."))
           (rc/ui-hint state "You do not need to reload this weapon."))
         (rc/ui-hint state "The weapon is already loaded."))
@@ -2044,7 +2031,8 @@
   [state]
   (let [t        (rw/get-time state)
         log-idx  (get-in state [:world :log-idx])
-        num-logs (count (filter #(<= t (get % :time)) (get-in state [:world :log])))]
+        num-logs (count (rlog/current-logs state))]
+    (log/info "current-logs" (rlog/current-logs state))
     (update-in state [:world :log-idx] (fn [idx] (min (dec num-logs) (inc log-idx))))))
 
 (defn scroll-log-down
@@ -3672,15 +3660,15 @@
             ;; some states conditionally advance time by calling (advance-time state)
             ;; check to see if this has occurred if advance-time was not set in the state transition entry
             advance-time (if-not advance-time
-                           (inc-time? state)
+                           (rc/inc-time? state)
                            advance-time)
-            state     (if advance-time
-                        (assoc-in state [:world :time] new-time)
-                        state)
+            state        (if advance-time
+                           (assoc-in state [:world :time] new-time)
+                           state)
             _ (log/info "advance-time" advance-time)
             ;; clear inc-time flag if set
-            state        (if (inc-time? state)
-                           (clear-inc-time state)
+            state        (if (rc/inc-time? state)
+                           (rc/clear-inc-time state)
                            state)
             _ (log/debug "current-state" (get-in state [:world :current-state]))
             _ (log/debug "new-state" new-state)

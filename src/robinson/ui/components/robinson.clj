@@ -21,6 +21,7 @@
                                            player-cellxy
                                            distance-from-player
                                            inventory-and-player-cell-items]]
+            [robinson.log :as rlog]
             [robinson.viewport :as rv :refer [cells-in-viewport]]
             [robinson.player :as rp :refer [player-xy
                                             player-wounded?
@@ -1370,9 +1371,9 @@
   [this]
   ;; draw log
   (let [{:keys [game-state]} (zc/props this)
-        current-time     (dec (rw/get-time game-state))
+        current-time     (rw/get-time game-state)
         log-idx          (get-in game-state [:world :log-idx] 0)
-        current-logs     (filter #(<= current-time (get % :time)) (get-in game-state [:world :log]))
+        current-logs     (rlog/current-logs game-state)
         num-logs         (count current-logs)
         up-arrow-char    "\u2191"
         down-arrow-char  "\u2193"
@@ -2009,8 +2010,8 @@
 		  [:layer {:id :ui} [
             [:view {:style {:width "100%" :height "100%" :background-color (rcolor/color->rgb :black)}} [
               [:view {}
-                (for [{:keys [text color]} (reverse (take 23 log))]
-                  (zc/csx [:text {:style {:color (rcolor/color->rgb color)}} [(str text)]]))]]]]]]]]])))
+                (for [{:keys [text color] :as log-item} (reverse (take 23 log))]
+                  (zc/csx [:text {:style {:color (rcolor/color->rgb color)}} [(str (get log-item :time 0) " "  text)]]))]]]]]]]]])))
 
 (zc/def-component Robinson
   [this]

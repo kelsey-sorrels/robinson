@@ -282,6 +282,21 @@
                                :npcs (t/Vec Npc)}))
 (t/defalias State (HMap :mandatory {:world World :screen t/Any})))
 
+;; Indicate that the player action advanced time (this will include getting hungrier/thirstier, updating visibility, monsters attacking, updating cells, etc.
+(defn inc-time
+  [state]
+  (log/info "inc-time=true")
+  (assoc-in state [:world :inc-time] true))
+
+(defn inc-time?
+  [state]
+  (get-in state [:world :inc-time] false))
+
+(defn clear-inc-time
+  [state]
+  (log/info "inc-time = false")
+  (dissoc-in state [:world :inc-time]))
+
 (defn append-log
   "Append a message to the in-game log. The last five log messages are retained."
   ([state message]
@@ -292,7 +307,12 @@
              (vec (take-last 23 (concat
                                   (-> state :world :log)
                                   [{:text message
-                                    :time (-> state :world :time)
+                                    :time (+ (-> state :world :time)
+                                             ;; if inc-time has been set, then time will advance but has not yet been set
+                                             ;; add a 1 in this case so that the log message will reflect the correct time
+                                             (if (inc-time? state)
+                                               1
+                                               0))
                                     :color color}]))))))
 
 (defn ui-hint

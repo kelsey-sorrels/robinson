@@ -109,6 +109,14 @@
   [state]
   (get-in state [:world :time]))
 
+(defn assoc-time
+  [state t]
+  (assoc-in state [:world :time] t))
+
+(defn update-time
+  [state f]
+  (update-in state [:world :time] f))
+
 (defn assoc-current-state
   [state new-state]
   (assoc-in state [:world :current-state] new-state))

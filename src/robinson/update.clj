@@ -6,9 +6,9 @@
             [robinson.scores :as rs]
             [robinson.world :as rw]
             [robinson.viewport :as rv]
+            [robinson.font :as rfont]
             [robinson.log :as rlog]
             [zaffre.terminal :as zat]
-            [zaffre.font :as zfont]
             [robinson.describe :as rdesc]
             [robinson.traps :as rt]
             [robinson.dialog :as rdiag]
@@ -101,19 +101,93 @@
     (when-not (= new-font (get (rc/get-settings state) :font))
       ;; send new settings to screen
       (zat/alter-group-font! screen :app
-        (fn [platform]
-          (case platform
-            :linux
-              (zfont/->TTFFont (get font :linux-font) (get font :font-size) true)
-            :macosx
-              (zfont/->TTFFont (get font :macosx-font) (get font :font-size) true)
-            :windows
-              (zfont/->TTFFont (get font :windows-font) (get font :font-size) true)
-            (assert false (str "Unknown platform requested" platform)))))
+        (partial rfont/make-font-fn font))
       ;; persist
       (rc/reset-settings! state (assoc (rc/get-settings state) :font new-font)))
     ;; cleanup temp new-font value
     (dissoc state :new-font)))
+
+(defn create-new-font
+  [state]
+  (assoc state
+    :create-font-name ""
+    :create-font-size 1
+    :create-font-path ""
+    :create-font-error "No path. Drag tileset."))
+
+(defn backspace-create-font-name
+  [state]
+  (update-in
+    state
+    [:create-font-name]
+    (fn [font-name]
+      (clojure.string/join (butlast font-name)))))
+
+(defn inc-create-font-size
+  [state]
+  (update state :create-font-size inc))
+
+(defn dec-create-font-size
+  [state]
+  (update state :create-font-size (comp (partial max 1) dec)))
+
+(defn accept-drop-create-font
+  [state key-in]
+  (log/info key-in)
+  (let [{:keys [drag-and-drop]} key-in]
+    (if (= (count drag-and-drop) 1)
+      (-> state
+        (assoc :create-font-path (first drag-and-drop))
+        (dissoc :create-font-error))
+      (assoc state :create-font-error "Multiple files dragged"))))
+
+(defn append-create-font-name
+  [state key-in]
+  (let [key-in (cond
+                 (= :space key-in)
+                   \ 
+                 (char? key-in)
+                   key-in
+                 :else nil)]
+    (if key-in
+      (-> state
+        (dissoc :create-font-error)
+        (update
+          :create-font-name
+          (fn [font-name]
+            (if (and (< (count font-name) 20)
+                     (or (<= (int \A) (int key-in) (int \Z))
+                     (<= (int \a) (int key-in) (int \z))
+                     (contains? #{\- \ } key-in)))
+               (str font-name key-in)
+               font-name))))
+      state)))
+
+(defn accept-input-new-font
+  [state key-in]
+  (if (map? key-in)
+    (accept-drop-create-font state key-in)
+    (append-create-font-name state key-in)))
+
+(defn save-new-font
+  [state]
+  (let [{:keys [create-font-name
+                create-font-size
+                create-font-path
+                create-font-error]} state]
+    (if (= (count create-font-name) 0)
+      (assoc state :create-font-error "Empty font name")
+      (let [font {:name create-font-name
+                  :type :cp437
+                  :url create-font-path
+                  :scale create-font-size
+                  :alpha-channel :green
+                  :transparent true}]
+        (spit (str "config/fonts/" create-font-name ".edn") font)
+        (-> state
+          (assoc :fonts (rfont/read-font-configs))
+          (rw/assoc-current-state :configure-font))))))
+           
 
 (defn backspace-name
   [state]
@@ -3152,11 +3226,24 @@
                           {\n          [next-font              :configure-font  false]
                            \p          [previous-font          :configure-font  false]
                            \s          [save-and-apply-font    :configure-font  false]
+                           \c          [create-new-font        :create-font     false]
                            :escape     [identity               :configure       false]
                            :else       [pass-state             rw/current-state false]}
+               :create-font
+                          {:escape     [identity               :configure-font  false]
+                           :enter      [save-new-font          rw/current-state false]
+                           \+          [inc-create-font-size   rw/current-state false]
+                           \-          [dec-create-font-size   rw/current-state false]
+                           :backspace  [backspace-create-font-name :create-font false]
+                           :else       [accept-input-new-font  :create-font     false]}
+               :create-font-name
+                          {:escape     [identity                :create-font     false]
+                           :enter      [identity                :create-font     false]
+                           :else       [append-create-font-name :create-font-name false]}
                :enter-name
                           {:enter      [identity               :start-inventory false]
                            :backspace  [backspace-name         :enter-name      false]
+                           :escape     [identity               :start           false]
                            :else       [append-name            :enter-name      false]}
                :start-inventory
                           {:enter      [identity               :loading         false]

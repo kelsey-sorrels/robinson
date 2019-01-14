@@ -151,5 +151,10 @@
                                                                   (zt/set-window-size! terminal
                                                                                        {:width (* columns character-width)
                                                                                         :height (* rows character-height)}))))
+              (zevents/add-event-listener terminal :drag-and-drop
+                (fn [{:keys [names]}]
+                  (log/info "received :drag-and-drop")
+                  (let [new-state (@tick-fn (assoc @state-ref :screen terminal) {:drag-and-drop names})]
+                      (reset! state-ref new-state))))
             (async/<!! done-chan)))))))
  

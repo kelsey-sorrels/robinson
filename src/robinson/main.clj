@@ -10,12 +10,13 @@
             [robinson.monstergen :as mg]
             [robinson.render :as rrender]
             [robinson.fs :as rfs]
+            [robinson.font :as rfont]
             [zaffre.tilesets :as ztiles]
             [robinson.events :as revents]
             clojure.data.priority-map
             [taoensso.timbre :as log]
             [zaffre.glterminal :as glterminal]
-            [zaffre.font :as zfont]
+            [zaffre.tilesets :as ztiles]
             [robinson.macros :as rm]
             [rockpick.core :as rpc]
             [clojure.stacktrace :as st]
@@ -35,8 +36,6 @@
 
 (log/merge-config!
   {:ns-blacklist ["robinson.render"]})
-
-(def tile-font ztiles/pastiche-16x16)
 
 ; TODO fix?
 #_(cljs.reader/register-tag-parser! "robinson.monstergen.Monster" mg/map->Monster)
@@ -92,7 +91,8 @@
    time we start up."
   [state keyin]
   {:pre  [(or (char? keyin)
-              (keyword? keyin))
+              (keyword? keyin)
+              (map? keyin))
           (empty? (get state :events))]
    :post [(= (type state) (type %))
           (empty? (get % :events))]}
@@ -194,18 +194,7 @@
           ;;_ (debug "loaded data" data)
           settings (clojure.edn/read-string
                      (slurp (rfs/cwd-path "config/settings.edn")))
-          fonts       (apply sorted-map
-                        (mapcat (fn [file]
-                                  (let [file-name (.getName file)
-                                        map-key   (if (re-find #".edn$" file-name)
-                                                    (keyword (clojure.string/replace-first file-name #".edn$" ""))
-                                                    (keyword file-name))
-                                        map-value (->> (.getPath file)
-                                                    (slurp)
-                                                    (clojure.edn/read-string))]
-                                  [map-key
-                                   map-value]))
-                                (.listFiles (rfs/cwd-file "config/fonts"))))
+          fonts     (rfont/read-font-configs)
           font      (get fonts (get settings :font))
           fx-shader (get settings :fx-shader)
           _ (log/info "Using font settings" font)
@@ -219,15 +208,7 @@
                             :columns 80
                             :rows 24
                             :pos [0 0]
-                            :font (fn [platform]
-                                    (zfont/->TTFFont
-                                      (rfs/cwd-path
-                                        (get font (case platform
-                                                    :linux   :linux-font
-                                                    :macosx  :macosx-font
-                                                    :windows :windows-font)))
-                                      (get font :font-size)
-                                      true #_(get font :transparent)))}]
+                            :font (partial rfont/make-font-fn font)}]
           terminal-opts {:title (format "Robinson - %s@%s" user-id version)
                          :screen-width (* 80 17)
                          :screen-height (* 24 24)

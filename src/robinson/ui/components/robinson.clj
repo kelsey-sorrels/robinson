@@ -533,11 +533,12 @@
             :wall-darts-trigger
             :poisonous-gas-trigger
             :spike-pit
-            :snakes-trigger) _ false] \.)))
+            :snakes-trigger) _ false] \.
+      [_ _ _] \?)))
 
 (defn cell->unicode-character
   [cell]
-  (cond (get cell :type)
+  (case (get cell :type)
      :mountain    \u2206 ;; ∆
      :fruit-tree  \u2648 ;; ♈
      :dune        \u1d16 ;; ᴖ
@@ -678,7 +679,7 @@
      :white))
 
 (defn render-cell [cell wx wy current-time font-type]
-  {:post [(char? (get % :c))
+  {:post [(fn [c] (log/info c) (char? (get c :c)))
           (integer? (get % :fg))
           (integer? (get % :bg))]}
   (let [cell-items (get cell :items)
@@ -773,12 +774,13 @@
     :giant-centipedge \C
     :gorilla         \M
     :giant-snake     \u00A7 ;;§
-    :human           \@ ))
+    :human           \@
+    \?))
 
 (defn npc->unicode-character
   [npc]
   (case (get npc :race)
-     :shark           [\u039B] ;;Λ
+     :shark           \u039B ;;Λ
      (npc->cp437-character npc)))
 
 (defn npc->color
@@ -829,7 +831,8 @@
     :giant-centipedge :white
     :gorilla         :white
     :giant-snake     :green
-    :human           :white))
+    :human           :white
+    :white))
 
 (defn render-npc [npc current-time font-type]
   (apply fill-put-string-color-style-defaults
@@ -2148,6 +2151,27 @@
                                   :rescue-mode (rendgame/rescue-mode game-state)
                                   :madlib madlib}]))))
 
+(zc/def-component Privacy
+  [this]
+  (let [{:keys [game-state]} (zc/props this)
+        privacy-scroll (get game-state :privacy-scroll)]
+    (zc/csx
+	  [:terminal {} [
+		[:group {:id :app} [
+		  [:layer {:id :ui} [
+            [:view {:style {:width "100%" :height "100%" :background-color (rcolor/color->rgb :black)}} [
+              [:text {} ["Privacy Policy"]]
+              [:text {} [""]]
+              [:text {} ["Your privacy is important to us. It is Robinson's policy to respect your privacy regarding any information we may collect from you. We only ask for personal information when we truly need it to provide a service to you. We collect it by fair and lawful means, with your knowledge and consent. We also let you know why we’re collecting it and how it will be used. We only retain collected information for as long as necessary to provide you with your requested service. What data we store, we’ll protect within commercially acceptable means to prevent loss and theft, as well as unauthorised access, disclosure, copying, use or modification. We don’t share any personally identifying information publicly or with third-parties, except when required to by law. You are free to refuse our request for your personal information, with the understanding that we may be unable to provide you with some of your desired services."]]
+              [:text {} [""]]
+              [:text {} ["This policy is effective as of 14 January 2019."]]
+              [:text {} [""]]
+              [:text {} [[:text {} ["Accept? ["]]
+                         [Highlight {} ["y"]]
+                         [:text {} ["/"]]
+                         [Highlight {} ["n"]]
+                         [:text {} ["] "]]]]]]]]]]]])))
+
 (zc/def-component ShareScore
   [this]
   (let [{:keys [game-state]} (zc/props this)
@@ -2290,6 +2314,8 @@
       (contains? #{:game-over-dead :game-over-rescued} (current-state game-state))
         ;; Render game over
         (zc/csx [GameOver {:game-state game-state}])
+      (= (get-in game-state [:world :current-state]) :privacy)
+        (zc/csx [Privacy {:game-state game-state}])
       (= (get-in game-state [:world :current-state]) :share-score)
         (zc/csx [ShareScore {:game-state game-state}])
       (= (get-in game-state [:world :current-state]) :help-controls)

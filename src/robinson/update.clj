@@ -19,6 +19,7 @@
             [robinson.apply-item :as rai]
             [robinson.startgame :as sg]
             [robinson.popover :as rpop]
+            [robinson.fs :as rfs]
             [clojure.string :refer [lower-case]]
             ;[robinson.dialog :refer []]
             [robinson.npc :as rnpc]
@@ -2546,6 +2547,27 @@
   (rs/persist-state-score! state)
   (assoc state :points (rs/state->points state)))
 
+
+(defn transition-privacy
+  [state]
+  (let [privacy-file (rfs/cwd-file "config/.privacyoptin")]
+    (if (.exists privacy-file)
+      :connecting
+      :privacy)))
+    
+(defn privary-opt-in
+  [state]
+  (spit (rfs/cwd-path "config/.privacyoptin") "")
+  state)
+
+(defn privacy-scroll-up
+  [state]
+  (update state :privary-scroll (comp (partial max 0) dec)))
+  
+(defn privacy-scroll-down
+  [state]
+  (update state :privary-scroll (comp (partial min 100) inc)))
+
 (defn
   move-to-target
   "Move `npc` one space closer to the target position if there is a path
@@ -3640,11 +3662,17 @@
                :game-over-rescued
                           {\y          [identity               :start-inventory false]
                            \n          [(constantly nil)       :normal          false]
-                           :space      [identity               :connecting     false]}
+                           :space      [identity               transition-privacy false]}
                :game-over-dead
                           {\y          [identity               :start-inventory false]
                            \n          [identity               :start           false]
-                           :space      [identity               :connecting      false]}
+                           :space      [identity               transition-privacy false]}
+
+               :privacy
+                          {\y          [privary-opt-in         :connecting      false]
+                           \n          [identity               :start           false]
+                           :up         [privacy-scroll-up      rw/current-state false]
+                           :down       [privacy-scroll-down    rw/current-state false]}
                :connecting
                           {:advance    [share-score-and-get-scores
                                                                rw/current-state  false]

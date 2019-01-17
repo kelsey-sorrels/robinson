@@ -65,7 +65,7 @@
                           [fipp "0.6.8"]]}
     :demos {:dependencies 
               [[quil "2.7.1"]]}
-    :uberjar {:aot [#"robinson\..*"]
+    :uberjar {:aot [#"robinson/.*.clj"]
               :main robinson.autoreloadcore
               :keep-non-project-classes true}
     :jlink-linux-x64 {

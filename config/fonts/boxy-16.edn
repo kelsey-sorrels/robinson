@@ -1,8 +1,7 @@
 ;; Settings
 {
- :name "Pastiche 8"
- :type "cp437"
- :linux-font   "http://dwarffortresswiki.org/images/b/be/Pastiche_8x8.png"
+ :name "Boxy 16"
+ :linux-font   "fonts/Boxy/Boxy.ttf"
  :macosx-font  "fonts/Boxy/Boxy.ttf"
  :windows-font "fonts/Boxy/Boxy.ttf"
  :font-size    16

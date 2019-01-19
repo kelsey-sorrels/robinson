@@ -72,6 +72,7 @@
    :pirate-clothes  [\[]
    :navy-uniform    [\[]
    ;; ruined temple items
+   :blowdart         [\-]
    :jewlery          [\"]
    :statue           [\&]
    :human-skull      [\☻ :white :black]
@@ -83,9 +84,10 @@
   [item]
   (let [item-char-fg-bg (get items
                              (or (item :type)
-                                 (item :id))
-                             [\?])]
-    (first item-char-fg-bg)))
+                                 (item :id)))]
+    (when-not item-char-fg-bg
+      (log/info item))
+    (or (first item-char-fg-bg) \?)))
 
 (defn item->fg
   [item]

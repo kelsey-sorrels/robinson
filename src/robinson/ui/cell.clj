@@ -61,126 +61,121 @@
          bg     (rcolor/color->rgb bg)]
      {:c string :fg new-fg :bg bg})))
 
+(def cell-type->cp437-character {:locker \▌
+                                 :fire \≀
+                                 :hammock-h \-
+                                 :shallow-water \~
+                                 :horizontal-wall-alt \°
+                                 :bottom-right-1 \╝
+                                 :bulkhead \◘
+                                 :bottom-left-2 \◙
+                                 :white-horizontal-wall-alt \°
+                                 :upper-right-1 \╗
+                                 :dune \∩
+                                 :upper-left-2 \◙
+                                 :corridor \#
+                                 :locker2 \▐
+                                 :tree \T
+                                 :moss-bottom-left-2 \◙
+                                 :white-upper-left-1 \╔
+                                 :table \╤
+                                 :sand \.
+                                 :canon-truck-2 \▀
+                                 :white-corridor \#
+                                 :campfire \^
+                                 :rocky-shore \∩
+                                 :horizontal-wall \═
+                                 :canon \║
+                                 :moss-upper-right-2 \◙
+                                 :close-door \+
+                                 :upper-right-2 \◙
+                                 :bulkhead2 \◘
+                                 :white-upper-right-2 \◙
+                                 :white-bottom-left-1 \╚
+                                 :deck \·
+                                 :lava \~
+                                 :canon-truck-1 \▄
+                                 :moss-bottom-right-2 \◙
+                                 :moss-bottom-left-1 \╚
+                                 :open-door \-
+                                 :chair \╥
+                                 :moss-upper-left-2 \◙
+                                 :white-horizontal-wall \═
+                                 :tarp-shelter \#
+                                 :vertical-wall \║
+                                 :moss-bottom-right-1 \╝
+                                 :white-bottom-left-2 \◙
+                                 :short-grass \·
+                                 :empty \space
+                                 :white-upper-left-2 \◙
+                                 :moss-corridor \#
+                                 :tall-grass \"
+                                 :moss-vertical-wall-alt \°
+                                 :mast \╨
+                                 :ramada \#
+                                 :gravel \·
+                                 :chest \■
+                                 :white-vertical-wall \║
+                                 :down-stairs \>
+                                 :dry-hole \O
+                                 :white-upper-right-1 \╗
+                                 :up-stairs \<
+                                 :vertical-wall-alt \°
+                                 :lean-to \#
+                                 :railing \#
+                                 :fruit-tree \♣
+                                 :moss-horizontal-wall-alt \°
+                                 :upper-left-1 \╔
+                                 :solar-still \O
+                                 :bamboo \┐
+                                 :ships-wheel \Φ
+                                 :hammock-v \)
+                                 :vine \⌠
+                                 :bottom-right-2 \◙
+                                 :white-vertical-wall-alt \°
+                                 :surf \~
+                                 :white-bottom-right-2 \◙
+                                 :bottom-left-1 \╚
+                                 :palm-tree \7
+                                 :canon-breach \║
+                                 :ladder \≡
+                                 :moss-vertical-wall \║
+                                 :porthole \°
+                                 :wooden-wall \#
+                                 :artifact-chest \■
+                                 :beam \═
+                                 :moss-horizontal-wall \═
+                                 :wheel \○
+                                 :moss-upper-right-1 \╗
+                                 :water \≈
+                                 :moss-upper-left-1 \╔
+                                 :palisade \#
+                                 :grate \╬
+                                 :altar \┬
+                                 :tackle \º
+                                 :mountain \▲
+                                 :bamboo-water-collector \O
+                                 :floor \.
+                                 :dirt \.
+                                 :swamp \~
+                                 :white-bottom-right-1 \╝})
+
+(def trap-type? #{:crushing-wall-trigger
+                  :wall-darts-trigger
+                  :poisonous-gas-trigger
+                  :spike-pit
+                  :snakes-trigger})
+
+
 (defn cell->cp437-character
-  [cell]
-  (let [water-level (get cell :water 0)
-        trap-found (get cell :trap-found)]
-    (match [(get cell :type) (< water-level 10) trap-found]
-      [(:or :floor
-            :sand
-            :dirt) _ _]      \·
-      [:open-door  _ _]      \-
-      [:close-door  _ _]     \+
-      [:corridor  _ _]       \#
-      [:down-stairs  _ _]    \>
-      [:up-stairs  _ _]      \<
-      [:fire  _ _]           \u2240
-      [:water  _ _]          \≈ 
-      [(:or :surf
-            :shallow-water
-            :swamp
-            :lava) _ _]    \~
-      [:mountain _ _]       \u25b2
-      [:dune _ _]           \u2229
-      [:rocky-shore _ _]    \u2229
-      [:gravel _ _]         \·
-      [:short-grass _ _]    \·
-      [:tall-grass _ _]     \"
-      [:tree _ _]           \T
-      [:bamboo _ _]         \u2510
-      [:palisade  _ _]      \#
-      [:ramada _ _]         \#
-      [:tarp-shelter _ _]   \#
-      [:lean-to _ _]        \#
-      [:campfire  _ _]      \^
-      [:bamboo-water-collector _ _] \O
-      [:solar-still _ _]         \O
-      [:palm-tree _ _]           \7
-      [:fruit-tree _ _]          \♣ 
-      [:freshwater-hole true _]  \O
-      [:freshwater-hole false _] \~
-      [:saltwater-hole true _]   \O
-      [:saltwater-hole false _]  \~
-      [:dry-hole _ _]            \O
-      ;; pirate ship cell types
-      [:bulkhead _ _]       \◘
-      [:wheel _ _]          \○
-      [:bulkhead2  _ _]     \◘
-      [:wooden-wall _ _]    \#
-      [:railing _ _]        \#
-      [:hammock-v _ _]      \)
-      [:hammock-h _ _]      \-
-      [:deck _ _]           \·
-      [:canon-breach _ _]   \║
-      [:tackle _ _]         \º
-      [:canon _ _]          \║
-      [:grate _ _]          \╬
-      [:table _ _]          \╤
-      [:chair _ _]          \╥
-      [:mast _ _]           \╨
-      [:beam _ _]           \═
-      [:canon-truck-1 _ _]  \▄
-      [:locker _ _]         \▌
-      [:locker2 _ _]        \▐
-      [:canon-truck-2 _ _]  \▀
-      [:ships-wheel _ _]    \Φ
-      [:ladder _ _]         \≡
-      [:porthole _ _]       \°
-      [:chest _ _]          \■
-      [:artifact-chest _ _] \■
-      ;; ruined temple cell types
-      [:vertical-wall _ _]         \║
-      [:horizontal-wall _ _]       \═
-      [:vertical-wall-alt _ _]     \°
-      [:horizontal-wall-alt _ _]   \°
-      [:upper-left-1 _ _]          \╔
-      [:upper-right-1 _ _]         \╗
-      [:bottom-left-1 _ _]         \╚
-      [:bottom-right-1 _ _]        \╝
-      [:upper-left-2 _ _]          \◙
-      [:upper-right-2 _ _]         \◙
-      [:bottom-left-2 _ _]         \◙
-      [:bottom-right-2 _ _]        \◙
-      [:altar _ _]                 \┬
-      [:vine _ _]                  \⌠
-      [:moss-corridor _ _]         \#
-      [:moss-vertical-wall _ _]    \║
-      [:moss-horizontal-wall _ _]  \═
-      [:moss-vertical-wall-alt _ _]   \°
-      [:moss-horizontal-wall-alt _ _] \°
-      [:moss-upper-left-1 _ _]     \╔
-      [:moss-upper-right-1 _ _]    \╗
-      [:moss-bottom-left-1 _ _]    \╚
-      [:moss-bottom-right-1 _ _]   \╝
-      [:moss-upper-left-2 _ _]     \◙
-      [:moss-upper-right-2 _ _]    \◙
-      [:moss-bottom-left-2 _ _]    \◙
-      [:moss-bottom-right-2 _ _]   \◙
-      [:white-corridor  _ _]       \#
-      [:white-vertical-wall   _ _] \║
-      [:white-horizontal-wall _ _] \═
-      [:white-vertical-wall-alt _ _]   \°
-      [:white-horizontal-wall-alt _ _] \°
-      [:white-upper-left-1 _ _]    \╔
-      [:white-upper-right-1 _ _]   \╗
-      [:white-bottom-left-1 _ _]   \╚
-      [:white-bottom-right-1 _ _]  \╝
-      [:white-upper-left-2 _ _]    \◙
-      [:white-upper-right-2 _ _]   \◙
-      [:white-bottom-left-2 _ _]   \◙
-      [:white-bottom-right-2 _ _]  \◙
-      [:empty                _ _]  \space
-      [(:or :crushing-wall-trigger
-            :wall-darts-trigger
-            :poisonous-gas-trigger
-            :spike-pit
-            :snakes-trigger) _ true] \^
-      [(:or :crushing-wall-trigger
-            :wall-darts-trigger
-            :poisonous-gas-trigger
-            :spike-pit
-            :snakes-trigger) _ false] \.
-      [_ _ _] \?)))
+  [{:keys [type water trap-found]
+    :or {water 0}}]
+  {:post [(char? %)]}
+  (or (and (#{:freshwater-hole :saltwater-hole} type) (if (< water 10) \0 \~))
+      (and (trap-type? type) (if trap-found \^ \.))
+      (get cell-type->cp437-character type \?)
+      \?))
+
 
 (defn cell->unicode-character
   [cell]

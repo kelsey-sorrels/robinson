@@ -638,7 +638,7 @@
   (let [{:keys [fx vx vy]} (zc/props this)
         {:keys [pos ch color background-color]} fx
         {:keys [x y]} pos]
-    (log/info "rendering CharacterFX" y vy x vx)
+    ;(log/info "rendering CharacterFX" ch y vy x vx)
     (zc/csx [:text {:style {:position :fixed :top (- y vy) :left (- x vx)
                             :color (or color (rcolor/color->rgb :white))
                             :background-color (or background-color (rcolor/color->rgb :black))}} [(str ch)]])))

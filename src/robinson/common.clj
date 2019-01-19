@@ -116,6 +116,10 @@
       (:down :down-left :down-right) 1
       0)})
 
+(defn direction->path
+  [start-pos direction length]
+  (take length (iterate (fn [pos] (add-pos pos (direction->offset-pos direction))) start-pos)))
+
 (defn fill-missing
   "For each item in coll for which (pred item) returns true, replace that
    element with the result of (f item vcoll-item) where vcoll-item

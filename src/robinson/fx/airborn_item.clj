@@ -98,6 +98,7 @@
                                     (if (get item :rot-time)
                                       (assoc item :rot-time (inc (rw/get-time state)))
                                       (assoc item :count 1)))
+                cleanup
                 (rc/append-log (format "Schwaff! Thump! The dart hits %s." (rdesc/describe-cell-type next-cell)))))
             ; Nothing happened, advance item one step
             (on-move state)))

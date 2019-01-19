@@ -192,13 +192,12 @@
             [x y]             (rc/pos->xy src-pos)
             place-id          (rw/current-place-id state)
             trigger-cell-path [:world :places place-id y x]
-            npc-path          (rnpc/npc->keys state (get obj :npc))]
-        (rfx/conj-fx
+            path              (map rc/pos->xy (rc/direction->path src-pos direction 10))]
+        (rfx/conj-effect
           state 
           :airborn-item
           (assoc (ig/gen-item :blowdart) :attacker src-trap)
-          src-pos
-          (rc/direction->offset-pos direction)
+          path
           5)))))
 
 (defn trigger-poisonous-gas

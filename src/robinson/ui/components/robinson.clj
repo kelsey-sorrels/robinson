@@ -120,11 +120,11 @@
 
 (zc/def-component ItemList
   [this]
-  (let [{:keys [items]} (zc/props this)]
+  (let [{:keys [items style]} (zc/props this)]
     (zc/csx
       [:view {}
           (map (fn [{:keys [fg bg s]}]
-            (zc/csx [:view {:style {:fg fg :bg bg}} [
+            (zc/csx [:view {:style (merge style {:fg fg :bg bg})} [
                       [:text {} [s]]]]))
             items)])))
 
@@ -309,9 +309,8 @@
         children (map (fn [item]
                         (zc/csx [:text {:style {:color (rcolor/color->rgb (if (or (not (disable? item))
                                                                                   (get item :applicable))
-                                                                            :black
-                                                                            :gray))
-                                                :background-color (rcolor/color->rgb :white)}} [
+                                                                            :white
+                                                                            :-light-gray))}} [
                                   [Highlight {} [(hotkey->str (get item :hotkey))]]
                                   [:text {} [(format "%c%s%s %s %s"
                                                (if-let [hotkey (get item :hotkey)]
@@ -336,7 +335,7 @@
                                                  :else
                                                    ""))]]]]))
                       items)]
-    (zc/csx [:view {:style (or style {})} (concat [(zc/csx [:text {:style {:color (rcolor/color->rgb :black)}} [title]])
+    (zc/csx [:view {:style (or style {})} (concat [(zc/csx [:text {:style {:color (rcolor/color->rgb :white)}} [title]])
                                (zc/csx [:text {} [""]])]
                               children)])))
 
@@ -348,23 +347,25 @@
         hotkey               (when selected-recipe-path
                                (last selected-recipe-path))
         recipes              (get (get-recipes game-state) recipe-type)]
-    (log/info hotkey)
     (zc/csx [:view {:style {:width 40
                             :height 10
                             :padding 1
                             :bottom 1
                             :display :flex
                             :flex-direction :row
-                            :align-itmes :stretch
-                            :background-color (rcolor/color->rgb :white)}} [
+                            :align-itmes :stretch}} [
               [:view {:style {:flex 1}} [
-                [MultiSelect {:style {:width 30}
-                              :title " Types"
-                              :selected-hotkeys [hotkey]
-                              :items (map (fn [recipe]
-                                             (log/info (get recipe :hotkey))
-                                             {:name (get recipe :name) :hotkey (get recipe :hotkey)})
-                                          recipes)}]]]
+                (if (seq recipes)
+                  (zc/csx 
+                    [MultiSelect {:style {:width 30}
+                                  :title " Plans"
+                                  :selected-hotkeys [hotkey]
+                                  :items (map (fn [recipe]
+                                                 (log/info (get recipe :hotkey))
+                                                 {:name (get recipe :name) :hotkey (get recipe :hotkey)})
+                                              recipes)}])
+                  (zc/csx [:text {} ["No recipes"]]))
+                [:text {} ["n - create new"]]]]
               [:view {:style {:flex 1}} [
                 ;; render recipe-info
                 (if hotkey
@@ -374,8 +375,9 @@
                         exhaust            (get recipe :exhaust [])
                         have               (get recipe :have-or [])
                         inventory-id-freqs (rp/inventory-id-freqs game-state)]
-                    (log/info "exhaust" exhaust "have" have)
-                    (zc/csx [ItemList {:items
+                    #_(log/info "exhaust" exhaust "have" have)
+                    (zc/csx [ItemList {:style {:width "75%"}
+                                       :items
                                         (concat
                                           [{:s "" :fg :black :bg :white :style #{}}
                                            {:s "Consumes" :fg :black :bg :white :style #{}}]
@@ -397,7 +399,7 @@
                                           (if (empty? have)
                                             [{:s "N/A" :fg :black :bg :white :style #{}}]
                                             (map (fn [id] {:s (id->name id) :fg :black :bg :white :style #{}}) have)))}]))
-                                          [:text {} ["Select a recipe"]])]]]])))
+                  (zc/csx [:text {} ["Select a recipe"]]))]]]])))
  
 (zc/def-component MapInViewport
   [this]
@@ -785,7 +787,7 @@
                            :left 40
                            :top 0
                            :padding 1
-                           :background-color (rcolor/color->rgb :white)}}])))
+                           :background-color (rcolor/color->rgb :black)}}])))
 
 (zc/def-component Abilities
   [this]
@@ -1026,8 +1028,7 @@
 (zc/def-component Craft
   [this]
   (let [{:keys [game-state]} (zc/props this)]
-    (zc/csx [zcui/Popup {:style {:color (rcolor/color->rgb :black)
-                                 :background-color (rcolor/color->rgb :white)}} [
+    (zc/csx [zcui/Popup {} [
                 [MultiSelect {:title "Craft"
                               :items [{:name "Weapons" :hotkey \w}
                                       {:name "Survival" :hotkey \s}
@@ -1037,9 +1038,7 @@
 (zc/def-component CraftWeapon
   [this]
   (let [{:keys [game-state]} (zc/props this)]
-    (zc/csx [zcui/Popup {:style {:margin-top 5
-                                 :color (rcolor/color->rgb :black)
-                                 :background-color (rcolor/color->rgb :white)}} [
+    (zc/csx [zcui/Popup {:style {:margin-top 5}} [
               [:text {:style {:bottom 1}} ["| Craft Weapon |"]]
               [CraftSubmenu {:game-state game-state :recipe-type :weapons}]]])))
 
@@ -1047,18 +1046,14 @@
   [this]
   (let [{:keys [game-state]} (zc/props this)]
     (zc/csx [zcui/Popup {:style {:margin-top 5
-                                 :height 17
-                                 :color (rcolor/color->rgb :black)
-                                 :background-color (rcolor/color->rgb :white)}} [
+                                 :height 17}} [
               [:text {:style {:bottom 1}} ["| Craft Survival |"]]
     (zc/csx [CraftSubmenu {:game-state game-state :recipe-type :survival}])]])))
 
 (zc/def-component CraftShelter
   [this]
   (let [{:keys [game-state]} (zc/props this)]
-    (zc/csx [zcui/Popup {:style {:margin-top 5
-                                 :color (rcolor/color->rgb :black)
-                                 :background-color (rcolor/color->rgb :white)}} [
+    (zc/csx [zcui/Popup {:style {:margin-top 5}} [
               [:text {:style {:bottom 1}} ["| Craft Shelter |"]]
     (zc/csx [CraftSubmenu {:game-state game-state :recipe-type :shelter}])]])))
 
@@ -1066,11 +1061,19 @@
   [this]
   (let [{:keys [game-state]} (zc/props this)]
     (zc/csx [zcui/Popup {:style {:margin-top 5
-                                 :height 15
-                                 :color (rcolor/color->rgb :black)
-                                 :background-color (rcolor/color->rgb :white)}} [
+                                 :height 15}} [
               [:text {:style {:bottom 1}} ["| Craft Transportation |"]]
     (zc/csx [CraftSubmenu {:game-state game-state :recipe-type :transportation}])]])))
+
+(zc/def-component CraftInProgressRecipe
+  [this]
+  (let [{:keys [game-state]} (zc/props this)
+        recipe-type (get-in game-state [:world :in-progress-recipe-type])
+        recipe-graph (get-in game-state [:world :in-progress-recipes recipe-type])]
+    (zc/csx [zcui/Popup {:style {:margin-top 5
+                                 :height 15}} [
+              [:text {:style {:bottom 1}} ["| Craft Recipe |"]]
+              (zc/csx [:img {:width 80 :height 23} (get recipe-graph :img)])]])))
 
 (zc/def-component Wield
   [this]
@@ -1218,6 +1221,7 @@
       :craft-survival       (zc/csx [CraftSurvival {:game-state game-state}])
       :craft-shelter        (zc/csx [CraftShelter {:game-state game-state}])
       :craft-transportation (zc/csx [CraftTransportation {:game-state game-state}])
+      :in-progress-recipe   (zc/csx [CraftInProgressRecipe {:game-state game-state}])
       :wield                (zc/csx [Wield {:game-state game-state}])
       :wield-ranged         (zc/csx [WieldRanged {:game-state game-state}])
       :start-text           (zc/csx [StartText {:game-state game-state}])

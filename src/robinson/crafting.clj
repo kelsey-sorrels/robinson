@@ -101,7 +101,7 @@
                                         (assoc recipe :applicable true)
                                         recipe))
                          group)])
-      recipes)))
+      (get-in state [:world :player :recipes]))))
 
 (defn- exhaust-by-ids
   [state ids]

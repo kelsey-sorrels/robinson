@@ -1,4 +1,4 @@
-(defproject robinson "0.3.0"
+(defproject robinson "0.4.0-SNAPSHOT"
   :description "robinson"
   :plugins      [[lein-autoreload "0.1.0"]
                  [lein-bikeshed "0.1.8"]
@@ -41,7 +41,14 @@
                  [com.taoensso/timbre "4.10.0"]
                  [clojure-watch "0.1.14"]
                  [overtone/at-at "1.2.0"]
-                 [rm-hull/monet "0.2.2"]]
+                 [rm-hull/monet "0.2.2"]
+                 [datascript "0.17.1"]
+                 [net.mikera/core.matrix "0.62.0"]
+                 [net.mikera/vectorz-clj "0.48.0"]
+                 [clatrix "0.5.0"]
+                 [aysylu/loom "1.0.2"]
+                 [incanter "1.9.3"]]
+
   :main robinson.autoreloadcore
   :manifest {"SplashScreen-Image" "icon.png"}
   :repl-init robinson.core

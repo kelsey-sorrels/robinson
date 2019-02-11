@@ -25,6 +25,7 @@
             [robinson.npc :as rnpc]
             [robinson.combat :as rcombat]
             [robinson.crafting :as rcraft]
+            [robinson.crafting.recipe-gen :as rrecipe-gen]
             [robinson.worldgen :as rworldgen]
             [robinson.lineofsight :as rlos]
             [robinson.renderutil :as rutil]
@@ -2004,6 +2005,32 @@
             (rnpc/transfer-items-from-player-to-npc (get npc :id) (partial = item))))
         state)))
 
+(defn craft-new-recipe
+  "Start creating a new a crafting recipe."
+  [state]
+  (let [recipe-type      (case (rw/current-state state)
+                           :craft-weapon :weapons
+                           :craft-trap :traps
+                           :craft-food :food)
+        current-recipe (get-in state [:world :in-progress-recipes recipe-type])]
+    (if (and false current-recipe)
+      state
+      (let [_ (log/info "Generating recipe")
+            recipe-graph (rrecipe-gen/gen-crafting-graph)
+            new-state
+        (-> state
+          (assoc-in [:world :in-progress-recipes recipe-type] recipe-graph)
+          (assoc-in [:world :in-progress-recipe-type] recipe-type))]
+        (log/info "done with in-progress-recipes")
+        new-state))))
+
+(defn craft-in-progress-recipe
+  "Take a step in crafting a recipe."
+  [state keyin]
+  (let [recipe-type (get-in state [:world :in-progress-recipe-type])
+        recipe (get-in state [:world :in-progress-recipe])]
+    state))
+
 (defn craft-select-recipe
   "Selects a craft recipe."
   [state keyin]
@@ -3590,7 +3617,11 @@
                :craft-weapon
                           {:escape     [identity               :craft           false]
                            :enter      [craft                  :normal          true]
+                           \n          [craft-new-recipe       :in-progress-recipe false]
                            :else       [craft-select-recipe    rw/current-state false]}
+               :in-progress-recipe
+                          {:escape     [identity               :craft           false]
+                           :else       [craft-in-progress-recipe rw/current-state false]}
                :craft-survival
                           {:escape     [identity               :craft           false]
                            :enter      [craft                  :normal          true]

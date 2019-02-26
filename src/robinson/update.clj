@@ -26,6 +26,7 @@
             [robinson.combat :as rcombat]
             [robinson.crafting :as rcraft]
             [robinson.crafting.recipe-gen :as rrecipe-gen]
+            [robinson.crafting.weapon-gen :as rc-weapon-gen]
             [robinson.worldgen :as rworldgen]
             [robinson.lineofsight :as rlos]
             [robinson.renderutil :as rutil]
@@ -2016,11 +2017,16 @@
     (if (and false current-recipe)
       state
       (let [_ (log/info "Generating recipe")
-            recipe-graph (rrecipe-gen/gen-crafting-graph)
+            recipe (rrecipe-gen/gen-crafting-graph)
+            recipe-init (case recipe-type
+                     :weapons rc-weapon-gen/init
+                     #_#_:traps rc-weapon-gen/init
+                     #_#_:food rc-weapon-gen/init)
             new-state
         (-> state
-          (assoc-in [:world :in-progress-recipes recipe-type] recipe-graph)
-          (assoc-in [:world :in-progress-recipe-type] recipe-type))]
+          (assoc-in [:world :in-progress-recipes recipe-type] recipe)
+          (assoc-in [:world :in-progress-recipe-type] recipe-type)
+          (recipe-init recipe))]
         (log/info "done with in-progress-recipes")
         new-state))))
 
@@ -2029,7 +2035,7 @@
   [state keyin]
   (let [recipe-type (get-in state [:world :in-progress-recipe-type])
         recipe (get-in state [:world :in-progress-recipe])]
-    state))
+    (rc-weapon-gen/update state keyin)))
 
 (defn craft-select-recipe
   "Selects a craft recipe."

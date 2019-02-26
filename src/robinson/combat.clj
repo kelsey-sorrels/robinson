@@ -18,6 +18,10 @@
             [clojure.pprint :refer [pprint]])
    (:import robinson.dynamiccharacterproperties.DynamicCharacterProperties))
 
+(def attack-mods {
+
+})
+
 (defn sharp-weapon?
   [attack]
   (contains? #{:spear :axe :knife :cutlass :ritual-knife :ancient-spear} attack))
@@ -223,25 +227,28 @@
 
 (defmethod is-hit? :melee
   [state attacker defender attack-type]
-  (let [attacker-speed   (dcp/get-speed attacker state)
-        defender-speed   (dcp/get-speed defender state)
-        target-value     (/ 1 (inc (rmath/exp (/ (- defender-speed attacker-speed) 4))))]
+  (let [attacker-stat   (dcp/get-attack-strength attacker state)
+        defender-stat   (+ (dcp/get-attack-dexterity defender state)
+                            (dcp/get-attack-toughness defender state))
+        target-value     (/ 1 (inc (rmath/exp (/ (- defender-stat attacker-stat) 4))))]
     (log/info "hit target value"  target-value)
     (> (rr/uniform-double 0.2 1.0) target-value)))
 
 (defmethod is-hit? :ranged
   [state attacker defender attack-type]
-  (let [attacker-speed   (dcp/get-speed attacker state)
-        defender-speed   (dcp/get-speed defender state)
-        target-value     (/ 1 (inc (rmath/exp (/ (- defender-speed attacker-speed) 4))))]
+  (let [attacker-stat   (dcp/get-attack-dexterity attacker state)
+        defender-stat   (+ (dcp/get-attack-dexterity defender state)
+                            (dcp/get-attack-toughness defender state))
+        target-value     (/ 1 (inc (rmath/exp (/ (- defender-stat attacker-stat) 4))))]
     (log/info "hit target value"  target-value)
     (> (rr/uniform-double 0.2 1.0) target-value)))
 
 (defmethod is-hit? :thrown-item
   [state attacker defender attack-type]
-  (let [attacker-speed   (dcp/get-speed attacker state)
-        defender-speed   (dcp/get-speed defender state)
-        target-value     (/ 1 (inc (rmath/exp (/ (- defender-speed attacker-speed) 4))))]
+  (let [attacker-stat   (dcp/get-attack-dexterity attacker state)
+        defender-stat   (+ (dcp/get-attack-dexterity defender state)
+                            (dcp/get-attack-toughness defender state))
+        target-value     (/ 1 (inc (rmath/exp (/ (- defender-stat attacker-stat) 4))))]
     (log/info "hit target value"  target-value)
     (> (rr/uniform-double 0.2 1.0) target-value)))
 
@@ -252,13 +259,13 @@
   #_(log/info "Attacker" attacker "attacker-type" (type attacker) "Defender" defender "defender-type" (type defender))
   (log/info "attacker" (get attacker :race :human) "defender" (get defender :race :human))
   ;;Damage = Astr * (Adex / Dsp) * (As / Ds) * (At / Dt)
-  (let [attacker-strength  (dcp/get-strength attacker state)
-        attacker-dexterity (dcp/get-dexterity attacker state)
-        defender-speed     (dcp/get-speed defender state)
+  (let [attacker-strength  (dcp/get-attack-strength attacker state)
+        attacker-dexterity (dcp/get-attack-dexterity attacker state)
+        defender-speed     (dcp/get-attack-speed defender state)
         attacker-size      (dcp/get-size attacker state)
         defender-size      (dcp/get-size defender state)
         attack-toughness   (attack->toughness attack)
-        defender-toughness (dcp/get-toughness defender state)]
+        defender-toughness (dcp/get-attack-toughness defender state)]
     (* attacker-strength
        (/ (+ 5 (rr/uniform-double (* 10 attacker-dexterity))) (+ 15 defender-speed))
        (/ (+ 125 attacker-size) (+ 125 defender-size))
@@ -269,15 +276,15 @@
   #_(log/info "Attacker" attacker "attacker-type" (type attacker) "Defender" defender "defender-type" (type defender))
   (log/info "attacker" (get attacker :race :human) "defender" (get defender :race :human))
   ;;Damage = Astr * (Adex / Dsp) * (As / Ds) * (At / Dt)
-  (let [attacker-strength  (dcp/get-strength attacker state)
-        attacker-dexterity (dcp/get-dexterity attacker state)
+  (let [attacker-strength  (dcp/get-attack-strength attacker state)
+        attacker-dexterity (dcp/get-attack-dexterity attacker state)
         defender-speed     (dcp/get-speed defender state)
         attacker-size      (dcp/get-size attacker state)
         defender-size      (dcp/get-size defender state)
         attack-toughness   (attack->toughness (if (= attack-type :thrown-item)
                                                 :thrown-item
                                                 (get attack :id)))
-        defender-toughness (dcp/get-toughness defender state)]
+        defender-toughness (dcp/get-attack-toughness defender state)]
     (* attacker-dexterity
        (/ (+ 5 (rr/uniform-double (* 10 attacker-dexterity))) (+ 15 defender-speed))
        (/ (+ 125 attacker-size attacker-strength) (+ 125 defender-size))

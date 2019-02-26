@@ -47,6 +47,37 @@
        0.1
        0)))
 
+(defn player-attack-speed
+  [state]
+  (+ (get-player-attribute state :speed)
+     (if (buff-active? state :speed)
+       0.1
+       0)))
+
+(defn player-attack-strength
+  [state]
+  (+ (get-player-attribute state :strength)
+     (if (buff-active? state :strength)
+       0.1
+       0)))
+
+(defn player-attack-dexterity
+  [state]
+  (+ (get-player-attribute state :dexterity)
+     (if (buff-active? state :dexterity)
+       0.1
+       0)))
+
+(declare worn-item)
+(defn player-attack-toughness
+  [state]
+  (+ (get-player-attribute state :toughness)
+     (if (buff-active? state :toughness)
+       0.1
+       0)
+      (or (get (worn-item state) :toughness)
+          0)))
+
 (defn player-speed
   [state]
   (+ (get-player-attribute state :speed)
@@ -54,7 +85,6 @@
        0.1
        0)))
 
-(declare worn-item)
 (defn player-toughness
   [state]
   (+ (get-player-attribute state :toughness)
@@ -109,6 +139,8 @@
     (get this :energy))
   (get-speed [this state]
     (player-speed state))
+  (get-attack-speed [this state]
+    (player-attack-speed state))
   (get-size [this state]
     (get this :size))
   (get-strength [this state]
@@ -116,7 +148,13 @@
   (get-dexterity [this state]
     (player-dexterity state))
   (get-toughness [this state]
-    (player-toughness state)))
+    (player-toughness state))
+  (get-attack-strength [this state]
+    (player-attack-strength state))
+  (get-attack-dexterity [this state]
+    (player-attack-dexterity state))
+  (get-attack-toughness [this state]
+    (player-attack-toughness state)))
 
 (defn gen-player
   [inventory starting-pos]

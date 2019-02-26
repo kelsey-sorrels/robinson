@@ -59,6 +59,10 @@
 (defmulti do-get-strength dispatch-on-npc-race)
 (defmulti do-get-dexterity dispatch-on-npc-race)
 (defmulti do-get-toughness dispatch-on-npc-race)
+(defmulti do-get-attack-speed dispatch-on-npc-race)
+(defmulti do-get-attack-strength dispatch-on-npc-race)
+(defmulti do-get-attack-dexterity dispatch-on-npc-race)
+(defmulti do-get-attack-toughness dispatch-on-npc-race)
 
 ;; default methods for CharacterEvents
 (defmethod do-on-successful-attack :default [_ state] state)
@@ -74,6 +78,10 @@
 (defmethod do-get-strength :default [npc _] (get npc :strength))
 (defmethod do-get-dexterity :default [npc _] (get npc :dexterity 1))
 (defmethod do-get-toughness :default [npc _] (get npc :toughness))
+(defmethod do-get-attack-speed :default [npc _] (get npc :strength))
+(defmethod do-get-attack-strength :default [npc _] (get npc :strength))
+(defmethod do-get-attack-dexterity :default [npc _] (get npc :dexterity 1))
+(defmethod do-get-attack-toughness :default [npc _] (get npc :toughness))
 
 
 ;; Monster protocol
@@ -121,7 +129,15 @@
   (get-dexterity [this state]
     (do-get-dexterity this state))
   (get-toughness [this state]
-    (do-get-toughness this state)))
+    (do-get-toughness this state))
+  (get-attack-speed [this state]
+    (do-get-attack-speed this state))
+  (get-attack-strength [this state]
+    (do-get-attack-strength this state))
+  (get-attack-dexterity [this state]
+    (do-get-attack-dexterity this state))
+  (get-attack-toughness [this state]
+    (do-get-attack-toughness this state)))
 
 (def ^:private monsters
   [

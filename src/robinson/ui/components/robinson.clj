@@ -10,6 +10,7 @@
             [robinson.startgame :as sg]
             [robinson.popover :as rpop]
             [robinson.itemgen :as ig]
+            [robinson.crafting.recipe-gen :as rrecipe-gen]
             [robinson.common :as rc :refer [farther-than?
                                             wrap-line
                                             fill-missing
@@ -45,12 +46,15 @@
             [robinson.traps :as rt]
             [robinson.ui.cell :as ruc]
             [robinson.ui.updater :as ruu]
+            [robinson.ui.components.common :as ruicommon]
+            [robinson.ui.components.crafting :as ruicrafting]
             [zaffre.terminal :as zat]
             [zaffre.color :as zcolor]
             [zaffre.components :as zc]
             [zaffre.components.ui :as zcui]
             [zaffre.util :as zutil]
             [tinter.core :as tinter]
+            [loom.graph :as lg]
             clojure.set
             [clojure.core.async :as async :refer [go-loop]]
             [clojure.core.match :refer [match]]
@@ -105,13 +109,6 @@
   (contains? #{:inventory :describe-inventory :pickup-selection :drop :eat} (get-in state [:world :current-state])))
 
 (binding [zc/*updater* ruu/updater]
-(zc/def-component Highlight
-  [this]
-  (let [{:keys [children]} (zc/props this)]
-    (zc/csx
-      [:text {:style {:color [229 155 8 255]}} children])))
-
-
 (zc/def-component ActionPrompt
   [this]
   (let [{:keys [children]} (zc/props this)]
@@ -133,7 +130,7 @@
   (let [{:keys [hotkey selected text]} (zc/props this)]
     (zc/csx
       [:text {} [
-        [Highlight {} [(str hotkey " ")]]
+        [ruicommon/Highlight {} [(str hotkey " ")]]
         [:text {} [(format "%s %s"
                      (if selected
                        "+"
@@ -159,7 +156,7 @@
                                                                ""))}]))
                           items)]
               [:text {:style {:top 5 :left 10}} [
-                [Highlight {} ["enter "]]
+                [ruicommon/Highlight {} ["enter "]]
                 [:text {} ["to continue"]]]]]])))
 
 (zc/def-component Atmo
@@ -292,54 +289,6 @@
                                  (not (nil? (get-in state [:world  :quests (quest :id) :stage] nil))))
                                (:quests state))))
 
-(defn hotkey->str [hotkey]
-  (cond 
-    (= hotkey \space)
-      "space"
-    :default
-      (str hotkey)))
-
-(zc/def-component MultiSelect
-  [this]
-  (let [{:keys [style]} (zc/props this)
-        default-props {:selected-hotkeys []
-                       :items []
-                       :disable? (fn [_] false)}
-        {:keys [title selected-hotkeys items disable?]} (merge default-props (zc/props this))
-        children (map (fn [item]
-                        (zc/csx [:text {:style {:color (rcolor/color->rgb (if (or (not (disable? item))
-                                                                                  (get item :applicable))
-                                                                            :white
-                                                                            :-light-gray))}} [
-                                  [Highlight {} [(hotkey->str (get item :hotkey))]]
-                                  [:text {} [(format "%c%s%s %s %s"
-                                               (if-let [hotkey (get item :hotkey)]
-                                                 (if (contains? (set selected-hotkeys) hotkey)
-                                                   \+
-                                                   \-)
-                                                 \space)
-                                               (if (contains? item :count)
-                                                 (format "%dx " (int (get item :count)))
-                                                 "")
-                                               (get item :name)
-                                               (if (contains? item :utility)
-                                                 (format "(%d%%)" (int (get item :utility)))
-                                                 "")
-                                               (cond
-                                                 (contains? item :wielded)
-                                                   "(wielded)"
-                                                 (contains? item :wielded-ranged)
-                                                   "(wielded ranged)"
-                                                 (contains? item :worn)
-                                                   "(worn)"
-                                                 :else
-                                                   ""))]]]]))
-                      items)]
-    (zc/csx [:view {:style (or style {})} (concat [(zc/csx [:text {:style {:color (rcolor/color->rgb :white)}} [title]])
-                               (zc/csx [:text {} [""]])]
-                              children)])))
-
-
 (zc/def-component CraftSubmenu
   [this]
   (let [{:keys [game-state recipe-type]} (zc/props this)
@@ -357,7 +306,7 @@
               [:view {:style {:flex 1}} [
                 (if (seq recipes)
                   (zc/csx 
-                    [MultiSelect {:style {:width 30}
+                    [ruicommon/MultiSelect {:style {:width 30}
                                   :title " Plans"
                                   :selected-hotkeys [hotkey]
                                   :items (map (fn [recipe]
@@ -410,6 +359,7 @@
                               (ruc/render-cell cell x y current-time font-type))
                               line))
                           cells)])))
+
 (defn npc->cp437-character [npc]
   (case (get npc :race)
     :rat             \r
@@ -732,15 +682,15 @@
 (zc/def-component Cursor
   [this]
   (let [{:keys [pos]} (zc/props this)
-        [x y] (rc/pos->xy pos)
-        [color background-color]   (if (< (mod (/ (System/currentTimeMillis) 300) 2) 1)
-                                     [[0 0 0 0] [0 0 0 0]]
-                                     [(rcolor/color->rgb :highlight 255)
-                                      (rcolor/color->rgb :black 255)])]
-    (zc/csx [:view {} [
-              [:text {:style {:position :fixed :top y :left x
-                              :color color
-                              :background-color background-color}} ["\u2592"]]]])))
+        [x y] (rc/pos->xy pos)]
+    (if (< (mod (/ (System/currentTimeMillis) 300) 2) 1)
+      (let [color (rcolor/color->rgb :highlight 255)
+            background-color (rcolor/color->rgb :black 255)]
+        (zc/csx [:view {} [
+                  [:text {:style {:position :fixed :top y :left x
+                                  :color color
+                                  :background-color background-color}} ["\u2592"]]]]))
+      (zc/csx [:view {}]))))
 
 ; Render the pickup item menu if the world state is `:pickup-selection`.
 (zc/def-component PickupSelection
@@ -765,20 +715,20 @@
                            :display :flex
                            :flex-direction :column
                            :background-color (rcolor/color->rgb :white)}} [
-            [MultiSelect {:title "Pick up"
+            [ruicommon/MultiSelect {:title "Pick up"
                           :selected-hotkeys selected-hotkeys
                           :items (concat (translate-identified-items game-state items)
                                          [{:name "All" :hotkey \space}])
                           :style {:min-height "100%" :flex 1}}]
             [:text {:style {:color (rcolor/color->rgb :black) :top -2}} [
-              [Highlight {} ["Enter "]]
+              [ruicommon/Highlight {} ["Enter "]]
               [:text {} ["to pick up."]]]]]])))
 
 (zc/def-component Inventory
   [this]
   (let [{:keys [game-state]} (zc/props this)
         player-items (-> game-state :world :player :inventory)]
-   (zc/csx [MultiSelect {:title "Inventory"
+   (zc/csx [ruicommon/MultiSelect {:title "Inventory"
                          :items (translate-identified-items game-state player-items)
                          :style {
                            :width 40
@@ -805,7 +755,7 @@
             (if (seq abilities)
               (zc/csx [zcui/Popup {} [
                         [:view {} [
-                          [MultiSelect {:title "Abilities"
+                          [ruicommon/MultiSelect {:title "Abilities"
                                         :items abilities}]]]]])
               (zc/csx [zcui/Popup {} [
                 [:view {} [
@@ -813,7 +763,7 @@
                   [:text {} [""]]
                   [:text {} [
                     [:text {} ["Press "]]
-                    [Highlight {} ["Esc "]]
+                    [ruicommon/Highlight {} ["Esc "]]
                     [:text {} ["to exit."]]]]]]]]))]])))
 
 ; Render the player character stats  menu if the world state is `:player-stats`.
@@ -843,7 +793,7 @@
         [:text {} [""]]
         [:text {} [
           [:text {} ["Press "]]
-          [Highlight {} ["Esc "]]
+          [ruicommon/Highlight {} ["Esc "]]
           [:text {} ["to exit."]]]]]])))
 
 (zc/def-component AbilityChoices
@@ -853,7 +803,7 @@
     (zc/csx [zcui/Popup {:style {:top -5
                                  :color (rcolor/color->rgb :black)
                                  :background-color (rcolor/color->rgb :white)}} [
-                [MultiSelect {:title "Choose A New Ability"
+                [ruicommon/MultiSelect {:title "Choose A New Ability"
                               :items
                                 (concat
                                   (mapcat
@@ -875,7 +825,7 @@
                                  :color (rcolor/color->rgb :black)
                                  :background-color (rcolor/color->rgb :white)}} [
                 (if (seq abilities)
-                  (zc/csx [MultiSelect {:title "Choose Action"
+                  (zc/csx [ruicommon/MultiSelect {:title "Choose Action"
                                         :items
                                           (concat
                                             (mapcat
@@ -893,7 +843,7 @@
                     [:text {} [""]]
                     [:text {} [
                       [:text {} ["Press "]]
-                      [Highlight {} ["Esc "]]
+                      [ruicommon/Highlight {} ["Esc "]]
                       [:text {} ["to exit."]]]]]]))]])))
 
 (zc/def-component Describe
@@ -931,7 +881,7 @@
                             :top 0
                             :padding 1
                             :background-color (rcolor/color->rgb :white)}} [
-             [MultiSelect {:title "Apply Inventory"
+             [ruicommon/MultiSelect {:title "Apply Inventory"
                            :items (translate-identified-items game-state player-items)}]]])))
 
 (zc/def-component ApplyTo
@@ -945,7 +895,7 @@
                             :top 0
                             :padding 1
                             :background-color (rcolor/color->rgb :white)}} [
-             [MultiSelect {:title "Apply To"
+             [ruicommon/MultiSelect {:title "Apply To"
                            :items (translate-identified-items game-state player-items)}]]])))
 
 
@@ -959,7 +909,7 @@
                             :top 0
                             :padding 1
                             :background-color (rcolor/color->rgb :white)}} [
-             [MultiSelect {:title "Quaff"
+             [ruicommon/MultiSelect {:title "Quaff"
                            :items (translate-identified-items game-state (filter ig/is-quaffable?
                                                                            (-> game-state :world :player :inventory)))}]]])))
 
@@ -974,7 +924,7 @@
                             :top 0
                             :padding 1
                             :background-color (rcolor/color->rgb :white)}} [
-             [MultiSelect {:title "Drop Inventory"
+             [ruicommon/MultiSelect {:title "Drop Inventory"
                            :items (translate-identified-items game-state player-items)}]]])))
 
 (zc/def-component DescribeInventory
@@ -988,7 +938,7 @@
                             :top 0
                             :padding 1
                             :background-color (rcolor/color->rgb :white)}} [
-             [MultiSelect {:title "Describe"
+             [ruicommon/MultiSelect {:title "Describe"
                            :items (translate-identified-items game-state player-items)}]]])))
 
 (zc/def-component ThrowInventory
@@ -1003,7 +953,7 @@
                             :top 0
                             :padding 1
                             :background-color (rcolor/color->rgb :white)}} [
-             [MultiSelect {:title "Throw"
+             [ruicommon/MultiSelect {:title "Throw"
                            :items (translate-identified-items game-state player-items)}]]]))))
 
 (zc/def-component Eat
@@ -1016,7 +966,7 @@
                             :top 0
                             :padding 1
                             :background-color (rcolor/color->rgb :white)}} [
-             [MultiSelect {:title "Eat Inventory"
+             [ruicommon/MultiSelect {:title "Eat Inventory"
                            :items (filter #(contains? % :hunger)
                                          (inventory-and-player-cell-items game-state))}]]])))
 
@@ -1029,7 +979,7 @@
   [this]
   (let [{:keys [game-state]} (zc/props this)]
     (zc/csx [zcui/Popup {} [
-                [MultiSelect {:title "Craft"
+                [ruicommon/MultiSelect {:title "Craft"
                               :items [{:name "Weapons" :hotkey \w}
                                       {:name "Survival" :hotkey \s}
                                       {:name "Shelter" :hotkey \c}
@@ -1065,15 +1015,36 @@
               [:text {:style {:bottom 1}} ["| Craft Transportation |"]]
     (zc/csx [CraftSubmenu {:game-state game-state :recipe-type :transportation}])]])))
 
+(zc/def-component SelectRecipeNode
+  [this]
+  (let [{:keys [recipe]} (zc/props this)
+        n (get recipe :current-node)
+        layers (get recipe :layers)
+        x (rrecipe-gen/node-x layers n)
+        y (rrecipe-gen/node-y layers n)]
+    (zc/csx [Cursor {:pos {:x (- x 39) :y (- y 13)}}])))
+
 (zc/def-component CraftInProgressRecipe
   [this]
   (let [{:keys [game-state]} (zc/props this)
         recipe-type (get-in game-state [:world :in-progress-recipe-type])
-        recipe-graph (get-in game-state [:world :in-progress-recipes recipe-type])]
-    (zc/csx [zcui/Popup {:style {:margin-top 5
-                                 :height 15}} [
+        recipe (get-in game-state [:world :in-progress-recipes recipe-type])]
+    (zc/csx [zcui/Popup {:style {:margin-top 3
+                                 :height 16}} [
               [:text {:style {:bottom 1}} ["| Craft Recipe |"]]
-              (zc/csx [:img {:width 80 :height 23} (get recipe-graph :img)])]])))
+              [:view {:style {:width 50 :display :flex
+                              :justify-content :center
+                              :flex-direction :row
+                              #_#_:align-items :flex-start}} [
+                [:view {:style {:width 9 :height 13
+                                :margin-left 1
+                                #_#_:left 1
+                                #_#_:top 0}} [
+                  (zc/csx [:img {:width 9 :height 13} (get recipe :img)])
+                  [SelectRecipeNode {:recipe recipe}]]]
+                [ruicrafting/RecipeChoice {:recipe recipe}]
+                [ruicrafting/RecipeTotal {:recipe recipe}]]]]])))
+                            
 
 (zc/def-component Wield
   [this]
@@ -1086,7 +1057,7 @@
                            :top 0
                            :padding 1
                            :background-color (rcolor/color->rgb :white)}} [
-            [MultiSelect {:title "Wield"
+            [ruicommon/MultiSelect {:title "Wield"
                           :items (translate-identified-items game-state player-items)}]]])))
 
 (zc/def-component WieldRanged
@@ -1100,7 +1071,7 @@
                            :top 0
                            :padding 1
                            :background-color (rcolor/color->rgb :white)}} [
-            [MultiSelect {:title "Wield"
+            [ruicommon/MultiSelect {:title "Wield"
                           :items (translate-identified-items game-state player-items)}]]])))
 
 (zc/def-component StartText
@@ -1118,9 +1089,9 @@
                 [:text {:style {:width 40}} [(str start-text)]]
                 [:text {:style {:top 10}} [
                   [:text {} ["Press "]]
-                  [Highlight {} ["any key "]]
+                  [ruicommon/Highlight {} ["any key "]]
                   [:text {} ["to continue and "]]
-                  [Highlight {} ["? "]]
+                  [ruicommon/Highlight {} ["? "]]
                   [:text {} ["to view help."]]]]]]]]]]]]]])))
 
 (zc/def-component ContinuePopover
@@ -1130,7 +1101,7 @@
               [:text {} [message]]
               [:text {} [
                 [:text {} ["Press "]]
-                [Highlight {} ["space "]]
+                [ruicommon/Highlight {} ["space "]]
                 [:text {} ["to continue."]]]]]])))
 
 (zc/def-component YesNoPopover
@@ -1140,9 +1111,9 @@
               [:text {} [message]]
               [:text {} [
                 [:text {} ["["]]
-                [Highlight {} ["y"]]
+                [ruicommon/Highlight {} ["y"]]
                 [:text {} ["/"]]
-                [Highlight {} ["n"]]
+                [ruicommon/Highlight {} ["n"]]
                 [:text {} ["]"]]]]]])))
 
 (zc/def-component RescuedPopover
@@ -1175,7 +1146,7 @@
                   [:text {} [""]]
                   [:text {} [
                     [:text {} ["Press "]]
-                    [Highlight {} ["space "]]
+                    [ruicommon/Highlight {} ["space "]]
                     [:text {} ["to continue."]]]]]])))
 
 (zc/def-component QuitPrompt
@@ -1184,9 +1155,9 @@
     (zc/csx [zcui/Popup {} [
               [:text {} [
                 [:text {} ["Quit? ["]]
-                [Highlight {} ["y"]]
+                [ruicommon/Highlight {} ["y"]]
                 [:text {} ["/"]]
-                [Highlight {} ["n"]]
+                [ruicommon/Highlight {} ["n"]]
                 [:text {} ["]"]]]]]])))
 
 (zc/def-component Harvest
@@ -1265,7 +1236,7 @@
           [:text {:style {:position :fixed :top 0 :left 0}} [
             (if msg-above?
               (zc/csx [:text {} [
-                        [Highlight {} ["/"]]
+                        [ruicommon/Highlight {} ["/"]]
                         [:text {} ["-"]]
                         [:text {:style {:color up-arrow-color
                                         :background-color (zcolor/with-alpha (rcolor/color->rgb :black) 242)}}
@@ -1273,7 +1244,7 @@
               (zc/csx [:text {} ["   "]]))
             (if msg-below?
               (zc/csx [:text {} [
-                        [Highlight {} ["*"]]
+                        [ruicommon/Highlight {} ["*"]]
                         [:text {} ["-"]]
                         [:text {:style {:color down-arrow-color
                                         :background-color (zcolor/with-alpha (rcolor/color->rgb :black) 242)}}
@@ -1472,11 +1443,11 @@
                               :left 30}} [
                 [:text {} [
                   [:text {} ["Press "]]
-                  [Highlight {}  ["space "]]
+                  [ruicommon/Highlight {}  ["space "]]
                   [:text {} ["to play"]]]]
                 [:text {} [""]]
-                [:text {} [[Highlight {} ["c"]] [:text  {} [" - configure"]]]]
-                [:text {} [[Highlight {} ["q"]] [:text  {} [" - quit"]]]]]]]]]]]]))
+                [:text {} [[ruicommon/Highlight {} ["c"]] [:text  {} [" - configure"]]]]
+                [:text {} [[ruicommon/Highlight {} ["q"]] [:text  {} [" - quit"]]]]]]]]]]]]))
 
 (zc/def-component Configure
   [this]
@@ -1490,10 +1461,10 @@
 							:left 35}} [
 			  [:text {} ["Configure"]]
 			  [:text {} [
-                [Highlight {} ["f "]]
+                [ruicommon/Highlight {} ["f "]]
                 [:text {} ["- font"]]]]
 			  [:text {} [
-                [Highlight {} ["Esc "]]
+                [ruicommon/Highlight {} ["Esc "]]
                 [:text {} ["- back"]]]]]]]]]]]])))
 
 (zc/def-component ConfigureFont
@@ -1512,19 +1483,19 @@
 			  [:text {} [(str "Font: " (get font :name))]]
               [:text {} [""]]
 			  [:text {} [
-                [Highlight {} ["n "]]
+                [ruicommon/Highlight {} ["n "]]
                 [:text {} ["- next font"]]]]
 			  [:text {} [
-                [Highlight {} ["p "]]
+                [ruicommon/Highlight {} ["p "]]
                 [:text {} ["- previous font"]]]]
 			  [:text {} [
-                [Highlight {} ["s "]]
+                [ruicommon/Highlight {} ["s "]]
                 [:text {} ["- save and apply"]]]]
 			  [:text {} [
-                [Highlight {} ["c "]]
+                [ruicommon/Highlight {} ["c "]]
                 [:text {} ["- create new font"]]]]
 			  [:text {} [
-                [Highlight {} ["Esc "]]
+                [ruicommon/Highlight {} ["Esc "]]
                 [:text {} ["- back"]]]]]]]]]]]])))
 
 (zc/def-component CreateFont
@@ -1557,9 +1528,9 @@
               [:text {} [""]]
 			  [:text {} [
                 [:text {} [(str "Size Multiplier: " create-font-size " (")]]
-                [Highlight {} ["+"]]
+                [ruicommon/Highlight {} ["+"]]
                 [:text {} ["/"]]
-                [Highlight {} ["-"]]
+                [ruicommon/Highlight {} ["-"]]
                 [:text {} [")"]]]]
               [:text {} [""]]
 			  [:text {} [(str "Path: " create-font-path)]]
@@ -1573,14 +1544,14 @@
                               :width 21
                               :height 8
                               :padding-left 1
-                              :padding-top 2}} [[Highlight {} ["Drag Tileset Here"]]]]
+                              :padding-top 2}} [[ruicommon/Highlight {} ["Drag Tileset Here"]]]]
               [:text {} [""]]
               [:view {:style {:margin-left 5}} [
 			  [:text {} [
-                [Highlight {} ["Enter "]]
+                [ruicommon/Highlight {} ["Enter "]]
                 [:text {} ["- save"]]]]
 			  [:text {} [
-                [Highlight {} ["Esc "]]
+                [ruicommon/Highlight {} ["Esc "]]
                 [:text {} ["- back"]]]]]]]]]]]]]])))
 
 (zc/def-component EnterName
@@ -1709,9 +1680,9 @@
                 [:text {} ["Connection Failed."]]
                 [:text {} [""]]
                 [:text {} [[:text {} ["Play again? ["]]
-                           [Highlight {} ["y"]]
+                           [ruicommon/Highlight {} ["y"]]
                            [:text {} ["/"]]
-                           [Highlight {} ["n"]]
+                           [ruicommon/Highlight {} ["n"]]
                            [:text {} ["] "]]]]]]]]]]]]]])))
 
 (zc/def-component GameOverDead
@@ -1759,11 +1730,11 @@
                 [:text {} [""]]
                 [:view {:style {:left 10}} [
                   [:text {} [[:text {} ["Play again? ["]]
-                             [Highlight {} ["y"]]
+                             [ruicommon/Highlight {} ["y"]]
                              [:text {} ["/"]]
-                             [Highlight {} ["n"]]
+                             [ruicommon/Highlight {} ["n"]]
                              [:text {} ["] "]]
-                             [Highlight {} ["space "]]
+                             [ruicommon/Highlight {} ["space "]]
                              [:text {} ["- share and compare with other players"]]]]]]]]]]]]]])))
 
 (zc/def-component GameOverRescued
@@ -1803,11 +1774,11 @@
                 [:text {} [""]]
                 [:view {:style {:left 10}} [
                   [:text {} [[:text {} ["Play again? ["]]
-                             [Highlight {} ["y"]]
+                             [ruicommon/Highlight {} ["y"]]
                              [:text {} ["/"]]
-                             [Highlight {} ["n"]]
+                             [ruicommon/Highlight {} ["n"]]
                              [:text {} ["] "]]
-                             [Highlight {} ["space "]]
+                             [ruicommon/Highlight {} ["space "]]
                              [:text {} ["- share and compare with other players"]]]]]]]]]]]]]])))
 
 (zc/def-component GameOver
@@ -1852,9 +1823,9 @@
               [:text {} ["This policy is effective as of 14 January 2019."]]
               [:text {} [""]]
               [:text {} [[:text {} ["Accept? ["]]
-                         [Highlight {} ["y"]]
+                         [ruicommon/Highlight {} ["y"]]
                          [:text {} ["/"]]
-                         [Highlight {} ["n"]]
+                         [ruicommon/Highlight {} ["n"]]
                          [:text {} ["] "]]]]]]]]]]]])))
 
 (zc/def-component ShareScore
@@ -1895,9 +1866,9 @@
                                        top-10-scores)}]
                    [:view {:style {:top 1 :left 0}} [
                      [:text {} [[:text {} ["Play again? ["]]
-                                [Highlight {} ["y"]]
+                                [ruicommon/Highlight {} ["y"]]
                                 [:text {} ["/"]]
-                                [Highlight {} ["n"]]
+                                [ruicommon/Highlight {} ["n"]]
                                 [:text {} ["] "]]]]]]]]
                  [:view {:style {:position :fixed :top 0 :left 40}} [
                    [:text {} ["Performance"]]
@@ -1920,7 +1891,7 @@
                    [:view {:style {:position :fixed :top 19 :left 0}} [
                      [:text {} [
                        [:text {} ["Your Performance "]]
-                       [Highlight {} ["^"]]]]]]]]]]]]]]]]]])))
+                       [ruicommon/Highlight {} ["^"]]]]]]]]]]]]]]]]]])))
 
 (zc/def-component RexPaintFromData
   [this]

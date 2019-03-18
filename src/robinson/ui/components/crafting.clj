@@ -1,6 +1,7 @@
 (ns robinson.ui.components.crafting
   (:require
             [robinson.ui.components.common :as ruicommon]
+            [robinson.crafting :as rcrafting]
             [robinson.crafting.weapon-gen :as rcwg]
             [taoensso.timbre :as log]
             [zaffre.components :as zc]
@@ -24,7 +25,7 @@
           :items (map (fn [item] (if (keyword (get item :hotkey))
                                    (update item :hotkey name)
                                    item))
-                      (get current-stage :choices))}]]])))
+                      (get current-stage :choices [{:name "continue-ui" :hotkey :space}]))}]]])))
 
 (zc/def-component TitledList
   [this]
@@ -81,6 +82,6 @@
       [:view {:style {:width 30}} [
         [TitledList {:title "Type:" :names (type-names (get recipe :types))}]
         [:text {} [""]]
-        [TitledList {:title "Attributes:" :names (map rcwg/mod-name (get recipe :effects))}]
+        [TitledList {:title "Attributes:" :names (map rcrafting/mod-name (get recipe :effects))}]
         [:text {} [""]]
         [TitledList {:title "Materials:" :names (map (comp name :id) (get recipe :materials))}]]])))

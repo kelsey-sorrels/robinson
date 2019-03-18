@@ -295,7 +295,8 @@
         selected-recipe-path (get-in game-state [:world :craft-recipe-path])
         hotkey               (when selected-recipe-path
                                (last selected-recipe-path))
-        recipes              (get (get-recipes game-state) recipe-type)]
+        recipes              (get-recipes game-state recipe-type)]
+    #_(log/info (get-recipes game-state))
     (zc/csx [:view {:style {:width 40
                             :height 10
                             :padding 1
@@ -310,7 +311,7 @@
                                   :title " Plans"
                                   :selected-hotkeys [hotkey]
                                   :items (map (fn [recipe]
-                                                 (log/info (get recipe :hotkey))
+                                                 #_(log/info (get recipe :hotkey))
                                                  {:name (get recipe :name) :hotkey (get recipe :hotkey)})
                                               recipes)}])
                   (zc/csx [:text {} ["No recipes"]]))

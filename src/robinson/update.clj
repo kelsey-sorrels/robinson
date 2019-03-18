@@ -2035,16 +2035,19 @@
     (if (and false current-recipe)
       state
       (let [_ (log/info "Generating recipe")
+            recipe-ns (case recipe-type
+                        :weapons 'robinson.crafting.weapon-gen
+                        #_#_:traps rc-trap-gen
+                        #_#_:food rc-food-gen)
+            _
+        (log/info "recipe-ns" recipe-ns)
+            _ (assert (some? recipe-ns))
             recipe (rrecipe-gen/gen-crafting-graph)
-            recipe-init (case recipe-type
-                     :weapons rc-weapon-gen/init
-                     #_#_:traps rc-weapon-gen/init
-                     #_#_:food rc-weapon-gen/init)
             new-state
         (-> state
           (assoc-in [:world :in-progress-recipes recipe-type] recipe)
           (assoc-in [:world :in-progress-recipe-type] recipe-type)
-          (recipe-init recipe))]
+          (rcraft/init recipe-ns recipe))]
         (log/info "done with in-progress-recipes")
         new-state))))
 
@@ -2052,8 +2055,12 @@
   "Take a step in crafting a recipe."
   [state keyin]
   (let [recipe-type (get-in state [:world :in-progress-recipe-type])
-        recipe (get-in state [:world :in-progress-recipe])]
-    (rc-weapon-gen/update state keyin)))
+        recipe (get-in state [:world :in-progress-recipe])
+        recipe-ns (case recipe-type
+                        :weapons 'robinson.crafting.weapon-gen
+                    #_#_:traps rc-trap-gen
+                    #_#_:food rc-food-gen)]
+    (rcraft/update state recipe-ns keyin)))
 
 (defn craft-select-recipe
   "Selects a craft recipe."
@@ -2064,7 +2071,7 @@
                            :craft-shelter :shelter
                            :craft-transportation :transportation)
         matching-recipes (filter (fn [recipe] (= (get recipe :hotkey) keyin))
-                                 (get (rcraft/get-recipes state) recipe-type))]
+                                 (rcraft/get-recipes state recipe-type))]
     (log/info "selecting matching recipe" matching-recipes)
     (if (empty? matching-recipes)
       (rc/ui-hint state "Pick a valid recipe.")

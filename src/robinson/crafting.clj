@@ -4,13 +4,135 @@
             [taoensso.timbre :as log]
             [robinson.world :as rw]
             [robinson.itemgen :as ig]
-            [robinson.player :as rp]))
+            [robinson.player :as rp]
+            [loom.graph :as lg]
+            [loom.label :as ll]
+            [datascript.core :as d]))
 
-(defn format [s & args]
-  (apply clojure.core/format s args))
+(defprotocol Mod
+  (mod-name [this])
+  (mod-type [this])
+  (mod-apply [this item]))
 
-(def recipes 
-  {:weapons  [
+(defn current-recipe [state]
+  (let [recipe-type (get-in state [:world :in-progress-recipe-type])]
+    (get-in state [:world :in-progress-recipes recipe-type])))
+
+(defn assoc-current-recipe [state & kvs]
+  {:pre [(not (nil? state))]
+   :post [(not (nil? %))]}
+  (let [recipe-type (get-in state [:world :in-progress-recipe-type])]
+    (update-in state [:world :in-progress-recipes recipe-type]
+      (fn [recipe] (apply assoc recipe kvs)))))
+
+(defn update-current-recipe [state f & xs]
+  {:pre [(not (nil? state))]
+   :post [(not (nil? %))]}
+  (let [recipe-type (get-in state [:world :in-progress-recipe-type])]
+    (update-in state [:world :in-progress-recipes recipe-type]
+      (fn [recipe] (apply f recipe xs)))))
+
+(def recipe-schema {
+  :recipe/id {:db/unique :db.unique/identity}
+  #_#_:recipe/components {:db/cardinality :db.cardinality/many}
+  :recipe/types {:db/cardinality :db.cardinality/many}})
+
+(defn low-weight [item]
+  (< (get item :weight 0) 1))
+
+(defn stick-like [item]
+  (contains? (get item :properties) :stick-like))
+
+(defn rock [item]
+  (= (get :item/id item) :rock))
+
+(defn flexible [item]
+  (contains? (get item :properties) :flexible))
+
+(defn tensile [item]
+  (< 1 (get item :tensile-strength 0)))
+
+(defn planar [item]
+  (contains? (get item :properties) :planar))
+
+(defn pointed [item]
+  (< (get item :roundness 1) 1))
+
+(defn sharp [item]
+  (< 1 (get item :sharpness)))
+
+(defn edged [item]
+  (contains? (get item :properties) :edged))
+
+(defn round [item]
+  (< (get item :roundness 1) 1))
+
+(def recipes [
+  ;; weapons
+     ; blunt
+     {:recipe/id  :club
+      :recipe/types #{:blunt :melee}
+      :recipe/requirements '[and [low-weight]
+                                 [stick-like]]}
+     {:recipe/id  :rock
+      :recipe/types #{:blunt :thrown}
+      :recipe/requirements '[and [low-weight]
+                                  [rock]]}
+     {:recipe/id  :sling
+      :recipe/types #{:blunt :ranged}
+      :recipe/requirements '[and [flexible]
+                                 [and [tensile]
+                                      [planar]]]}
+     ; edged
+     {:recipe/id  :dagger
+      :recipe/types #{:edged :melee}
+      :recipe/requirements '[and [edged]
+                                 [and [low-weight]
+                                      [stick-like]]]}
+     {:recipe/id  :throwing-axe
+      :recipe/types #{:edged :thrown}
+      :recipe/requirements '[and [edged]
+                                 [and [low-weight]
+                                      [stick-like]]]}
+      {:recipe/id  :boomarang
+      :recipe/types #{:edged :ranged}
+      :recipe/requirements '[and [low-weight]
+                                 [planar]]}
+     ; piercing
+     {:recipe/id  :spear
+      :recipe/types #{:piercing :melee}
+      :recipe/requirements '[and [pointed]
+                                 [and [low-weight]
+                                      [stick-like]]]}
+     {:recipe/id  :throwing-spear
+      :recipe/types #{:piercing :thrown}
+      :recipe/requirements '[and [sharp]
+                                 [and [low-weight]
+                                      [stick-like]]]}
+     {:recipe/id  :bow
+      :recipe/types #{:piercing :ranged}
+      :recipe/requirements '[and [flexible]
+                                 [and [low-weight]
+                                       [stick-like]]]}
+     {:recipe/id  :blowgun
+      :recipe/types #{:piercing :ranged}
+      :recipe/requirements '[and [tube-like]
+                                 [low-weight stick-like]]}
+      ; flexible
+     {:recipe/id  :garrote
+      :recipe/types #{:flexible :melee}
+      :recipe/requirements '[and [flexible]
+                                 [low-weight stick-like]]}
+     {:recipe/id  :bolas
+      :recipe/types #{:flexible :thrown}
+      :recipe/requirements '[and [flexible]
+                                 [count 3 [round low-weight]]]}
+                             
+     {:recipe/id  :whip
+      :recipe/types #{:flexible :ranged}
+      :recipe/requirements '[flexible]}])
+
+(comment :weapons  [
      {:name "flint spear"            :hotkey \a :hunger 10 :thirst 20 :recipe {:exhaust [:flint-blade :stick :rope] :add [:flint-spear]}}
      {:name "flint axe"              :hotkey \b :hunger 10 :thirst 20 :recipe {:exhaust [:flint-axe-blade :stick :rope] :add [:flint-axe]}}
      {:name "flint knife"            :hotkey \c :hunger 10 :thirst 20 :recipe {:exhaust [:flint-blade :stick :rope] :add [:flint-knife]}}
@@ -68,32 +190,78 @@
    :transportation [
      {:name "raft"                   :hotkey \a :hunger 10 :thirst 20 :recipe {:exhaust [:rope :log :log
                                                                                          :log :log :log]
-                                                                                   :add [:raft]} :place :drop}]})
+                                                                                   :add [:raft]} :place :drop}])
+
+(def recipe-db
+  (-> (d/empty-db recipe-schema)
+      (d/db-with recipes)))
+
+(defn get-recipe [id]
+  (ffirst
+    (d/q '[:find (pull ?e [*])
+           :in $ ?id
+           :where
+           [?e :recipe/id ?id]]
+            recipe-db
+            id)))
+
+(defn get-recipe-by-types [types]
+  (ffirst
+    (d/q '[:find (pull ?e [*])
+           :in $ ?types
+           :where
+           [?e :recipe/types ?types]]
+            recipe-db
+            types)))
+
+(defn satisfies-helper?
+  [l expr]
+  "Counts the items in that 'satisfy' the expression.
+   Results >= 1 indicate satisfaction. Results < 1
+   indicate that the expression is unsatisfied."
+  (cond
+    (nil? expr)
+      (assert false (str "Invalid expression" expr))
+    (= (first expr) 'count)
+      (let [[_ n arg] expr]
+        ;(println "count" n arg)
+        (/ (satisfies-helper? l arg) n))
+    (= (first expr) 'and)
+      (let [[_ & args] expr]
+        ;(println "and" args)
+        (reduce min (map (partial satisfies-helper? l) args)))
+    (= (first expr) 'or)
+      (let [[_ & args] expr]
+        ;(println "or" args)
+        (reduce + (map (partial satisfies-helper? l) args)))
+    (keyword? (first expr))
+      (let [[arg] expr]
+        ;(println "keyword" arg expr)
+        (->> l
+           (map :item/id)
+           (filter (partial = arg))
+           (map count)
+           (reduce + 0)))
+    (symbol? (first expr))
+      ; when multiple symbols are present, use the conjunction of all of them s0 and s1 and .... and sn
+      (let [preds-juxt (apply juxt (map (partial ns-resolve 'robinson.crafting expr) expr))
+            and-comp (fn [e] (every? identity (preds-juxt e)))]
+        (->> l
+          (filter and-comp)
+          count))
+    :else
+      (assert false (str "Invalid expression" expr))))
+  
 (defn has-prerequisites?
   "Return true if the player has the ability to make the recipe."
   [state recipe]
   (let [inventory        (get-in state [:world :player :inventory])
-        and-requirements (frequencies (concat (get-in recipe [:recipe :exhaust] [])
-                                              (get-in recipe [:recipe :have-and] [])))
-        or-requirements  (get-in recipe [:recipe :have-or] [])
-        have-and-reqs    (every? (fn [[requirement n]] (some (fn [item]
-                                                               (and (= (get item :id) requirement)
-                                                                 (>= (get item :count 1) n)))
-                                                             inventory))
-                                 and-requirements)
-        have-or-reqs    (or (some (set or-requirements) (set (map :id inventory)))
-                            (empty? or-requirements))]
-    (when (= (get recipe :name) "sharpened stick")
-      (log/info "recipe" (get recipe :name))
-      (log/info "inventory" inventory)
-      (log/info "or-requirements" or-requirements)
-      (log/info "have and reqs?" have-and-reqs)
-      (log/info "have or reqs?" have-or-reqs))
-    (and have-and-reqs have-or-reqs)))
+        requirements     (get recipe :recipe/requirements)]
+    (<= 1 (satisfies-helper? inventory requirements))))
 
 (defn get-recipes
   "Return recipes tagged with :applicable true if the recipe has the required pre-requisites."
-  [state]
+  [state recipe-type]
   (apply hash-map
     (mapcat
       (fn [[group-name group]]
@@ -137,6 +305,171 @@
           state
           ids))
   
+; Recipe node naviation
+(defn next-nodes
+  [recipe]
+  (let [graph (get recipe :graph)
+        current-node (get recipe :current-node)]
+    (lg/successors graph current-node)))
+
+(defn next-node-choices [recipe]
+  (let [graph (get recipe :graph)
+        current-node (get recipe :current-node)
+        current-node-x (-> graph
+                         (ll/label current-node)
+                         :x)
+        next-nodes (next-nodes recipe)]
+    (if (seq next-nodes)
+      (map (fn [n]
+             (let [x (-> graph (ll/label n) :x)]
+               (cond
+                 (< x current-node-x)
+                   {:name "left"
+                    :hotkey \l
+                    :next-node n}
+                 (= x current-node-x)
+                   {:name "down"
+                    :hotkey \d
+                    :next-node n}
+                 (> x current-node-x)
+                   {:name "right"
+                    :hotkey \r
+                    :next-node n})))
+             next-nodes)
+      [{:name "finish recipe"
+        :hotkey :space
+        :done true}])))
+
+(defn recipe-name
+  [recipe]
+  (let [recipe (get-recipe-by-types recipe)
+        item-name (-> recipe
+                    get-recipe-by-types
+                    :recipe/id
+                    ig/id->name)]
+    (apply str item-name (map mod-name (get recipe :effects)))))
+
+(defn save-recipe [state]
+  (let [recipe-type (get-in state [:world :in-progress-recipe-type])
+        recipe (current-recipe state)]
+    (-> state
+      (update-in [:world :player :recipes recipe-type] conj
+        (assoc recipe :name (recipe-name recipe)))
+      (rw/assoc-current-state :craft-weapon))))
+
+(defn fill-event
+  [event]
+  (if
+    ; next-event has choices,
+    (seq (get event :choices))
+      event
+    ; next event has no choices
+    (assoc event :choices [{
+      :hotkey :space
+      :name "continue"}])))
+
+(defn fill-choice
+  [add-done choice]
+  (if add-done
+    (assoc choice :done true)
+    choice))
+
+; Input handlers
+(defn resolve-choice [state recipe-ns recipe keyin]
+  (let [current-stage (get recipe :current-stage)]
+        ; find selected choice
+    (if-let [choice (->> (get current-stage :choices)
+                      (filter #(= (get % :hotkey) keyin))
+                      first)]
+      (let [results (select-keys choice [:types :effects :materials])
+            ; merge results into current recipe
+            state-with-results (update-current-recipe state (partial merge-with into) results)]
+        ; done with recipe?
+        (if (contains? choice :done)
+          (save-recipe state-with-results)
+          ;; either a regular event, or a direction event
+          ; if choice has a events pick one,
+          (if (seq (get choice :events))
+            ; find next event
+            (let [next-event (rand-nth (get choice :events))
+                  ; fill in event defaults
+                  next-event (fill-event next-event)]
+              ; assign next event and return
+              (assoc-current-recipe
+                state-with-results
+                :current-stage next-event))
+            ; else the choice has no events, then the next step is to move to the next node
+            (if-let [next-node (get choice :next-node)]
+              ; choice points to next-node
+              ; gen event for next node and advance to it
+              ; typical direction choice
+              (->
+                (let [next-node-type (get (ll/label (get recipe :graph) next-node) :type)]
+                  ((case next-node-type
+                    \? (ns-resolve recipe-ns 'gen-question)
+                    \! (ns-resolve recipe-ns 'gen-complication)
+                    \+ (ns-resolve recipe-ns 'gen-remedy)
+                    \& (ns-resolve recipe-ns 'gen-material)
+                    \☼ (ns-resolve recipe-ns 'gen-enhancement)
+                    (assert false (str "next node type unknown " next-node next-node-type)))
+                    state-with-results (current-recipe state-with-results)))
+                (assoc-current-recipe :current-node next-node))
+              ; choice does not point to next node
+              (let [next-node-choices (next-node-choices recipe)]
+                (log/info "NO NEXT NODE in CHOICE")
+                (log/info "choice" choice)
+                (log/info "next-node-choices" (vec next-node-choices))
+                (cond
+                  ; no more nodes, create finish recipe event
+                  (not (seq (next-nodes recipe)))
+                    (assoc-current-recipe state-with-results
+                      :current-stage
+                      {:title "Done"
+                       :choices [
+                          {:name "finish recipe"
+                           :hotkey :space
+                           :done true}]})
+                  ; one path to next node? auto-increment
+                  (= 1 (count next-node-choices))
+                    (->
+                      (let [next-node (-> next-node-choices first :next-node)
+                            _ (log/info "next-node" next-node)
+                            next-node-type (get (ll/label (get recipe :graph)
+                                                          next-node)
+                                                :type)]
+ 
+                        ((case next-node-type
+                          \? (ns-resolve recipe-ns 'gen-question)
+                          \! (ns-resolve recipe-ns 'gen-complication)
+                          \+ (ns-resolve recipe-ns 'gen-remedy)
+                          \& (ns-resolve recipe-ns 'gen-material)
+                          \☼ (ns-resolve recipe-ns 'gen-enhancement)
+                          (assert false (str "next node type unknown " next-node next-node-type)))
+                          state-with-results (current-recipe state-with-results)))
+                      (assoc-current-recipe :current-node (-> next-node-choices first :next-node)))
+                  ;; else multiple choices to next node, create event to choose
+                  :else
+                    (assoc-current-recipe
+                      state-with-results
+                      :current-stage
+                      {:title "Choose path"
+                       :choices next-node-choices}))))))))))
+
+(defn update [state recipe-ns keyin]
+  (let [recipe-type (get-in state [:world :in-progress-recipe-type])
+        recipe (get-in state [:world :in-progress-recipes recipe-type])]
+    (resolve-choice state recipe-ns recipe keyin)))
+
+(defn init [state recipe-ns recipe]
+  {:pre [(not (nil? state))]
+   :post [(not (nil? %))]}
+  (let [n (get recipe :current-node)]
+    (log/info "current node label" (ll/label (get recipe :graph) n))
+    ((case (get (ll/label (get recipe :graph) n) :type)
+        \? (ns-resolve recipe-ns 'gen-question)
+        (assert false (str "current node not question" n (get recipe :graph))))
+       state recipe)))
+
 (defn craft-recipe
   "Perform the recipe."
   [state recipe]

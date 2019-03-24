@@ -2071,7 +2071,7 @@
                            :craft-shelter :shelter
                            :craft-transportation :transportation)
         matching-recipes (filter (fn [recipe] (= (get recipe :hotkey) keyin))
-                                 (rcraft/get-recipes state recipe-type))]
+                                 (rcraft/get-recipes-by-category state recipe-type))]
     (log/info "selecting matching recipe" matching-recipes)
     (if (empty? matching-recipes)
       (rc/ui-hint state "Pick a valid recipe.")

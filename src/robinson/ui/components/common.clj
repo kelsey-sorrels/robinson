@@ -1,5 +1,6 @@
 (ns robinson.ui.components.common
   (:require
+            [robinson.common :as rc]
             [robinson.color :as rcolor]
             [taoensso.timbre :as log]
             [zaffre.components :as zc]
@@ -22,6 +23,19 @@
       "space"
     :default
       (str hotkey)))
+
+(zc/def-component Cursor
+  [this]
+  (let [{:keys [pos]} (zc/props this)
+        [x y] (rc/pos->xy pos)]
+    (if (< (mod (/ (System/currentTimeMillis) 300) 2) 1)
+      (let [color (rcolor/color->rgb :highlight 255)
+            background-color (rcolor/color->rgb :black 255)]
+        (zc/csx [:view {} [
+                  [:text {:style {:position :fixed :top y :left x
+                                  :color color
+                                  :background-color background-color}} ["\u2592"]]]]))
+      (zc/csx [:view {}]))))
 
 (zc/def-component MultiSelect
   [this]
@@ -63,4 +77,49 @@
                                (zc/csx [:text {} [""]])]
                               children)])))
 
+
+
+(zc/def-component ItemList
+  [this]
+  (let [{:keys [items style]} (zc/props this)]
+    (zc/csx
+      [:view {}
+          (map (fn [{:keys [fg bg s]}]
+            (zc/csx [:view {:style (merge style {:fg fg :bg bg})} [
+                      [:text {} [s]]]]))
+            items)])))
+
+(zc/def-component SelectItemListItem
+  [this]
+  (let [{:keys [hotkey selected text]} (zc/props this)]
+    (zc/csx
+      [:text {} [
+        [Highlight {} [(str hotkey " ")]]
+        [:text {} [(format "%s %s"
+                     (if selected
+                       "+"
+                       "-")
+                     text)]]]])))
+
+(zc/def-component SelectItemList
+  [this]
+  (let [{:keys [title selected-hotkeys use-applicable items]} (zc/props this)]
+    (zc/csx [:view {:style {:width "60%"}} [
+              [:text {} [title]]
+              [:view {:style {:top 2 :left 10}}
+                     (map (fn [item]
+                            (zc/csx [SelectItemListItem {:hotkey
+                                                           (or (item :hotkey)
+                                                               \ )
+                                                         :selected
+                                                           (contains? selected-hotkeys (get item :hotkey))
+                                                         :text
+                                                           (str (get item :name)
+                                                             (if (contains? item :count)
+                                                               (format " (%dx)" (int (get item :count)))
+                                                               ""))}]))
+                          items)]
+              [:text {:style {:top 5 :left 10}} [
+                [Highlight {} ["enter "]]
+                [:text {} ["to continue"]]]]]])))
 

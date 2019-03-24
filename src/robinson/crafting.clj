@@ -71,64 +71,77 @@
   ;; weapons
      ; blunt
      {:recipe/id  :club
+      :recipe/category :weapon
       :recipe/types #{:blunt :melee}
       :recipe/requirements '[and [low-weight]
                                  [stick-like]]}
      {:recipe/id  :rock
+      :recipe/category :weapon
       :recipe/types #{:blunt :thrown}
       :recipe/requirements '[and [low-weight]
                                   [rock]]}
      {:recipe/id  :sling
+      :recipe/category :weapon
       :recipe/types #{:blunt :ranged}
       :recipe/requirements '[and [flexible]
                                  [and [tensile]
                                       [planar]]]}
      ; edged
      {:recipe/id  :dagger
+      :recipe/category :weapon
       :recipe/types #{:edged :melee}
       :recipe/requirements '[and [edged]
                                  [and [low-weight]
                                       [stick-like]]]}
      {:recipe/id  :throwing-axe
+      :recipe/category :weapon
       :recipe/types #{:edged :thrown}
       :recipe/requirements '[and [edged]
                                  [and [low-weight]
                                       [stick-like]]]}
       {:recipe/id  :boomarang
+      :recipe/category :weapon
       :recipe/types #{:edged :ranged}
       :recipe/requirements '[and [low-weight]
                                  [planar]]}
      ; piercing
      {:recipe/id  :spear
+      :recipe/category :weapon
       :recipe/types #{:piercing :melee}
       :recipe/requirements '[and [pointed]
                                  [and [low-weight]
                                       [stick-like]]]}
      {:recipe/id  :throwing-spear
+      :recipe/category :weapon
       :recipe/types #{:piercing :thrown}
       :recipe/requirements '[and [sharp]
                                  [and [low-weight]
                                       [stick-like]]]}
      {:recipe/id  :bow
+      :recipe/category :weapon
       :recipe/types #{:piercing :ranged}
       :recipe/requirements '[and [flexible]
                                  [and [low-weight]
                                        [stick-like]]]}
      {:recipe/id  :blowgun
+      :recipe/category :weapon
       :recipe/types #{:piercing :ranged}
       :recipe/requirements '[and [tube-like]
                                  [low-weight stick-like]]}
       ; flexible
      {:recipe/id  :garrote
+      :recipe/category :weapon
       :recipe/types #{:flexible :melee}
       :recipe/requirements '[and [flexible]
                                  [low-weight stick-like]]}
      {:recipe/id  :bolas
+      :recipe/category :weapon
       :recipe/types #{:flexible :thrown}
       :recipe/requirements '[and [flexible]
                                  [count 3 [round low-weight]]]}
                              
      {:recipe/id  :whip
+      :recipe/category :weapon
       :recipe/types #{:flexible :ranged}
       :recipe/requirements '[flexible]}])
 
@@ -206,6 +219,7 @@
             id)))
 
 (defn get-recipe-by-types [types]
+  (log/info "get-recipe-by-types" types)
   (ffirst
     (d/q '[:find (pull ?e [*])
            :in $ ?types
@@ -261,7 +275,7 @@
 
 (defn get-recipes
   "Return recipes tagged with :applicable true if the recipe has the required pre-requisites."
-  [state recipe-type]
+  [state]
   (apply hash-map
     (mapcat
       (fn [[group-name group]]
@@ -270,6 +284,15 @@
                                         recipe))
                          group)])
       (get-in state [:world :player :recipes]))))
+
+(defn get-recipes-by-category
+  "Return recipes tagged with :applicable true if the recipe has the required pre-requisites."
+  [state recipe-category]
+  (map
+    (fn [recipe] (if (has-prerequisites? state recipe)
+                                      (assoc recipe :applicable true)
+                                      recipe))
+    (get-in state [:world :player :recipes recipe-category])))
 
 (defn- exhaust-by-ids
   [state ids]
@@ -342,12 +365,15 @@
 
 (defn recipe-name
   [recipe]
-  (let [recipe (get-recipe-by-types recipe)
-        item-name (-> recipe
+  (let [item-name (-> recipe
+                    :types
                     get-recipe-by-types
                     :recipe/id
                     ig/id->name)]
-    (apply str item-name (map mod-name (get recipe :effects)))))
+    (apply str item-name (map mod-name (get recipe :effects)))
+    (log/info (-> recipe :types))
+    (-> recipe :types)
+    ))
 
 (defn save-recipe [state]
   (let [recipe-type (get-in state [:world :in-progress-recipe-type])

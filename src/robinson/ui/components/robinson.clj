@@ -10,7 +10,6 @@
             [robinson.startgame :as sg]
             [robinson.popover :as rpop]
             [robinson.itemgen :as ig]
-            [robinson.crafting.recipe-gen :as rrecipe-gen]
             [robinson.common :as rc :refer [farther-than?
                                             wrap-line
                                             fill-missing
@@ -32,7 +31,7 @@
             [robinson.describe :as rdesc]
             [robinson.endgame :as rendgame :refer [gen-end-madlib]]
             [robinson.fx :as rfx]
-            [robinson.crafting :as rcrafting :refer [get-recipes]]
+            [robinson.crafting :as rcrafting]
             [robinson.itemgen :refer [can-be-wielded?
                                       can-be-wielded-for-ranged-combat?
                                       id->name]]
@@ -114,50 +113,6 @@
   (let [{:keys [children]} (zc/props this)]
     (zc/csx
       [:view {:style {:position :fixed :top 0 :left 0 :hight 1}} children])))
-
-(zc/def-component ItemList
-  [this]
-  (let [{:keys [items style]} (zc/props this)]
-    (zc/csx
-      [:view {}
-          (map (fn [{:keys [fg bg s]}]
-            (zc/csx [:view {:style (merge style {:fg fg :bg bg})} [
-                      [:text {} [s]]]]))
-            items)])))
-
-(zc/def-component SelectItemListItem
-  [this]
-  (let [{:keys [hotkey selected text]} (zc/props this)]
-    (zc/csx
-      [:text {} [
-        [ruicommon/Highlight {} [(str hotkey " ")]]
-        [:text {} [(format "%s %s"
-                     (if selected
-                       "+"
-                       "-")
-                     text)]]]])))
-
-(zc/def-component SelectItemList
-  [this]
-  (let [{:keys [title selected-hotkeys use-applicable items]} (zc/props this)]
-    (zc/csx [:view {:style {:width "60%"}} [
-              [:text {} [title]]
-              [:view {:style {:top 2 :left 10}} 
-                     (map (fn [item]
-                            (zc/csx [SelectItemListItem {:hotkey 
-                                                           (or (item :hotkey)
-                                                               \ )
-                                                         :selected
-                                                           (contains? selected-hotkeys (get item :hotkey))
-                                                         :text
-                                                           (str (get item :name)
-                                                             (if (contains? item :count)
-                                                               (format " (%dx)" (int (get item :count)))
-                                                               ""))}]))
-                          items)]
-              [:text {:style {:top 5 :left 10}} [
-                [ruicommon/Highlight {} ["enter "]]
-                [:text {} ["to continue"]]]]]])))
 
 (zc/def-component Atmo
   [this]
@@ -289,68 +244,6 @@
                                  (not (nil? (get-in state [:world  :quests (quest :id) :stage] nil))))
                                (:quests state))))
 
-(zc/def-component CraftSubmenu
-  [this]
-  (let [{:keys [game-state recipe-type]} (zc/props this)
-        selected-recipe-path (get-in game-state [:world :craft-recipe-path])
-        hotkey               (when selected-recipe-path
-                               (last selected-recipe-path))
-        recipes              (get-recipes game-state recipe-type)]
-    #_(log/info (get-recipes game-state))
-    (zc/csx [:view {:style {:width 40
-                            :height 10
-                            :padding 1
-                            :bottom 1
-                            :display :flex
-                            :flex-direction :row
-                            :align-itmes :stretch}} [
-              [:view {:style {:flex 1}} [
-                (if (seq recipes)
-                  (zc/csx 
-                    [ruicommon/MultiSelect {:style {:width 30}
-                                  :title " Plans"
-                                  :selected-hotkeys [hotkey]
-                                  :items (map (fn [recipe]
-                                                 #_(log/info (get recipe :hotkey))
-                                                 {:name (get recipe :name) :hotkey (get recipe :hotkey)})
-                                              recipes)}])
-                  (zc/csx [:text {} ["No recipes"]]))
-                [:text {} ["n - create new"]]]]
-              [:view {:style {:flex 1}} [
-                ;; render recipe-info
-                (if hotkey
-                  (let [matching-recipes   (filter (fn [recipe] (= (get recipe :hotkey) hotkey))
-                                                   recipes)
-                        recipe             (get (first matching-recipes) :recipe)
-                        exhaust            (get recipe :exhaust [])
-                        have               (get recipe :have-or [])
-                        inventory-id-freqs (rp/inventory-id-freqs game-state)]
-                    #_(log/info "exhaust" exhaust "have" have)
-                    (zc/csx [ItemList {:style {:width "75%"}
-                                       :items
-                                        (concat
-                                          [{:s "" :fg :black :bg :white :style #{}}
-                                           {:s "Consumes" :fg :black :bg :white :style #{}}]
-                                          (if (empty? exhaust)
-                                            [{:s "N/A" :fg :black :bg :white :style #{}}]
-                                            (let [idx-ids (mapcat (fn [ids]
-                                                             (map-indexed vector ids))
-                                                           (partition-by identity (sort exhaust)))]
-                                              (println "idx-ids" idx-ids)
-                                              (reduce (fn [lines [idx id]]
-                                                        (conj lines
-                                                              (if (< idx (get inventory-id-freqs id 0))
-                                                                {:s (id->name id) :fg :black :bg :white :style #{}}
-                                                                {:s (id->name id) :fg :gray :bg :white :style #{}})))
-                                                     []
-                                                     idx-ids)))
-                                          [{:s "" :fg :black :bg :white :style #{}}
-                                           {:s "Required tools" :fg :black :bg :white :style #{}}]
-                                          (if (empty? have)
-                                            [{:s "N/A" :fg :black :bg :white :style #{}}]
-                                            (map (fn [id] {:s (id->name id) :fg :black :bg :white :style #{}}) have)))}]))
-                  (zc/csx [:text {} ["Select a recipe"]]))]]]])))
- 
 (zc/def-component MapInViewport
   [this]
   (let [{:keys [cells current-time font-type]} (zc/props this)]
@@ -680,19 +573,6 @@
           [start-x start-y]
           [end-x end-y]))])))
 
-(zc/def-component Cursor
-  [this]
-  (let [{:keys [pos]} (zc/props this)
-        [x y] (rc/pos->xy pos)]
-    (if (< (mod (/ (System/currentTimeMillis) 300) 2) 1)
-      (let [color (rcolor/color->rgb :highlight 255)
-            background-color (rcolor/color->rgb :black 255)]
-        (zc/csx [:view {} [
-                  [:text {:style {:position :fixed :top y :left x
-                                  :color color
-                                  :background-color background-color}} ["\u2592"]]]]))
-      (zc/csx [:view {}]))))
-
 ; Render the pickup item menu if the world state is `:pickup-selection`.
 (zc/def-component PickupSelection
   [this]
@@ -976,77 +856,6 @@
   (let [{:keys [game-state]} (zc/props this)]
     nil))
 
-(zc/def-component Craft
-  [this]
-  (let [{:keys [game-state]} (zc/props this)]
-    (zc/csx [zcui/Popup {} [
-                [ruicommon/MultiSelect {:title "Craft"
-                              :items [{:name "Weapons" :hotkey \w}
-                                      {:name "Survival" :hotkey \s}
-                                      {:name "Shelter" :hotkey \c}
-                                      {:name "Transportation" :hotkey \t}]}]]])))
-
-(zc/def-component CraftWeapon
-  [this]
-  (let [{:keys [game-state]} (zc/props this)]
-    (zc/csx [zcui/Popup {:style {:margin-top 5}} [
-              [:text {:style {:bottom 1}} ["| Craft Weapon |"]]
-              [CraftSubmenu {:game-state game-state :recipe-type :weapons}]]])))
-
-(zc/def-component CraftSurvival
-  [this]
-  (let [{:keys [game-state]} (zc/props this)]
-    (zc/csx [zcui/Popup {:style {:margin-top 5
-                                 :height 17}} [
-              [:text {:style {:bottom 1}} ["| Craft Survival |"]]
-    (zc/csx [CraftSubmenu {:game-state game-state :recipe-type :survival}])]])))
-
-(zc/def-component CraftShelter
-  [this]
-  (let [{:keys [game-state]} (zc/props this)]
-    (zc/csx [zcui/Popup {:style {:margin-top 5}} [
-              [:text {:style {:bottom 1}} ["| Craft Shelter |"]]
-    (zc/csx [CraftSubmenu {:game-state game-state :recipe-type :shelter}])]])))
-
-(zc/def-component CraftTransportation
-  [this]
-  (let [{:keys [game-state]} (zc/props this)]
-    (zc/csx [zcui/Popup {:style {:margin-top 5
-                                 :height 15}} [
-              [:text {:style {:bottom 1}} ["| Craft Transportation |"]]
-    (zc/csx [CraftSubmenu {:game-state game-state :recipe-type :transportation}])]])))
-
-(zc/def-component SelectRecipeNode
-  [this]
-  (let [{:keys [recipe]} (zc/props this)
-        n (get recipe :current-node)
-        layers (get recipe :layers)
-        x (rrecipe-gen/node-x layers n)
-        y (rrecipe-gen/node-y layers n)]
-    (zc/csx [Cursor {:pos {:x (- x 39) :y (- y 13)}}])))
-
-(zc/def-component CraftInProgressRecipe
-  [this]
-  (let [{:keys [game-state]} (zc/props this)
-        recipe-type (get-in game-state [:world :in-progress-recipe-type])
-        recipe (get-in game-state [:world :in-progress-recipes recipe-type])]
-    (zc/csx [zcui/Popup {:style {:margin-top 3
-                                 :height 16}} [
-              [:text {:style {:bottom 1}} ["| Craft Recipe |"]]
-              [:view {:style {:width 50 :display :flex
-                              :justify-content :center
-                              :flex-direction :row
-                              #_#_:align-items :flex-start}} [
-                [:view {:style {:width 9 :height 13
-                                :margin-left 1
-                                #_#_:left 1
-                                #_#_:top 0}} [
-                  (zc/csx [:img {:width 9 :height 13} (get recipe :img)])
-                  [SelectRecipeNode {:recipe recipe}]]]
-                [ruicrafting/RecipeChoice {:recipe recipe}]
-                [ruicrafting/RecipeTotal {:recipe recipe}]]]]])))
-                            
-
 (zc/def-component Wield
   [this]
   (let [{:keys [game-state]} (zc/props this)
@@ -1188,12 +997,12 @@
       :throw-inventory      (zc/csx [ThrowInventory {:game-state game-state}])
       :eat                  (zc/csx [Eat {:game-state game-state}])
       :quests               (zc/csx [Quests {:game-state game-state}])
-      :craft                (zc/csx [Craft {:game-state game-state}])
-      :craft-weapon         (zc/csx [CraftWeapon {:game-state game-state}])
-      :craft-survival       (zc/csx [CraftSurvival {:game-state game-state}])
-      :craft-shelter        (zc/csx [CraftShelter {:game-state game-state}])
-      :craft-transportation (zc/csx [CraftTransportation {:game-state game-state}])
-      :in-progress-recipe   (zc/csx [CraftInProgressRecipe {:game-state game-state}])
+      :craft                (zc/csx [ruicrafting/Craft {:game-state game-state}])
+      :craft-weapon         (zc/csx [ruicrafting/CraftWeapon {:game-state game-state}])
+      :craft-survival       (zc/csx [ruicrafting/CraftSurvival {:game-state game-state}])
+      :craft-shelter        (zc/csx [ruicrafting/CraftShelter {:game-state game-state}])
+      :craft-transportation (zc/csx [ruicrafting/CraftTransportation {:game-state game-state}])
+      :in-progress-recipe   (zc/csx [ruicrafting/CraftInProgressRecipe {:game-state game-state}])
       :wield                (zc/csx [Wield {:game-state game-state}])
       :wield-ranged         (zc/csx [WieldRanged {:game-state game-state}])
       :start-text           (zc/csx [StartText {:game-state game-state}])
@@ -1333,7 +1142,7 @@
           [:layer {:id :ui} [
             (if-let [cursor-pos (-> game-state :world :cursor)]
               (zc/csx [:view {} [
-                        [Cursor {:pos cursor-pos}]
+                        [ruicommon/Cursor {:pos cursor-pos}]
                         (if (contains? #{:select-ranged-target :select-throw-target} (current-state game-state))
                           (zc/csx [:view {} [
                                    [Line {:ch "\u25CF"
@@ -1591,7 +1400,7 @@
                               :position :fixed
                               :top 2
                               :left 0}} [
-                [SelectItemList {:title "Choose up to three things to take with you:"
+                [ruicommon/SelectItemList {:title "Choose up to three things to take with you:"
                                  :selected-hotkeys selected-hotkeys
                                  :use-applicable true
                                  :items start-inventory}]]]]]]]]]]])))
@@ -1847,7 +1656,7 @@
                  ;; Title
                  [:text {} ["Top scores"]]
                  [:view {:style {:position :fixed :top 3 :left 0}} [
-                   [ItemList {:items (map-indexed
+                   [ruicommon/ItemList {:items (map-indexed
                                        (fn [index score]
                                          (if score
                                            (let [player-name    (get score "player-name" "?name?")

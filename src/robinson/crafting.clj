@@ -219,14 +219,32 @@
             id)))
 
 (defn get-recipe-by-types [types]
-  (log/info "get-recipe-by-types" types)
+  (let [rules '[[(matches-all ?info ?seq ?first ?rest ?empty ?e ?a ?vs)
+                 [(?seq ?vs)]
+                 [(?first ?vs) ?v]
+                 [?e ?a ?v]
+                 [?e :recipe/id ?recipe-id]
+                 [(?rest ?vs) ?vs-rest]
+                 (matches-all ?info ?seq ?first ?rest ?empty ?e ?a ?vs-rest)]
+                [(matches-all ?info ?seq ?first ?rest ?empty ?e ?a ?vs)
+                 [?e :recipe/id ?recipe-id]
+                 [(?empty ?vs)]]]]
   (ffirst
     (d/q '[:find (pull ?e [*])
-           :in $ ?types
+           :in $ % ?info ?seq ?first ?rest ?empty ?types
            :where
-           [?e :recipe/types ?types]]
-            recipe-db
-            types)))
+           ;[(?info ?types)]
+           ;[?e :recipe/id :club]
+           (matches-all ?info ?seq ?first ?rest ?empty ?e :recipe/types ?types)]
+          recipe-db
+          rules
+          (fn [msg x] (log/info msg x) true)
+          seq
+          first
+          rest
+          empty?
+          #{:blunt :melee}
+          types))))
 
 (defn satisfies-helper?
   [l expr]
@@ -370,18 +388,20 @@
                     get-recipe-by-types
                     :recipe/id
                     ig/id->name)]
-    (apply str item-name (map mod-name (get recipe :effects)))
-    (log/info (-> recipe :types))
-    (-> recipe :types)
-    ))
+    ;(apply str item-name (map mod-name (get recipe :effects)))
+    ;(log/info (-> recipe :types))
+    ;(-> recipe :types)
+    ;(assert (some item-name) (str "item-name not found" item-name))
+    item-name))
 
 (defn save-recipe [state]
-  (let [recipe-type (get-in state [:world :in-progress-recipe-type])
-        recipe (current-recipe state)]
+  (log/info "Saving recipe")
+  (let [recipe (current-recipe state)
+        selected-recipe-hotkey (get-in state [:world :selected-recipe-hotkey])]
     (-> state
-      (update-in [:world :player :recipes recipe-type] conj
-        (assoc recipe :name (recipe-name recipe)))
-      (rw/assoc-current-state :craft-weapon))))
+      (update-in [:world :player :recipes] assoc
+        selected-recipe-hotkey (assoc recipe :name (recipe-name recipe)))
+      (rw/assoc-current-state :recipes))))
 
 (defn fill-event
   [event]
@@ -530,3 +550,14 @@
         (rc/ui-hint state (format "You have multiple items that can be used to make this. Wield one of them")))
       (rc/ui-hint state (format "You don't have the necessary items to make %s recipe." (get recipe :name))))))
 
+(defn player-recipes [state]
+  (let [empty-recipe {:name "Empty" :alt "----" :empty true}]
+    (map (fn [[hotkey recipe]]
+           (assoc recipe :hotkey hotkey :name (if (get recipe :empty)
+                                                "Empty"
+                                                (recipe-name recipe))))
+         (merge
+           {\a empty-recipe
+            \b empty-recipe
+            \c empty-recipe}
+           (get-in state [:world :player :recipes] {})))))

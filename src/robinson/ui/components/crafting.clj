@@ -18,12 +18,12 @@
   (let [{:keys [recipe]} (zc/props this)
         current-stage (get recipe :current-stage)]
     (zc/csx
-      [:view {:style {:width 30}} [
+      [:view {:style {:left 1 :width 30}} [
         [:text {} [(get current-stage :title "")]]
         [:text {} [""]]
         [:text {} [(get current-stage :description "")]]
         [ruicommon/MultiSelect {
-          :style {:width 30}
+          :style {:width 30 :left 8}
           :title ""
           :items (map (fn [item] (if (keyword (get item :hotkey))
                                    (update item :hotkey name)
@@ -199,27 +199,75 @@
         recipe (get-in game-state [:world :in-progress-recipes recipe-type])]
     (zc/csx [zcui/Popup {:style {:margin-top 3
                                  :height 16}} [
-              [:text {:style {:bottom 1}} ["| Craft Recipe |"]]
+              [:text {:style {:bottom 1}} ["| New Recipe |"]]
               [:view {:style {:width 50 :display :flex
                               :justify-content :center
                               :flex-direction :row
                               #_#_:align-items :flex-start}} [
                 [:view {:style {:width 9 :height 13
                                 :margin-left 1
-                                #_#_:left 1
+                                :left 1
                                 #_#_:top 0}} [
                   (zc/csx [:img {:width 9 :height 13} (get recipe :img)])
                   [SelectRecipeNode {:recipe recipe}]]]
                 [RecipeChoice {:recipe recipe}]
                 [RecipeTotal {:recipe recipe}]]]]])))
 
-(zc/def-component Craft
+(zc/def-component SelectRecipeType
   [this]
   (let [{:keys [game-state]} (zc/props this)]
     (zc/csx [zcui/Popup {} [
-                [ruicommon/MultiSelect {:title "Craft"
-                              :items [{:name "Weapons" :hotkey \w}
-                                      {:name "Survival" :hotkey \s}
-                                      {:name "Shelter" :hotkey \c}                                      {:name "Transportation" :hotkey \t}]}]]])))
+                [ruicommon/MultiSelect {:title "Recipe Type"
+                              :items [{:name "Weapon" :hotkey \w}
+                                      {:name "Trap" :hotkey \t}
+                                      {:name "Food" :hotkey \f}
+                                      {:name "Signal" :hotkey \s}
+                                      {:name "Survival" :hotkey \v}]}]]])))
+(zc/def-component EmptyRecipeDetail
+  [this]
+  (zc/csx
+    [:view {} [
+      [:text {} ["Empty"]]
+      [:view {:style {:height 10}}]
+      [:view {:style {:width 20 :display :flex
+                              :flex-direction :row}}
+        [:text {} [[ruicommon/Highlight {} ["n"]]
+                   [:text {} ["-new"]]]]
+        [:text {} [[ruicommon/Highlight {} ["Esc"]]
+                   [:text {} ["-back"]]]]]]]))
 
+(zc/def-component NonEmptyRecipeDetail
+  [this]
+  (let [{:keys [recipe]} (zc/props this)]
+    (zc/csx [:text {} [(str (get recipe :name "Unknown Name"))]])))
+
+(zc/def-component RecipeDetail
+  [this]
+  (let [{:keys [game-state]} (zc/props this)
+        selected-recipe-hotkey (get-in game-state [:world :selected-recipe-hotkey])
+        player-recipe (first (filter (fn [recipe] (= (get recipe :hotkey) selected-recipe-hotkey))
+                                     (rcrafting/player-recipes game-state)))]
+    (if (get player-recipe :empty)
+      (zc/csx [EmptyRecipeDetail {}])
+      (zc/csx [NonEmptyRecipeDetail {:recipe player-recipe}]))))
+
+(zc/def-component Recipes
+  [this]
+  (let [{:keys [game-state]} (zc/props this)
+        selected-recipe-hotkey (get-in game-state [:world :selected-recipe-hotkey])
+        items (rcrafting/player-recipes game-state)]
+    (zc/csx [zcui/Popup {:style {:top -7}} [
+              [:text {:style {:bottom 1}} ["| Recipes |"]]
+              [:view {:style {:width 40 :display :flex
+                              :justify-content :center
+                              :flex-direction :row
+                              #_#_:align-items :flex-start}} [
+                [:view {:style {:width 20 :height 13
+                                :margin-left 1
+                                #_#_:left 1
+                                #_#_:top 0}} [
+                  [ruicommon/MultiSelect {:style {:width 40}
+                                          :items items
+                                          :selected-hotkeys #{selected-recipe-hotkey}}]]]
+                [RecipeDetail {:game-state game-state}]]]]])))
 

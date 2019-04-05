@@ -2006,20 +2006,34 @@
             (rnpc/transfer-items-from-player-to-npc (get npc :id) (partial = item))))
         state)))
 
+(defn select-recipe [keyin state]
+  (assoc-in state [:world :selected-recipe-hotkey] keyin))
+
+(defn transition-select-recipe-type [state]
+  (if (contains? #{\a \b \c} (get-in state [:world :selected-recipe-hotkey]))
+    (rw/assoc-current-state state :select-recipe-type)
+    state))
+
+(defn replace-recipe [state]
+  (let [selected-recipe-hotkey (get-in state [:world :selected-recipe-hotkey])]
+    (if (contains? #{\a \b \c} selected-recipe-hotkey)
+      (-> state
+        (update-in [:world :player :recipes]
+          (fn [recipes]
+            (remove (fn [recipe] (= (get recipe :hotkey) selected-recipe-hotkey)) recipes)))
+        (rw/assoc-current-state state :select-recipe-type))
+      state)))
+
 (defn craft-new-recipe
   "Start creating a new a crafting recipe."
-  [state]
-  (let [recipe-type      (case (rw/current-state state)
-                           :craft-weapon :weapons
-                           :craft-trap :traps
-                           :craft-food :food)
-        current-recipe (get-in state [:world :in-progress-recipes recipe-type])]
+  [state recipe-type]
+  (let [current-recipe (get-in state [:world :in-progress-recipes recipe-type])]
     (if (and false current-recipe)
       state
       (let [_ (log/info "Generating recipe")
             recipe-ns (case recipe-type
-                        :weapons 'robinson.crafting.weapon-gen
-                        #_#_:traps rc-trap-gen
+                        :weapon 'robinson.crafting.weapon-gen
+                        #_#_:trap rc-trap-gen
                         #_#_:food rc-food-gen)
             _
         (log/info "recipe-ns" recipe-ns)
@@ -2033,14 +2047,34 @@
         (log/info "done with in-progress-recipes")
         new-state))))
 
+(defn select-recipe-type-weapon
+  [state]
+  (craft-new-recipe state :weapon))
+  
+(defn select-recipe-type-trap
+  [state]
+  (craft-new-recipe state :trap))
+  
+(defn select-recipe-type-food
+  [state]
+  (craft-new-recipe state :food))
+  
+(defn select-recipe-type-signal
+  [state]
+  (craft-new-recipe state :signal))
+  
+(defn select-recipe-type-survival
+  [state]
+  (craft-new-recipe state :survival))
+
 (defn craft-in-progress-recipe
   "Take a step in crafting a recipe."
   [state keyin]
   (let [recipe-type (get-in state [:world :in-progress-recipe-type])
         recipe (get-in state [:world :in-progress-recipe])
         recipe-ns (case recipe-type
-                        :weapons 'robinson.crafting.weapon-gen
-                    #_#_:traps rc-trap-gen
+                        :weapon 'robinson.crafting.weapon-gen
+                    #_#_:trap rc-trap-gen
                     #_#_:food rc-food-gen)]
     (rcraft/update state recipe-ns keyin)))
 
@@ -2091,23 +2125,6 @@
       (rp/dec-item-count (get item :id))
       ; Add airborn item effect
       (rfx/conj-effect :airborn-item item path 5))))
-
-(defn craft-weapon
-  [state]
-  (craft-select-recipe (rw/assoc-current-state state :craft-weapon) \a))
-
-(defn craft-survival
-  [state]
-  (craft-select-recipe (rw/assoc-current-state state :craft-survival) \a))
-
-(defn craft-shelter
-  [state]
-  (craft-select-recipe (rw/assoc-current-state state :craft-shelter) \a))
-
-(defn craft-transportation
-  [state]
-  (craft-select-recipe (rw/assoc-current-state state :craft-transportation) \a))
-
 
 (defn craft
   "Craft the selected recipe."
@@ -3352,7 +3369,7 @@
                            \Q          [identity               :quests          false]
                            \M          [toggle-mount           :normal          false]
                            \P          [next-party-member      :normal          false]
-                           \z          [identity               :craft           true]
+                           \z          [identity               :recipes         true]
                            \v          [identity               :abilities       false]
                            \g          [identity               :player-stats    false]
                            \t          [identity               :throw-inventory false]
@@ -3621,32 +3638,22 @@
                            :else       [buy                    :buy             true]}
                :sell      {:escape     [identity               :normal          false]
                            :else       [sell                   :sell            true]}
-               :craft     {\w          [craft-weapon           :craft-weapon    false]
-                           \s          [craft-survival         :craft-survival  false]
-                           \c          [craft-shelter          :craft-shelter   false]
-                           \t          [craft-transportation   :craft-transportation
-                                                                                false]
+               :recipes   {\a          [(partial select-recipe \a) rw/current-state false]
+                           \b          [(partial select-recipe \b) rw/current-state false]
+                           \c          [(partial select-recipe \c) rw/current-state false]
+                           \n          [transition-select-recipe-type rw/current-state false]
+                           \r          [replace-recipe         rw/current-state false]
                            :escape     [identity               :normal          false]}
-               :craft-weapon
-                          {:escape     [identity               :craft           false]
-                           :enter      [craft                  :normal          true]
-                           \n          [craft-new-recipe       :in-progress-recipe false]
-                           :else       [craft-select-recipe    rw/current-state false]}
+               :select-recipe-type
+                          {\w          [select-recipe-type-weapon :in-progress-recipe false]
+                           \t          [select-recipe-type-trap   :in-progress-recipe  false]
+                           \f          [select-recipe-type-food   :in-progress-recipe false]
+                           \s          [select-recipe-type-signal :in-progress-recipe false]
+                           \v          [select-recipe-type-survival :in-progress-recipe false]
+                           :escape     [identity               :recipes         false]}
                :in-progress-recipe
-                          {:escape     [identity               :craft           false]
+                          {:escape     [identity               :recipes           false]
                            :else       [craft-in-progress-recipe rw/current-state false]}
-               :craft-survival
-                          {:escape     [identity               :craft           false]
-                           :enter      [craft                  :normal          true]
-                           :else       [craft-select-recipe    rw/current-state false]}
-               :craft-shelter
-                          {:escape     [identity               :craft           false]
-                           :enter      [craft                  :normal          true]
-                           :else       [craft-select-recipe    rw/current-state false]}
-               :craft-transportation
-                          {:escape     [identity               :craft           false]
-                           :enter      [craft                  :normal          true]
-                           :else       [craft-select-recipe    rw/current-state false]}
                :fishing-left
                           {\.          [rai/do-fishing         rw/current-state true]
                            :else       [pass-state             :normal          false]}

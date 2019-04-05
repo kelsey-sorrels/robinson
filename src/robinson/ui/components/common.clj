@@ -6,14 +6,15 @@
             [zaffre.components :as zc]
             [zaffre.components.ui :as zcui]
             [zaffre.util :as zutil]
+            [taoensso.timbre :as log]
             [tinter.core :as tinter]
             [loom.graph :as lg]))
  
 (zc/def-component Highlight
   [this]
-  (let [{:keys [children]} (zc/props this)]
+  (let [{:keys [style children]} (zc/props this)]
     (zc/csx
-      [:text {:style {:color [229 155 8 255]}} children])))
+      [:text {:style (merge style {:color [229 155 8 255]})} children])))
 
 
 
@@ -37,6 +38,33 @@
                                   :background-color background-color}} ["\u2592"]]]]))
       (zc/csx [:view {}]))))
 
+(zc/def-component MultiSelectItem
+  [this]
+  (let [{:keys [style hotkey count name utility wielded wielded-ranged worn alt]} (zc/props this)
+        s (format "%s%s%s%s"
+            (if count
+              (format "%dx " (int count))
+              "")
+            name
+            (if utility
+              (format "(%d%%)" (int utility))
+              "")
+            (cond
+              wielded
+                "(wielded)"
+              wielded-ranged
+                "(wielded ranged)"
+              worn
+                "(worn)"
+              :else
+                ""))]
+    (zc/csx [:view {} [
+              [:text {:style {:width (clojure.core/count s)}} [s]]
+              (when alt
+                (zc/csx [:text {:style {:color (rcolor/color->rgb :gray)
+                                        :width (clojure.core/count alt)}}
+                               [alt]]))]])))
+
 (zc/def-component MultiSelect
   [this]
   (let [{:keys [style]} (zc/props this)
@@ -45,36 +73,26 @@
                        :disable? (fn [_] false)}
         {:keys [title selected-hotkeys items disable?]} (merge default-props (zc/props this))
         children (map (fn [item]
-                        (zc/csx [:text {:style {:color (rcolor/color->rgb (if (or (not (disable? item))
+                        (let [hotkey-str (hotkey->str (get item :hotkey))]
+                        (zc/csx [:view {:style {:color (rcolor/color->rgb (if (or (not (disable? item))
                                                                                   (get item :applicable))
                                                                             :white
                                                                             :-light-gray))}} [
-                                  [Highlight {} [(hotkey->str (get item :hotkey))]]
-                                  [:text {} [(format "%c%s%s %s %s"
-                                               (if-let [hotkey (get item :hotkey)]
-                                                 (if (contains? (set selected-hotkeys) hotkey)
-                                                   \+
-                                                   \-)
-                                                 \space)
-                                               (if (contains? item :count)
-                                                 (format "%dx " (int (get item :count)))
-                                                 "")
-                                               (get item :name)
-                                               (if (contains? item :utility)
-                                                 (format "(%d%%)" (int (get item :utility)))
-                                                 "")
-                                               (cond
-                                                 (contains? item :wielded)
-                                                   "(wielded)"
-                                                 (contains? item :wielded-ranged)
-                                                   "(wielded ranged)"
-                                                 (contains? item :worn)
-                                                   "(worn)"
-                                                 :else
-                                                   ""))]]]]))
+                                  [:view {:style {:flex-direction :row
+                                                  :align-items :flex-start}} [
+                                    [Highlight {:style {:width (count hotkey-str)
+                                                        :flex 1}} [hotkey-str]]
+                                    [:text {:style {:width 2 :flex 2}} [(format "%c"
+                                                 (if-let [hotkey (get item :hotkey)]
+                                                   (if (contains? (set selected-hotkeys) hotkey)
+                                                     \+
+                                                     \-)
+                                                   \space))]]
+                                    [MultiSelectItem (merge {:style {:flex 3}} item) ]]]]])))
                       items)]
-    (zc/csx [:view {:style (or style {})} (concat [(zc/csx [:text {:style {:color (rcolor/color->rgb :white)}} [title]])
-                               (zc/csx [:text {} [""]])]
+    (zc/csx [:view {:style (or style {})} (concat (when title
+                                                      [(zc/csx [:text {:style {:color (rcolor/color->rgb :white)}} [title]])
+                                                       (zc/csx [:text {} [" "]])])
                               children)])))
 
 

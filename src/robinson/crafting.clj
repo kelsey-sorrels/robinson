@@ -388,11 +388,17 @@
                     get-recipe-by-types
                     :recipe/id
                     ig/id->name)]
-    ;(apply str item-name (map mod-name (get recipe :effects)))
-    ;(log/info (-> recipe :types))
-    ;(-> recipe :types)
-    ;(assert (some item-name) (str "item-name not found" item-name))
     item-name))
+
+(defn recipe-short-desc
+  [recipe]
+  (let [merged-effects (->>
+                         (group-by :k (get recipe :effects))
+                         (map (fn [[_ effects]]
+                           (assoc (first effects) :amount (reduce + (map :amount effects)))))
+                          (filter (fn [effect]
+                                 (not= 0 (get effect :amount)))))]
+  (apply str "" (map mod-name merged-effects))))
 
 (defn save-recipe [state]
   (log/info "Saving recipe")
@@ -555,7 +561,10 @@
     (map (fn [[hotkey recipe]]
            (assoc recipe :hotkey hotkey :name (if (get recipe :empty)
                                                 "Empty"
-                                                (recipe-name recipe))))
+                                                (recipe-name recipe))
+                         :alt (if (get recipe :empty)
+                                "----"
+                                (recipe-short-desc recipe))))
          (merge
            {\a empty-recipe
             \b empty-recipe

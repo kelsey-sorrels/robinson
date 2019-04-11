@@ -47,6 +47,7 @@
             [robinson.ui.updater :as ruu]
             [robinson.ui.components.common :as ruicommon]
             [robinson.ui.components.crafting :as ruicrafting]
+            [robinson.ui.components.recipes :as ruirecipes]
             [zaffre.terminal :as zat]
             [zaffre.color :as zcolor]
             [zaffre.components :as zc]
@@ -997,13 +998,10 @@
       :throw-inventory      (zc/csx [ThrowInventory {:game-state game-state}])
       :eat                  (zc/csx [Eat {:game-state game-state}])
       :quests               (zc/csx [Quests {:game-state game-state}])
-      :recipes              (zc/csx [ruicrafting/Recipes {:game-state game-state}])
-      :select-recipe-type   (zc/csx [ruicrafting/SelectRecipeType {:game-state game-state}])
-      :craft-weapon         (zc/csx [ruicrafting/CraftWeapon {:game-state game-state}])
-      :craft-survival       (zc/csx [ruicrafting/CraftSurvival {:game-state game-state}])
-      :craft-shelter        (zc/csx [ruicrafting/CraftShelter {:game-state game-state}])
-      :craft-transportation (zc/csx [ruicrafting/CraftTransportation {:game-state game-state}])
-      :in-progress-recipe   (zc/csx [ruicrafting/CraftInProgressRecipe {:game-state game-state}])
+      :recipes              (zc/csx [ruirecipes/Recipes {:game-state game-state}])
+      :select-recipe-type   (zc/csx [ruirecipes/SelectRecipeType {:game-state game-state}])
+      :in-progress-recipe   (zc/csx [ruirecipes/CraftInProgressRecipe {:game-state game-state}])
+      :craft                (zc/csx [ruicrafting/Craft {:game-state game-state}])
       :wield                (zc/csx [Wield {:game-state game-state}])
       :wield-ranged         (zc/csx [WieldRanged {:game-state game-state}])
       :start-text           (zc/csx [StartText {:game-state game-state}])

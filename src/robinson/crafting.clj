@@ -1,18 +1,14 @@
 ;; Functions for generating random items.
 (ns robinson.crafting
   (:require [robinson.common :as rc]
-            [taoensso.timbre :as log]
-            [robinson.world :as rw]
+            [robinson.crafting.mod :as rcmod]
             [robinson.itemgen :as ig]
+            [robinson.world :as rw]
             [robinson.player :as rp]
+            [taoensso.timbre :as log]
             [loom.graph :as lg]
             [loom.label :as ll]
             [datascript.core :as d]))
-
-(defprotocol Mod
-  (mod-name [this])
-  (mod-type [this])
-  (mod-apply [this item]))
 
 (defn current-recipe [state]
   (let [recipe-type (get-in state [:world :in-progress-recipe-type])]
@@ -303,15 +299,6 @@
                          group)])
       (get-in state [:world :player :recipes]))))
 
-(defn get-recipes-by-category
-  "Return recipes tagged with :applicable true if the recipe has the required pre-requisites."
-  [state recipe-category]
-  (map
-    (fn [recipe] (if (has-prerequisites? state recipe)
-                                      (assoc recipe :applicable true)
-                                      recipe))
-    (get-in state [:world :player :recipes recipe-category])))
-
 (defn- exhaust-by-ids
   [state ids]
   (reduce (fn [state id]
@@ -383,6 +370,7 @@
 
 (defn recipe-name
   [recipe]
+  (log/info (get recipe :types))
   (let [item-name (-> recipe
                     :types
                     get-recipe-by-types
@@ -398,10 +386,14 @@
                            (assoc (first effects) :amount (reduce + (map :amount effects)))))
                           (filter (fn [effect]
                                  (not= 0 (get effect :amount)))))]
-  (apply str "" (map mod-name merged-effects))))
+  (clojure.string/join " " (->> merged-effects
+                  (sort-by (fn [effect] (Math/abs (get effect :amount))))
+                  (map rcmod/mod-short-name )))))
 
 (defn save-recipe [state]
   (log/info "Saving recipe")
+  (log/info (type (get-in state [:world :player :recipes])))
+  (log/info (vec (get-in state [:world :player :recipes])))
   (let [recipe (current-recipe state)
         selected-recipe-hotkey (get-in state [:world :selected-recipe-hotkey])]
     (-> state
@@ -433,7 +425,8 @@
     (if-let [choice (->> (get current-stage :choices)
                       (filter #(= (get % :hotkey) keyin))
                       first)]
-      (let [results (select-keys choice [:types :effects :materials])
+      (let [results (merge (select-keys choice [:types :effects :materials])
+                           (select-keys current-stage [:gen]))
             ; merge results into current recipe
             state-with-results (update-current-recipe state (partial merge-with into) results)]
         ; done with recipe?

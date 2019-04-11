@@ -2027,6 +2027,15 @@
 (defn select-recipe [keyin state]
   (assoc-in state [:world :selected-recipe-hotkey] keyin))
 
+(defn transition-make-recipe [state]
+  (let [selected-recipe-hotkey (get-in state [:world :selected-recipe-hotkey])]
+    (if (contains? #{\a \b \c} selected-recipe-hotkey)
+      (let [recipe (get-in state [:world :player :recipes selected-recipe-hotkey])]
+        (if-not (get recipe :empty)
+          (rw/assoc-current-state state :craft)
+          state))
+      state)))
+
 (defn transition-select-recipe-type [state]
   (if (contains? #{\a \b \c} (get-in state [:world :selected-recipe-hotkey]))
     (rw/assoc-current-state state :select-recipe-type)
@@ -2039,7 +2048,7 @@
         (update-in [:world :player :recipes]
           (fn [recipes]
             (remove (fn [recipe] (= (get recipe :hotkey) selected-recipe-hotkey)) recipes)))
-        (rw/assoc-current-state state :select-recipe-type))
+        transition-select-recipe-type)
       state)))
 
 (defn craft-new-recipe
@@ -2096,22 +2105,19 @@
                     #_#_:food rc-food-gen)]
     (rcraft/update state recipe-ns keyin)))
 
-(defn craft-select-recipe
-  "Selects a craft recipe."
+(defn craft
+  "Use a recipe to make an item."
+  [state]
+  (let [selected-recipe-hotkey (get-in state [:world :selected-recipe-hotkey])]
+    (if (contains? #{\a \b \c} selected-recipe-hotkey)
+      (let [recipe (get-in state [:world :player :recipes selected-recipe-hotkey])]
+        (rcraft/craft-recipe state recipe))
+      state)))
+
+(defn craft-select
+  "Select an inventory item to be used in a recipe."
   [state keyin]
-  (let [recipe-type      (case (rw/current-state state)
-                           :craft-weapon   :weapons
-                           :craft-survival :survival
-                           :craft-shelter :shelter
-                           :craft-transportation :transportation)
-        matching-recipes (filter (fn [recipe] (= (get recipe :hotkey) keyin))
-                                 (rcraft/get-recipes-by-category state recipe-type))]
-    (log/info "selecting matching recipe" matching-recipes)
-    (if (empty? matching-recipes)
-      (rc/ui-hint state "Pick a valid recipe.")
-      (let [recipe-path [recipe-type (get (first matching-recipes) :hotkey)]]
-        (log/info "selecting recipe path" recipe-path)
-        (assoc-in state [:world :craft-recipe-path] recipe-path)))))
+  state)
 
 (defn assoc-throw-item
   [state item]
@@ -2143,21 +2149,6 @@
       (rp/dec-item-count (get item :id))
       ; Add airborn item effect
       (rfx/conj-effect :airborn-item item path 5))))
-
-(defn craft
-  "Craft the selected recipe."
-  [state]
-  (let [[recipe-type hotkey] (get-in state [:world :craft-recipe-path])
-        recipes (get (rcraft/get-recipes state) recipe-type)
-        recipe (first (filter #(= hotkey (get % :hotkey))
-                              recipes))]
-    (log/info "recipe-type" recipe-type "hotkey" hotkey "recipes" recipes "recipe" recipe)
-    (if recipe
-      (-> state
-        (rcraft/craft-recipe recipe)
-        (rw/assoc-current-state :normal))
-      (rc/append-log state "Pick a valid recipe." :white))))
-
 
 (defn scroll-log-up
   [state]
@@ -3669,6 +3660,7 @@
                :recipes   {\a          [(partial select-recipe \a) rw/current-state false]
                            \b          [(partial select-recipe \b) rw/current-state false]
                            \c          [(partial select-recipe \c) rw/current-state false]
+                           \m          [transition-make-recipe rw/current-state false]
                            \n          [transition-select-recipe-type rw/current-state false]
                            \r          [replace-recipe         rw/current-state false]
                            :escape     [identity               :normal          false]}
@@ -3682,6 +3674,9 @@
                :in-progress-recipe
                           {:escape     [identity               :recipes           false]
                            :else       [craft-in-progress-recipe rw/current-state false]}
+               :craft     {:escape     [identity               :recipes         false]
+                           :enter      [craft                  rw/current-state false]
+                           :else       [craft-select           :craft           false]}
                :fishing-left
                           {\.          [rai/do-fishing         rw/current-state true]
                            :else       [pass-state             :normal          false]}

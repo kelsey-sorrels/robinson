@@ -2,6 +2,7 @@
   (:require [robinson.random :as rr]
             [robinson.world :as rw]
             [robinson.crafting :as rcrafting]
+            [robinson.crafting.mod :as rcmod]
             [taoensso.timbre :as log]))
 
 (defn recipe-requirements [recipe]
@@ -9,6 +10,15 @@
 
 (defn recipe-output [recipe]
   "")
+
+(defn short-name [name]
+  (get {"damage" "dmg"
+        "accuracy" "acc"
+        "speed" "spd"
+        "durability" "drb"
+        "hunger" "hng"
+        "thirst" "thr"}
+       name name))
 
 ; Weapon questions are two-tiered :contact-type and :wield-type
 ; :contact-type is one of
@@ -22,7 +32,7 @@
 ;   :ranged
 (defn gen-question-contact [state]
   (rcrafting/assoc-current-recipe state :current-stage {
-    :gen :contact-type
+    :gen #{:contact-type}
     :title "Choose weapon type"
     :choices [
       {:name "Melee"
@@ -37,7 +47,7 @@
 
 (defn gen-question-wield [state]
   (rcrafting/assoc-current-recipe state :current-stage {
-    :gen :contact-type
+    :gen #{:wield-type}
     :title "Choose weapon type"
     :choices [
       {:name "Blunt"
@@ -58,29 +68,37 @@
    :post [(not (nil? %))]}
   "Add a question to the current recipe"
   (cond
-    (contains? (get recipe :types) :contact-type)
+    (contains? (get recipe :gen) :contact-type)
       (gen-question-wield state)
-    (contains? (get recipe :types) :wield-type)
+    (contains? (get recipe :gen) :wield-type)
       (gen-question-contact state)
     :else
       ((rand-nth [gen-question-contact gen-question-wield]) state)))
 
 (defrecord ModWeapon [s k amount]
-  rcrafting/Mod
+  rcmod/Mod
   (mod-name [this]
     (if (pos? amount)
        (str s " +" amount)
        (str s " " amount)))
+  (mod-short-name [this]
+    (if (pos? amount)
+       (str (short-name s) "+" amount)
+       (str (short-name s) "" amount)))
   (mod-type [this] :weapon)
   (mod-apply [this item]
     (update item k inc amount)))
 
 (defrecord ModPlayerOnCreate [s k amount]
-  rcrafting/Mod
+  rcmod/Mod
   (mod-name [this]
     (if (pos? amount)
        (str s " +" amount)
        (str s amount)))
+  (mod-short-name [this]
+    (if (pos? amount)
+       (str (short-name s) " +" amount)
+       (str (short-name s) " " amount)))
   (mod-type [this] :player-on-create)
   (mod-apply [this player]
     (update player k inc amount)))

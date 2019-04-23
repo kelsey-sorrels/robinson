@@ -508,10 +508,10 @@
                                   (fn [items]
                                     (reduce merge-items items))
                                   (vals (group-by (fn [item]
-                                                   (if (contains? non-mass-ids (get item :id))
+                                                   (if (contains? non-mass-ids (get item :item/id))
                                                      ; val that should not be equal to any other vals. Also consider (atom) or something else.
                                                      (rand)
-                                                     (get item :id)))
+                                                     (get item :item/id)))
                                                   (concat inventory items))))
         _                       (log/debug "new inventory hotkeys" (set (map :hotkey inventory)))
         _                       (log/info "new inventory" inventory)
@@ -536,7 +536,7 @@
       ;; TODO: append log with message about new items and their hotkeys
       (assoc-in [:world :player :inventory] inventory)
       (assoc-in [:world :remaining-hotkeys] (vec remaining-hotkeys))
-      ((fn [state] (reduce (fn [state item] (let [item (first (filter (fn [i] (= (get i :id) (get item :id)))
+      ((fn [state] (reduce (fn [state item] (let [item (first (filter (fn [i] (= (get i :item/id) (get item :item/id)))
                                                                       (get-in state [:world :player :inventory])))]
                                                (rc/append-log state (format "%s-%c" (get item :name) (get item :hotkey)))))
                            state
@@ -547,18 +547,18 @@
 
 (defn inventory-hotkey->item-id
   [state hotkey]
-  (get (inventory-hotkey->item state hotkey) :id))
+  (get (inventory-hotkey->item state hotkey) :item/id))
 
 (defn inventory-id->item
   [state id]
-  (first (filter (fn [item] (= id (get item :id))) (player-inventory state))))
+  (first (filter (fn [item] (= id (get item :item/id))) (player-inventory state))))
 
 (defn inventory-id-freqs
   [state]
   (reduce (fn [m item]
             (assoc m
-                   (get item :id)
-                   (+ (get m (get item :id) 0)
+                   (get item :item/id)
+                   (+ (get m (get item :item/id) 0)
                       (get item :count 1))))
           {}
           (get-in state [:world :player :inventory])))
@@ -570,13 +570,13 @@
 (defn remove-from-inventory
   "Removes item with `id` from player's inventory freeing hotkeys as necessary. Effectively destroys the item."
   [state id]
-  (let [item   (first (filter (fn [item] (= (get item :id) id)) (get-in state [:world :player :inventory])))
+  (let [item   (first (filter (fn [item] (= (get item :item/id) id)) (get-in state [:world :player :inventory])))
         hotkey (get item :hotkey)
         _ (log/info "removing item" item)
         _ (log/info "freeing hotkey" hotkey)]
     (-> state
       (update-in [:world :player :inventory] (rc/log-io "inventory io" (fn [inventory]
-                                                                         (vec (rc/remove-first (fn [item] (= (get item :id) id))
+                                                                         (vec (rc/remove-first (fn [item] (= (get item :item/id) id))
                                                                                             inventory)))))
       (rc/conj-in [:world :remaining-hotkeys] hotkey))))
 
@@ -588,7 +588,7 @@
 (defn update-inventory-item-by-id
   "Apply the fn f to inventory item identified by id."
   [state id f]
-  (update-inventory-item state (fn [item] (= (get item :id) id)) f))
+  (update-inventory-item state (fn [item] (= (get item :item/id) id)) f))
 
 (defn update-worn-item-utility
   [state f]
@@ -603,9 +603,9 @@
       (zero? item-count)
         state
       (= 1 item-count)
-        (remove-from-inventory state (get item :id))
+        (remove-from-inventory state (get item :item/id))
       :else
-        (rc/map-in state [:world :player :inventory] (fn [item] (if (= id (get item :id))
+        (rc/map-in state [:world :player :inventory] (fn [item] (if (= id (get item :item/id))
                                                                (update-in item [:count] dec)
                                                                item))))))
 (defn dec-item-utility
@@ -635,7 +635,7 @@
         (if (< (get item :utility 2) 1)
           (as-> state state
             ;; item breaks
-            (dec-item-count state (get item :id))
+            (dec-item-count state (get item :item/id))
             ;; add parts
             (if (pos? (count (get item :recoverable-items)))
               (add-to-inventory state [(rr/rand-nth (get item :recoverable-items))])
@@ -675,11 +675,11 @@
 (defn update-harvested
   [state item]
   (let [max-will-to-live   (get-in state [:world :player :max-will-to-live])
-        previous-harvested (get-in state [:world :player :stats :num-items-harvested (get item :id)] 0)
+        previous-harvested (get-in state [:world :player :stats :num-items-harvested (get item :item/id)] 0)
         dwill-to-live      (/ 10 (inc previous-harvested))]
     (-> state
       (update-in [:world :player :will-to-live] (fn [will-to-live] (min max-will-to-live (+ will-to-live dwill-to-live))))
-      (update-in [:world :player :stats :num-items-harvested] (fn [num-items-harvested] (merge-with + num-items-harvested {(get item :id) 1})))
+      (update-in [:world :player :stats :num-items-harvested] (fn [num-items-harvested] (merge-with + num-items-harvested {(get item :item/id) 1})))
       (rc/conj-in   [:world :player :stats :timeline] {:time (get-in state [:world :time])
                                                     :type :item-harvested
                                                     :food item}))))
@@ -687,11 +687,11 @@
 (defn update-crafted
   [state item]
   (let [max-will-to-live (get-in state [:world :player :max-will-to-live])
-        previous-crafted (get-in state [:world :player :stats :num-items-crafted (get item :id)] 0)
+        previous-crafted (get-in state [:world :player :stats :num-items-crafted (get item :item/id)] 0)
         dwill-to-live    (/ 10 (inc previous-crafted))]
     (-> state
       (update-in [:world :player :will-to-live] (fn [will-to-live] (min max-will-to-live (+ will-to-live dwill-to-live))))
-      (update-in [:world :player :stats :num-items-crafted] (fn [num-items-crafted] (merge-with + num-items-crafted {(get item :id) 1})))
+      (update-in [:world :player :stats :num-items-crafted] (fn [num-items-crafted] (merge-with + num-items-crafted {(get item :item/id) 1})))
       (rc/conj-in   [:world :player :stats :timeline] {:time (get-in state [:world :time])
                                                     :type :item-crafted
                                                     :food item}))))
@@ -699,11 +699,11 @@
 (defn update-eaten
   [state item]
   (let [max-will-to-live (get-in state [:world :player :max-will-to-live])
-        previous-eaten (get-in state [:world :player :stats :num-items-eaten (get item :id)] 0)
+        previous-eaten (get-in state [:world :player :stats :num-items-eaten (get item :item/id)] 0)
         dwill-to-live    (/ 3 (inc previous-eaten))]
     (-> state
       (update-in [:world :player :will-to-live] (fn [will-to-live] (min max-will-to-live (+ will-to-live dwill-to-live))))
-      (update-in [:world :player :stats :num-items-eaten] (fn [num-items-eaten] (merge-with + num-items-eaten {(get item :id) 1})))
+      (update-in [:world :player :stats :num-items-eaten] (fn [num-items-eaten] (merge-with + num-items-eaten {(get item :item/id) 1})))
       (rc/conj-in   [:world :player :stats :timeline] {:time (get-in state [:world :time])
                                                     :type :food-eaten
                                                     :food item}))))

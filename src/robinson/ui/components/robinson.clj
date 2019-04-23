@@ -608,18 +608,20 @@
 
 (zc/def-component Inventory
   [this]
-  (let [{:keys [game-state]} (zc/props this)
+  (let [{:keys [game-state
+                style]} (zc/props this)
+        default-style {
+                       :width 40
+                       :height 20
+                       :position :fixed
+                       :left 40
+                       :top 0
+                       :padding 1
+                       :background-color (rcolor/color->rgb :black)}
         player-items (-> game-state :world :player :inventory)]
    (zc/csx [ruicommon/MultiSelect {:title "Inventory"
                          :items (translate-identified-items game-state player-items)
-                         :style {
-                           :width 40
-                           :height 20
-                           :position :fixed
-                           :left 40
-                           :top 0
-                           :padding 1
-                           :background-color (rcolor/color->rgb :black)}}])))
+                         :style (merge default-style style)}])))
 
 (zc/def-component Abilities
   [this]

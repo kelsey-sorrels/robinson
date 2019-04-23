@@ -231,7 +231,7 @@
        {:item/id  :match                   :name  "match"                      :name-plural "matches"
         :fuel 10}
        {:item/id  :knife                   :name  "knife"                      :name-plural "knives"
-        :attack :knife :utility 100}
+        :attack :knife :utility 100 :properties #{:edged}}
        {:item/id  :plant-guide             :name  "plant guide"                :name-plural "plant guides"
         :fuel 100}
        {:item/id  :bandage                 :name  "bandage"                    :name-plural "bandages"

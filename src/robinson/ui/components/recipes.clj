@@ -14,15 +14,6 @@
             [tinter.core :as tinter]
             [loom.graph :as lg]))
  
-(zc/def-component TitledList
-  [this]
-  (let [{:keys [title names]} (zc/props this)]
-    (zc/csx [:view {} (cons
-      (zc/csx [:text {} [title]])
-      (if (seq names)
-        (map (fn [n] (zc/csx [:text {} [n]])) names)
-        [(zc/csx [:text {} ["None"]])]))])))
-
 (defn type-names [recipe]
   (let [types (get recipe :types)]
   (case (count types)
@@ -38,11 +29,11 @@
   (let [{:keys [recipe]} (zc/props this)]
     (zc/csx
       [:view {:style {:width 30}} [
-        [TitledList {:title "Type:" :names (type-names recipe)}]
+        [ruicommon/TitledList {:title "Type:" :names (type-names recipe)}]
         [:text {} [""]]
-        [TitledList {:title "Attributes:" :names (map rcmod/mod-name (get recipe :effects))}]
+        [ruicommon/TitledList {:title "Attributes:" :names (map rcmod/mod-name (get recipe :effects))}]
         [:text {} [""]]
-        [TitledList {:title "Materials:" :names (map (comp name :id) (get recipe :materials))}]]])))
+        [ruicommon/TitledList {:title "Materials:" :names (map (comp name :id) (get recipe :materials))}]]])))
 
 (zc/def-component SelectRecipeNode
   [this]
@@ -130,15 +121,13 @@
     (zc/csx [zcui/Popup {:style {:top -7}} [
               [:text {:style {:bottom 1}} ["| Recipes |"]]
               [:view {:style {:width 40 :display :flex
-                              :justify-content :center
                               :flex-direction :row
-                              #_#_:align-items :flex-start}} [
-                [:view {:style {:width 20 :height 13
-                                :margin-left 1
+                              :text-align :left}} [
+                [:view {:style {:width 40 :height 13
+                                :padding-left 1
                                 #_#_:left 1
                                 #_#_:top 0}} [
-                  [ruicommon/MultiSelect {:style {:width 40}
-                                          :items items
+                  [ruicommon/MultiSelect {:items items
                                           :selected-hotkeys #{selected-recipe-hotkey}}]]]
                 [RecipeDetail {:game-state game-state}]]]]])))
 

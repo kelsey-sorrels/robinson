@@ -2117,7 +2117,18 @@
 (defn craft-select
   "Select an inventory item to be used in a recipe."
   [state keyin]
-  state)
+  (log/info keyin)
+  (log/info (set (map char (range (int \0) (int \9)))))
+  (let [selected-recipe-hotkey (get-in state [:world :selected-recipe-hotkey])]
+    (if (contains? (set (map char (range (int \0) (int \9)))) keyin)
+      (do 
+          (log/info [:world :selected-slot] keyin)
+          (assoc-in state [:world :selected-slot] (Integer/parseInt (str keyin))))
+      (let [slot (get-in state [:world :selected-slot])]
+        (log/info [:world :player :recipes selected-recipe-hotkey :slots slot] keyin)
+        (-> state
+          (assoc-in [:world :selected-slot] nil)
+          (assoc-in [:world :player :recipes selected-recipe-hotkey :slots slot] keyin))))))
 
 (defn assoc-throw-item
   [state item]

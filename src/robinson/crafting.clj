@@ -63,78 +63,106 @@
 (defn round [item]
   (< (get item :roundness 1) 1))
 
+(def recipe-pred->str {
+  low-weight "low weight"
+  stick-like "sticklike"
+  rock "rock"
+  flexible "flexible"
+  tensile "tensile"
+  planar "flat"
+  pointed "pointed"
+  sharp "sharp"
+  edged "edged"
+  round "round"
+})
+
 (def recipes [
   ;; weapons
      ; blunt
      {:recipe/id  :club
       :recipe/category :weapon
       :recipe/types #{:blunt :melee}
-      :recipe/requirements '[and [low-weight]
-                                 [stick-like]]}
+      :recipe/requirements '[each-of
+                              [and
+                                low-weight
+                                stick-like]]}
      {:recipe/id  :rock
       :recipe/category :weapon
       :recipe/types #{:blunt :thrown}
-      :recipe/requirements '[and [low-weight]
-                                  [rock]]}
+      :recipe/requirements '[each-of
+                              [and
+                                low-weight
+                                rock]]}
      {:recipe/id  :sling
       :recipe/category :weapon
       :recipe/types #{:blunt :ranged}
-      :recipe/requirements '[and [flexible]
-                                 [and [tensile]
-                                      [planar]]]}
+      :recipe/requirements '[each-of
+                              flexible
+                              [and tensile
+                                   planar]]}
      ; edged
      {:recipe/id  :dagger
       :recipe/category :weapon
       :recipe/types #{:edged :melee}
-      :recipe/requirements '[and [edged]
-                                 [and [low-weight]
-                                      [stick-like]]]}
+      :recipe/requirements '[each-of
+                              edged
+                              [and low-weight
+                                   stick-like]]}
      {:recipe/id  :throwing-axe
       :recipe/category :weapon
       :recipe/types #{:edged :thrown}
-      :recipe/requirements '[and [edged]
-                                 [and [low-weight]
-                                      [stick-like]]]}
+      :recipe/requirements '[each-of
+                              edged
+                              [and low-weight
+                                   stick-like]]}
       {:recipe/id  :boomarang
       :recipe/category :weapon
       :recipe/types #{:edged :ranged}
-      :recipe/requirements '[and [low-weight]
-                                 [planar]]}
+      :recipe/requirements '[each-of
+                              [and
+                                low-weight
+                                planar]]}
      ; piercing
      {:recipe/id  :spear
       :recipe/category :weapon
       :recipe/types #{:piercing :melee}
-      :recipe/requirements '[and [pointed]
-                                 [and [low-weight]
-                                      [stick-like]]]}
+      :recipe/requirements '[each-of
+                              pointed
+                              [and low-weight
+                                   stick-like]]}
      {:recipe/id  :throwing-spear
       :recipe/category :weapon
       :recipe/types #{:piercing :thrown}
-      :recipe/requirements '[and [sharp]
-                                 [and [low-weight]
-                                      [stick-like]]]}
+      :recipe/requirements '[each-of
+                              sharp
+                              [and low-weight
+                                   stick-like]]}
      {:recipe/id  :bow
       :recipe/category :weapon
       :recipe/types #{:piercing :ranged}
-      :recipe/requirements '[and [flexible]
-                                 [and [low-weight]
-                                       [stick-like]]]}
+      :recipe/requirements '[each-of
+                              flexible
+                              [and low-weight
+                                   stick-like]]}
      {:recipe/id  :blowgun
       :recipe/category :weapon
       :recipe/types #{:piercing :ranged}
-      :recipe/requirements '[and [tube-like]
-                                 [low-weight stick-like]]}
+      :recipe/requirements '[each-of
+                              tube-like
+                              [and low-weight stick-like]]}
       ; flexible
      {:recipe/id  :garrote
       :recipe/category :weapon
       :recipe/types #{:flexible :melee}
-      :recipe/requirements '[and [flexible]
-                                 [low-weight stick-like]]}
+      :recipe/requirements '[each-of
+                              flexible
+                              [and low-weight stick-like]]}
      {:recipe/id  :bolas
       :recipe/category :weapon
       :recipe/types #{:flexible :thrown}
-      :recipe/requirements '[and [flexible]
-                                 [count 3 [round low-weight]]]}
+      :recipe/requirements '[each-of
+                              flexible
+                              [count 3 [and round low-weight]]]}
                              
      {:recipe/id  :whip
       :recipe/category :weapon
@@ -239,7 +267,6 @@
           first
           rest
           empty?
-          #{:blunt :melee}
           types))))
 
 (defn satisfies-helper?
@@ -286,6 +313,24 @@
   (let [inventory        (get-in state [:world :player :inventory])
         requirements     (get recipe :recipe/requirements)]
     (<= 1 (satisfies-helper? inventory requirements))))
+
+(defn item-satisfies-requirement-clause?
+  [item clause]
+  ;(log/info item)
+  ;(log/info clause)
+  ;(log/info (type clause))
+  (cond
+    (fn? clause)
+      (clause item)
+    (symbol? clause)
+      (let [f (ns-resolve 'robinson.crafting clause)]
+        (f item))
+    (= (first clause) 'and)
+      (every? (partial item-satisfies-requirement-clause? item) (rest clause))
+    (= (first clause) 'or)
+      (some (partial item-satisfies-requirement-clause? item) (rest clause))
+    (= (first clause) not)
+      (not ((second clause) item))))
 
 (defn get-recipes
   "Return recipes tagged with :applicable true if the recipe has the required pre-requisites."
@@ -370,7 +415,6 @@
 
 (defn recipe-name
   [recipe]
-  (log/info (get recipe :types))
   (let [item-name (-> recipe
                     :types
                     get-recipe-by-types

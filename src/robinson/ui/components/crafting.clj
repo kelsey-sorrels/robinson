@@ -22,7 +22,6 @@
                                    satisfied :green
                                    slot-item :red
                                    :else :gray))]
-    (log/info "requirement-item" text satisfied)
     (zc/csx
       [:text (merge {:style {:left 1
                              :color color}}
@@ -79,7 +78,6 @@
                     (map-indexed (fn [idx req]
                       (let [selected-slot (get-in game-state [:world :selected-slot])
                             slot-selected (= idx selected-slot)]
-                        (log/info req)
                         (zc/csx [:view {:style {:left 1}} [
                           [Requirements-Tree {:game-state game-state
                                               :requirements req
@@ -102,7 +100,6 @@
                       rest-requirements))))]))
       (let [satisfied (when slot-item
                         (rcrafting/item-satisfies-requirement-clause? slot-item requirements))]
-        (log/info "req" requirements "item" slot-item)
         (zc/csx
           [RequirementItem {:satisfied satisfied
                             :slot slot

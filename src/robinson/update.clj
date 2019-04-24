@@ -2117,18 +2117,38 @@
 (defn craft-select
   "Select an inventory item to be used in a recipe."
   [state keyin]
-  (log/info keyin)
-  (log/info (set (map char (range (int \0) (int \9)))))
-  (let [selected-recipe-hotkey (get-in state [:world :selected-recipe-hotkey])]
-    (if (contains? (set (map char (range (int \0) (int \9)))) keyin)
-      (do 
-          (log/info [:world :selected-slot] keyin)
-          (assoc-in state [:world :selected-slot] (Integer/parseInt (str keyin))))
-      (let [slot (get-in state [:world :selected-slot])]
-        (log/info [:world :player :recipes selected-recipe-hotkey :slots slot] keyin)
+  (let [selected-recipe-hotkey (get-in state [:world :selected-recipe-hotkey])
+        selected-slot (get-in state [:world :selected-slot])]
+    (cond
+      ; in slot-selected mode, escape clears slot
+      (and selected-slot (= keyin :escape))
         (-> state
           (assoc-in [:world :selected-slot] nil)
-          (assoc-in [:world :player :recipes selected-recipe-hotkey :slots slot] keyin))))))
+          (assoc-in [:world :player :recipes selected-recipe-hotkey :slots selected-slot] nil))
+      ; regular escape, change state to recipes
+      (= keyin :escape)
+        (rw/assoc-current-state state :recipes)
+      ; number? select slot
+      (contains? (set (map char (range (int \0) (int \9)))) keyin)
+        (do 
+            (log/info [:world :selected-slot] keyin)
+            (assoc-in state [:world :selected-slot] (Integer/parseInt (str keyin))))
+      ; else, connect selected slot to inventory item by hotkey
+      :default
+        (let [item-inventory-count (rp/inventory-id->count state (rp/inventory-hotkey->item-id state keyin))
+              slots (keys (get-in state [:world :player :recipes selected-recipe-hotkey :slots]))
+              hotkey-count (count (mapcat (fn [slot]
+                                            (let [slot-hotkey (get-in state [:world :player :recipes selected-recipe-hotkey :slots slot])]
+                                              (if (= slot-hotkey keyin)
+                                                [slot-hotkey]
+                                                [])))
+                                          slots))]
+          ; skip if there are not enough items of that type in inventory
+          (if (< hotkey-count item-inventory-count)
+            (-> state
+              (assoc-in [:world :selected-slot] nil)
+              (assoc-in [:world :player :recipes selected-recipe-hotkey :slots selected-slot] keyin))
+            state)))))
 
 (defn assoc-throw-item
   [state item]
@@ -3685,8 +3705,7 @@
                :in-progress-recipe
                           {:escape     [identity               :recipes           false]
                            :else       [craft-in-progress-recipe rw/current-state false]}
-               :craft     {:escape     [identity               :recipes         false]
-                           :enter      [craft                  rw/current-state false]
+               :craft     {:enter      [craft                  rw/current-state false]
                            :else       [craft-select           :craft           false]}
                :fishing-left
                           {\.          [rai/do-fishing         rw/current-state true]

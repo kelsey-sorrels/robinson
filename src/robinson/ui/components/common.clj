@@ -16,15 +16,29 @@
     (zc/csx
       [:text {:style (merge style {:color [229 155 8 255]})} children])))
 
-
-
 (defn hotkey->str [hotkey]
   (cond
     (= hotkey \space)
       "space"
+    (keyword? hotkey)
+      (name hotkey)
     :default
       (str hotkey)))
 
+(zc/def-component HotkeyLabel
+  [this]
+  (let [{:keys [hotkey sep text style]} (zc/props this)
+        hotkey-str (hotkey->str hotkey)]
+    (zc/csx 
+      [:view {:style (merge
+                       {:display :flex
+                      :width 10
+                      :flex-direction :row}
+                       style)} [
+        [Highlight {:style {:width (count hotkey-str)}} [(or hotkey-str "")]]
+        [:text {:style {:width 1}} [(or sep "-")]]
+        [:text {:style {:width (count text)}} [text]]]])))
+  
 (zc/def-component Cursor
   [this]
   (let [{:keys [pos]} (zc/props this)
@@ -78,7 +92,7 @@
                       ;:background-color (rcolor/color->rgb :red)
                       :align-items :flex-start}} [
         [Highlight {:style {:flex 1 :width (clojure.core/count hotkey-str)}} [hotkey-str]]
-        [:text {:style {:width 2 :flex 2}} [(format "%c"
+        [:text {:style {:width 1 :flex 2}} [(format "%c"
                      (if hotkey
                        (if selected
                          \+
@@ -107,7 +121,7 @@
                                                               {:selected (contains? (set selected-hotkeys) hotkey)}) ]]])))
                       items)]
 
-    (zc/csx [:view {:style (or style {})}
+    (zc/csx [:view {:style (or {:flex-direction :column} style)}
                    (concat (when title
                              [(zc/csx [:text {:style {:color (rcolor/color->rgb :white)}} [title]])
                               (zc/csx [:text {} [" "]])])

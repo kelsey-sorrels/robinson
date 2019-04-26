@@ -332,6 +332,23 @@
     (= (first clause) not)
       (not ((second clause) item))))
 
+(defn slot->item [state slot]
+  (let [selected-recipe-hotkey (get-in state [:world :selected-recipe-hotkey])
+        hotkey (get-in state [:world :player :recipes selected-recipe-hotkey :slots slot])]
+    ;(log/info selected-recipe-hotkey hotkey slot)
+    ;(log/info (type hotkey))
+    (rp/inventory-hotkey->item state hotkey)))
+
+(defn requirements-satisfied?
+  [state requirements]
+  (let [rest-requirements (rest requirements)
+        satisfied (every? identity
+                          (map-indexed (fn [idx req]
+                                         (let [slot-item (slot->item state idx)]
+                                           (item-satisfies-requirement-clause? slot-item req)))
+                            rest-requirements))]
+    satisfied))
+
 (defn get-recipes
   "Return recipes tagged with :applicable true if the recipe has the required pre-requisites."
   [state]

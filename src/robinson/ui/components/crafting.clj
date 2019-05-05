@@ -23,16 +23,18 @@
                                    slot-item :red
                                    :else :gray))]
     (zc/csx
-      [:text (merge {:style {:left 1
+      [:view (merge {:style {:display :flex
+                             :flex-direction :row
+                             :left 1
                              :color color}}
                     style) [
         [:text {} [(if satisfied "(∙)" "(X)")]]
         [:text {} [text]]
         (if slot
-          (zc/csx [:text {} [
+          (zc/csx [:view {:style {:display :flex :flex-direction :row}} [
             (if slot-item
-              (zc/csx [:text {} [" (" (get slot-item :name) ")"]])
-              (zc/csx [:text {} [" (Empty)"]]))
+              (zc/csx [:text {:style {:margin-left 1}} [(str "(" (get slot-item :name) ")")]])
+              (zc/csx [:text {:style {:margin-left 1}} ["(Empty)"]]))
             [:text {:style {:color (rcolor/color->rgb :white)}} ["-"]]
             (if slot-selected
               (zc/csx [ruicommon/Cursor {} []])
@@ -41,9 +43,9 @@
 
 (zc/def-component Requirement-Each-Of
   [this]
-  (let [{:keys [requirements satisfied]} (zc/props this)]
+  (let [{:keys [requirements satisfied slots-filled]} (zc/props this)]
     (zc/csx
-      [RequirementItem {:satisfied satisfied :text "Each of:"}])))
+      [RequirementItem {:satisfied satisfied :slot-item slots-filled :text "Each of:"}])))
 
 (zc/def-component Requirement-And
   [this]
@@ -63,7 +65,9 @@
               each-of
                 (let [satisfied (rcrafting/requirements-satisfied? game-state requirements)]
                   (cons
-                    (zc/csx [Requirement-Each-Of {:satisfied satisfied}])
+                    (zc/csx [Requirement-Each-Of {:satisfied satisfied
+                                                  :slots-filled (every? (partial rcrafting/slot->item game-state)
+                                                                        (range (count rest-requirements)))}])
                     (map-indexed (fn [idx req]
                       (let [selected-slot (get-in game-state [:world :selected-slot])
                             slot-selected (= idx selected-slot)]
@@ -101,7 +105,7 @@
   [this]
   (let [{:keys [game-state requirements selected-items]} (zc/props this)]
     (zc/csx
-      [:view {:style {:width 27}} [
+      [:view {:style {:margin-left 5 :margin-right 5}} [
         [:text {} ["Requirements"]]
         [Requirements-Tree {:game-state game-state :requirements requirements}] ]])))
 
@@ -110,34 +114,33 @@
   (let [{:keys [game-state]} (zc/props this)
         selected-recipe-hotkey (get-in game-state [:world :selected-recipe-hotkey])
         recipe (get-in game-state [:world :player :recipes selected-recipe-hotkey])
-        recipe-blueprint (-> recipe :types rcrafting/get-recipe-by-types)
+        recipe-name (rcrafting/recipe-name recipe)
+        requirements (rcrafting/recipe-requirements recipe)
         items (rp/player-inventory game-state)]
     (zc/csx [zcui/Popup {:style {:top -7}} [
-              [:text {:style {:bottom 1}} ["| Craft |"]]
-              [:view {:style {}} [
-                [:view {:style {:width 40 :display :flex
+              [:text {:style {:bottom 1 :left 28}} ["| Craft |"]]
+              [:view {:style {:padding-left 2 :padding-right 2}} [
+                [:view {:style {:min-width 40
+                                :display :flex
                                 :justify-content :center
                                 :flex-direction :row
                                 :text-align :left
-                                :min-height 8
-                                #_#_:align-items :flex-start}} [
-                  [:view {:style {:width 20}} [
-                    [ruicommon/TitledList {:title "Type:" :names [(-> recipe-blueprint :recipe/id ig/id->name)]}]
+                                :min-height 12}} [
+                  [:view {} [
+                    [ruicommon/TitledList {:title "Type:" :names [recipe-name]}]
                     [:text {} [""]]
                     [ruicommon/TitledList {:title "Attributes:" :names (map rcmod/mod-name (get recipe :effects))}]]]
-                  [Requirements {:game-state game-state :requirements (get recipe-blueprint :recipe/requirements) :items items}]
-                  [:view {:style {:width 20
-                                  #_#_:left 1
-                                  #_#_:top 0}} [
+                  [Requirements {:game-state game-state :requirements requirements :items items}]
+                  [:view {:style {}} [
                     [:text {} ["Inventory"]]
-                    [ruicommon/MultiSelect {:style {:width 20}
+                    [ruicommon/MultiSelect {:style {}
                                             :items items
                                             :selected-hotkeys #{}}]]]]]
                 [:view {:style {:display :flex
                                 :flex-direction :row
-                                :justify-content :center
-                                :padding-left 25}} [
-                  [ruicommon/HotkeyLabel {:hotkey :Esc :text "Back"}]
-                  [ruicommon/HotkeyLabel {:hotkey \space :text "Make"}]]]]]]])))
+                                :justify-content :space-evently
+                                :margin-left 25}} [
+                  [ruicommon/HotkeyLabel {:hotkey :escape :label "back" :style {:margin-right 2}}]
+                  [ruicommon/HotkeyLabel {:hotkey :space :label "make"}]]]]]]])))
  
 

@@ -24,7 +24,7 @@
             ;[robinson.dialog :refer []]
             [robinson.npc :as rnpc]
             [robinson.combat :as rcombat]
-            [robinson.crafting :as rcraft]
+            [robinson.crafting :as rcrafting]
             [robinson.crafting.recipe-gen :as rrecipe-gen]
             [robinson.crafting.weapon-gen :as rc-weapon-gen]
             [robinson.worldgen :as rworldgen]
@@ -1728,6 +1728,7 @@
             (-> state
               (assoc-in [:world :target-ranged-pos-coll] (map :pos npcs-by-distance))
               (assoc-in [:world :target-ranged-index] 0)
+              (assoc-in [:world :cursor] (-> npcs-by-distance first :pos))
               (rw/assoc-current-state :select-ranged-target)
               (rc/ui-hint "<Tab>/<n>-next target. <p>-previous target"))
             (rc/ui-hint state "No targets in range")))
@@ -1790,12 +1791,12 @@
     (log/info "npc" npc)
     (log/info "ranged-weapon-item" ranged-weapon-item)
     (as-> state state
-      ;; the weapon does not require reloading?
-      (if-not (ig/requires-reload? ranged-weapon-item)
+      ;; the weapon requires reloading?
+      (if (ig/requires-reload? ranged-weapon-item)
         ;; dec ranged weapon ammunition
         (rp/dec-item-count state (ig/item->ranged-combat-ammunition-item-id ranged-weapon-item))
         state)
-      (rfx/conj-effect :airborn-item ranged-weapon-item path (count path))
+      (rfx/conj-effect state :airborn-item ranged-weapon-item path (count path))
       ;; FIXME remove? do combat
       #_(rcombat/attack state [:world :player] (rnpc/npc->keys state npc) ranged-weapon-item))))
 
@@ -2010,13 +2011,11 @@
   (assoc-in state [:world :selected-recipe-hotkey] keyin))
 
 (defn transition-make-recipe [state]
-  (let [selected-recipe-hotkey (get-in state [:world :selected-recipe-hotkey])]
-    (if (contains? #{\a \b \c} selected-recipe-hotkey)
-      (let [recipe (get-in state [:world :player :recipes selected-recipe-hotkey])]
-        (if-not (get recipe :empty)
-          (rw/assoc-current-state state :craft)
-          state))
-      state)))
+  (let [recipe (rcrafting/selected-recipe state)]
+    (log/info "transition-make-recipe" recipe)
+    (if (get recipe :empty)
+      state
+      (rw/assoc-current-state state :craft))))
 
 (defn transition-select-recipe-type [state]
   (if (contains? #{\a \b \c} (get-in state [:world :selected-recipe-hotkey]))
@@ -2028,8 +2027,7 @@
     (if (contains? #{\a \b \c} selected-recipe-hotkey)
       (-> state
         (update-in [:world :player :recipes]
-          (fn [recipes]
-            (remove (fn [recipe] (= (get recipe :hotkey) selected-recipe-hotkey)) recipes)))
+          dissoc selected-recipe-hotkey)
         transition-select-recipe-type)
       state)))
 
@@ -2052,7 +2050,7 @@
         (-> state
           (assoc-in [:world :in-progress-recipes recipe-type] recipe)
           (assoc-in [:world :in-progress-recipe-type] recipe-type)
-          (rcraft/init recipe-ns recipe))]
+          (rcrafting/init recipe-ns recipe))]
         (log/info "done with in-progress-recipes")
         new-state))))
 
@@ -2085,7 +2083,7 @@
                         :weapon 'robinson.crafting.weapon-gen
                     #_#_:trap rc-trap-gen
                     #_#_:food rc-food-gen)]
-    (rcraft/update state recipe-ns keyin)))
+    (rcrafting/update state recipe-ns keyin)))
 
 (defn craft
   "Use a recipe to make an item."
@@ -2093,13 +2091,14 @@
   (let [selected-recipe-hotkey (get-in state [:world :selected-recipe-hotkey])]
     (if (contains? #{\a \b \c} selected-recipe-hotkey)
       (let [recipe (get-in state [:world :player :recipes selected-recipe-hotkey])]
-        (rcraft/craft-recipe state recipe))
+        (rcrafting/craft-recipe state recipe))
       state)))
 
 (defn craft-select
   "Select an inventory item to be used in a recipe."
   [state keyin]
   (let [selected-recipe-hotkey (get-in state [:world :selected-recipe-hotkey])
+        recipe (get-in state [:world :player :recipes selected-recipe-hotkey])
         selected-slot (get-in state [:world :selected-slot])]
     (cond
       ; in slot-selected mode, escape clears slot
@@ -2115,6 +2114,12 @@
         (do 
             (log/info [:world :selected-slot] keyin)
             (assoc-in state [:world :selected-slot] (Integer/parseInt (str keyin))))
+      ; make the item
+      (= keyin :space)
+        (let [satisfied (rcrafting/requirements-satisfied? state (rcrafting/recipe-requirements recipe))]
+          (-> state
+            (rcrafting/craft-recipe recipe)
+            (rw/assoc-current-state :normal)))
       ; else, connect selected slot to inventory item by hotkey
       :default
         (let [item-inventory-count (rp/inventory-id->count state (rp/inventory-hotkey->item-id state keyin))
@@ -3677,8 +3682,7 @@
                :in-progress-recipe
                           {:escape     [identity               :recipes           false]
                            :else       [craft-in-progress-recipe rw/current-state false]}
-               :craft     {:enter      [craft                  rw/current-state false]
-                           :else       [craft-select           :craft           false]}
+               :craft     {:else       [craft-select           rw/current-state false]}
                :fishing-left
                           {\.          [rai/do-fishing         rw/current-state true]
                            :else       [pass-state             :normal          false]}
@@ -3853,6 +3857,7 @@
             _ (log/debug "player" (get-in state [:world :player]))
             _ (log/info "new-state" new-state)
             wtl       (get-in state [:world :player :will-to-live])]
+        (log/info (get-in state [:world :player]))
         (some-> state
             (rw/assoc-current-state new-state)
             (as-> state

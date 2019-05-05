@@ -197,6 +197,10 @@
     (log/info "update-cell" (format "place-id[%s] y[%d] x[%d]" (str place-id) y x))
     (update-in state [:world :places place-id :cells y x] f)))
 
+(defn update-player-cell
+  [state f]
+  (update-cell state (rp/player-pos state) f))
+
 (defn assoc-cell-fn
   [state ks v]
   {:pre [(not (nil? (get-in state (butlast ks))))]}

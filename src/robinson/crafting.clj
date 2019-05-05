@@ -82,6 +82,7 @@
      {:recipe/id  :club
       :recipe/category :weapon
       :recipe/types #{:blunt :melee}
+      :recipe/add [:club]
       :recipe/requirements '[each-of
                               [and
                                 low-weight
@@ -89,6 +90,7 @@
      {:recipe/id  :rock
       :recipe/category :weapon
       :recipe/types #{:blunt :thrown}
+      :recipe/add [:rock]
       :recipe/requirements '[each-of
                               [and
                                 low-weight
@@ -96,6 +98,7 @@
      {:recipe/id  :sling
       :recipe/category :weapon
       :recipe/types #{:blunt :ranged}
+      :recipe/add [:sling]
       :recipe/requirements '[each-of
                               flexible
                               [and tensile
@@ -104,6 +107,7 @@
      {:recipe/id  :dagger
       :recipe/category :weapon
       :recipe/types #{:edged :melee}
+      :recipe/add [:dagger]
       :recipe/requirements '[each-of
                               edged
                               [and low-weight
@@ -111,6 +115,7 @@
      {:recipe/id  :throwing-axe
       :recipe/category :weapon
       :recipe/types #{:edged :thrown}
+      :recipe/add [:throwing-axe]
       :recipe/requirements '[each-of
                               edged
                               [and low-weight
@@ -118,6 +123,7 @@
       {:recipe/id  :boomarang
       :recipe/category :weapon
       :recipe/types #{:edged :ranged}
+      :recipe/add [:boomarang]
       :recipe/requirements '[each-of
                               [and
                                 low-weight
@@ -126,6 +132,7 @@
      {:recipe/id  :spear
       :recipe/category :weapon
       :recipe/types #{:piercing :melee}
+      :recipe/add [:spear]
       :recipe/requirements '[each-of
                               pointed
                               [and low-weight
@@ -133,6 +140,7 @@
      {:recipe/id  :throwing-spear
       :recipe/category :weapon
       :recipe/types #{:piercing :thrown}
+      :recipe/add [:throwing-spear]
       :recipe/requirements '[each-of
                               sharp
                               [and low-weight
@@ -140,6 +148,7 @@
      {:recipe/id  :bow
       :recipe/category :weapon
       :recipe/types #{:piercing :ranged}
+      :recipe/add [:bow]
       :recipe/requirements '[each-of
                               flexible
                               [and low-weight
@@ -147,6 +156,7 @@
      {:recipe/id  :blowgun
       :recipe/category :weapon
       :recipe/types #{:piercing :ranged}
+      :recipe/add [:blowgun]
       :recipe/requirements '[each-of
                               tube-like
                               [and low-weight stick-like]]}
@@ -154,12 +164,14 @@
      {:recipe/id  :garrote
       :recipe/category :weapon
       :recipe/types #{:flexible :melee}
+      :recipe/add [:garrote]
       :recipe/requirements '[each-of
                               flexible
                               [and low-weight stick-like]]}
      {:recipe/id  :bolas
       :recipe/category :weapon
       :recipe/types #{:flexible :thrown}
+      :recipe/add [:bolas]
       :recipe/requirements '[each-of
                               flexible
                               [count 3 [and round low-weight]]]}
@@ -167,7 +179,9 @@
      {:recipe/id  :whip
       :recipe/category :weapon
       :recipe/types #{:flexible :ranged}
-      :recipe/requirements '[flexible]}])
+      :recipe/add [:whip]
+      :recipe/requirements '[each-of
+                              flexible]}])
 
 (comment :weapons  [
      {:name "flint spear"            :hotkey \a :hunger 10 :thirst 20 :recipe {:exhaust [:flint-blade :stick :rope] :add [:flint-spear]}}
@@ -371,27 +385,60 @@
           ids))
 
 (defn- place-cell-type
-  [state id]
+  [state id effects]
     (let [[x y] (rp/player-xy state)]
       (rw/assoc-cell state x y :type id)))
   
 (defn- place-drop
-  [state id]
+  [state id effects]
   (let [[x y] (rp/player-xy state)]
     (rw/conj-cell-items state x y (ig/id->item id))))
-  
+
+(defn- mod-type-to-updater
+  "Given a mod-type returns a fn that takes the state and an update fn
+   that can be called (f v) where v is the thing being updated"
+  [mod-type]
+  (case mod-type
+    :item-on-create
+      (fn [state f]
+       (update state :created-item f))
+    :player-on-create
+        rp/update-player
+    :cell-on-create
+        rw/update-player-cell))
+
+(defn- effect-to-updater
+  "Given an effect returns a fn that takes the state and an update fn
+   that can be called (f state v)"
+  [effect]
+  (mod-type-to-updater (rcmod/mod-type effect)))
+
+(defn- place-inventory
+  [state id effects]
+  (let [item (ig/id->item id)]
+    (log/info item)
+    (as-> state state
+      (assoc state :created-item item)
+      (reduce
+        (fn [state effect]
+          (log/info effect)
+          (let [updater (effect-to-updater effect)]
+            (updater state (partial rcmod/mod-apply effect))))
+        state
+        effects)
+      (rp/add-to-inventory state [(get state :created-item)])
+      (dissoc state :created-item))))
+
 (defn- add-by-ids
-  [state ids place]
+  [state ids effects place]
   (reduce (fn [state id]
             (case place
               :cell-type
-                (place-cell-type state id)
+                (place-cell-type state id effects)
               :drop
-                (place-drop state id)
+                (place-drop state id effects)
               :inventory
-                (let [item (ig/id->item id)]
-                  (log/info "adding" item)
-                  (rp/add-to-inventory state [item]))))
+                (place-inventory state id effects)))
           state
           ids))
   
@@ -451,15 +498,27 @@
                   (sort-by (fn [effect] (Math/abs (get effect :amount))))
                   (map rcmod/mod-short-name )))))
 
+(defn recipe-requirements
+  [recipe]
+  (-> recipe :types get-recipe-by-types :recipe/requirements))
+
 (defn save-recipe [state]
   (log/info "Saving recipe")
   (log/info (type (get-in state [:world :player :recipes])))
   (log/info (vec (get-in state [:world :player :recipes])))
   (let [recipe (current-recipe state)
-        selected-recipe-hotkey (get-in state [:world :selected-recipe-hotkey])]
+        selected-recipe-hotkey (get-in state [:world :selected-recipe-hotkey])
+        _ (log/info recipe)
+        recipe-blueprint (-> recipe
+                           :types
+                           get-recipe-by-types)]
+    (log/info recipe-blueprint)
     (-> state
       (update-in [:world :player :recipes] assoc
-        selected-recipe-hotkey (assoc recipe :name (recipe-name recipe)))
+        selected-recipe-hotkey (-> recipe
+                                 (merge recipe-blueprint)
+                                 (assoc 
+                                   :name (recipe-name recipe))))
       (rw/assoc-current-state :recipes))))
 
 (defn fill-event
@@ -580,35 +639,17 @@
   "Perform the recipe."
   [state recipe]
   (let [exhaust      (get-in recipe [:recipe :exhaust])
-        add          (get-in recipe [:recipe :add])
-        have-or      (get-in recipe [:recipe :have-or])
-        hunger       (get recipe :hunger)
-        thirst       (get recipe :thirst)
-        wielded-item (rp/wielded-item (rp/player-inventory state))
-        have-applicable-ids (clojure.set/intersection (set have-or)
-                                                       (set (map :id (rp/player-inventory state))))
-        _ (log/info "crafting" recipe)]
-    (if (has-prerequisites? state recipe)
-      ;; player has only one applicable item, or has many and is wielding one, or the recipe doesn't require the player to have any items?
-      (if (or (zero? (count have-or))
-              (= (count have-applicable-ids) 1)
-              wielded-item)
-        (let [state (as-> state state
-                      (if (or (= (count have-applicable-ids) 1)
-                              wielded-item)
-                        (rp/dec-item-utility state (or (and wielded-item (get wielded-item :id))
-                                                       (first have-applicable-ids)))
-                        state)
-                      (add-by-ids state add (get recipe :place :inventory))
-                      (exhaust-by-ids state exhaust)
-                      (rp/player-update-hunger state (fn [current-hunger] (min (+ hunger current-hunger)
-                                                                               (rp/player-max-hunger state))))
-                      (rp/player-update-thirst state (fn [current-thirst] (min (+ hunger current-thirst)
-                                                                               (rp/player-max-thirst state))))
-                      (reduce rp/update-crafted state (map (fn [id] {:id id}) add)))]
-          state)
-        (rc/ui-hint state (format "You have multiple items that can be used to make this. Wield one of them")))
-      (rc/ui-hint state (format "You don't have the necessary items to make %s recipe." (get recipe :name))))))
+        add          (get-in recipe [:recipe/add])
+        effects      (get recipe :effects [])
+        state (as-> state state
+                  (add-by-ids state add effects (get recipe :place :inventory))
+                  ;(exhaust-by-ids state exhaust)
+                  #_(rp/player-update-hunger state (fn [current-hunger] (min (+ hunger current-hunger)
+                                                                           (rp/player-max-hunger state))))
+                  #_(rp/player-update-thirst state (fn [current-thirst] (min (+ hunger current-thirst)
+                                                                           (rp/player-max-thirst state))))
+                  (reduce rp/update-crafted state (map (fn [id] {:id id}) add)))]
+    state))
 
 (defn player-recipes [state]
   (let [empty-recipe {:name "Empty" :alt "----" :empty true}]
@@ -624,3 +665,21 @@
             \b empty-recipe
             \c empty-recipe}
            (get-in state [:world :player :recipes] {})))))
+
+
+(defn hotkey->recipe [state hotkey]
+  (first (filter (fn [recipe] (= (get recipe :hotkey) hotkey))
+                 (player-recipes state))))
+
+(defn selected-recipe [state]
+  (hotkey->recipe state
+    (get-in state [:world :selected-recipe-hotkey])))
+
+
+(defn selected-recipe-empty?
+  [state]
+  (let [recipe (selected-recipe state)]
+    (or (nil? recipe)
+        (get recipe :empty))))
+
+

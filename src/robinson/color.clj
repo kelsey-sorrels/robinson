@@ -33,6 +33,7 @@
    :temple-beige      (zcolor/color 191 171 143)
    :blue-green        (zcolor/color 55 148 110);(vec (tinter/hex-str-to-dec "19B4D7"))
    :blue              (zcolor/color 0 87 132);(vec (tinter/hex-str-to-dec "00ACD3"))
+   :brilliant-blue    (zcolor/color 50 137 172);(vec (tinter/hex-str-to-dec "00ACD3"))
    :light-blue        (zcolor/color 203 219 252);(vec (tinter/hex-str-to-dec "19B4D7"))
    :dark-blue         (zcolor/color 0 63 116)
    :purple            (zcolor/color 133 0 211)

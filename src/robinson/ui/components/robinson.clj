@@ -151,25 +151,16 @@
         padding (int (* width (- 1 (max p1 p2))))
         diff (- width root padding)
         black-color (rcolor/color->rgb :black)]
-      (case direction
-        :left
           (zc/csx
-              [:text {:style style} [
+              [:view {:style (merge {:display :flex
+                                     :flex-direction (case direction :left :row :right :row-reverse)}
+                                    style)} [
                 #_[:text {} [(format "%.2f %.2f" (float p1) (float p2))]]
                 [:text {:style {:color black-color
                                 :background-color black-color}} [(apply str (repeat padding " "))]]
                 [:text {:style {:color            (if (< p2 p1) fg-1 black-color)
                                 :background-color (if (> p2 p1) fg-2 black-color)}} [(apply str (repeat diff "\u2584"))]]
-                [:text {:style {:color fg-1 :background-color fg-2}} [(apply str (repeat root "\u2584"))]]]])
-        :right
-          (zc/csx
-              [:text {:style style} [
-                #_[:text {} [(format "%.2f %.2f" (float p1) (float p2))]]
-                [:text {:style {:color fg-1 :background-color fg-2}} [(apply str (repeat root "\u2584"))]]
-                [:text {:style {:color            (if (< p2 p1) fg-1 black-color)
-                                :background-color (if (> p2 p1) fg-2 black-color)}} [(apply str (repeat diff "\u2584"))]]
-                [:text {:style {:color black-color
-                                :background-color black-color}} [(apply str (repeat padding " "))]]]]))))
+                [:text {:style {:color fg-1 :background-color fg-2}} [(apply str (repeat root "\u2584"))]]]])))
 
 (zc/def-component HpWtlBars
   [this]
@@ -211,16 +202,19 @@
                       :left 0
                       :width 80
                       :display :flex
+                      :flex-direction :column
                       :align-items :center}} [
          [Atmo {:time (rw/get-time game-state)
                 :atmo-data (get-in game-state [:data :atmo])}]
-         [:view {} [
+         [:view {:style {:display :flex
+                         :flex-direction :row
+                         :align-items :center}} [
            [HpWtlBars {:game-state game-state}]
            [StatusUI {:wounded (rp/player-wounded? game-state)
                       :poisoned (rp/player-poisoned? game-state)
                       :infected (rp/player-infected? game-state)
-                      :style {:left 37 :bottom 1}}]
-           [ThirstHungerBars {:game-state game-state :style {:left (+ 37 7) :bottom 2}}]]]]])))
+                      :style {}}]
+           [ThirstHungerBars {:game-state game-state}]]]]])))
 
 (defn translate-identified-items
   [state items]
@@ -406,21 +400,19 @@
 
 (zc/def-component HighlightNpcs
   [this]
-  (let [{:keys [visible-npcs vx vy start-pos end-pos]} (zc/props this)
+  (let [{:keys [visible-npcs vx vy start-pos end-pos font-type]} (zc/props this)
         [start-x start-y] (rc/pos->xy start-pos)
         [end-x end-y] (rc/pos->xy end-pos)
         points (set (rlos/line-segment-fast-without-endpoints
                       [start-x start-y]
                       [end-x end-y]))]
-    (log/info "Highlight npcs" visible-npcs)
     (zc/csx [:view {}
                    (reduce (fn [children npc]
-                             (let [sx         (- (-> npc :pos :x) vx)
-                                   sy         (- (-> npc :pos :y) vy)
-                                   targeted? (contains? points [sx sy])
-                                   {:keys [c fg bg]} (render-npc npc 0)]
-                               (log/info "npc@" sx sy)
-                               (if targeted?
+                             (let [sx        (- (-> npc :pos :x) vx)
+                                   sy        (- (-> npc :pos :y) vy)
+                                   targeted (contains? points [sx sy])
+                                   {:keys [c fg bg]} (render-npc npc 0 font-type)]
+                               (if targeted
                                  (conj children (zc/csx [:text {:style {:position :fixed
                                                                         :top sy
                                                                         :left sx
@@ -596,7 +588,7 @@
                            :padding 1
                            :display :flex
                            :flex-direction :column
-                           :background-color (rcolor/color->rgb :white)}} [
+                           :background-color (rcolor/color->rgb :black)}} [
             [ruicommon/MultiSelect {:title "Pick up"
                           :selected-hotkeys selected-hotkeys
                           :items (concat (translate-identified-items game-state items)
@@ -606,22 +598,24 @@
               [ruicommon/Highlight {} ["Enter "]]
               [:text {} ["to pick up."]]]]]])))
 
+(zc/def-component RightPane
+  [this]
+  (let [{:keys [children]} (zc/props this)]
+    (zc/csx [:view {:style {:width 40
+                            :height 20
+                            :position :fixed
+                            :left 40
+                            :top 0
+                            :padding 1
+                            :background-color (rcolor/color->rgb :black)}} children])))
+
 (zc/def-component Inventory
   [this]
-  (let [{:keys [game-state
-                style]} (zc/props this)
-        default-style {
-                       :width 40
-                       :height 20
-                       :position :fixed
-                       :left 40
-                       :top 0
-                       :padding 1
-                       :background-color (rcolor/color->rgb :black)}
+  (let [{:keys [game-state]} (zc/props this)
         player-items (-> game-state :world :player :inventory)]
-   (zc/csx [ruicommon/MultiSelect {:title "Inventory"
-                         :items (translate-identified-items game-state player-items)
-                         :style (merge default-style style)}])))
+   (zc/csx [RightPane {} [
+            [ruicommon/MultiSelect {:title "Inventory"
+                          :items (translate-identified-items game-state player-items)}]]])))
 
 (zc/def-component Abilities
   [this]
@@ -630,12 +624,7 @@
         height (if (seq abilities)
                  (+ 3 (* 3 (count abilities)))
                  4)]
-    (zc/csx [:view {:style {:width 43
-                            :height height
-                            :position :fixed
-                            :left 0
-                            :top 0
-                            :background-color (rcolor/color->rgb :white)}} [
+    (zc/csx [RightPane [
             (if (seq abilities)
               (zc/csx [zcui/Popup {} [
                         [:view {} [
@@ -686,7 +675,7 @@
         abilities (get-in game-state [:world :ability-choices])]
     (zc/csx [zcui/Popup {:style {:top -5
                                  :color (rcolor/color->rgb :black)
-                                 :background-color (rcolor/color->rgb :white)}} [
+                                 :background-color (rcolor/color->rgb :black)}} [
                 [ruicommon/MultiSelect {:title "Choose A New Ability"
                               :items
                                 (concat
@@ -707,7 +696,7 @@
                  4)]  
     (zc/csx [zcui/Popup {:style {:top -5
                                  :color (rcolor/color->rgb :black)
-                                 :background-color (rcolor/color->rgb :white)}} [
+                                 :background-color (rcolor/color->rgb :black)}} [
                 (if (seq abilities)
                   (zc/csx [ruicommon/MultiSelect {:title "Choose Action"
                                         :items
@@ -758,13 +747,7 @@
   [this]
   (let [{:keys [game-state]} (zc/props this)
         player-items (-> game-state :world :player :inventory)]
-    (zc/csx [:view {:style {:width 40
-                            :height 20
-                            :position :fixed
-                            :left 40
-                            :top 0
-                            :padding 1
-                            :background-color (rcolor/color->rgb :white)}} [
+    (zc/csx [RightPane {} [
              [ruicommon/MultiSelect {:title "Apply Inventory"
                            :items (translate-identified-items game-state player-items)}]]])))
 
@@ -772,13 +755,7 @@
   [this]
   (let [{:keys [game-state]} (zc/props this)
         player-items (-> game-state :world :player :inventory)]
-    (zc/csx [:view {:style {:width 40
-                            :height 20
-                            :position :fixed
-                            :left 40
-                            :top 0
-                            :padding 1
-                            :background-color (rcolor/color->rgb :white)}} [
+    (zc/csx [RightPane {} [
              [ruicommon/MultiSelect {:title "Apply To"
                            :items (translate-identified-items game-state player-items)}]]])))
 
@@ -786,13 +763,7 @@
 (zc/def-component QuaffInventory
   [this]
   (let [{:keys [game-state]} (zc/props this)]
-    (zc/csx [:view {:style {:width 40
-                            :height 20
-                            :position :fixed
-                            :left 40
-                            :top 0
-                            :padding 1
-                            :background-color (rcolor/color->rgb :white)}} [
+    (zc/csx [RightPane {} [
              [ruicommon/MultiSelect {:title "Quaff"
                            :items (translate-identified-items game-state (filter ig/is-quaffable?
                                                                            (-> game-state :world :player :inventory)))}]]])))
@@ -801,13 +772,7 @@
   [this]
   (let [{:keys [game-state]} (zc/props this)
         player-items (-> game-state :world :player :inventory)]
-    (zc/csx [:view {:style {:width 40
-                            :height 20
-                            :position :fixed
-                            :left 40
-                            :top 0
-                            :padding 1
-                            :background-color (rcolor/color->rgb :white)}} [
+    (zc/csx [RightPane {} [
              [ruicommon/MultiSelect {:title "Drop Inventory"
                            :items (translate-identified-items game-state player-items)}]]])))
 
@@ -815,13 +780,7 @@
   [this]
   (let [{:keys [game-state]} (zc/props this)
         player-items (-> game-state :world :player :inventory)]
-    (zc/csx [:view {:style {:width 40
-                            :height 20
-                            :position :fixed
-                            :left 40
-                            :top 0
-                            :padding 1
-                            :background-color (rcolor/color->rgb :white)}} [
+    (zc/csx [RightPane {} [
              [ruicommon/MultiSelect {:title "Describe"
                            :items (translate-identified-items game-state player-items)}]]])))
 
@@ -830,26 +789,14 @@
   (let [{:keys [game-state]} (zc/props this)]
   (let [{:keys [game-state]} (zc/props this)
         player-items (-> game-state :world :player :inventory)]
-    (zc/csx [:view {:style {:width 40
-                            :height 20
-                            :position :fixed
-                            :left 40
-                            :top 0
-                            :padding 1
-                            :background-color (rcolor/color->rgb :white)}} [
+    (zc/csx [RightPane {} [
              [ruicommon/MultiSelect {:title "Throw"
                            :items (translate-identified-items game-state player-items)}]]]))))
 
 (zc/def-component Eat
   [this]
   (let [{:keys [game-state]} (zc/props this)]
-    (zc/csx [:view {:style {:width 40
-                            :height 20
-                            :position :fixed
-                            :left 40
-                            :top 0
-                            :padding 1
-                            :background-color (rcolor/color->rgb :white)}} [
+    (zc/csx [RightPane {} [
              [ruicommon/MultiSelect {:title "Eat Inventory"
                            :items (filter #(contains? % :hunger)
                                          (inventory-and-player-cell-items game-state))}]]])))
@@ -863,13 +810,7 @@
   [this]
   (let [{:keys [game-state]} (zc/props this)
         player-items (filter can-be-wielded? (-> game-state :world :player :inventory))]
-   (zc/csx [:view {:style {:width 40
-                           :height 20
-                           :position :fixed
-                           :left 40
-                           :top 0
-                           :padding 1
-                           :background-color (rcolor/color->rgb :white)}} [
+   (zc/csx [RightPane {} [
             [ruicommon/MultiSelect {:title "Wield"
                           :items (translate-identified-items game-state player-items)}]]])))
 
@@ -877,14 +818,8 @@
   [this]
   (let [{:keys [game-state]} (zc/props this)
         player-items (filter can-be-wielded-for-ranged-combat? (-> game-state :world :player :inventory))]
-   (zc/csx [:view {:style {:width 40
-                           :height 20
-                           :position :fixed
-                           :left 40
-                           :top 0
-                           :padding 1
-                           :background-color (rcolor/color->rgb :white)}} [
-            [ruicommon/MultiSelect {:title "Wield"
+   (zc/csx [RightPane {} [
+            [ruicommon/MultiSelect {:title "Wield Ranged"
                           :items (translate-identified-items game-state player-items)}]]])))
 
 (zc/def-component StartText
@@ -1080,6 +1015,41 @@
     :select-throw-target
       (rv/get-cursor-pos game-state)))
 
+(defn parse-ui-hint
+  [s]
+  (loop [r [] i 0 start 0 state :text]
+    (if (< i (count s))
+      (let [c (get s i)]
+        (case c
+          \<
+            (let [t (.substring s start i)]
+              (recur (conj r (case state
+                               :text
+                                 (zc/csx [:text {} [t]])
+                               :tag
+                                 (zc/csx [ruicommon/Highlight {} [t]])))
+                     (inc i) (inc i) :tag))
+          \>
+            (let [t (.substring s start i)]
+              (recur (conj r (case state
+                               :text
+                                 (zc/csx [:text {} [t]])
+                               :tag
+                                 (zc/csx [ruicommon/Highlight {} [t]])))
+                     (inc i) (inc i) :text))
+          (recur r (inc i) start state)))
+      (let [t (.substring s start i)]
+        (conj r (zc/csx [:text {} [t]]))))))
+
+(zc/def-component UIHint
+  [this]
+  (let [{:keys [ui-hint]} (zc/props this)]
+    (zc/csx [:view {:style {:display :flex
+                            :flex-direction :row}} (parse-ui-hint ui-hint) #_[
+      [:text {:style {:position :fixed :top 0 :left 0
+                        :background-color [0 0 0 0]}} [
+                  [:text {:style {:background-color [0 0 0]}} [ui-hint]]]]]])))
+
 (zc/def-component Map
   [this]
   (let [{:keys [game-state]} (zc/props this)
@@ -1142,28 +1112,26 @@
                          :lantern-on lantern-on}]]]]]
           [:layer {:id :ui} [
             (if-let [cursor-pos (-> game-state :world :cursor)]
-              (zc/csx [:view {} [
-                        [ruicommon/Cursor {:pos cursor-pos}]
-                        (if (contains? #{:select-ranged-target :select-throw-target} (current-state game-state))
-                          (zc/csx [:view {} [
-                                   [Line {:ch "\u25CF"
-                                         :color (rcolor/color->rgb :green 255)
-                                         :background-color [0 0 0 0]
-                                         :start-pos  player-screen-pos
-                                         :end-pos (target-pos game-state)}]
-                                    [HighlightNpcs {:visible-npcs visible-npcs
-                                                    :vx vx
-                                                    :vy vy
-                                                    :start-pos  (rv/world-pos->screen-pos game-state player-pos)
-                                                    :end-pos (target-pos game-state)}]]])
-                          (zc/csx [:view {}]))]])
+               (zc/csx [:view {} [
+                  [ruicommon/Cursor {:pos (rv/world-pos->screen-pos game-state cursor-pos)}]
+                  (if (contains? #{:select-ranged-target :select-throw-target} (current-state game-state))
+                    (zc/csx [:view {} [
+                              [Line {:ch "\u25CF"
+                                    :color (rcolor/color->rgb :green 255)
+                                    :background-color [0 0 0 0]
+                                    :start-pos  player-screen-pos
+                                    :end-pos (target-pos game-state)}]
+                               [HighlightNpcs {:visible-npcs visible-npcs
+                                               :vx vx
+                                               :vy vy
+                                               :start-pos  (rv/world-pos->screen-pos game-state player-pos)
+                                               :end-pos (target-pos game-state)
+                                               :font-type font-type}]]])
+                        (zc/csx [:view {}]))]])
               (zc/csx [:view {}]))
             (if-let [ui-hint (get-in game-state [:world :ui-hint])]
               ;; ui-hint
-              (zc/csx [:view {} [
-                [:text {:style {:position :fixed :top 0 :left 0
-                                :background-color [0 0 0 0]}} [
-                          [:text {:style {:background-color [0 0 0]}} [ui-hint]]]]]])
+              (zc/csx [UIHint {:ui-hint ui-hint}])
               ;; regular concise message log
               (zc/csx [Message {:game-state game-state}]))
             [Hud {:game-state game-state}]

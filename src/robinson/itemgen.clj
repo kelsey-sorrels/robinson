@@ -174,23 +174,37 @@
        ; weapons
        ; blunt
        {:item/id  :club                    :name  "club"                       :name-plural "clubs"
+        :attack :blunt
         :properties #{:stick-like}}
-       {:item/id  :rock                    :name  "rock"                       :name-plural "rocks"}
-       {:item/id  :sling                   :name  "sling"                      :name-plural "slings"}
+       {:item/id  :rock                    :name  "rock"                       :name-plural "rocks"
+        :attack :blunt
+        :ranged-attack :thrown}
+       {:item/id  :sling                   :name  "sling"                      :name-plural "slings"
+        :ranged-attack :thrown}
        ; edged
-       {:item/id  :dagger                  :name  "dagger"                     :name-plural "daggers"}
-       {:item/id  :throwing-axe            :name  "throwing axe"               :name-plural "throwing axes"}
+       {:item/id  :dagger                  :name  "dagger"                     :name-plural "daggers"
+        :attack :knife}
+       {:item/id  :throwing-axe            :name  "throwing axe"               :name-plural "throwing axes"
+        :attack :knife
+        :ranged-attack :thrown}
        {:item/id  :boomarang               :name  "boomarang"                  :name-plural "boomarangs"
+        :ranged-attack :thrown
         :properties #{:stick-like}}
        ; piercing
        {:item/id  :spear                   :name  "spear"                      :name-plural "spears"}
-       {:item/id  :throwing-spear          :name  "throwing spear"             :name-plural "throwing spears"}
-       {:item/id  :bow                     :name  "bow"                        :name-plural "bow"}
-       {:item/id  :blowgun                 :name  "blowgun"                    :name-plural "blowguns"}
+       {:item/id  :throwing-spear          :name  "throwing spear"             :name-plural "throwing spears"
+        :ranged-attack :thrown}
+       {:item/id  :bow                     :name  "bow"                        :name-plural "bow"
+        :ranged-attack :thrown}
+       {:item/id  :blowgun                 :name  "blowgun"                    :name-plural "blowguns"
+        :ranged-attack :thrown}
        ; flexible
-       {:item/id  :garrote                 :name  "garrote"                    :name-plural "garrotes"}
-       {:item/id  :bolas                   :name  "bolas"                      :name-plural "bolas"}
-       {:item/id  :whip                    :name  "whip"                       :name-plural "whips"}
+       {:item/id  :garrote                 :name  "garrote"                    :name-plural "garrotes"
+        :attack :strangle}
+       {:item/id  :bolas                   :name  "bolas"                      :name-plural "bolas"
+        :ranged-attack :tangle}
+       {:item/id  :whip                    :name  "whip"                       :name-plural "whips"
+        :ranged-attack :whip}
 
        ; weapon components
        {:item/id  :obsidian                :name  "obsidian stone"             :name-plural "obsidian stones"}
@@ -244,7 +258,7 @@
        {:item/id  :bedroll                 :name  "bedroll"                    :name-plural "bedrolls"}
        {:item/id  :tarp                    :name  "tarp"                       :name-plural "tarps"}
        {:item/id  :saw                     :name  "saw"                        :name-plural "saws"
-        :utility 100}
+        :utility 100 :properties #{:edged}}
        {:item/id  :glass-bottle            :name  "glass bottle"               :name-plural "glass-bottles"}
        {:item/id  :paper                   :name  "paper"                      :name-plural "pages of paper"}
        {:item/id  :pen                     :name  "pen"                        :name-plural "pens"
@@ -327,29 +341,26 @@
 (defn can-be-wielded?
   [item]
   (let [q '[:find ?a
-            :in $ % ?item-id
+            :in $ ?item-id
             :where
             [?e :item/id ?item-id]
-            [or
-              [?e :attack ?a]
-              [?e :attack ?a]]]]
+            [?e :attack ?a]]]
     ;; execute query: item
     (not-empty (d/q q
-                    (d/db-with (d/empty-db {}) items)
-                    rmat/all-properties
+                    item-db
                     (get item :item/id)))))
 
 (defn can-be-wielded-for-ranged-combat?
   [item]
-  (contains? #{:bow
-               :flint
-               :rock
-               :unhusked-coconut
-               :coconut
-               :coconut-empty
-               :jack-o-lantern
-               :pistol}
-             (get item :item/id)))
+  (let [q '[:find ?a
+            :in $ ?item-id
+            :where
+            [?e :item/id ?item-id]
+            [?e :ranged-attack ?a]]]
+    ;; execute query: item
+    (not-empty (d/q q
+                    item-db
+                    (get item :item/id)))))
 
 (defn item->ranged-combat-ammunition-item-id
   [item]

@@ -2,6 +2,7 @@
   (:use ns-tracker.core
         clojure.stacktrace)
   (:require [robinson.main :as main]
+            [robinson.ui.mouse :as mouse]
             [robinson.world :as rw]
             [zaffre.terminal :as zt]
             [zaffre.glterminal :as zgl]
@@ -29,10 +30,14 @@
 (def default-setup-fn (constantly {}))
 (defn default-tick-fn  [state] (do (println "default tick fn") (Thread/sleep 5000) state))
 (defn default-render-fn [state last-dom] (println "default render fn"))
+(defn default-click-fn [col row last-dom] (println "default click fn"))
+(defn default-move-fn [col row last-col last-row last-dom] (println "default move fn"))
 
 (def setup-fn (atom default-setup-fn))
 (def tick-fn (atom default-tick-fn))
 (def render-fn (atom default-render-fn))
+(def click-fn (atom default-click-fn))
+(def move-fn (atom default-move-fn))
 
 (def track (ns-tracker ["src/robinson"]))
 (defn check-namespace-changes []
@@ -47,6 +52,8 @@
         (reset! render-fn (resolve 'robinson.render/render))
         (reset! setup-fn (resolve 'robinson.main/setup))
         (reset! tick-fn (resolve 'robinson.main/tick))
+        (reset! click-fn (resolve 'robinson.ui.mouse/handle-click))
+        (reset! move-fn (resolve 'robinson.ui.mouse/handle-mouse-move))
         (log/info "Done.")))
     (catch Throwable e (log/error e))))
 
@@ -59,6 +66,7 @@
 ;; Conveinience ref for accessing the last state when in repl.
 (defonce state-ref (atom nil))
 (defonce dom-ref (atom nil))
+(defonce mouse-pos (atom [0 0]))
 
 (defonce done-chan (async/chan))
 
@@ -77,6 +85,8 @@
     (reset! render-fn (resolve 'robinson.render/render))
     (reset! setup-fn (resolve 'robinson.main/setup))
     (reset! tick-fn (resolve 'robinson.main/tick))
+    (reset! click-fn (resolve 'robinson.ui.mouse/handle-click))
+    (reset! move-fn (resolve 'robinson.ui.mouse/handle-mouse-move))
     (start-nstracker)
     (@setup-fn
       (fn [state]
@@ -156,5 +166,26 @@
                   (log/info "received :drag-and-drop")
                   (let [new-state (@tick-fn (assoc @state-ref :screen terminal) {:drag-and-drop names})]
                       (reset! state-ref new-state))))
+              (zevents/add-event-listener terminal :click
+                (fn [{:keys [button col row group-id]}]
+                  (log/info "received :click" button col row group-id)
+                  (try
+                    (binding [zc/*updater* ruu/updater]
+                      (swap! state-ref @click-fn col row @dom-ref))
+                    (catch Throwable t
+                      (log/error t)))))
+              (zevents/add-event-listener terminal :mouse-enter
+                (fn [{:keys [col row]}]
+                  (log/trace "received :mouse-enter" col row)
+                  (let [[last-col last-row] @mouse-pos]
+                    (try
+                        (swap! state-ref
+                          (fn [& more]
+                            (binding [zc/*updater* ruu/updater]
+                              (apply @move-fn more)))
+                          col row last-col last-row @dom-ref)
+                      (reset! mouse-pos [col row])
+                      (catch Throwable t
+                        (log/error t))))))
             (async/<!! done-chan)))))))
  

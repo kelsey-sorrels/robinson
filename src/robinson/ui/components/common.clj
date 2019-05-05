@@ -2,6 +2,7 @@
   (:require
             [robinson.common :as rc]
             [robinson.color :as rcolor]
+            [robinson.update :as ru]
             [taoensso.timbre :as log]
             [zaffre.components :as zc]
             [zaffre.components.ui :as zcui]
@@ -16,10 +17,17 @@
     (zc/csx
       [:text {:style (merge style {:color [229 155 8 255]})} children])))
 
+(zc/def-component InverseHighlight
+  [this]
+  (let [{:keys [style children]} (zc/props this)]
+    (zc/csx
+      [:text {:style (merge style {:color (rcolor/color->rgb :black)
+                                   :background-color [229 155 8 255]})} children])))
+
 (defn hotkey->str [hotkey]
   (cond
-    (= hotkey \space)
-      "space"
+    (= hotkey :escape)
+      "Esc"
     (keyword? hotkey)
       (name hotkey)
     :default
@@ -27,17 +35,34 @@
 
 (zc/def-component HotkeyLabel
   [this]
-  (let [{:keys [hotkey sep text style]} (zc/props this)
-        hotkey-str (hotkey->str hotkey)]
+  (let [{:keys [hotkey sep label style]} (zc/props this)
+        {:keys [hover] :or {hover false}} (zc/state this)
+        hotkey-str (hotkey->str hotkey)
+        white (rcolor/color->rgb :white)
+        black (rcolor/color->rgb :black)
+        owner zc/*current-owner*]
+    ;(log/info hover)
     (zc/csx 
-      [:view {:style (merge
+      [:view {:on-click (fn [{:keys [target game-state]}]
+                                (ru/update-state game-state hotkey))
+              :on-mouse-enter (fn [{:keys [game-state]}]
+                                (binding [zc/*current-owner* owner]
+                                  (zc/set-state! this {:hover true}))
+                                game-state)
+              :on-mouse-leave (fn [{:keys [game-state]}]
+                                (binding [zc/*current-owner* owner]
+                                  (zc/set-state! this {:hover false}))
+                                game-state)
+              :style (merge
                        {:display :flex
-                      :width 10
-                      :flex-direction :row}
+                        :flex-direction :row}
                        style)} [
-        [Highlight {:style {:width (count hotkey-str)}} [(or hotkey-str "")]]
-        [:text {:style {:width 1}} [(or sep "-")]]
-        [:text {:style {:width (count text)}} [text]]]])))
+        (if hover
+          (zc/csx [InverseHighlight {} [(or hotkey-str "")]])
+          (zc/csx [Highlight {} [(or hotkey-str "")]]))
+        [:text {} [(or sep "-")]]
+        [:text {#_#_:style {:color (if hover black white)
+                        :background-color (if hover white black)}} [label]]]])))
   
 (zc/def-component Cursor
   [this]
@@ -53,7 +78,7 @@
                   [:text {:style (merge pos-style
                                   {:color color
                                    :background-color background-color})} ["\u2592"]]]]))
-      (zc/csx [:view {}]))))
+      (zc/csx [:view {:style {:width 1}}]))))
 
 (zc/def-component TitledList
   [this]
@@ -64,19 +89,73 @@
         (map (fn [n] (zc/csx [:text {} [n]])) names)
         [(zc/csx [:text {} ["None"]])]))])))
 
+(defn- attributes
+  [item]
+  (let [r (reduce
+    (fn [s k]
+      (if-let [elem
+                (case k
+                  :damage
+                    (zc/csx [:view {:style {:display :flex
+                                            :flex-direction :row
+                                            :margin-right 1}} [
+                      [:text {:style {:color (rcolor/color->rgb :red)}} ["♥"]]
+                      [:text {:style {}} [(format "%+d" (get item k))]]]])
+                  :accuracy
+                    (zc/csx [:view {:style {:display :flex
+                                            :flex-direction :row
+                                            :margin-right 1}} [
+                      [:text {:style {:color (rcolor/color->rgb :brilliant-blue)}} ["»"]]
+                      [:text {:style {}} [(format "%+d" (get item k))]]]])
+                  :speed
+                    (zc/csx [:view {:style {:display :flex
+                                            :flex-direction :row
+                                            :margin-right 1}} [
+                      [:text {:style {:color (rcolor/color->rgb :green)}} ["»"]]
+                      [:text {:style {}} [(format "%+d" (get item k))]]]])
+                  nil)]
+       (conj s elem)
+       s))
+    []
+    (keys item))]
+    r))
+
 (zc/def-component MultiSelectItem
   [this]
-  (let [{:keys [style hotkey selected count name utility wielded wielded-ranged worn alt]} (zc/props this)
+  (let [{:keys [style hotkey selected count name utility wielded wielded-ranged worn alt] :as props} (zc/props this)
         hotkey-str (str (or (hotkey->str hotkey) ""))
-        s (format "%s%s%s%s"
-            (if count
-              (format "%dx " (int count))
-              "")
-            name
-            (if utility
-              (format "(%d%%)" (int utility))
-              "")
-            (cond
+        count-str (when count (format "%dx " (int count)))]
+    (zc/csx 
+      [:view {:on-click (fn [{:keys [target]}] (log/info "MenuSelectItemClick" (-> target second :zaffre/layout)))
+              :style {:display :flex
+                      :flex-direction :row
+                      :align-items :flex-start}} [
+        [Highlight {:style {:width (clojure.core/count hotkey-str)}} [hotkey-str]]
+        [:text {:on-click (fn [{:keys [target]}] (log/info "MenuSelectItemClick" (-> target second :zaffre/layout)))
+                :style {:width 1}} [(format "%c"
+                     (if hotkey
+                       (if selected
+                         \+
+                         \-)
+                       \space))]]
+        [:view {:on-click (fn [{:keys [target]}] (log/info "MenuSelectItemClick" (-> target second :zaffre/layout)))
+                :style {:display :flex
+                        :flex-direction :column
+                        :align-items :flex-start}} [
+          [:view {:on-click (fn [{:keys [target]}] (log/info "MenuSelectItemClick" (-> target second :zaffre/layout)))
+                  :style {:display :flex
+                          :flex-direction :row
+                          :align-items :flex-start}} [
+            (when count-str
+              (zc/csx [:text {:style {:width (clojure.core/count count-str)}} [count-str]]))
+            [:text {} [name]]
+            [:view {:style {:display :flex
+                            :flex-direction :row
+                            :margin-left 1
+                            :margin-right 1}} (attributes props)]
+            (when utility
+              (zc/csx [:text {:style {:margin-left 1}} [(format "(%d%%)" (int utility))]]))
+            [:text {} [(cond
               wielded
                 "(wielded)"
               wielded-ranged
@@ -84,25 +163,10 @@
               worn
                 "(worn)"
               :else
-                ""))]
-    (zc/csx 
-      [:view {:style {:display :flex
-                      :width 20
-                      :flex-direction :row
-                      ;:background-color (rcolor/color->rgb :red)
-                      :align-items :flex-start}} [
-        [Highlight {:style {:flex 1 :width (clojure.core/count hotkey-str)}} [hotkey-str]]
-        [:text {:style {:width 1 :flex 2}} [(format "%c"
-                     (if hotkey
-                       (if selected
-                         \+
-                         \-)
-                       \space))]]
-        [:view {:style {:flex 3}} [
-          [:text {} [s]]
+                "")]]]]
           (when alt
             (zc/csx [:text {:style {:color (rcolor/color->rgb :gray)}}
-                           [alt]]))]]]])))
+                           [(str alt)]]))]]]])))
 
 (zc/def-component MultiSelect
   [this]
@@ -120,8 +184,9 @@
                                       [MultiSelectItem (merge item
                                                               {:selected (contains? (set selected-hotkeys) hotkey)}) ]]])))
                       items)]
-
-    (zc/csx [:view {:style (or {:flex-direction :column} style)}
+    (zc/csx [:view {:style (merge {:display :flex
+                                   :flex-direction :column
+                                   :align-items :flex-start} style)}
                    (concat (when title
                              [(zc/csx [:text {:style {:color (rcolor/color->rgb :white)}} [title]])
                               (zc/csx [:text {} [" "]])])

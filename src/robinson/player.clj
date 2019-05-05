@@ -505,13 +505,10 @@
         _                       (log/debug "inventory hotkeys" (set (map :hotkey inventory)))
         _                       (log/debug "item hotkeys" (set (map :hotkey items)))
         inventory               (mapv
-                                  (fn [items]
-                                    (reduce merge-items items))
-                                  (vals (group-by (fn [item]
-                                                   (if (contains? non-mass-ids (get item :item/id))
-                                                     ; val that should not be equal to any other vals. Also consider (atom) or something else.
-                                                     (rand)
-                                                     (get item :item/id)))
+                                  ;; merge same items
+                                  (fn [items-group]
+                                    (reduce merge-items items-group))
+                                  (vals (group-by hash
                                                   (concat inventory items))))
         _                       (log/debug "new inventory hotkeys" (set (map :hotkey inventory)))
         _                       (log/info "new inventory" inventory)

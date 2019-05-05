@@ -85,9 +85,9 @@
     (if (pos? amount)
        (str (short-name s) "+" amount)
        (str (short-name s) "" amount)))
-  (mod-type [this] :weapon)
+  (mod-type [this] :item-on-create)
   (mod-apply [this item]
-    (update item k inc amount)))
+    (update item k (fn [v] (+ (or v 0) amount)))))
 
 (defrecord ModPlayerOnCreate [s k amount]
   rcmod/Mod
@@ -101,7 +101,7 @@
        (str (short-name s) " " amount)))
   (mod-type [this] :player-on-create)
   (mod-apply [this player]
-    (update player k inc amount)))
+    (update player k + amount)))
 
 (defn mod-accuracy [low high]
   (let [n (rr/uniform-int low high)]

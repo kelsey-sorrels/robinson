@@ -188,7 +188,7 @@
         :attack :knife
         :ranged-attack :thrown}
        {:item/id  :boomarang               :name  "boomarang"                  :name-plural "boomarangs"
-        :ranged-attack :thrown
+        :ranged-attack :boomerang
         :properties #{:stick-like}}
        ; piercing
        {:item/id  :spear                   :name  "spear"                      :name-plural "spears"}

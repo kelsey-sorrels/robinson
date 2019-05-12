@@ -97,10 +97,10 @@
 (zc/def-component SelectRecipeType
   [this]
   (let [{:keys [game-state]} (zc/props this)]
-    (zc/csx [zcui/Popup {} [
+    (zc/csx [zcui/Popup {:style {:bottom 4 :padding 1}} [
                 [:text {} ["Recipe Type"]]
                 [:text {} [""]]
-                [:view {:style {:margin-left 30 :text-align :left}} [
+                [:view {} [
                   [ruicommon/MultiSelect {:items [{:name "Weapon" :hotkey \w}
                                                   {:name "Trap" :hotkey \t}
                                                   {:name "Food" :hotkey \f}

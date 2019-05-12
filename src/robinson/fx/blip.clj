@@ -5,13 +5,14 @@
             [robinson.math :as rmath]
             [robinson.color :as rcolor]
             [robinson.actors :as ractors]
+            [robinson.actor-protocol :as rap]
             [robinson.fx :as rfx]
             [robinson.world :as rw]
             [taoensso.timbre :as log]))
 
 
 (defrecord BlipActor [ttl fx-ks]
-  ractors/Actor
+  rap/Actor
   (receive [this state]
     (let [ttl-zero (or (zero? ttl) (neg? ttl))]
       (letfn [(cleanup [state]

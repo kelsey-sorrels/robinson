@@ -2,6 +2,7 @@
 (ns robinson.actors
   (:require 
             [robinson.common :as rc]
+            [robinson.actor-protocol :as rap]
             [taoensso.timbre :as log]
             [clojure.core.async :as async :refer [go go-loop]]))
 
@@ -28,20 +29,21 @@
     ::actors
     empty?))
 
-(defprotocol Actor
-  (receive [this state]))
-
 (defn fn->actor [f]
-  (reify Actor
+  (reify rap/Actor
     (receive [this state] (f this state))))
 
 (defn tick-actors [state]
   "Return a new state after all actors have been processed"
-  (try
     (reduce (fn [state [actor-id actor]]
-              (receive actor state))
+              (try
+                (log/info "ticking actor" actor-id actor)
+                (rap/receive actor state)
+                (catch Exception e
+                  (log/error "Error ticking actors" e)
+                  (log/error actor-id)
+                  (log/error actor)
+                  state)))
             state
-            (get state ::actors))
-    (catch Exception e
-      (log/error "Error ticking actors" e))))
+            (get state ::actors)))
 

@@ -1728,9 +1728,8 @@
             (-> state
               (assoc-in [:world :target-ranged-pos-coll] (map :pos npcs-by-distance))
               (assoc-in [:world :target-ranged-index] 0)
-              (assoc-in [:world :cursor] (-> npcs-by-distance first :pos))
               (rw/assoc-current-state :select-ranged-target)
-              (rc/ui-hint "<Tab>/<n>-next target. <p>-previous target"))
+              (rc/ui-hint "<f>-fire. <Tab>/<n>-next target. <p>-previous target"))
             (rc/ui-hint state "No targets in range")))
           (rc/ui-hint state "Must reload (<r>) weapon first."))
         (rc/ui-hint state "Must wield ranged weapon first (<W>)"))))
@@ -1763,17 +1762,21 @@
 
 (defn select-next-ranged-target
   [state]
-  (update-in state
-             [:world :target-ranged-index]
-             (fn [idx] (mod (inc idx)
-                            (count (get-in state [:world :target-ranged-pos-coll]))))))
+  (-> state
+    (update-in 
+      [:world :target-ranged-index]
+      (fn [idx] (mod (inc idx)
+                     (count (get-in state [:world :target-ranged-pos-coll])))))
+    (rc/ui-hint "<f>-fire. <Tab>/<n>-next target. <p>-previous target")))
 
 (defn select-previous-ranged-target
   [state]
-  (update-in state
-             [:world :target-ranged-index]
-             (fn [idx] (mod (dec idx)
-                            (count (get-in state [:world :target-ranged-pos-coll]))))))
+  (-> state
+    (update-in
+      [:world :target-ranged-index]
+      (fn [idx] (mod (dec idx)
+                     (count (get-in state [:world :target-ranged-pos-coll])))))
+    (rc/ui-hint "<f>-fire. <Tab>/<n>-next target. <p>-previous target")))
 
 (defn fire-wielded-ranged-weapon
   [state]
@@ -1784,21 +1787,25 @@
                                                 (rp/player-inventory state)))
         [target-x
          target-y]          (rc/pos->xy target-pos)
-        path                (rlos/line-segment (rp/player-xy state) [target-x target-y])
-        dt                  (* 60 (rp/player-distance-from-pos state target-pos))]
+        path                (rest (rlos/line-segment (rp/player-xy state) [target-x target-y]))]
+    (log/info "player-xy" (rp/player-xy state))
     (log/info "target-ranged-index" target-ranged-index)
     (log/info "target-ranged-pos-coll" (get-in state [:world :target-ranged-pos-coll]))
     (log/info "npc" npc)
     (log/info "ranged-weapon-item" ranged-weapon-item)
+    (log/info "path" path)
     (as-> state state
       ;; the weapon requires reloading?
-      (if (ig/requires-reload? ranged-weapon-item)
+      #_(if (ig/requires-reload? ranged-weapon-item)
         ;; dec ranged weapon ammunition
         (rp/dec-item-count state (ig/item->ranged-combat-ammunition-item-id ranged-weapon-item))
         state)
-      (rfx/conj-effect state :airborn-item ranged-weapon-item path (count path))
-      ;; FIXME remove? do combat
-      #_(rcombat/attack state [:world :player] (rnpc/npc->keys state npc) ranged-weapon-item))))
+      (rfx/conj-effect
+        state
+        (get ranged-weapon-item :ranged-attack :airborn-item)
+        (assoc ranged-weapon-item :attacker (-> state rp/get-player (dissoc :recipes)))
+        path
+        (count path)))))
 
 (defn free-cursor
   "Dissassociate the cursor from the world."
@@ -3857,7 +3864,6 @@
             _ (log/debug "player" (get-in state [:world :player]))
             _ (log/info "new-state" new-state)
             wtl       (get-in state [:world :player :will-to-live])]
-        (log/info (get-in state [:world :player]))
         (some-> state
             (rw/assoc-current-state new-state)
             (as-> state

@@ -403,9 +403,9 @@
   (let [{:keys [visible-npcs vx vy start-pos end-pos font-type]} (zc/props this)
         [start-x start-y] (rc/pos->xy start-pos)
         [end-x end-y] (rc/pos->xy end-pos)
-        points (set (rlos/line-segment-fast-without-endpoints
-                      [start-x start-y]
-                      [end-x end-y]))]
+        points (set (rest (rlos/line-segment-fast
+                            [start-x start-y]
+                            [end-x end-y])))]
     (zc/csx [:view {}
                    (reduce (fn [children npc]
                              (let [sx        (- (-> npc :pos :x) vx)
@@ -1111,24 +1111,22 @@
                          :sight-distance sight-distance
                          :lantern-on lantern-on}]]]]]
           [:layer {:id :ui} [
-            (if-let [cursor-pos (-> game-state :world :cursor)]
-               (zc/csx [:view {} [
-                  [ruicommon/Cursor {:pos (rv/world-pos->screen-pos game-state cursor-pos)}]
-                  (if (contains? #{:select-ranged-target :select-throw-target} (current-state game-state))
-                    (zc/csx [:view {} [
-                              [Line {:ch "\u25CF"
-                                    :color (rcolor/color->rgb :green 255)
-                                    :background-color [0 0 0 0]
-                                    :start-pos  player-screen-pos
-                                    :end-pos (target-pos game-state)}]
-                               [HighlightNpcs {:visible-npcs visible-npcs
-                                               :vx vx
-                                               :vy vy
-                                               :start-pos  (rv/world-pos->screen-pos game-state player-pos)
-                                               :end-pos (target-pos game-state)
-                                               :font-type font-type}]]])
-                        (zc/csx [:view {}]))]])
-              (zc/csx [:view {}]))
+            (when-let [cursor-pos (-> game-state :world :cursor)]
+              (zc/csx [:view {} [
+                 [ruicommon/Cursor {:pos (rv/world-pos->screen-pos game-state cursor-pos)}]]]))
+            (when (contains? #{:select-ranged-target :select-throw-target} (current-state game-state))
+              (zc/csx [:view {} [
+                        [Line {:ch "\u25CF"
+                              :color (rcolor/color->rgb :green 255)
+                              :background-color [0 0 0 0]
+                              :start-pos  player-screen-pos
+                              :end-pos (target-pos game-state)}]
+                         [HighlightNpcs {:visible-npcs visible-npcs
+                                         :vx vx
+                                         :vy vy
+                                         :start-pos  (rv/world-pos->screen-pos game-state player-pos)
+                                         :end-pos (target-pos game-state)
+                                         :font-type font-type}]]]))
             (if-let [ui-hint (get-in game-state [:world :ui-hint])]
               ;; ui-hint
               (zc/csx [UIHint {:ui-hint ui-hint}])

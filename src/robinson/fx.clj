@@ -43,6 +43,16 @@
     :color fg
     :background-color bg}))
 
+(defn multi-character-fx
+ ([ch-pos-list]
+   "ch-pos is a list of {:ch :pos} objects."
+   (multi-character-fx ch-pos-list [255 255 255 255] [0 0 0 0]))
+ ([ch-pos-list fg bg]
+   {:type :multi-character-fx
+    :ch-pos ch-pos-list
+    :color fg
+    :background-color bg}))
+ 
 (defmulti conj-effect (fn [state effect-type & more] effect-type))
 (defmethod conj-effect :default [state effect-type & more]
   (log/warn (str "Unhandled effect-type in conj-effect " effect-type "vaLid effect-type: "  (methods conj-effect))))

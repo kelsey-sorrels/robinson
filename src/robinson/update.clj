@@ -1805,7 +1805,7 @@
                                                 (rp/player-inventory state)))
         [target-x
          target-y]          (rc/pos->xy target-pos)
-        path                (rest (rlos/line-segment (rp/player-xy state) [target-x target-y]))]
+        path                (rlos/line-segment (rp/player-xy state) [target-x target-y])]
     (log/info "player-xy" (rp/player-xy state))
     (log/info "target-ranged-index" target-ranged-index)
     (log/info "target-ranged-pos-coll" (get-in state [:world :target-ranged-pos-coll]))

@@ -19,6 +19,7 @@
             ;; Force loading of fx namespaces to eval defmethods
             [robinson.fx.airborn-item :as rfxai]
             [robinson.fx.blip :as rfxblip]
+            [robinson.fx.whip-item :as rfxwhip]
             [clojure.core.async :as async :refer [go go-loop]]
             [clojure.tools.nrepl.server :as nreplserver]
             [overtone.at-at :as atat]

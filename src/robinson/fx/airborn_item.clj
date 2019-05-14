@@ -128,13 +128,3 @@
       ; create a corresponding actor that controls the fx
       (ractors/add-actor actor))))
 
-(defmethod rfx/conj-effect :whip [state fx-type & [item xy-path ttl]]
-  (let [fx-id (rfx/fx-id)
-        actor (->AirbornItemActor item xy-path ttl (rfx/fx-ks fx-id))]
-    (log/info "created AirbornItemActor for whip" item (vec xy-path) ttl (rfx/fx-ks fx-id))
-    (-> state
-      ; create a character fx
-      (rfx/conj-fx (rfx/character-fx \- (apply rc/xy->pos (first xy-path))) fx-id)
-      ; create a corresponding actor that controls the fx
-      (ractors/add-actor actor))))
-

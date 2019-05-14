@@ -37,7 +37,7 @@
   "Return a new state after all actors have been processed"
     (reduce (fn [state [actor-id actor]]
               (try
-                (log/info "ticking actor" actor-id actor)
+                (log/trace "ticking actor" actor-id actor)
                 (rap/receive actor state)
                 (catch Exception e
                   (log/error "Error ticking actors" e)

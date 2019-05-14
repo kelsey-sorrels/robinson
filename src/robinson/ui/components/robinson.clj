@@ -482,6 +482,19 @@
                             :color (or color (rcolor/color->rgb :white))
                             :background-color (or background-color (rcolor/color->rgb :black))}} [(str ch)]])))
 
+(zc/def-component MultiCharacterFx
+  [this]
+  (let [{:keys [fx vx vy]} (zc/props this)
+        {:keys [ch-pos color background-color]} fx]
+    ;(log/info "rendering CharacterFX" ch y vy x vx)
+    (zc/csx [:view {} (map (fn [{:keys [ch pos]}]
+                           (let [[x y] (rc/pos->xy pos)]
+                        (zc/csx
+                          [:text {:style {:position :fixed :top (- y vy) :left (- x vx)
+                                          :color (or color (rcolor/color->rgb :white))
+                                          :background-color (or background-color (rcolor/color->rgb :black))}} [(str ch)]])))
+                           ch-pos)])))
+
 (zc/def-component FishingPole
   [this]
   (let [{:keys [game-state vx vy]} (zc/props this)]
@@ -510,11 +523,13 @@
   (let [{:keys [fx vx vy]} (zc/props this)]
     (zc/csx [:view {}
       (map (fn [[effect-id effect]]
-             (log/info "rendering effect " effect)
+             (log/debug "rendering effect " effect)
              (case (get effect :type)
                :character-fx
                  (let [[x y] (rc/pos->xy (get effect :pos))]
                    (zc/csx [CharacterFx {:fx effect :vx vx :vy vy }]))
+               :multi-character-fx
+                   (zc/csx [MultiCharacterFx {:fx effect :vx vx :vy vy}])
                (zc/csx [:view {} []])))
             fx)])))
 

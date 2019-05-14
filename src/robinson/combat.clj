@@ -374,7 +374,7 @@
                 (assoc-in (conj defender-path :movement-policy) :hide-from-player-in-range-or-random))
               state)
             (log-with-line state "5")
-            (log-with-line state "attack-type" attack-type attacker)
+            (log-with-line state "attack-type" attack-type)
             (let [msg (gen-attack-message attacker
                                           defender
                                           (case attack-type
@@ -394,17 +394,18 @@
                             :white)))
             (log-with-line state "6")
             ;; chance of being envenomed by venomous attacks
-            (update-in state (conj defender-path :status) (fn [status] (if (and (re-find #"venom" (str attack))
+            #_(update-in state (conj defender-path :status) (fn [status] (if (and (re-find #"venom" (str attack))
                                                                                 (= (rr/uniform-int 10) 0))
                                                                          (conj status :poisioned)
                                                                          status)))
+            (log-with-line state "7")
             ;; chance of being paralyzed by frog
             (if (and (= (get defender :id) :player)
                      (mg/is-poisonous-frog? state (get attacker :race :human)))
               (rp/assoc-player-attribute :paralyzed-start-time (inc (rw/get-time state)))
               state)
 
-            (log-with-line state "7")
+            (log-with-line state "8")
             ;; chance of being wounded
             (update-in state defender-path (fn [defender] (if (and is-wound
                                                                    (contains? defender :wounds))
@@ -415,14 +416,14 @@
                                                                              {defender-body-part {:time (rw/get-time state)
                                                                                             :dmg dmg}})))
                                                             defender)))
-            (log-with-line state "8")
+            (log-with-line state "9")
             (if (and is-wound
                      (contains? (set defender-path) :player))
               (rc/append-log state "You have been wounded." :red)
               state)
-            (log-with-line state "9")
-            (ce/on-hit defender state)
             (log-with-line state "10")
+            (ce/on-hit defender state)
+            (log-with-line state "11")
             ;; show fx
             ;; Make blip actor and use character FX
             (if hit
@@ -436,20 +437,21 @@
                                        (rcolor/color->rgb :blue)
                                        [0 0 0 0]
                                        2))
-            (log-with-line state "11")
+            (log-with-line state "12")
             ;; some thrown items can stun npcs
             (if (and (= attack-type :thrown-item)
                      hit
                      (ig/id-can-stun? (get thrown-item :id)))
               (update-in state (conj defender-path :status) (fn [state] (conj state :stunned)))
               state)
-            (log-with-line state "12")
+            (log-with-line state "13")
             (if (contains? (set attacker-or-path) :player)
               (rp/update-npc-attacked state defender attack)
               state)))
 
 (defn- attack-do-death
   [state attacker defender-path defender defender-body-part attack attack-type attack-item thrown-item ranged-weapon]
+  ;(log/info "attack-do-death" (keys attack) (keys attack-item) thrown-item ranged-weapon)
   (let [
         {defender-x :x defender-y :y} (get defender :pos)]
   (if (contains? (set defender-path) :npcs)
@@ -488,8 +490,8 @@
                                               defender
                                               (case attack-type
                                                 :melee attack
-                                                :ranged (get ranged-weapon :id)
-                                                :thrown-item (get thrown-item :id)
+                                                :ranged (get ranged-weapon :item/id)
+                                                :thrown-item (get thrown-item :item/id)
                                                 (assert false (format "Unknown attack type %s" (name attack-type))))
                                               defender-body-part
                                               :dead)
@@ -542,7 +544,7 @@
     #_(log/info "attack" attacker-or-path "is attacking defender" defender-path)
     #_(log/info "attacker-detail" attacker)
     #_(log/info "defender-detail" defender)
-    (log/info "attack" attack)
+    #_(log/debug "attack" attack)
     (log/info "attack-type" attack-type)
     (log/info "hit?" hit)
     (log/info "hp" hp)

@@ -63,7 +63,7 @@
               [(last chain)]))))
 
 (defn handle-recieve
-  [this state item chains ttl fx-ks]
+  [this state item hit-npc chains ttl fx-ks]
   (let [chain (or (first chains) [])
         npcs (->> chain
                (map (fn [[x y]]
@@ -77,7 +77,11 @@
                 (ractors/remove-actor this)
                 (rc/dissoc-in fx-ks)))
             (handle-npc [state npc]
-              (rcombat/attack state [:world :player] (rnpc/npc->keys state npc) item))
+              (if hit-npc
+                state
+                (-> state
+                  (rcombat/attack [:world :player] (rnpc/npc->keys state npc) item)
+                  (ractors/update-actor this :hit-npc assoc true))))
             #_(handle-trigger-trap [state]
               ; triggers a trap
               ;; remove item and trigger trap
@@ -125,11 +129,11 @@
       ; Nothing happened, advance item one step
     (on-move state))))
 
-(defrecord WhipItemActor [item chains ttl fx-ks]
+(defrecord WhipItemActor [item hit-npc chains ttl fx-ks]
   rap/Actor
   (receive [this state]
     (try
-      (handle-recieve this state item chains ttl fx-ks)
+      (handle-recieve this state item hit-npc chains ttl fx-ks)
       (catch Throwable t
         (try
           (log/error t)
@@ -178,15 +182,12 @@
         r (+ 0.5 (rc/distance (rc/xy->pos xi yi)
                               (rc/xy->pos xf yf)))
         theta (Math/atan2 dy dx)
-        chains (mapv (partial whip-chain r theta xi yi) (range 0.01 Math/PI 0.2))
-        actor (->WhipItemActor item chains (count chains) (rfx/fx-ks fx-id))]
-    #_(log/info "created WhipItemActor " item (vec xy-path) (count chains) (rfx/fx-ks fx-id))
+        chains (map (partial whip-chain r theta xi yi) (range 0.01 Math/PI 0.2))
+        actor (->WhipItemActor item false chains (count chains) (rfx/fx-ks fx-id))]
     (log/info "dx:" dx " dy:" dy)
     (log/info "origin" xi yi)
     (log/info "r:" r)
     (log/info "theta:" theta)
-    #_(doseq [chain chains]
-      (log/info chain))
     (-> state
       ; create a character fx
       (rfx/conj-fx (rfx/multi-character-fx []) fx-id)

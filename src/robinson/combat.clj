@@ -213,6 +213,7 @@
   :empty-coconut 1
   :jack-o-lantern 5
   :whip 2
+  :boomerang 1
   ;; pirate items
   :cutlass 20
   :pistol 20

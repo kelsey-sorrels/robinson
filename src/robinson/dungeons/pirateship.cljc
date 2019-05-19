@@ -91,6 +91,7 @@
 
 (defn gen-chest-item [level]
   (let [item (ig/id->item (rand-nth [:spices
+                                     :plank
                                      :sail
                                      :dice
                                      :blanket

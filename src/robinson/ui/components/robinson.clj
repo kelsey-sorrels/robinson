@@ -6,6 +6,7 @@
             [robinson.math :as rmath]
             [robinson.color :as rcolor]
             [robinson.renderutil :as rutil]
+            [robinson.catmull-rom :as rcr]
             [robinson.scores :as rs]
             [robinson.startgame :as sg]
             [robinson.popover :as rpop]
@@ -31,6 +32,7 @@
             [robinson.describe :as rdesc]
             [robinson.endgame :as rendgame :refer [gen-end-madlib]]
             [robinson.fx :as rfx]
+            [robinson.fx.boomerang-item :as rfx-boomerang-item]
             [robinson.crafting :as rcrafting]
             [robinson.itemgen :refer [can-be-wielded?
                                       can-be-wielded-for-ranged-combat?
@@ -581,6 +583,17 @@
           [start-x start-y]
           [end-x end-y]))])))
 
+(zc/def-component Spline
+  [this]
+  (let [{:keys [ch color background-color control-points]} (zc/props this)]
+    (zc/csx [:view {}
+      (map (fn [[x y]]
+               (zc/csx [:view {} [
+                 [:text {:style {:position :fixed :top y :left x
+                                 :color (or color [0 255 0 255])
+                                 :background-color (or background-color [0 0 0 0])}} [(or (str ch) "*")]]]]))
+        (rcr/catmull-rom-chain (map rc/pos->xy control-points)))])))
+
 ; Render the pickup item menu if the world state is `:pickup-selection`.
 (zc/def-component PickupSelection
   [this]
@@ -928,6 +941,15 @@
   (let [{:keys [game-state]} (zc/props this)]
     nil))
 
+(zc/def-component DebugEval
+  [this]
+  (let [{:keys [game-state]} (zc/props this)]
+    (zc/csx [zcui/Popup {} [
+              [:view {:style {:width 60}} [
+                [:text {} ["Eval:"]]
+                [zcui/Input {:value (get game-state :debug-input "")
+                             :focused true
+                             :style {:cursor-fg (rcolor/color->rgb :highlight)}}]]]]])))
 
 (zc/def-component MapUI
   [this]
@@ -963,6 +985,7 @@
       :rescued              (zc/csx [RescuedPopover {:game-state game-state}])
       :quit?                (zc/csx [QuitPrompt {:game-state game-state}])
       :harvest              (zc/csx [Harvest {:game-state game-state}])
+      :debug-eval           (zc/csx [DebugEval {:game-state game-state}])
       (zc/csx [:view {} []]))
     ;; draw cursor
     #_(if-let [cursor-pos (-> state :world :cursor)]
@@ -1131,17 +1154,33 @@
                  [ruicommon/Cursor {:pos (rv/world-pos->screen-pos game-state cursor-pos)}]]]))
             (when (contains? #{:select-ranged-target :select-throw-target} (current-state game-state))
               (zc/csx [:view {} [
-                        [Line {:ch "\u25CF"
-                              :color (rcolor/color->rgb :green 255)
-                              :background-color [0 0 0 0]
-                              :start-pos  player-screen-pos
-                              :end-pos (target-pos game-state)}]
-                         [HighlightNpcs {:visible-npcs visible-npcs
-                                         :vx vx
-                                         :vy vy
-                                         :start-pos  (rv/world-pos->screen-pos game-state player-pos)
-                                         :end-pos (target-pos game-state)
-                                         :font-type font-type}]]]))
+                        (let [ranged-weapon-item  (first (filter (fn [item] (get item :wielded-ranged))
+                                                                 (rp/player-inventory game-state)))]
+                          (if (= :boomerang (get ranged-weapon-item :item/id))
+                            (let [target (target-pos game-state)
+                                  midpoint (rc/midpoint player-screen-pos target)
+                                  tangent (rc/tangent (rc/sub-pos target player-screen-pos))
+                                  mp1 (rc/sub-pos midpoint (rc/scale 0.5 tangent))
+                                  mp2 (rc/add-pos midpoint (rc/scale 0.5 tangent))
+                                  s1 (rc/sub-pos player-screen-pos (rc/scale 0.2 tangent))
+                                  s2 (rc/sub-pos player-screen-pos (rc/scale -0.2 tangent))]
+                            (zc/csx [Spline {:ch "\u25CF"
+                                           :color (rcolor/color->rgb :green 255)
+                                           :background-color [0 0 0 0]
+                                           :control-points (rfx-boomerang-item/boomerang-control-points
+                                                                player-screen-pos
+                                                                target)}]))
+                            (zc/csx [Line {:ch "\u25CF"
+                                           :color (rcolor/color->rgb :green 255)
+                                           :background-color [0 0 0 0]
+                                           :start-pos  player-screen-pos
+                                           :end-pos (target-pos game-state)}])))
+                        [HighlightNpcs {:visible-npcs visible-npcs
+                                        :vx vx
+                                        :vy vy
+                                        :start-pos  (rv/world-pos->screen-pos game-state player-pos)
+                                        :end-pos (target-pos game-state)
+                                        :font-type font-type}]]]))
             (if-let [ui-hint (get-in game-state [:world :ui-hint])]
               ;; ui-hint
               (zc/csx [UIHint {:ui-hint ui-hint}])

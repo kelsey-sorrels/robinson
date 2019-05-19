@@ -1152,7 +1152,12 @@
                           (= (get target-cell :type) :tree)
                             (if (or harvestable
                                     (= 0 (rr/uniform-int 1000)))
-                              [(rr/rand-nth [(ig/gen-item :stick) (ig/gen-item :stick) (ig/gen-item :stick) (ig/gen-item :stick) (ig/gen-item :plant-fiber)])]
+                              [(rr/rand-nth [(ig/gen-item :stick)
+                                             (ig/gen-item :stick)
+                                             (ig/gen-item :stick)
+                                             (ig/gen-item :branch)
+                                             (ig/gen-item :branch)
+                                             (ig/gen-item :plant-fiber)])]
                               [])
                           (= (get target-cell :type) :bamboo)
                               (if (or harvestable
@@ -1419,6 +1424,74 @@
         (-> state
           (rw/assoc-current-state :direction-select)
           (rc/ui-hint (format "Pick a direction. (<%s>)" (apply str (map direction->unicode-char (keys directions)))))))))
+
+(defn debug-input
+  [state input]
+  (case input
+    :enter
+        (let [prelude "(require '[robinson.common :as rc]
+                                '[robinson.random :as rr]
+                                '[robinson.scores :as rs]
+                                '[robinson.world :as rw]
+                                '[robinson.viewport :as rv]
+                                '[robinson.font :as rfont]
+                                '[robinson.log :as rlog]
+                                '[zaffre.terminal :as zat]
+                                '[robinson.describe :as rdesc]
+                                '[robinson.traps :as rt]
+                                '[robinson.dialog :as rdiag]
+                                '[robinson.player :as rp]
+                                '[robinson.math :as rmath]
+                                '[robinson.itemgen  :as ig]
+                                '[robinson.monstergen :as mg]
+                                '[robinson.apply-item :as rai]
+                                '[robinson.startgame :as sg]
+                                '[robinson.popover :as rpop]
+                                '[robinson.fs :as rfs]
+                                '[clojure.string :refer [lower-case]]
+                                '[robinson.npc :as rnpc]
+                                '[robinson.combat :as rcombat]
+                                '[robinson.crafting :as rcrafting]
+                                '[robinson.crafting.recipe-gen :as rrecipe-gen]
+                                '[robinson.crafting.weapon-gen :as rc-weapon-gen]
+                                '[robinson.worldgen :as rworldgen]
+                                '[robinson.lineofsight :as rlos]
+                                '[robinson.renderutil :as rutil]
+                                '[robinson.fx :as rfx]
+                                '[robinson.feedback :as rf]
+                                'robinson.macros
+                                '[robinson.macros :as rm]
+                                'clojure.pprint
+                                'clojure.edn
+                                '[clojure.core.async :as async]
+                                '[clojure.data.json :as json]
+                                '[clojure.java.io :as io]
+                                '[taoensso.timbre :as log]
+                                'clj-tiny-astar.path
+                                '[clj-http.client :as http]
+                                '[clojure.stacktrace :as st]
+                                'clojure.inspector
+                                'clojure.string)
+                       \n"]
+          (try
+            (let [debug-input (get state :debug-input)
+                  source (str prelude debug-input)
+                  f (load-string source)]
+              (if f
+                (-> state
+                  f
+                  (assoc :debug-input "")
+                  (rw/assoc-current-state :normal))
+                (do (log/error "new-state nil" debug-input)
+                  state)))
+            (catch Throwable t
+              (log/error t)
+              state)))
+    :space
+      (debug-input state \space)
+    :backspace
+      (update state :debug-input subs 0 (dec (count (get state :debug-input))))
+    (update state :debug-input str (str input))))
 
 (defn do-selected-direction
   [state keyin]
@@ -2155,6 +2228,8 @@
                                                 [slot-hotkey]
                                                 [])))
                                           slots))]
+          (log/info "item-inventory-count" item-inventory-count)
+          (log/info "hotkey-count" hotkey-count)
           ; skip if there are not enough items of that type in inventory
           (if (< hotkey-count item-inventory-count)
             (-> state
@@ -3454,12 +3529,7 @@
                           #_#_\0           [(fn [state]
                                           (log/info "monster level" (rnpc/monster-level state))
                                           state)               :normal false]
-                          \0           [(fn [state]
-                                          (-> state
-                                            (rp/player-update-xp (partial + 100))
-                                            #_(rp/player-update-wtl (partial + 10))
-                                            (rp/player-update-hunger (fn [hunger] 0))
-                                            (rp/player-update-thirst (fn [thirst] 0)))) :normal false]
+                          \0           [identity :debug-eval false]
                           \1           [(fn [state]
                                           (log/info "showing world")
                                           (when (get-in state [:world :dev-mode])
@@ -3543,6 +3613,8 @@
                                           state)
                                                                :normal          false]
                            :escape     [identity               :quit?           false]}
+               :debug-eval {:escape [identity :normal false]
+                            :else [debug-input rw/current-state false]}
                :direction-select
                           {:escape     [identity               :normal          false]
                            :else       [do-selected-direction  rw/current-state false]}

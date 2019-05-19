@@ -32,6 +32,25 @@
   {:x (reduce - (pos :x) (map :x poss))
    :y (reduce - (pos :y) (map :y poss))})
 
+(defn midpoint [pos & poss]
+  {:x (/ (reduce + (pos :x) (map :x poss)) (inc (count poss)))
+   :y (/ (reduce + (pos :y) (map :y poss)) (inc (count poss)))})
+
+(defn cross
+  [u v]
+  {:x (- (* (u :y) (v :z)) (* (u :z) (v :y)))
+   :y (- (* (u :z) (v :x)) (* (u :x) (v :z)))})
+
+(defn tangent
+  [pos]
+  (cross (assoc pos :z 0)
+         {:x 0 :y 0 :z 1}))
+
+(defn scale
+  [a pos]
+  {:x (* a (pos :x))
+   :y (* a (pos :y))})
+  
 (defn pos->xy
   [{x :x y :y}]
   [x y])

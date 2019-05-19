@@ -110,8 +110,10 @@
 (def ^:private items [
        {:item/id  :stick                   :name  "stick"                      :name-plural "sticks"
         :fuel 100 :utility 100 :weight 0.5 :properties #{:stick-like} :item/materials #{:wood}}
+       {:item/id  :branch                  :name  "branch"                     :name-plural "branches"
+        :fuel 100 :utility 100 :weight 2 :properties #{:stick-like} :item/materials #{:wood}}
        {:item/id  :log                     :name  "log"                        :name-plural "logs"
-        :fuel 500 :item/materials #{:wood}}
+        :fuel 500 :weight 20 :properties #{:stick-like} :item/materials #{:wood}}
        {:item/id  :sharpened-stick         :name  "sharpened stick"            :name-plural "sharpened sticks"
         :attack :spear :fuel 100 :utility 100 :properties #{:stick-like} :item/materials #{:wood}}
        {:item/id  :arrow                   :name  "arrow"                      :name-plural "arrows"
@@ -187,7 +189,7 @@
        {:item/id  :throwing-axe            :name  "throwing axe"               :name-plural "throwing axes"
         :attack :knife
         :ranged-attack :thrown}
-       {:item/id  :boomarang               :name  "boomarang"                  :name-plural "boomarangs"
+       {:item/id  :boomerang               :name  "boomerang"                  :name-plural "boomerangs"
         :ranged-attack :boomerang
         :properties #{:stick-like}}
        ; piercing
@@ -275,6 +277,8 @@
        ;; pirate ship items
        {:item/id  :spices                  :name "spices"                      :name-plural "spices"}
        {:item/id  :sail                    :name "sail"                        :name-plural "sails"}
+       {:item/id  :plank                   :name "plank"                       :name-plural "planks"
+        :item/materials #{:wood}}
        {:item/id  :dice                    :name "dice"                        :name-plural "dice"}
        {:item/id  :blanket                 :name "blanket"                     :name-plural "blankets"}
        {:item/id  :cup                     :name "cup"                         :name-plural "cup"}

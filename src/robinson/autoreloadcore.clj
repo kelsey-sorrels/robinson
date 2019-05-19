@@ -20,6 +20,7 @@
             [robinson.fx.airborn-item :as rfxai]
             [robinson.fx.blip :as rfxblip]
             [robinson.fx.whip-item :as rfxwhip]
+            [robinson.fx.boomerang-item :as rfxboomerang]
             [clojure.core.async :as async :refer [go go-loop]]
             [clojure.tools.nrepl.server :as nreplserver]
             [overtone.at-at :as atat]

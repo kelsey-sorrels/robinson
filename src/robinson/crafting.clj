@@ -36,6 +36,12 @@
 (defn low-weight [item]
   (< (get item :weight 0) 1))
 
+(defn medium-weight [item]
+  (< 1 (get item :weight 0) 10))
+
+(defn high-weight [item]
+  (< 10 (get item :weight 0)))
+
 (defn stick-like [item]
   (contains? (get item :properties) :stick-like))
 
@@ -62,6 +68,9 @@
 
 (defn round [item]
   (< (get item :roundness 1) 1))
+
+(defn wooden [item]
+  (contains? (get item :item/materials) :wood))
 
 (def recipe-pred->str {
   low-weight "low weight"
@@ -120,14 +129,16 @@
                               edged
                               [and low-weight
                                    stick-like]]}
-      {:recipe/id  :boomarang
+      {:recipe/id  :boomerang
       :recipe/category :weapon
       :recipe/types #{:edged :ranged}
-      :recipe/add [:boomarang]
+      :recipe/add [:boomerang]
       :recipe/requirements '[each-of
                               [and
-                                low-weight
-                                planar]]}
+                                wooden
+                                [or medium-weight
+                                    high-weight]]
+                              [tool edged]]}
      ; piercing
      {:recipe/id  :spear
       :recipe/category :weapon
@@ -343,6 +354,8 @@
       (every? (partial item-satisfies-requirement-clause? item) (rest clause))
     (= (first clause) 'or)
       (some (partial item-satisfies-requirement-clause? item) (rest clause))
+    (contains? #{'tool} (first clause))
+      (item-satisfies-requirement-clause? item (second clause))
     (= (first clause) not)
       (not ((second clause) item))))
 
@@ -643,6 +656,7 @@
         effects      (get recipe :effects [])
         state (as-> state state
                   (add-by-ids state add effects (get recipe :place :inventory))
+                  ; FIXME: exhaust non-tool slot items
                   ;(exhaust-by-ids state exhaust)
                   #_(rp/player-update-hunger state (fn [current-hunger] (min (+ hunger current-hunger)
                                                                            (rp/player-max-hunger state))))

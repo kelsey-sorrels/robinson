@@ -8,7 +8,7 @@
     (range a (+ b step) step)))
 
 (defn catmull-rom-spline
-  ([p0 p1 p2 p3] (catmull-rom-spline p0 p1 p2 p3 20 0.5))
+  ([p0 p1 p2 p3] (catmull-rom-spline p0 p1 p2 p3 9 1))
   ([p0 p1 p2 p3 n-points alpha]
    (letfn [(tj [ti pi pj]
              (let [[xi yi] pi

@@ -651,13 +651,21 @@
 (defn craft-recipe
   "Perform the recipe."
   [state recipe]
-  (let [exhaust      (get-in recipe [:recipe :exhaust])
+  (let [exhaust      (->> (get-in recipe [:recipe/requirements])
+                       ; remove 'each-of
+                       rest
+                       ; add slot indexes
+                       (map-indexed vector)
+                       ; remove tool clauses
+                       (remove (fn [[_ clause]] (contains? #{'tool} (first clause))))
+                       ; find which items ids are in remaining slots
+                       (map (fn [[slot _]] (get (slot->item state slot) :item/id))))
         add          (get-in recipe [:recipe/add])
         effects      (get recipe :effects [])
         state (as-> state state
                   (add-by-ids state add effects (get recipe :place :inventory))
-                  ; FIXME: exhaust non-tool slot items
-                  ;(exhaust-by-ids state exhaust)
+                  ; exhaust non-tool slot items
+                  (exhaust-by-ids state exhaust)
                   #_(rp/player-update-hunger state (fn [current-hunger] (min (+ hunger current-hunger)
                                                                            (rp/player-max-hunger state))))
                   #_(rp/player-update-thirst state (fn [current-thirst] (min (+ hunger current-thirst)

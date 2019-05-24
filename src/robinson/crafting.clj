@@ -91,14 +91,16 @@
      {:recipe/id  :club
       :recipe/category :weapon
       :recipe/types #{:blunt :melee}
+      :recipe/example-item-requirements #{:stick :branch}
       :recipe/add [:club]
       :recipe/requirements '[each-of
                               [and
                                 low-weight
                                 stick-like]]}
-     {:recipe/id  :rock
+     {:recipe/id  :hammer
       :recipe/category :weapon
       :recipe/types #{:blunt :thrown}
+      :recipe/example-item-requirements #{:stick :branch :rock}
       :recipe/add [:rock]
       :recipe/requirements '[each-of
                               [and
@@ -107,6 +109,7 @@
      {:recipe/id  :sling
       :recipe/category :weapon
       :recipe/types #{:blunt :ranged}
+      :recipe/example-item-requirements #{:rock :leather}
       :recipe/add [:sling]
       :recipe/requirements '[each-of
                               flexible
@@ -116,6 +119,7 @@
      {:recipe/id  :dagger
       :recipe/category :weapon
       :recipe/types #{:edged :melee}
+      :recipe/example-item-requirements #{:rock :stick :branch :plant-fiber :leather}
       :recipe/add [:dagger]
       :recipe/requirements '[each-of
                               edged
@@ -124,6 +128,7 @@
      {:recipe/id  :throwing-axe
       :recipe/category :weapon
       :recipe/types #{:edged :thrown}
+      :recipe/example-item-requirements #{:rock :stick :branch :plant-fiber :leather}
       :recipe/add [:throwing-axe]
       :recipe/requirements '[each-of
                               edged
@@ -132,6 +137,7 @@
       {:recipe/id  :boomerang
       :recipe/category :weapon
       :recipe/types #{:edged :ranged}
+      :recipe/example-item-requirements #{:stick :branch}
       :recipe/add [:boomerang]
       :recipe/requirements '[each-of
                               [and
@@ -143,6 +149,7 @@
      {:recipe/id  :spear
       :recipe/category :weapon
       :recipe/types #{:piercing :melee}
+      :recipe/example-item-requirements #{:rock :stick :branch :plant-fiber :leather}
       :recipe/add [:spear]
       :recipe/requirements '[each-of
                               pointed
@@ -151,6 +158,7 @@
      {:recipe/id  :throwing-spear
       :recipe/category :weapon
       :recipe/types #{:piercing :thrown}
+      :recipe/example-item-requirements #{:rock :stick :branch :plant-fiber :leather}
       :recipe/add [:throwing-spear]
       :recipe/requirements '[each-of
                               sharp
@@ -159,6 +167,7 @@
      {:recipe/id  :bow
       :recipe/category :weapon
       :recipe/types #{:piercing :ranged}
+      :recipe/example-item-requirements #{:rock :stick :branch :plant-fiber :leather :feather}
       :recipe/add [:bow]
       :recipe/requirements '[each-of
                               flexible
@@ -167,6 +176,7 @@
      {:recipe/id  :blowgun
       :recipe/category :weapon
       :recipe/types #{:piercing :ranged}
+      :recipe/example-item-requirements #{:bamboo :stick}
       :recipe/add [:blowgun]
       :recipe/requirements '[each-of
                               tube-like
@@ -175,6 +185,7 @@
      {:recipe/id  :garrote
       :recipe/category :weapon
       :recipe/types #{:flexible :melee}
+      :recipe/example-item-requirements #{:plant-fiber :stick}
       :recipe/add [:garrote]
       :recipe/requirements '[each-of
                               flexible
@@ -182,6 +193,7 @@
      {:recipe/id  :bolas
       :recipe/category :weapon
       :recipe/types #{:flexible :thrown}
+      :recipe/example-item-requirements #{:plant-fiber :stick :rope :rock}
       :recipe/add [:bolas]
       :recipe/requirements '[each-of
                               flexible
@@ -190,6 +202,7 @@
      {:recipe/id  :whip
       :recipe/category :weapon
       :recipe/types #{:flexible :ranged}
+      :recipe/example-item-requirements #{:plant-fiber :rope}
       :recipe/add [:whip]
       :recipe/requirements '[each-of
                               flexible]}])
@@ -267,7 +280,7 @@
             recipe-db
             id)))
 
-(defn get-recipe-by-types [types]
+(defn get-recipes-by-types [types]
   (let [rules '[[(matches-all ?info ?seq ?first ?rest ?empty ?e ?a ?vs)
                  [(?seq ?vs)]
                  [(?first ?vs) ?v]
@@ -278,7 +291,6 @@
                 [(matches-all ?info ?seq ?first ?rest ?empty ?e ?a ?vs)
                  [?e :recipe/id ?recipe-id]
                  [(?empty ?vs)]]]]
-  (ffirst
     (d/q '[:find (pull ?e [*])
            :in $ % ?info ?seq ?first ?rest ?empty ?types
            :where
@@ -292,7 +304,41 @@
           first
           rest
           empty?
-          types))))
+          types)))
+
+(defn get-recipe-by-types [types]
+  (ffirst (get-recipes-by-types types)))
+
+(defn get-example-items-by-types [types]
+  (let [rules '[[(matches-all ?info ?seq ?first ?rest ?empty ?e ?a ?vs)
+                 [(?seq ?vs)]
+                 [(?first ?vs) ?v]
+                 [?e ?a ?v]
+                 [?e :recipe/id ?recipe-id]
+                 [(?rest ?vs) ?vs-rest]
+                 (matches-all ?info ?seq ?first ?rest ?empty ?e ?a ?vs-rest)]
+                [(matches-all ?info ?seq ?first ?rest ?empty ?e ?a ?vs)
+                 [?e :recipe/id ?recipe-id]
+                 [(?empty ?vs)]]]]
+  (->>
+    (d/q '[:find ?v
+           :in $ % ?info ?seq ?first ?rest ?empty ?types
+           :where
+           ;[(?info ?types)]
+           ;[?e :recipe/id :club]
+           (matches-all ?info ?seq ?first ?rest ?empty ?e :recipe/types ?types)
+           [?e :recipe/example-item-requirements ?v]]
+          recipe-db
+          rules
+          (fn [msg x] (log/info msg x) true)
+          seq
+          first
+          rest
+          empty?
+          types)
+    (mapcat identity)
+    (mapcat identity)
+    set)))
 
 (defn satisfies-helper?
   [l expr]
@@ -558,80 +604,85 @@
     (if-let [choice (->> (get current-stage :choices)
                       (filter #(= (get % :hotkey) keyin))
                       first)]
-      (let [results (merge (select-keys choice [:types :effects :materials])
-                           (select-keys current-stage [:gen]))
-            ; merge results into current recipe
-            state-with-results (update-current-recipe state (partial merge-with into) results)]
-        ; done with recipe?
-        (if (contains? choice :done)
-          (save-recipe state-with-results)
-          ;; either a regular event, or a direction event
-          ; if choice has a events pick one,
-          (if (seq (get choice :events))
-            ; find next event
-            (let [next-event (rand-nth (get choice :events))
-                  ; fill in event defaults
-                  next-event (fill-event next-event)]
-              ; assign next event and return
-              (assoc-current-recipe
-                state-with-results
-                :current-stage next-event))
-            ; else the choice has no events, then the next step is to move to the next node
-            (if-let [next-node (get choice :next-node)]
-              ; choice points to next-node
-              ; gen event for next node and advance to it
-              ; typical direction choice
-              (->
-                (let [next-node-type (get (ll/label (get recipe :graph) next-node) :type)]
-                  ((case next-node-type
-                    \? (ns-resolve recipe-ns 'gen-question)
-                    \! (ns-resolve recipe-ns 'gen-complication)
-                    \+ (ns-resolve recipe-ns 'gen-remedy)
-                    \& (ns-resolve recipe-ns 'gen-material)
-                    \☼ (ns-resolve recipe-ns 'gen-enhancement)
-                    (assert false (str "next node type unknown " next-node next-node-type)))
-                    state-with-results (current-recipe state-with-results)))
-                (assoc-current-recipe :current-node next-node))
-              ; choice does not point to next node
-              (let [next-node-choices (next-node-choices recipe)]
-                (log/info "NO NEXT NODE in CHOICE")
-                (log/info "choice" choice)
-                (log/info "next-node-choices" (vec next-node-choices))
-                (cond
-                  ; no more nodes, create finish recipe event
-                  (not (seq (next-nodes recipe)))
-                    (assoc-current-recipe state-with-results
-                      :current-stage
-                      {:title "Done"
-                       :choices [
-                          {:name "finish recipe"
-                           :hotkey :space
-                           :done true}]})
-                  ; one path to next node? auto-increment
-                  (= 1 (count next-node-choices))
-                    (->
-                      (let [next-node (-> next-node-choices first :next-node)
-                            _ (log/info "next-node" next-node)
-                            next-node-type (get (ll/label (get recipe :graph)
-                                                          next-node)
-                                                :type)]
- 
-                        ((case next-node-type
-                          \? (ns-resolve recipe-ns 'gen-question)
-                          \! (ns-resolve recipe-ns 'gen-complication)
-                          \+ (ns-resolve recipe-ns 'gen-remedy)
-                          \& (ns-resolve recipe-ns 'gen-material)
-                          \☼ (ns-resolve recipe-ns 'gen-enhancement)
-                          (assert false (str "next node type unknown " next-node next-node-type)))
-                          state-with-results (current-recipe state-with-results)))
-                      (assoc-current-recipe :current-node (-> next-node-choices first :next-node)))
-                  ;; else multiple choices to next node, create event to choose
-                  :else
-                    (assoc-current-recipe
-                      state-with-results
-                      :current-stage
-                      {:title "Choose path"
-                       :choices next-node-choices}))))))))))
+      ;; check material requirement is met if any exists
+      (if (if-let [{:keys [id amount]} (get choice :material)]
+            (<= amount (rp/inventory-id->count state id))
+            true)
+        (let [results (merge (select-keys choice [:types :effects :materials])
+                             (select-keys current-stage [:gen]))
+              ; merge results into current recipe
+              state-with-results (update-current-recipe state (partial merge-with into) results)]
+          ; done with recipe?
+          (if (contains? choice :done)
+            (save-recipe state-with-results)
+            ;; either a regular event, or a direction event
+            ; if choice has a events pick one,
+            (if (seq (get choice :events))
+              ; find next event
+              (let [next-event (rand-nth (get choice :events))
+                    ; fill in event defaults
+                    next-event (fill-event next-event)]
+                ; assign next event and return
+                (assoc-current-recipe
+                  state-with-results
+                  :current-stage next-event))
+              ; else the choice has no events, then the next step is to move to the next node
+              (if-let [next-node (get choice :next-node)]
+                ; choice points to next-node
+                ; gen event for next node and advance to it
+                ; typical direction choice
+                (->
+                  (let [next-node-type (get (ll/label (get recipe :graph) next-node) :type)]
+                    ((case next-node-type
+                      \? (ns-resolve recipe-ns 'gen-question)
+                      \! (ns-resolve recipe-ns 'gen-complication)
+                      \+ (ns-resolve recipe-ns 'gen-remedy)
+                      \& (ns-resolve recipe-ns 'gen-material)
+                      \☼ (ns-resolve recipe-ns 'gen-enhancement)
+                      (assert false (str "next node type unknown " next-node next-node-type)))
+                      state-with-results (current-recipe state-with-results)))
+                  (assoc-current-recipe :current-node next-node))
+                ; choice does not point to next node
+                (let [next-node-choices (next-node-choices recipe)]
+                  (log/info "NO NEXT NODE in CHOICE")
+                  (log/info "choice" choice)
+                  (log/info "next-node-choices" (vec next-node-choices))
+                  (cond
+                    ; no more nodes, create finish recipe event
+                    (not (seq (next-nodes recipe)))
+                      (assoc-current-recipe state-with-results
+                        :current-stage
+                        {:title "Done"
+                         :choices [
+                            {:name "finish recipe"
+                             :hotkey :space
+                             :done true}]})
+                    ; one path to next node? auto-increment
+                    (= 1 (count next-node-choices))
+                      (->
+                        (let [next-node (-> next-node-choices first :next-node)
+                              _ (log/info "next-node" next-node)
+                              next-node-type (get (ll/label (get recipe :graph)
+                                                            next-node)
+                                                  :type)]
+   
+                          ((case next-node-type
+                            \? (ns-resolve recipe-ns 'gen-question)
+                            \! (ns-resolve recipe-ns 'gen-complication)
+                            \+ (ns-resolve recipe-ns 'gen-remedy)
+                            \& (ns-resolve recipe-ns 'gen-material)
+                            \☼ (ns-resolve recipe-ns 'gen-enhancement)
+                            (assert false (str "next node type unknown " next-node next-node-type)))
+                            state-with-results (current-recipe state-with-results)))
+                        (assoc-current-recipe :current-node (-> next-node-choices first :next-node)))
+                    ;; else multiple choices to next node, create event to choose
+                    :else
+                      (assoc-current-recipe
+                        state-with-results
+                        :current-stage
+                        {:title "Choose path"
+                         :choices next-node-choices})))))))
+        state))))
 
 (defn update [state recipe-ns keyin]
   (let [recipe-type (get-in state [:world :in-progress-recipe-type])

@@ -949,7 +949,8 @@
                 [:text {} ["Eval:"]]
                 [zcui/Input {:value (get game-state :debug-input "")
                              :focused true
-                             :style {:cursor-fg (rcolor/color->rgb :highlight)}}]]]]])))
+                             :style {:width 59
+                                     :cursor-fg (rcolor/color->rgb :highlight)}}]]]]])))
 
 (zc/def-component MapUI
   [this]
@@ -1393,17 +1394,16 @@
 	  [:terminal {} [
 		[:group {:id :app} [
 		  [:layer {:id :ui} [
-            [:view {:style {:width "100%" :height "100%" :background-color (rcolor/color->rgb :black)}} [
+            [:view {:style {:width 80 :height 24 :background-color (rcolor/color->rgb :black)}} [
               [:view {:style {:top 10
-                              :left 30
-                              :width 80
+                              :left 25
+                              :width 50
                               :display :flex
                               :flex-direction :row}} [
-                [:text {:style {:width 5}} ["Name:"]]
-                [:view {:style {:position :relative} } [
+                [:view {:style {:width 5}} [[:text {} ["Name:"]]]]
                   [zcui/Input {:value player-name
                                :focused true
-                               :style {:cursor-fg (rcolor/color->rgb :highlight)}}]]]]]]]]]]]]])))
+                               :style {:width 30 :cursor-fg (rcolor/color->rgb :highlight)}}]]]]]]]]]]])))
 
 (zc/def-component StartInventory
   [this]

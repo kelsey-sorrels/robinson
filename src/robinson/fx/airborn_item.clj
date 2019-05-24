@@ -81,9 +81,9 @@
                       ; move item
                       (assoc-in (conj fx-ks :pos) (apply rc/xy->pos (second xy-path)))
                       ; update path
-                      (ractors/update-actor this :xy-path rest)
+                      (ractors/update-actor this update :xy-path rest)
                       ; update ttl
-                      (ractors/update-actor this :ttl dec))))]
+                      (ractors/update-actor this update :ttl dec))))]
     
     ; will hit wall?
     (if (second xy-path)

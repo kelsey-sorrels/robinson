@@ -23,7 +23,7 @@
           ; if done, cleaup
           (cleanup state)
           ; else, dec ttl
-          (ractors/update-actor state this :ttl dec))))))
+          (ractors/update-actor state this update :ttl dec))))))
 
 (defmethod rfx/conj-effect :blip [state fx-type & [pos ch fg bg ttl]]
   (let [fx-id (rfx/fx-id)

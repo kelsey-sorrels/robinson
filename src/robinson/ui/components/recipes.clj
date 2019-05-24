@@ -44,7 +44,7 @@
 
 (zc/def-component RecipeChoice
   [this]
-  (let [{:keys [recipe]} (zc/props this)
+  (let [{:keys [game-state recipe]} (zc/props this)
         current-stage (get recipe :current-stage)]
     (zc/csx
       [:view {:style {:width 25 :margin-left 5 :margin-right 5}} [
@@ -54,9 +54,13 @@
         [ruicommon/MultiSelect {
           :style {:width 30 :left 8}
           :title ""
-          :items (map (fn [item] (if (keyword (get item :hotkey))
-                                   (update item :hotkey name)
-                                   item))
+          :items (map (fn [item] (as-> item item
+                                   (if (keyword (get item :hotkey))
+                                     (update item :hotkey name)
+                                     item)
+                                   (assoc item :disabled
+                                     (let [{:keys [id amount]} (get item :material)]
+                                       (< (rp/inventory-id->count game-state id)) amount))))
                       (get current-stage :choices [{:name "continue-ui" :hotkey :space}]))}]]])))
 
 
@@ -75,7 +79,7 @@
                                 :left 1}} [
                   (zc/csx [:img {:width 9 :height 13} (get recipe :img)])
                   [SelectRecipeNode {:recipe recipe}]]]
-                [RecipeChoice {:recipe recipe}]
+                [RecipeChoice {:game-state game-state :recipe recipe}]
                 [RecipeTotal {:recipe recipe}]]]]])))
 
 
@@ -124,6 +128,6 @@
                                           :items items
                                           :selected-hotkeys #{selected-recipe-hotkey}}]]]
                 (if selected-empty
-                  (zc/csx [ruicommon/HotkeyLabel {:hotkey \n :label "new"}])
+                  (zc/csx [ruicommon/HotkeyLabel {:style {:margin-right 5} :hotkey \n :label "new"}])
                   (zc/csx [RecipeDetail {:game-state game-state}]))]]]])))
 

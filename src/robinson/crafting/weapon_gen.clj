@@ -3,6 +3,7 @@
             [robinson.world :as rw]
             [robinson.crafting :as rcrafting]
             [robinson.crafting.mod :as rcmod]
+            [robinson.itemgen :as rig]
             [taoensso.timbre :as log]))
 
 (defn recipe-requirements [recipe]
@@ -143,15 +144,289 @@
      :name "continue"
      :one-of [
        `(mod-durability -7 -3)]}]}
-  #_{:title "Distracted!"
+  {:title "Distracted!"
    :description "What was that? Oh right, making weapons."
    :choices [{
      :hotkey :space
      :name "continue"
      :one-of [
        `(mod-hunger 10 20)]}]}
-  #_{:title "Overexertion!"
+  {:title "Overexertion!"
    :description "Slow down survivor. Take your time."
+   :choices [{
+     :hotkey :space
+     :name "continue"
+     :one-of [
+       `(mod-thirst 11 21)]}]}
+  {:title "Brittle materials!"
+   :description "The materials you are using are too brittle."
+   :choices [{
+     :hotkey :space
+     :name "continue"
+     :one-of [
+       `(mod-durability -7 -3)]}]}
+  {:title "Soft materials!"
+   :description "The materials you are using are too soft."
+   :choices [{
+     :hotkey :space
+     :name "continue"
+     :one-of [
+       `(mod-durability -7 -3)]}]}
+  {:title "Warped edge!"
+   :description "The edge keeps warping when it should be straight."
+   :choices [{
+     :hotkey :space
+     :name "continue"
+     :one-of [
+       `(mod-damage 11 21)]}]}
+  {:title "Chipped edge!"
+   :description "The edge should be smooth, not full of chips."
+   :choices [{
+     :hotkey :space
+     :name "continue"
+     :one-of [
+       `(mod-damage 11 21)]}]}
+  {:title "Rolled edge!"
+   :description ""
+   :choices [{
+     :hotkey :space
+     :name "continue"
+     :one-of [
+       `(mod-thirst 11 21)]}]}
+  {:title "Too heavy!"
+   :description ""
+   :choices [{
+     :hotkey :space
+     :name "continue"
+     :one-of [
+       `(mod-thirst 11 21)]}]}
+  {:title "Too light!"
+   :description ""
+   :choices [{
+     :hotkey :space
+     :name "continue"
+     :one-of [
+       `(mod-thirst 11 21)]}]}
+  {:title "Hard to grasp!"
+   :description ""
+   :choices [{
+     :hotkey :space
+     :name "continue"
+     :one-of [
+       `(mod-thirst 11 21)]}]}
+  {:title "Too stiff!"
+   :description ""
+   :choices [{
+     :hotkey :space
+     :name "continue"
+     :one-of [
+       `(mod-thirst 11 21)]}]}
+  {:title "Bent wood!"
+   :description ""
+   :choices [{
+     :hotkey :space
+     :name "continue"
+     :one-of [
+       `(mod-thirst 11 21)]}]}
+  {:title "Green wood!"
+   :description ""
+   :choices [{
+     :hotkey :space
+     :name "continue"
+     :one-of [
+       `(mod-thirst 11 21)]}]}
+  {:title "Rotten wood!"
+   :description ""
+   :choices [{
+     :hotkey :space
+     :name "continue"
+     :one-of [
+       `(mod-thirst 11 21)]}]}
+  {:title "Too long!"
+   :description ""
+   :choices [{
+     :hotkey :space
+     :name "continue"
+     :one-of [
+       `(mod-thirst 11 21)]}]}
+  {:title "Too short!"
+   :description ""
+   :choices [{
+     :hotkey :space
+     :name "continue"
+     :one-of [
+       `(mod-thirst 11 21)]}]}
+  #_{:title "Over tempered!"
+   :description ""
+   :choices [{
+     :hotkey :space
+     :name "continue"
+     :one-of [
+       `(mod-thirst 11 21)]}]}
+  #_{:title "Under tempered!"
+   :description ""
+   :choices [{
+     :hotkey :space
+     :name "continue"
+     :one-of [
+       `(mod-thirst 11 21)]}]}
+  {:title "Handle burns!"
+   :description ""
+   :choices [{
+     :hotkey :space
+     :name "continue"
+     :one-of [
+       `(mod-thirst 11 21)]}]}
+  {:title "Handle uneven!"
+   :description ""
+   :choices [{
+     :hotkey :space
+     :name "continue"
+     :one-of [
+       `(mod-thirst 11 21)]}]}
+  {:title "Handle popping out!"
+   :description ""
+   :choices [{
+     :hotkey :space
+     :name "continue"
+     :one-of [
+       `(mod-thirst 11 21)]}]}
+  {:title "Not bent enough!"
+   :description ""
+   :choices [{
+     :hotkey :space
+     :name "continue"
+     :one-of [
+       `(mod-thirst 11 21)]}]}
+  {:title "Cracked wood!"
+   :description ""
+   :choices [{
+     :hotkey :space
+     :name "continue"
+     :one-of [
+       `(mod-thirst 11 21)]}]}
+  {:title "Cracked forming!"
+   :description ""
+   :choices [{
+     :hotkey :space
+     :name "continue"
+     :one-of [
+       `(mod-thirst 11 21)]}]}
+  {:title "Pin knots!"
+   :description ""
+   :choices [{
+     :hotkey :space
+     :name "continue"
+     :one-of [
+       `(mod-thirst 11 21)]}]}
+  {:title "Splinters!"
+   :description ""
+   :choices [{
+     :hotkey :space
+     :name "continue"
+     :one-of [
+       `(mod-thirst 11 21)]}]}
+  {:title "Weather worn wood!"
+   :description ""
+   :choices [{
+     :hotkey :space
+     :name "continue"
+     :one-of [
+       `(mod-thirst 11 21)]}]}
+  {:title "Not tapered enough!"
+   :description ""
+   :choices [{
+     :hotkey :space
+     :name "continue"
+     :one-of [
+       `(mod-thirst 11 21)]}]}
+  {:title "Knotted!"
+   :description ""
+   :choices [{
+     :hotkey :space
+     :name "continue"
+     :one-of [
+       `(mod-thirst 11 21)]}]}
+  {:title "Weak joinery!"
+   :description ""
+   :choices [{
+     :hotkey :space
+     :name "continue"
+     :one-of [
+       `(mod-thirst 11 21)]}]}
+  {:title "Poisonous material!"
+   :description ""
+   :choices [{
+     :hotkey :space
+     :name "continue"
+     :one-of [
+       `(mod-thirst 11 21)]}]}
+  {:title "Allergic to material!"
+   :description ""
+   :choices [{
+     :hotkey :space
+     :name "continue"
+     :one-of [
+       `(mod-thirst 11 21)]}]}
+  {:title "Distract by hunger!"
+   :description ""
+   :choices [{
+     :hotkey :space
+     :name "continue"
+     :one-of [
+       `(mod-thirst 11 21)]}]}
+  {:title "Distracted by thirst!"
+   :description ""
+   :choices [{
+     :hotkey :space
+     :name "continue"
+     :one-of [
+       `(mod-thirst 11 21)]}]}
+  {:title "Low light!"
+   :description ""
+   :choices [{
+     :hotkey :space
+     :name "continue"
+     :one-of [
+       `(mod-thirst 11 21)]}]}
+  {:title "Interrupted by sound!"
+   :description ""
+   :choices [{
+     :hotkey :space
+     :name "continue"
+     :one-of [
+       `(mod-thirst 11 21)]}]}
+  {:title "Loud work environment!"
+   :description ""
+   :choices [{
+     :hotkey :space
+     :name "continue"
+     :one-of [
+       `(mod-thirst 11 21)]}]}
+  {:title "Overworked!"
+   :description ""
+   :choices [{
+     :hotkey :space
+     :name "continue"
+     :one-of [
+       `(mod-thirst 11 21)]}]}
+  {:title "Sidetracked!"
+   :description ""
+   :choices [{
+     :hotkey :space
+     :name "continue"
+     :one-of [
+       `(mod-thirst 11 21)]}]}
+  {:title "Frustrated!"
+   :description ""
+   :choices [{
+     :hotkey :space
+     :name "continue"
+     :one-of [
+       `(mod-thirst 11 21)]}]}
+  ;-----------------
+  #_{:title ""
+   :description ""
    :choices [{
      :hotkey :space
      :name "continue"
@@ -190,6 +465,9 @@
             :name "roll on the ground"}]}]}]}])
 
  
+(defn eval-effect [effect]
+  (apply (resolve (first effect)) (rest effect)))
+
 (defn gen-event [state recipe events]
   (let [blueprint (rand-nth events)
         next-stage (update blueprint
@@ -197,7 +475,7 @@
                                             (if-let [effect (rand-nth (get choice :one-of))]
                                               (do (log/info "gen-event choice" choice "effect" effect)
                                               (assoc choice
-                                                 :effects [(apply (resolve (first effect)) (rest effect))]))
+                                                 :effects [(eval-effect effect)]))
                                               choice))))]
     (log/info "gen-event next-stage" next-stage)
     (rcrafting/assoc-current-recipe state :current-stage next-stage)))
@@ -219,16 +497,34 @@
   (gen-event state recipe remedies))
 
 (defn gen-material [state recipe]
-  (rcrafting/assoc-current-recipe state :current-stage {
-    :title "Material requirements"
-    :description "New inventions require raw materials. This is no exception."
-    :choices [
-      {:name "Sticks"
-       :hotkey \a
-       :materials [{:id :stick :amount 10}]}
-      {:name "Rocks"
-       :hotkey \b
-       :materials [{:id :rock :amount 10}]}]}))
+  (log/info (get recipe :types))
+  (let [example-items (rcrafting/get-example-items-by-types (get recipe :types))
+        _ (log/info "example-items" (vec example-items))
+        items (take 2 (shuffle example-items))
+        item-id (or (first items) :stick)
+        item-name (or (rig/id->name item-id) "unknown1")
+        buff-mod (eval-effect (first (shuffle [
+                     `(mod-accuracy 1 5)
+                     `(mod-damage 1 4)
+                     `(mod-durability 1 5)])))
+        debuff-mod (eval-effect (first (shuffle [
+                   `(mod-accuracy -5 -1)
+                   `(mod-damage -6 -2)
+                   `(mod-durability -6 -2)])))
+        events [
+        {:title "Material requirements"
+         :description "New inventions require raw materials. This is no exception."
+         :choices [
+           (rcmod/mod-apply buff-mod
+             {:name item-name
+              :hotkey \a
+              :material {:id item-id :amount (+ 1 (rand-int 4))}
+              :effects [buff-mod]})
+           (rcmod/mod-apply debuff-mod
+             {:name "skip"
+              :hotkey \b
+              :effects [debuff-mod]})]}]]
+      (gen-event state recipe events)))
 
 (def enhancements [
   {:title "Increased Accuracy"

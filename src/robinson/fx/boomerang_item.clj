@@ -63,10 +63,10 @@
                 (assoc-in (conj fx-ks :pos) (apply rc/xy->pos (first xy-path)))
                 (assoc-in (conj fx-ks :ch) (first ch-cycle))
                 ; update path
-                (ractors/update-actor this :xy-path rest)
-                (ractors/update-actor this :ch-cycle rest)
+                (ractors/update-actor this update :xy-path rest)
+                (ractors/update-actor this update :ch-cycle rest)
                 ; update ttl
-                (ractors/update-actor this :ttl dec)))
+                (ractors/update-actor this update :ttl dec)))
             #_(handle-trigger-trap [state]
               ; triggers a trap
               ;; remove item and trigger trap

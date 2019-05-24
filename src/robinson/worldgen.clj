@@ -465,6 +465,7 @@
            :time (rw/get-time min-state)
            :current-state :start
            :selected-hotkeys #{}
+           :selected-recipe-hotkey \a
            :remaining-hotkeys remaining-hotkeys
            :log []
            :ui-hint nil

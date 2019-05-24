@@ -113,6 +113,12 @@
                                             :margin-right 1}} [
                       [:text {:style {:color (rcolor/color->rgb :green)}} ["»"]]
                       [:text {:style {}} [(format "%+d" (get item k))]]]])
+                  :durability
+                    (zc/csx [:view {:style {:display :flex
+                                            :flex-direction :row
+                                            :margin-right 1}} [
+                      [:text {:style {:color (rcolor/color->rgb :white)}} ["≡"]]
+                      [:text {:style {}} [(format "%+d" (get item k))]]]])
                   nil)]
        (conj s elem)
        s))
@@ -122,12 +128,13 @@
 
 (zc/def-component MultiSelectItem
   [this]
-  (let [{:keys [style hotkey selected count name utility wielded wielded-ranged worn alt] :as props} (zc/props this)
+  (let [{:keys [style hotkey selected count name utility wielded wielded-ranged worn alt disabled] :as props} (zc/props this)
         hotkey-str (str (or (hotkey->str hotkey) ""))
         count-str (when count (format "%dx " (int count)))]
     (zc/csx 
       [:view {:on-click (fn [{:keys [target]}] (log/info "MenuSelectItemClick" (-> target second :zaffre/layout)))
-              :style {:display :flex
+              :style {:color (rcolor/color->rgb (if disabled :gray :white))
+                      :display :flex
                       :flex-direction :row
                       :align-items :flex-start}} [
         [Highlight {:style {:width (clojure.core/count hotkey-str)}} [hotkey-str]]

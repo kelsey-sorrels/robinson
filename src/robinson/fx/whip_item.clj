@@ -81,7 +81,7 @@
                 state
                 (-> state
                   (rcombat/attack [:world :player] (rnpc/npc->keys state npc) item)
-                  (ractors/update-actor this :hit-npc assoc true))))
+                  (ractors/update-actor this assoc :hit-npc true))))
             #_(handle-trigger-trap [state]
               ; triggers a trap
               ;; remove item and trigger trap
@@ -89,10 +89,6 @@
                 (rc/append-log "You throw it at the trap.")
                 (rp/dec-item-count (get item :item/id))
                 (rt/trigger-if-trap state [x y])))
-              (handle-ttl-zero [state]
-                ; hits the ground when ttl = 0
-                ;; didn't hit anything, drop into cell at max-distance
-                (cleanup state))
               (on-move [state]
                 ; one of several things can happen
                 (cond
@@ -104,18 +100,16 @@
                       handle-trigger-trap
                       cleanup)
                   ttl-zero
-                    (-> state
-                      handle-ttl-zero
-                      cleanup)
+                    (cleanup state)
                   :default
                     (-> state
                       ; move item
                       (assoc-in (conj fx-ks :ch-pos) 
                         (chain->multi-character-fx-ch-pos (first chains)))
                       ; update path
-                      (ractors/update-actor this :chains rest)
+                      (ractors/update-actor this update :chains rest)
                       ; update ttl
-                      (ractors/update-actor this :ttl dec))))]
+                      (ractors/update-actor this update :ttl dec))))]
     
     ; will hit wall?
     #_(if (second xy-path)

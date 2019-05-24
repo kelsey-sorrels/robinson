@@ -1472,11 +1472,14 @@
                                 '[clojure.stacktrace :as st]
                                 'clojure.inspector
                                 'clojure.string)
-                       \n"]
+                      (def ^:dynamic *state* nil)
+                      (fn [state]
+                        (binding [*state* state]"]
           (try
             (let [debug-input (get state :debug-input)
-                  source (str prelude debug-input)
+                  source (str prelude debug-input "))")
                   f (load-string source)]
+              (log/info source)
               (if f
                 (-> state
                   f

@@ -9,8 +9,8 @@
 (defn actor-ks [state actor]
   [::actors (get actor ::id)])
 
-(defn update-actor [state actor k f]
-   (update-in state (conj (actor-ks state actor) k) f))
+(defn update-actor [state actor f & args]
+   (apply update-in state (actor-ks state actor) f args))
 
 ;; For adding new events to the end of the event stream
 (defn add-actor

@@ -205,6 +205,65 @@
       :recipe/example-item-requirements #{:plant-fiber :rope}
       :recipe/add [:whip]
       :recipe/requirements '[each-of
+                              flexible]}
+    ;;; Survival
+    ;; Tools
+     {:recipe/id  :saw
+      :recipe/category :survival
+      :recipe/types #{:tool}
+      :recipe/example-item-requirements #{:stick :rope :rock}
+      :recipe/add [:saw]
+      :recipe/requirements '[each-of
+                             flexible]}
+     {:recipe/id  :hammer
+      :recipe/category :survival
+      :recipe/types #{:tool}
+      :recipe/example-item-requirements #{:stick :rope :rock}
+      :recipe/add [:hammer]
+      :recipe/requirements '[each-of
+                             flexible]}
+     {:recipe/id  :ruler
+      :recipe/category :survival
+      :recipe/types #{:tool}
+      :recipe/example-item-requirements #{:stick :rope :rock}
+      :recipe/add [:ruler]
+      :recipe/requirements '[each-of
+                             flexible]}
+     {:recipe/id  :fire-starter
+      :recipe/category :survival
+      :recipe/types #{:tool}
+      :recipe/example-item-requirements #{:stick :rope :rock}
+      :recipe/add [:fire-starter]
+      :recipe/requirements '[each-of
+                              flexible]}
+     ;; Rafts
+     {:recipe/id  :reed-raft
+      :recipe/category :survival
+      :recipe/types #{:raft}
+      :recipe/example-item-requirements #{:stick :rope :rock}
+      :recipe/add [:reed-raft]
+      :recipe/requirements '[each-of
+                             flexible]}
+     {:recipe/id  :cannoe
+      :recipe/category :survival
+      :recipe/types #{:raft}
+      :recipe/example-item-requirements #{:stick :rope :rock}
+      :recipe/add [:cannoe]
+      :recipe/requirements '[each-of
+                             flexible]}
+     {:recipe/id  :kayak
+      :recipe/category :survival
+      :recipe/types #{:raft}
+      :recipe/example-item-requirements #{:stick :rope :rock}
+      :recipe/add [:kayak]
+      :recipe/requirements '[each-of
+                              flexible]}
+     {:recipe/id  :log-raft
+      :recipe/category :survival
+      :recipe/types #{:rafts}
+      :recipe/example-item-requirements #{:stick :branch :log :rope}
+      :recipe/add [:log-raft]
+      :recipe/requirements '[each-of
                               flexible]}])
 
 (comment :weapons  [

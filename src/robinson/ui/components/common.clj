@@ -45,12 +45,14 @@
     (zc/csx 
       [:view {:on-click (fn [{:keys [target game-state]}]
                                 (ru/update-state game-state hotkey))
-              :on-mouse-enter (fn [{:keys [game-state]}]
+              :on-mouse-enter (fn [{:keys [target game-state]}]
                                 (binding [zc/*current-owner* owner]
+                                  (log/info (log/info "HotkeyLabelEnter" hotkey (-> target second :zaffre/layout)))
                                   (zc/set-state! this {:hover true}))
                                 game-state)
-              :on-mouse-leave (fn [{:keys [game-state]}]
+              :on-mouse-leave (fn [{:keys [target game-state]}]
                                 (binding [zc/*current-owner* owner]
+                                  (log/info (log/info "HotkeyLabelLeave" hotkey (-> target second :zaffre/layout)))
                                   (zc/set-state! this {:hover false}))
                                 game-state)
               :style (merge
@@ -130,27 +132,40 @@
   [this]
   (let [{:keys [style hotkey selected count name utility wielded wielded-ranged worn alt disabled] :as props} (zc/props this)
         hotkey-str (str (or (hotkey->str hotkey) ""))
-        count-str (when count (format "%dx " (int count)))]
+        count-str (when count (format "%dx " (int count)))
+        {:keys [hover] :or {hover false}} (zc/state this)
+        owner zc/*current-owner*]
     (zc/csx 
-      [:view {:on-click (fn [{:keys [target]}] (log/info "MenuSelectItemClick" (-> target second :zaffre/layout)))
+      [:view {:on-click (fn [{:keys [target game-state]}]
+                                (ru/update-state game-state hotkey))
+              :on-mouse-enter (fn [{:keys [target game-state]}]
+                                (binding [zc/*current-owner* owner]
+                                  (log/info (log/info "MenuSelectItemEnter" hotkey (-> target second :zaffre/layout)))
+                                  (zc/set-state! this {:hover true}))
+                                game-state)
+              :on-mouse-leave (fn [{:keys [target game-state]}]
+                                (binding [zc/*current-owner* owner]
+                                  (log/info (log/info "MenuSelectItemExit" hotkey (-> target second :zaffre/layout)))
+                                  (zc/set-state! this {:hover false}))
+                                game-state)
               :style {:color (rcolor/color->rgb (if disabled :gray :white))
+                      :height 1
                       :display :flex
                       :flex-direction :row
                       :align-items :flex-start}} [
-        [Highlight {:style {:width (clojure.core/count hotkey-str)}} [hotkey-str]]
-        [:text {:on-click (fn [{:keys [target]}] (log/info "MenuSelectItemClick" (-> target second :zaffre/layout)))
-                :style {:width 1}} [(format "%c"
+        (if hover
+          (zc/csx [InverseHighlight {:style {:width (clojure.core/count hotkey-str)}} [(or hotkey-str "")]])
+          (zc/csx [Highlight {:style {:width (clojure.core/count hotkey-str)}} [(or hotkey-str "")]]))
+        [:text {:style {:width 1}} [(format "%c"
                      (if hotkey
                        (if selected
                          \+
                          \-)
                        \space))]]
-        [:view {:on-click (fn [{:keys [target]}] (log/info "MenuSelectItemClick" (-> target second :zaffre/layout)))
-                :style {:display :flex
+        [:view {:style {:display :flex
                         :flex-direction :column
                         :align-items :flex-start}} [
-          [:view {:on-click (fn [{:keys [target]}] (log/info "MenuSelectItemClick" (-> target second :zaffre/layout)))
-                  :style {:display :flex
+          [:view {:style {:display :flex
                           :flex-direction :row
                           :align-items :flex-start}} [
             (when count-str

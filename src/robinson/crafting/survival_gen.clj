@@ -1,4 +1,4 @@
-(ns robinson.crafting.weapon-gen
+(ns robinson.crafting.survival-gen
   (:require [robinson.random :as rr]
             [robinson.world :as rw]
             [robinson.crafting :as rcrafting]

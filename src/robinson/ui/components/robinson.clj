@@ -1273,13 +1273,12 @@
                               :position :fixed
                               :top 18
                               :left 30}} [
-                [:text {} [
+                [:view {:style {:display :flex :flex-direction :row}} [
                   [:text {} ["Press "]]
-                  [ruicommon/Highlight {}  ["space "]]
-                  [:text {} ["to play"]]]]
+                  [ruicommon/HotkeyLabel {:hotkey :space :sep " " :label "to play"}]]]
                 [:text {} [""]]
-                [:text {} [[ruicommon/Highlight {} ["c"]] [:text  {} [" - configure"]]]]
-                [:text {} [[ruicommon/Highlight {} ["q"]] [:text  {} [" - quit"]]]]]]]]]]]]))
+                [ruicommon/HotkeyLabel {:hotkey \c :label "configure"}]
+                [ruicommon/HotkeyLabel {:hotkey \q :label "quit"}]]]]]]]]]))
 
 (zc/def-component Configure
   [this]
@@ -1421,10 +1420,11 @@
                               :position :fixed
                               :top 2
                               :left 0}} [
-                [ruicommon/SelectItemList {:title "Choose up to three things to take with you:"
+                [ruicommon/MultiSelect {:title "Choose up to three things to take with you:"
                                  :selected-hotkeys selected-hotkeys
                                  :use-applicable true
-                                 :items start-inventory}]]]]]]]]]]])))
+                                 :items start-inventory}]
+                [ruicommon/HotkeyLabel {:hotkey :enter :label "continue"}]]]]]]]]]]])))
 
 (def loading-index (atom 0))
 (def loading-tidbits

@@ -45,6 +45,7 @@
                                            npcs-in-viewport]]
             [robinson.noise :as rnoise]
             [robinson.traps :as rt]
+            [robinson.update :as ru]
             [robinson.ui.cell :as ruc]
             [robinson.ui.updater :as ruu]
             [robinson.ui.components.common :as ruicommon]
@@ -245,11 +246,11 @@
   [this]
   (let [{:keys [cells current-time font-type]} (zc/props this)]
     (zc/csx [:img {:width 80 :height 23}
-                  (map-indexed (fn [y line]
-                            (map-indexed (fn [x cell]
-                              (ruc/render-cell cell x y current-time font-type))
-                              line))
-                          cells)])))
+                   (map-indexed (fn [y line]
+                             (map-indexed (fn [x cell]
+                               (ruc/render-cell cell x y current-time font-type))
+                               line))
+                           cells)])))
 
 (defn npc->cp437-character [npc]
   (case (get npc :race)
@@ -1119,7 +1120,18 @@
 	  [:terminal {} [
 		[:group {:id :app} [
 		  [:layer {:id :map} [
-            [:view {:style {:top 0 :left 0}} [
+            [:view {:on-click (fn [{:keys [target client-x client-y game-state]}]
+                                (let [{player-screen-x :x player-screen-y :y} player-screen-pos]
+                                (log/info client-x client-y)
+                                (log/info
+                                  (rc/find-point-relation-ext
+                                    [player-screen-x player-screen-y]
+                                    [client-x client-y]))
+                                (ru/update-state game-state
+                                  (rc/find-point-relation-ext
+                                    [player-screen-x player-screen-y]
+                                    [client-x client-y]))))
+                   :style {:top 0 :left 0}} [
               [MapInViewport {:cells cells :current-time current-time :font-type font-type}]]]]]
 		  [:layer {:id :features} [
             [:view {:style {:top 0 :left 0}} [

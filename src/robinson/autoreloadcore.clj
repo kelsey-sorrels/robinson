@@ -173,7 +173,14 @@
                   (log/info "received :click" button col row group-id)
                   (try
                     (binding [zc/*updater* ruu/updater]
-                      (swap! state-ref @click-fn col row @dom-ref))
+                      
+                      (let [new-state (swap! state-ref @click-fn col row @dom-ref)
+                            state-stream (revents/stream new-state)]
+                        (doseq [state (revents/chan-seq state-stream)]
+                          (log/info "got new state from stream")
+                          (reset! state-ref state))
+                          (log/info "got new state from stream")
+                        (log/info "End of game loop")))
                     (catch Throwable t
                       (log/error t)))))
               (zevents/add-event-listener terminal :mouse-enter

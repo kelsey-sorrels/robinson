@@ -107,6 +107,29 @@
       :else
         :top)))
 
+(defn find-point-relation-ext
+  [[start-x start-y] [end-x end-y]]
+  (let [dx (- end-x start-x)
+        dy (- end-y start-y)
+        two-pi (* 2 Math/PI)
+        pi-8 (/ Math/PI 8)
+        dirs [
+              :right
+              :up-right
+              :up
+              :up-left
+              :left
+              :down-left
+              :down
+              :down-right
+            ]
+        theta (Math/atan2 (- dy) dx)
+        theta (if (neg? theta)
+                (+ two-pi theta)
+                theta)
+        idx (* (/ (+ theta pi-8) two-pi) (count dirs))]
+    (log/info idx)
+    (nth dirs idx)))
 
 (defn bound [min-v v max-v]
   (min max-v (max min-v v)))

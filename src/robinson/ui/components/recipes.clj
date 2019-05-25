@@ -36,7 +36,6 @@
 (zc/def-component SelectRecipeNode
   [this]
   (let [{:keys [recipe]} (zc/props this)
-        _ (log/info (dissoc recipe :graph :img))
         n (get recipe :current-node)
         layers (get recipe :layers)
         x (rcrg/node-x layers n)

@@ -27,6 +27,7 @@
             [robinson.crafting :as rcrafting]
             [robinson.crafting.recipe-gen :as rrecipe-gen]
             [robinson.crafting.weapon-gen :as rc-weapon-gen]
+            [robinson.crafting.survival-gen :as rc-survival-gen]
             [robinson.worldgen :as rworldgen]
             [robinson.lineofsight :as rlos]
             [robinson.renderutil :as rutil]
@@ -1436,6 +1437,7 @@
                                 '[robinson.crafting :as rcrafting]
                                 '[robinson.crafting.recipe-gen :as rrecipe-gen]
                                 '[robinson.crafting.weapon-gen :as rc-weapon-gen]
+                                '[robinson.crafting.survial-gen :as rc-survival-gen]
                                 '[robinson.worldgen :as rworldgen]
                                 '[robinson.lineofsight :as rlos]
                                 '[robinson.renderutil :as rutil]
@@ -2127,6 +2129,7 @@
       (let [_ (log/info "Generating recipe")
             recipe-ns (case recipe-type
                         :weapon 'robinson.crafting.weapon-gen
+                        :survival 'robinson.crafting.survival-gen
                         #_#_:trap rc-trap-gen
                         #_#_:food rc-food-gen)
             _ (log/info "recipe-ns" recipe-ns)
@@ -2165,6 +2168,7 @@
         recipe-type (get recipe :type)
         recipe-ns (case recipe-type
                         :weapon 'robinson.crafting.weapon-gen
+                        :survival 'robinson.crafting.survival-gen
                     #_#_:trap rc-trap-gen
                     #_#_:food rc-food-gen)]
     (rcrafting/update state recipe-ns keyin)))

@@ -18,8 +18,8 @@
         height (-> element second :zaffre/layout :height)
         maxx (+ minx width)
         maxy (+ miny height)]
-  (and (<= minx col (inc maxx))
-       (<= miny row (inc maxy)))))
+  (and (<= minx col (dec maxx))
+       (<= miny row (dec maxy)))))
 
 (defn handle-click [state col row dom]
   (log/info col row)

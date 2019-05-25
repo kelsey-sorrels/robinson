@@ -26,12 +26,18 @@
   #_(log/info (meta dom))
   (let [layout-elements (-> dom meta :layout-elements)
         hits (filter (partial in-element? col row) (reverse layout-elements))]
+    (log/info "hits:" (count hits))
     (reduce (fn [state hit]
               (if-let [on-click (-> hit second :on-click)]
-                (on-click {:target hit :game-state state})
+                (on-click {:client-x (- col (-> hit second :zaffre/layout :x))
+                           :client-y (- row (-> hit second :zaffre/layout :y))
+                           :screen-x col
+                           :screen-y row
+                           :target hit
+                           :game-state state})
                 state))
             state
-            (take 10 hits))))
+            (take 20 hits))))
 
 (defn handle-mouse-move [state col row last-col last-row dom]
   (log/trace col row last-col last-row)

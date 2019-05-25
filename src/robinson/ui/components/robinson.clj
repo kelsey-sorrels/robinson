@@ -920,7 +920,7 @@
                   [:text {} ["You died."]]
                   [:text {} [(format "From %s" cause-of-death)]]
                   [:text {} [""]]
-                  [:text {} [
+                  [:view {:style {:display :flex :flex-direction :row}} [
                     [:text {} ["Press "]]
                     [ruicommon/Highlight {} ["space "]]
                     [:text {} ["to continue."]]]]]])))

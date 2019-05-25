@@ -36,6 +36,7 @@
 (zc/def-component SelectRecipeNode
   [this]
   (let [{:keys [recipe]} (zc/props this)
+        _ (log/info (dissoc recipe :graph :img))
         n (get recipe :current-node)
         layers (get recipe :layers)
         x (rcrg/node-x layers n)
@@ -67,8 +68,7 @@
 (zc/def-component CraftInProgressRecipe
   [this]
   (let [{:keys [game-state]} (zc/props this)
-        recipe-type (get-in game-state [:world :in-progress-recipe-type])
-        recipe (get-in game-state [:world :in-progress-recipes recipe-type])]
+        recipe (rcrafting/current-recipe game-state)]
     (zc/csx [zcui/Popup {:style {:margin-top 3
                                  :height 16}} [
               [:text {:style {:left 30 :bottom 1}} ["| New Recipe |"]]
@@ -93,8 +93,10 @@
         [:view {:style {:height 1}}]
         [:view {:style {:display :flex
                         :flex-direction :column}}
-          [ruicommon/HotkeyLabel {:hotkey \c :label "replace"}]
-          [ruicommon/HotkeyLabel {:hotkey \m :label "make"}]]]])
+        (if (rcrafting/complete? recipe)
+          [(zc/csx [ruicommon/HotkeyLabel {:hotkey \r :label "replace"}])
+           (zc/csx [ruicommon/HotkeyLabel {:hotkey \m :label "make"}])]
+          [(zc/csx [ruicommon/HotkeyLabel {:hotkey \n :label "continue"}])])]]])
       (zc/csx [:text {} ["Empty"]]))))
 
 

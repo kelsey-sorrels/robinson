@@ -2120,7 +2120,11 @@
 
 (defn transition-select-recipe-type [state]
   (if (contains? #{\a \b \c} (get-in state [:world :selected-recipe-hotkey]))
-    (rw/assoc-current-state state :select-recipe-type)
+    (if (-> state rcrafting/current-recipe rcrafting/in-progress?)
+      ; current-recipe is in progress, continue
+      (rw/assoc-current-state state :in-progress-recipe)
+      ; if current-recipe is complete, replace. Transition to select-recipe-type
+      (rw/assoc-current-state state :select-recipe-type))
     state))
 
 (defn replace-recipe [state]
@@ -2135,7 +2139,7 @@
 (defn craft-new-recipe
   "Start creating a new a crafting recipe."
   [state recipe-type]
-  (let [current-recipe (get-in state [:world :in-progress-recipes recipe-type])]
+  (let [current-recipe (rcrafting/current-recipe state)]
     (if (and false current-recipe)
       state
       (let [_ (log/info "Generating recipe")
@@ -2143,15 +2147,12 @@
                         :weapon 'robinson.crafting.weapon-gen
                         #_#_:trap rc-trap-gen
                         #_#_:food rc-food-gen)
-            _
-        (log/info "recipe-ns" recipe-ns)
+            _ (log/info "recipe-ns" recipe-ns)
             _ (assert (some? recipe-ns))
-            recipe (rrecipe-gen/gen-crafting-graph)
-            new-state
-        (-> state
-          (assoc-in [:world :in-progress-recipes recipe-type] recipe)
-          (assoc-in [:world :in-progress-recipe-type] recipe-type)
-          (rcrafting/init recipe-ns recipe))]
+            recipe (assoc (rrecipe-gen/gen-crafting-graph) :type recipe-type)
+            new-state (-> state
+                        (assoc-in [:world :player :recipes (get-in state [:world :selected-recipe-hotkey])] recipe)
+                        (rcrafting/init recipe-ns recipe))]
         (log/info "done with in-progress-recipes")
         new-state))))
 
@@ -2178,8 +2179,8 @@
 (defn craft-in-progress-recipe
   "Take a step in crafting a recipe."
   [state keyin]
-  (let [recipe-type (get-in state [:world :in-progress-recipe-type])
-        recipe (get-in state [:world :in-progress-recipe])
+  (let [recipe (rcrafting/current-recipe state)
+        recipe-type (get recipe :type)
         recipe-ns (case recipe-type
                         :weapon 'robinson.crafting.weapon-gen
                     #_#_:trap rc-trap-gen

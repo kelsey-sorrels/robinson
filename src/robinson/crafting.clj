@@ -11,21 +11,21 @@
             [datascript.core :as d]))
 
 (defn current-recipe [state]
-  (let [recipe-type (get-in state [:world :in-progress-recipe-type])]
-    (get-in state [:world :in-progress-recipes recipe-type])))
+  (let [selected-recipe-hotkey (get-in state [:world :selected-recipe-hotkey])]
+    (get-in state [:world :player :recipes selected-recipe-hotkey])))
 
 (defn assoc-current-recipe [state & kvs]
   {:pre [(not (nil? state))]
    :post [(not (nil? %))]}
-  (let [recipe-type (get-in state [:world :in-progress-recipe-type])]
-    (update-in state [:world :in-progress-recipes recipe-type]
+  (let [selected-recipe-hotkey (get-in state [:world :selected-recipe-hotkey])]
+    (update-in state [:world :player :recipes selected-recipe-hotkey]
       (fn [recipe] (apply assoc recipe kvs)))))
 
 (defn update-current-recipe [state f & xs]
   {:pre [(not (nil? state))]
    :post [(not (nil? %))]}
-  (let [recipe-type (get-in state [:world :in-progress-recipe-type])]
-    (update-in state [:world :in-progress-recipes recipe-type]
+  (let [selected-recipe-hotkey (get-in state [:world :selected-recipe-hotkey])]
+    (update-in state [:world :player :recipes selected-recipe-hotkey]
       (fn [recipe] (apply f recipe xs)))))
 
 (def recipe-schema {
@@ -536,14 +536,22 @@
         :hotkey :space
         :done true}])))
 
+(defn complete? [recipe]
+  (get recipe :done))
+
+(defn in-progress? [recipe]
+  (not (get recipe :done true)))
+
 (defn recipe-name
   [recipe]
-  (let [item-name (-> recipe
-                    :types
-                    get-recipe-by-types
-                    :recipe/id
-                    ig/id->name)]
-    item-name))
+  (if (complete? recipe)
+    (-> recipe
+      :types
+      get-recipe-by-types
+      :recipe/id
+      ig/id->name)
+    (str "In-progress " (name (get recipe :type "unknown")))))
+    
 
 (defn recipe-short-desc
   [recipe]
@@ -685,8 +693,8 @@
         state))))
 
 (defn update [state recipe-ns keyin]
-  (let [recipe-type (get-in state [:world :in-progress-recipe-type])
-        recipe (get-in state [:world :in-progress-recipes recipe-type])]
+  (let [selected-recipe-hotkey (get-in state [:world :selected-recipe-hotkey])
+        recipe (get-in state [:world :player :recipes selected-recipe-hotkey])]
     (resolve-choice state recipe-ns recipe keyin)))
 
 (defn init [state recipe-ns recipe]

@@ -150,6 +150,7 @@
 (zc/def-component DblBarChart
   [this]
   (let [{:keys [fg-1 fg-2 p1 p2 width direction style]} (zc/props this)
+        width (dec width)
         root (int (* width (min p1 p2)))
         padding (int (* width (- 1 (max p1 p2))))
         diff (- width root padding)
@@ -864,12 +865,11 @@
                               :top 4
                               :left 20}} [
                 [:text {:style {:width 40}} [(str start-text)]]
-                [:text {:style {:top 10}} [
+                [:view {:style {:display :flex :flex-direction :row :top 10}} [
                   [:text {} ["Press "]]
-                  [ruicommon/Highlight {} ["any key "]]
-                  [:text {} ["to continue and "]]
-                  [ruicommon/Highlight {} ["? "]]
-                  [:text {} ["to view help."]]]]]]]]]]]]]])))
+                  [ruicommon/HotkeyLabel {:hotkey :space :sep " " :label "to continue "}]
+                  [:text {:style {:margin-right 1}} ["and"]]
+                  [ruicommon/HotkeyLabel {:hotkey \? :sep " " :label "to view help"}]]]]]]]]]]]]])))
 
 (zc/def-component ContinuePopover
   [this]

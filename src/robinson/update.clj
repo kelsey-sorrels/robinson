@@ -27,7 +27,7 @@
             [robinson.crafting :as rcrafting]
             [robinson.crafting.recipe-gen :as rrecipe-gen]
             [robinson.crafting.weapon-gen :as rc-weapon-gen]
-            [robinson.crafting.survival-gen :as rc-survival-gen]
+            #_[robinson.crafting.survival-gen :as rc-survival-gen]
             [robinson.worldgen :as rworldgen]
             [robinson.lineofsight :as rlos]
             [robinson.renderutil :as rutil]

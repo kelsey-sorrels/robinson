@@ -1,7 +1,7 @@
 ;; Functions for generating random items.
 (ns robinson.crafting
   (:require [robinson.common :as rc]
-            [robinson.crafting.mod :as rcmod]
+            [robinson.crafting.mod-protocol :as rcmp]
             [robinson.itemgen :as ig]
             [robinson.world :as rw]
             [robinson.player :as rp]
@@ -512,40 +512,17 @@
   (let [[x y] (rp/player-xy state)]
     (rw/conj-cell-items state x y (ig/id->item id))))
 
-(defn- mod-type-to-updater
-  "Given a mod-type returns a fn that takes the state and an update fn
-   that can be called (f v) where v is the thing being updated"
-  [mod-type]
-  (case mod-type
-    :item-on-create
-      (fn [state f]
-       (update state :created-item f))
-    :player-on-create
-        rp/update-player
-    :cell-on-create
-        rw/update-player-cell))
-
-(defn- effect-to-updater
-  "Given an effect returns a fn that takes the state and an update fn
-   that can be called (f state v)"
-  [effect]
-  (mod-type-to-updater (rcmod/mod-type effect)))
-
 (defn- place-inventory
   [state id effects]
-  (let [item (ig/id->item id)]
-    (log/info item)
-    (as-> state state
-      (assoc state :created-item item)
-      (reduce
-        (fn [state effect]
-          (log/info effect)
-          (let [updater (effect-to-updater effect)]
-            (updater state (partial rcmod/mod-apply effect))))
-        state
-        effects)
-      (rp/add-to-inventory state [(get state :created-item)])
-      (dissoc state :created-item))))
+  (let [item (ig/id->item id)
+        _ (log/info item)
+        updated-item (reduce (fn [item effect]
+                               (if (satisfies? rcmp/ModItemOnCreate effect)
+                                 (rcmp/item-on-create effect item)
+                                 item))
+                             item
+                             (get item :effects))]
+    (rp/add-to-inventory state [(get state :created-item)])))
 
 (defn- add-by-ids
   [state ids effects place]
@@ -596,33 +573,32 @@
         :done true}])))
 
 (defn complete? [recipe]
-  (get recipe :done))
+  (log/info (get recipe :done))
+  (get recipe :done false))
 
 (defn in-progress? [recipe]
-  (not (get recipe :done true)))
+  (and (not recipe)
+       (not (complete? recipe))))
 
 (defn recipe-name
   [recipe]
-  (if (complete? recipe)
+  (if (in-progress? recipe)
+    (str "In-progress " (name (get recipe :type "unknown")))
     (-> recipe
       :types
       get-recipe-by-types
       :recipe/id
-      ig/id->name)
-    (str "In-progress " (name (get recipe :type "unknown")))))
+      ig/id->name)))
     
 
 (defn recipe-short-desc
   [recipe]
   (let [merged-effects (->>
-                         (group-by :k (get recipe :effects))
+                         (get recipe :effects)
+                         (group-by :ks)
                          (map (fn [[_ effects]]
-                           (assoc (first effects) :amount (reduce + (map :amount effects)))))
-                          (filter (fn [effect]
-                                 (not= 0 (get effect :amount)))))]
-  (clojure.string/join " " (->> merged-effects
-                  (sort-by (fn [effect] (Math/abs (get effect :amount))))
-                  (map rcmod/mod-short-name )))))
+                           (rcmp/short-name (reduce rcmp/merge effects)))))]
+    (clojure.string/join " " merged-effects)))
 
 (defn recipe-requirements
   [recipe]
@@ -675,7 +651,7 @@
       (if (if-let [{:keys [id amount]} (get choice :material)]
             (<= amount (rp/inventory-id->count state id))
             true)
-        (let [results (merge (select-keys choice [:types :effects :materials])
+        (let [results (merge (select-keys choice [:types :effects :materials :done])
                              (select-keys current-stage [:gen]))
               ; merge results into current recipe
               state-with-results (update-current-recipe state (partial merge-with into) results)]
@@ -794,9 +770,12 @@
 (defn player-recipes [state]
   (let [empty-recipe {:name "Empty" :alt "----" :empty true}]
     (map (fn [[hotkey recipe]]
-           (assoc recipe :hotkey hotkey :name (if (get recipe :empty)
-                                                "Empty"
-                                                (recipe-name recipe))
+           #_(log/info (dissoc recipe :img :graph))
+           #_(log/info (recipe-short-desc recipe))
+           (assoc recipe :hotkey hotkey
+                         :name (if (get recipe :empty)
+                                 "Empty"
+                                 (recipe-name recipe))
                          :alt (if (get recipe :empty)
                                 "----"
                                 (recipe-short-desc recipe))))

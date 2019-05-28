@@ -7,43 +7,6 @@
             [robinson.random :as rr]
             [clojure.core.match :refer [match]]))
 
-(defn can-move-in-water?
-  [race]
-  (contains? #{:shark :fish :octopus :sea-snake :clam :urchin :squid
-               :crocodile :puffer-fish :crab :hermit-crab} race))
-
-(defn can-move-on-land?
-  [race]
-  (contains? #{:rat :spider :scorpion :bat :boar :gecko :monkey :bird
-               :centipede :turtle :red-frog :orange-frog :yellow-from
-               :green-frog :blue-frog :purple-frog :parrot :crocodile
-               :mosquito :mongoose :tarantula :monitor-lizard :komodo-dragon
-               :cobra :crab :hermit-crab
-               ;; pirate ship bosses
-               :giant-rat :giant-lizard
-               ;; ruined temple bosses
-               :giant-centipede :gorilla :giant-snake} race))
-
-(defn can-spawn-intertidally?
-  [race]
-  (contains? #{:clam :urchin
-               :turtle :crocodile
-               :crab :hermit-crab} race))
-
-(def  ^:private frog-types
-  #{:red-frog
-    :orange-frog
-    :yellow-frog
-    :green-frog
-    :blue-frog
-    :purple-frog})
-
-(defn is-frog? [monster-type]
-  (contains? frog-types monster-type))
-
-(defn is-poisonous-frog? [state monster-type]
-  (contains? (get-in state [:world :frogs :poisonous])
-             monster-type))
 
 (defn dispatch-on-npc-race [npc _] (get npc :race))
 ;; multi methods for CharacterEvents
@@ -201,6 +164,104 @@
 (def ^:private race->monster-map
   (apply hash-map (mapcat (fn [[k v]] [k (first v)])
                           (group-by :race monsters))))
+
+(defn derive-multi [h child & parents]
+  (reduce (fn [h parent] (derive h child parent)) h parents))
+
+(def monster-hierarchy
+  (->
+    (make-hierarchy)
+    (derive-multi ::mammal ::land-animal)
+    (derive-multi ::bird ::land-animal)
+    (derive-multi ::reptile ::land-animal)
+    (derive-multi ::mammal ::land-animal)
+    (derive-multi ::frog ::land-animal)
+    (derive-multi ::fish ::water-animal)
+    (derive-multi ::eel ::water-animal)
+    (derive-multi ::mollusk ::water-animal)
+    (derive-multi ::crustacean ::water-animal ::amphibian)
+    (derive-multi ::snake ::reptile)
+    
+    (derive-multi :rat ::mammal)
+    (derive-multi :gecko ::reptile)
+    (derive-multi :bird ::bird ::flying)
+    (derive-multi :mosquito ::insect)
+    (derive-multi :spider ::arachnid)
+    (derive-multi :centipede ::insect ::venomous)
+    (derive-multi :tarantula ::arachnid)
+    (derive-multi :scorpion ::arachnid ::venomous)
+    (derive-multi :red-frog ::frog)
+    (derive-multi :orange-frog ::frog)
+    (derive-multi :yellow-frog ::frog)
+    (derive-multi :green-frog ::frog)
+    (derive-multi :blue-frog ::frog)
+    (derive-multi :purple-frog ::frog)
+    (derive-multi :cobra ::snake ::venemous)
+    (derive-multi :snake ::snake)
+    (derive-multi :bat ::mammal ::flying)
+    (derive-multi :boar ::mammal)
+    (derive-multi :monkey ::mammal)
+    (derive-multi :turtle ::reptile)
+    (derive-multi :parrot ::bird)
+    (derive-multi :shark ::fish)
+    (derive-multi :fish ::fish)
+    (derive-multi :octopus ::mollusk)
+    (derive-multi :sea-snake ::snake)
+    (derive-multi :clam ::mollusk ::immobile)
+    (derive-multi :urchin ::mollusk ::immobile)
+    (derive-multi :squid ::mollusk)
+    (derive-multi :crocodile ::reptile)
+    (derive-multi :mongoose ::mammal)
+    (derive-multi :monitor-lizard ::reptile)
+    (derive-multi :komodo-dragon ::reptile)
+    (derive-multi :puffer-fish ::fish)
+    (derive-multi :crab ::crustacean)
+    (derive-multi :hermit-crab ::crustacean)
+    (derive-multi :electric-eel ::eel)
+    (derive-multi :jellyfish ::fish)
+    (derive-multi :giant-rat ::mammal)
+    (derive-multi :giant-lizard ::reptile)
+    (derive-multi :eel ::eel)
+    (derive-multi :giant-cenitpete ::insect ::venomous)
+    (derive-multi :eel ::eel)))
+
+(defn can-move-in-water?
+  [race]
+  (contains? #{:shark :fish :octopus :sea-snake :clam :urchin :squid
+               :crocodile :puffer-fish :crab :hermit-crab} race))
+
+(defn can-move-on-land?
+  [race]
+  (contains? #{:rat :spider :scorpion :bat :boar :gecko :monkey :bird
+               :centipede :turtle :red-frog :orange-frog :yellow-from
+               :green-frog :blue-frog :purple-frog :parrot :crocodile
+               :mosquito :mongoose :tarantula :monitor-lizard :komodo-dragon
+               :cobra :crab :hermit-crab
+               ;; pirate ship bosses
+               :giant-rat :giant-lizard
+               ;; ruined temple bosses
+               :giant-centipede :gorilla :giant-snake} race))
+
+(defn can-spawn-intertidally?
+  [race]
+  (contains? #{:clam :urchin
+               :turtle :crocodile
+               :crab :hermit-crab} race))
+
+(def  ^:private frog-types
+  #{:red-frog
+    :orange-frog
+    :yellow-frog
+    :green-frog
+    :blue-frog
+    :purple-frog})
+
+(defn is-frog? [monster-type]
+  (contains? frog-types monster-type))
+
+(defn is-poisonous-frog? [state monster-type]
+  (contains? (get-in state [:world :frogs :poisonous])
+             monster-type))
 
 (defn id->monster [id]
   #_(log/info "id->monster" id)

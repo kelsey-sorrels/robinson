@@ -3,6 +3,7 @@
             [robinson.world :as rw]
             [robinson.crafting :as rcrafting]
             [robinson.crafting.mod :as rcmod]
+            [robinson.crafting.mod-protocol :as rcmp]
             [robinson.itemgen :as rig]
             [taoensso.timbre :as log]))
 
@@ -76,8 +77,8 @@
     :else
       ((rand-nth [gen-question-contact gen-question-wield]) state)))
 
-(defrecord ModWeapon [s k amount]
-  rcmod/Mod
+#_(defrecord ModWeapon [s k amount]
+  rcmp/Mod
   (mod-name [this]
     (if (pos? amount)
        (str s " +" amount)
@@ -90,8 +91,8 @@
   (mod-apply [this item]
     (update item k (fn [v] (+ (or v 0) amount)))))
 
-(defrecord ModPlayerOnCreate [s k amount]
-  rcmod/Mod
+#_(defrecord ModPlayerOnCreate [s k amount]
+  rcmp/Mod
   (mod-name [this]
     (if (pos? amount)
        (str s " +" amount)
@@ -105,47 +106,78 @@
     (update player k + amount)))
 
 ;; Weapon mods
-(defn mod-accuracy [low high]
+(defn mod-accuracy
+  [low high]
   (let [n (rr/uniform-int low high)]
-    (->ModWeapon "accuracy" :accuracy n)))
+    (rcmod/update-item-on-create :accuracy n)))
 
-(defn mod-damage [low high]
+(defn mod-damage
+  [low high]
   (let [n (rr/uniform-int low high)]
-    (->ModWeapon "damage" :damage n)))
+    (rcmod/update-item-on-create :damage n)))
 
-(defn mod-durability [low high]
+(defn mod-durability
+  [low high]
   (let [n (rr/uniform-int low high)]
-    (->ModWeapon "durability" :durability n)))
+    (rcmod/update-item-on-create :durability n)))
 
-(comment
-(defn mod-piercing)
+; Reduces opponent toughness
+#_(defn mod-piercing
+  []
+  (->ModWeapon "piercing" :piercing true))
 
-(defn mod-haste)
+; Reduces opponent speed
+#_(defn mod-haste
+  [low high]
+  (let [n (rr/uniform-int low high)]
+    (->ModWeapon "durability" :speed n)))
 
-(defn mod-scare-monster)
+; chance of scaring monster
+#_(defn mod-scare-monster
+  []
+  (let [n (rr/uniform-int low high)]
+    (->ModWeapon "durability" :scare-monster n)))
 
-(defn mod-stunning)
+; chance of stunning monster
+#_(defn mod-stunning
+  (let [n (rr/uniform-int low high)]
+    (->ModWeapon "stunning" :stunning n)))
 
-(defn mod-dismembering)
+; chance of dismembering monster
+#_(defn mod-dismembering
+  [low high]
+  (let [n (rr/uniform-int low high)]
+    (->ModWeapon "dismembering" :dismembering n)))
 
-(defn mod-bleeding)
+; chance of wounding monster
+#_(defn mod-bleeding
+  [low high]
+  (let [n (rr/uniform-int low high)]
+    (->ModWeapon "bleeding" :bleeding n)))
 
-(defn mod-knockback)
+; chance of knockback
+#_(defn mod-knockback
+  [low high]
+  (let [n (rr/uniform-int low high)]
+    (->ModWeapon "knockback" :knockback n)))
 
-(defn mod-conditioned))
+; condition mod based on opponent attributes
+#_(defn mod-conditioned-heirarchy
+  [id mod]
+    (->ModWeapon "conditioned" :conditioned {:id id :mod mod}))
 
 ;; Creation mods
 (defn mod-hp [low high]
   (let [n (rr/uniform-int low high)]
-    (->ModPlayerOnCreate "hp" :hp n)))
+    (rcmod/update-player-on-create :hp n)))
 
 (defn mod-hunger [low high]
   (let [n (rr/uniform-int low high)]
-    (->ModPlayerOnCreate "hunger" :hunger n)))
+    (rcmod/update-player-on-create :hunger n)))
 
 (defn mod-thirst [low high]
   (let [n (rr/uniform-int low high)]
-    (->ModPlayerOnCreate "thirst" :thirst n)))
+    (rcmod/update-player-on-create :thirst n)))
 
 (def weapon-complications [
   {:title "Rushing!"
@@ -530,16 +562,17 @@
                    `(mod-accuracy -5 -1)
                    `(mod-damage -6 -2)
                    `(mod-durability -6 -2)])))
+        _ (log/info "buff-mod" buff-mod)
         events [
         {:title "Material requirements"
          :description "New inventions require raw materials. This is no exception."
          :choices [
-           (rcmod/mod-apply buff-mod
+           (rcmp/item-on-create buff-mod
              {:name item-name
               :hotkey \a
               :material {:id item-id :amount (+ 1 (rand-int 4))}
               :effects [buff-mod]})
-           (rcmod/mod-apply debuff-mod
+           (rcmp/item-on-create debuff-mod
              {:name "skip"
               :hotkey \b
               :effects [debuff-mod]})]}]]

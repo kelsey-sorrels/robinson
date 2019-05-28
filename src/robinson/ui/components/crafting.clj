@@ -2,7 +2,7 @@
   (:require
             [robinson.ui.components.common :as ruicommon]
             [robinson.crafting :as rcrafting]
-            [robinson.crafting.mod :as rcmod]
+            [robinson.crafting.mod-protocol :as rcmp]
             [robinson.crafting.recipe-gen :as rcrg]
             [robinson.crafting.weapon-gen :as rcwg]
             [robinson.player :as rp]
@@ -167,7 +167,7 @@
                   [:view {} [
                     [ruicommon/TitledList {:title "Type:" :names [recipe-name]}]
                     [:text {} [""]]
-                    [ruicommon/TitledList {:title "Attributes:" :names (map rcmod/mod-name (get recipe :effects))}]]]
+                    [ruicommon/TitledList {:title "Attributes:" :names (map rcmp/full-name (get recipe :effects))}]]]
                   [Requirements {:game-state game-state :requirements requirements :items items}]
                   [:view {:style {}} [
                     [:text {} ["Inventory"]]

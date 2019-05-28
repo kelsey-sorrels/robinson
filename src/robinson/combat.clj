@@ -260,7 +260,7 @@
   [state attacker attack attack-type defender defender-body-part]
   #_(log/info "Attacker" attacker "attacker-type" (type attacker) "Defender" defender "defender-type" (type defender))
   (log/info "attacker" (get attacker :race :human) "defender" (get defender :race :human))
-  ;;Damage = Astr * (Adex / Dsp) * (As / Ds) * (At / Dt)
+  ;;Damage = Astr * (Adex / Dsp) * (Asize / Dsize) * (Atoughness / Dtoughness)
   (let [attacker-strength  (dcp/get-attack-strength attacker state)
         attacker-dexterity (dcp/get-attack-dexterity attacker state)
         defender-speed     (dcp/get-attack-speed defender state)

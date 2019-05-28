@@ -149,14 +149,13 @@
                                   (zc/set-state! this {:hover false}))
                                 game-state)
               :style {:color (rcolor/color->rgb (if disabled :gray :white))
-                      :height 1
                       :display :flex
                       :flex-direction :row
                       :align-items :flex-start}} [
         (if hover
-          (zc/csx [InverseHighlight {:style {:width (clojure.core/count hotkey-str)}} [(or hotkey-str "")]])
-          (zc/csx [Highlight {:style {:width (clojure.core/count hotkey-str)}} [(or hotkey-str "")]]))
-        [:text {:style {:width 1}} [(format "%c"
+          (zc/csx [InverseHighlight {} [(or hotkey-str "")]])
+          (zc/csx [Highlight {} [(or hotkey-str "")]]))
+        [:text {} [(format "%c"
                      (if hotkey
                        (if selected
                          \+
@@ -169,7 +168,7 @@
                           :flex-direction :row
                           :align-items :flex-start}} [
             (when count-str
-              (zc/csx [:text {:style {:width (clojure.core/count count-str)}} [count-str]]))
+              (zc/csx [:text {} [count-str]]))
             [:text {} [name]]
             [:view {:style {:display :flex
                             :flex-direction :row

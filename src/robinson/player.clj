@@ -3,6 +3,8 @@
   (:require [robinson.common :as rc]
             [robinson.characterevents :as ce]
             [robinson.dynamiccharacterproperties :as dcp]
+            [robinson.crafting.mod :as rcmod]
+            [robinson.crafting.mod-protocol :as rcmp]
             [taoensso.timbre :as log]
             [robinson.random :as rr]
             clojure.set
@@ -33,6 +35,21 @@
   (< (get (get-player-attribute state :buffs) buff-id 0)
      (get-in state [:world :time])))
 
+(defn attribute-after-weapon-effects
+  [state k]
+  (let [player (get-player state)
+        defender nil]
+    (->
+      player
+      (rcmod/apply-mods
+        (-> player
+          wielded-item
+          :effects)
+        rcmp/ModAttackerOnAttackTemp
+        player
+        defender)
+      (get k))))
+
 (defn player-strength
   [state]
   (+ (get-player-attribute state :strength)
@@ -56,14 +73,14 @@
 
 (defn player-attack-strength
   [state]
-  (+ (get-player-attribute state :strength)
+  (+ (attribute-after-weapon-effects  state :strength)
      (if (buff-active? state :strength)
        0.1
        0)))
 
 (defn player-attack-dexterity
   [state]
-  (+ (get-player-attribute state :dexterity)
+  (+ (attribute-after-weapon-effects  state :dexterity)
      (if (buff-active? state :dexterity)
        0.1
        0)))
@@ -71,7 +88,7 @@
 (declare worn-item)
 (defn player-attack-toughness
   [state]
-  (+ (get-player-attribute state :toughness)
+  (+ (attribute-after-weapon-effects  state :toughness)
      (if (buff-active? state :toughness)
        0.1
        0)

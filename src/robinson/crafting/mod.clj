@@ -3,84 +3,105 @@
             [taoensso.timbre :as log]))
 
 (defn adj-val [v amount]
-  (log/info v amount)
   (+ (or v 0) amount))
 
-(defrecord UpdatePlayerImmediate [ks f-sym args]
-  rcmp/ModPlayerImmediate
-  (player-immediate [this player]
-    (apply update-in player ks (resolve f-sym) args)))
+(defn- kebab-to-pascal [sym]
+  (->>
+    (-> sym name (clojure.string/split #"-"))
+    (map clojure.string/capitalize)
+    (clojure.string/join "")
+    symbol))
 
-(defn update-player-immediate [k amount]
-  (->UpdatePlayerImmediate [k] 'adj-key [amount]))
+(defmacro defmod-type [sym & args]
+  (let [pascal (kebab-to-pascal sym)
+        pascal# pascal
+        body (take-last 2 args)
+        constructor# (symbol (str "->" (name pascal)))
+        {:keys [tag]} (drop-last 2 args)
+        tag# tag
+        body# body]
+    `(do
+      (defrecord ~pascal# ~'[full-name short-name k n]
+        rcmp/Mod
+        ~'(full-name [this] full-name)
+        ~'(short-name [this] short-name)
+        ~'(id [this] (hash [(type this) k]))
+        ~`(~'merge [~'this ~'other]
+          ~(if-not tag#
+             `(update ~'this :n adj-val (get ~'other :n))
+             `(update ~'this :n (fn [~'x ~'y] (or ~'x ~'y)) (get ~'other :n))))
+        ~@(when-not tag#
+            `(rcmp/ModQuantifiable
+             ~'(amount [this] n)))
+        ~@body#)
+      (defn ~sym ~'[full-name short-name k amount]
+        (~constructor# ~'full-name ~'short-name ~'k ~'amount)))))
 
-(defrecord UpdateItemOnCreate [full-name short-name ks f-sym args]
-  rcmp/Mod
-  (full-name [this] full-name)
-  (short-name [this] short-name)
-  (merge [this other] (update-in this [:args 0] + (-> other :args first)))
+(defmod-type adj-item-on-create
   rcmp/ModItemOnCreate
   (item-on-create [this item]
-    (log/info "f" (resolve f-sym))
-    (if-let [f (resolve f-sym)]
-      (apply update-in item ks f args)
-      item)))
+    (update item k adj-val n)))
 
-(defn short-name [name]
-  (get {"damage" "dmg"
-        "accuracy" "acc"
-        "speed" "spd"
-        "durability" "drb"
-        "hunger" "hng"
-        "thirst" "thr"}
-       name name))
+(defmod-type tag-item-on-create
+  :tag true
+  rcmp/ModItemOnCreate
+  (item-on-create [this item]
+    (assoc item k n)))
 
-(defn full-name-short-name [k amount]
-  (let [full-name (if (pos? amount)
-                    (str (name k) " +" amount)
-                    (str (name k) " " amount))
-       short-name (if (pos? amount)
-                     (str (short-name (name k)) "+" amount)
-                     (str (short-name (name k)) "" amount))]
-    [full-name short-name]))
+(defmod-type adj-player-on-create
+  rcmp/ModPlayerImmediate
+  (player-immediate [this player]
+    (update player k adj-val n)))
 
-(defn update-item-on-create [k amount]
-  (let [[full-name short-name] (full-name-short-name k amount)]
-    (log/info full-name short-name [k] 'adj-val amount)
-    (->UpdateItemOnCreate full-name short-name [k] 'adj-val [amount])))
+(defmod-type tag-player-on-create
+  :tag true
+  rcmp/ModPlayerImmediate
+  (player-immediate [this player]
+    (assoc player k n)))
 
-(defrecord UpdatePlayerOnCreate [full-name short-name ks f-sym args]
-  rcmp/Mod
-  (full-name [this] full-name)
-  (short-name [this] short-name)
-  (merge [this other] (update-in this [:args 0] + (-> other :args first)))
-  rcmp/ModPlayerOnCreate
-  (player-on-create [this player]
-    (apply update player (resolve f-sym) args)))
-
-(defn update-player-on-create [k amount]
-  (let [[full-name short-name] (full-name-short-name k amount)]
-    (->UpdatePlayerOnCreate full-name short-name [k] 'adj-key [amount])))
-
-(defrecord UpdateAttackerOnAttack [ks f-sym args]
+(defmod-type adj-attacker-on-attack
   rcmp/ModAttackerOnAttack
   (attacker-on-attack [this attacker defender]
-    (apply update attacker (resolve f-sym) args)))
+    (update attacker k adj-val n)))
 
-(defrecord UpdateDefenderOnAttack [ks f-sym args]
+(defmod-type tag-attacker-on-attack
+  :tag true
+  rcmp/ModAttackerOnAttack
+  (attacker-on-attack [this attacker defender]
+    (assoc attacker k n)))
+
+(defmod-type adj-defender-on-attack
   rcmp/ModDefenderOnAttack
   (defender-on-attack [this attacker defender]
-    (apply update attacker (resolve f-sym) args)))
+    (update defender k adj-val n)))
 
-(defrecord UpdateAttackerOnAttackTemp [ks f-sym args]
+(defmod-type tag-defender-on-attack
+  :tag true
+  rcmp/ModDefenderOnAttack
+  (defender-on-attack [this attacker defender]
+    (assoc defender k n)))
+
+(defmod-type adj-attacker-on-attack-temp
   rcmp/ModAttackerOnAttackTemp
   (attacker-on-attack-temp [this attacker defender]
-    (apply update attacker (resolve f-sym) args)))
+    (update attacker k adj-val n)))
 
-(defrecord UpdateDefenderOnAttackTemp [ks f-sym args]
+(defmod-type tag-attacker-on-attack-temp
+  :tag true
+  rcmp/ModAttackerOnAttackTemp
+  (attacker-on-attack-temp [this attacker defender]
+    (assoc attacker k n)))
+
+(defmod-type adj-defender-on-attack-temp
   rcmp/ModDefenderOnAttackTemp
   (defender-on-attack-temp [this attacker defender]
-    (apply update attacker (resolve f-sym) args)))
+    (update defender k adj-val n)))
+
+(defmod-type tag-defender-on-attack-temp
+  :tag true
+  rcmp/ModDefenderOnAttackTemp
+  (defender-on-attack-temp [this attacker defender]
+    (assoc defender k n)))
 
 (defrecord ConditionedOnHierarchy [mod]
   rcmp/ModConditionedOnHierarchy
@@ -88,4 +109,18 @@
   (when-triggered [this h tag v]
     (when (contains? (ancestors h tag) v)
       mod)))
+
+#_(def adj-dmg-on-create (adj-item-on-create "damage" "dmg" :damage 1))
+#_(def stunning-on-create (tag-item-on-create "stunning" "stn" :stunning true))
+
+(defn apply-mods
+  [actor mods protocol & args]
+  (log/info mods protocol)
+  (let [m (first (keys (get protocol :method-map)))]
+    (reduce (fn [actor mod]
+              (if (satisfies? protocol mod)
+                (apply (-> m name symbol resolve) mod args)
+                actor))
+            actor
+            mods)))
 

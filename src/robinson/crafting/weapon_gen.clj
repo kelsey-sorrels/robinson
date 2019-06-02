@@ -77,89 +77,63 @@
     :else
       ((rand-nth [gen-question-contact gen-question-wield]) state)))
 
-#_(defrecord ModWeapon [s k amount]
-  rcmp/Mod
-  (mod-name [this]
-    (if (pos? amount)
-       (str s " +" amount)
-       (str s " " amount)))
-  (mod-short-name [this]
-    (if (pos? amount)
-       (str (short-name s) "+" amount)
-       (str (short-name s) "" amount)))
-  (mod-type [this] :item-on-create)
-  (mod-apply [this item]
-    (update item k (fn [v] (+ (or v 0) amount)))))
-
-#_(defrecord ModPlayerOnCreate [s k amount]
-  rcmp/Mod
-  (mod-name [this]
-    (if (pos? amount)
-       (str s " +" amount)
-       (str s amount)))
-  (mod-short-name [this]
-    (if (pos? amount)
-       (str (short-name s) " +" amount)
-       (str (short-name s) " " amount)))
-  (mod-type [this] :player-on-create)
-  (mod-apply [this player]
-    (update player k + amount)))
-
 ;; Weapon mods
 (defn mod-accuracy
   [low high]
   (let [n (rr/uniform-int low high)]
-    (rcmod/update-item-on-create :accuracy n)))
+    (rcmod/adj-item-on-create "accuracy" "acc" :accuracy n)))
 
 (defn mod-damage
   [low high]
   (let [n (rr/uniform-int low high)]
-    (rcmod/update-item-on-create :damage n)))
+    (rcmod/adj-item-on-create "damage" "dmg" :damage n)))
 
 (defn mod-durability
   [low high]
   (let [n (rr/uniform-int low high)]
-    (rcmod/update-item-on-create :durability n)))
+    (rcmod/adj-item-on-create "durability" "dbl" :durability n)))
 
 ; Reduces opponent toughness
-#_(defn mod-piercing
-  []
-  (->ModWeapon "piercing" :piercing true))
-
-; Reduces opponent speed
-#_(defn mod-haste
+(defn mod-piercing
   [low high]
   (let [n (rr/uniform-int low high)]
-    (->ModWeapon "durability" :speed n)))
+    (rcmod/adj-defender-on-attack-temp "piercing" "prc" :toughness n)))
+
+; Increase attackers speed
+(defn mod-haste
+  [low high]
+  (let [n (rr/uniform-int low high)]
+    (rcmod/adj-attacker-on-attack-temp "haste" :speed n)))
 
 ; chance of scaring monster
-#_(defn mod-scare-monster
-  []
+(defn mod-scare-monster
+  [low high]
   (let [n (rr/uniform-int low high)]
-    (->ModWeapon "durability" :scare-monster n)))
+    (rcmod/adj-defender-on-attack "scare" "scr" :scared n)))
 
 ; chance of stunning monster
-#_(defn mod-stunning
+(defn mod-stunning
+  [low high]
   (let [n (rr/uniform-int low high)]
-    (->ModWeapon "stunning" :stunning n)))
+    (rcmod/adj-defender-on-attack "stun" "stn" :stunned n)))
 
 ; chance of dismembering monster
-#_(defn mod-dismembering
+(defn mod-dismembering
   [low high]
   (let [n (rr/uniform-int low high)]
-    (->ModWeapon "dismembering" :dismembering n)))
+    (rcmod/adj-defender-on-attack "dismember" "dsm" :dismembered n)))
 
 ; chance of wounding monster
-#_(defn mod-bleeding
+(defn mod-bleeding
   [low high]
   (let [n (rr/uniform-int low high)]
-    (->ModWeapon "bleeding" :bleeding n)))
+    (rcmod/adj-defender-on-attack "bleeding" "bld" :bleeding n)))
 
 ; chance of knockback
-#_(defn mod-knockback
+(defn mod-knockback
   [low high]
   (let [n (rr/uniform-int low high)]
-    (->ModWeapon "knockback" :knockback n)))
+    (rcmod/adj-defender-on-attack "knockback" "knb" :knockbacked n)))
 
 ; condition mod based on opponent attributes
 #_(defn mod-conditioned-heirarchy
@@ -169,15 +143,19 @@
 ;; Creation mods
 (defn mod-hp [low high]
   (let [n (rr/uniform-int low high)]
-    (rcmod/update-player-on-create :hp n)))
+    (rcmod/adj-player-on-create "health" "hp" :hp n)))
 
 (defn mod-hunger [low high]
   (let [n (rr/uniform-int low high)]
-    (rcmod/update-player-on-create :hunger n)))
+    (rcmod/adj-player-on-create "hunger" "hun" :hunger n)))
 
 (defn mod-thirst [low high]
   (let [n (rr/uniform-int low high)]
-    (rcmod/update-player-on-create :thirst n)))
+    (rcmod/adj-player-on-create "thirst" "thr" :thirst n)))
+
+(defn mod-wtl [low high]
+  (let [n (rr/uniform-int low high)]
+    (rcmod/adj-player-on-create "wtl" "wtl" :wtl n)))
 
 (def weapon-complications [
   {:title "Rushing!"
@@ -189,12 +167,25 @@
        `(mod-accuracy -5 -1)
        `(mod-damage -6 -2)]}]}
   {:title "Poor materials!"
-   :description "Poor materials make poor weapons."
-   :choices [{
-     :hotkey :space
-     :name "continue"
-     :one-of [
-       `(mod-durability -7 -3)]}]}
+   :description "You can't find the materials you need."
+   :choices [
+     {:hotkey \a
+      :name "Keep searching"
+      :events [
+        {:description "You spend hours looking for the right materials."
+          :one-of [`(mod-thirst -5 -10)
+                   `(mod-hunger -5 -10)]}
+        {:description "After hours of searching, you find the right material."
+         :one-of [`(mod-wtl 5 7)]}]}
+     {:hotkey \b
+      :name "Do without"
+      :events [
+        {:description "You learn to make do without the right parts."
+         :one-of [
+           `(mod-durability -3 -1)]}
+        {:description "There is no way around it. It is just too hard. "
+         :one-of [
+           `(mod-durability -7 -5)]}]}]}
   {:title "Distracted!"
    :description "What was that? Oh right, making weapons."
    :choices [{
@@ -211,11 +202,29 @@
        `(mod-thirst 11 21)]}]}
   {:title "Brittle materials!"
    :description "The materials you are using are too brittle."
-   :choices [{
-     :hotkey :space
-     :name "continue"
-     :one-of [
-       `(mod-durability -7 -3)]}]}
+   :choices [
+     {:hotkey \a
+      :name "Search for something better"
+      :events [
+        {:description "You give up after spending hours looking for the right materials."
+          :one-of [`(mod-thirst -5 -10)
+                   `(mod-hunger -5 -10)
+                   `(mod-wtl -5 -10)]}
+        {:description "After hours of searching, you find the right material."
+         :one-of [`(mod-wtl 5 7)
+                  `(mod-thirst -5 -10)
+                  `(mod-hunger -5 -10)]}]}
+     {:hotkey \b
+      :name "Give up"
+      :events [
+        {:description "You learn to make do without the right parts."
+         :one-of [
+           `(mod-durability -3 -1)
+           `(mod-wtl -5 -10)]}
+        {:description "You stop and take a break. After a few minutes inspiration strikes."
+         :one-of [
+           `(mod-durability 1 3)
+           `(mod-wtl 1 5)]}]}]}
   {:title "Soft materials!"
    :description "The materials you are using are too soft."
    :choices [{
@@ -567,15 +576,13 @@
         {:title "Material requirements"
          :description "New inventions require raw materials. This is no exception."
          :choices [
-           (rcmp/item-on-create buff-mod
              {:name item-name
               :hotkey \a
               :material {:id item-id :amount (+ 1 (rand-int 4))}
-              :effects [buff-mod]})
-           (rcmp/item-on-create debuff-mod
+              :effects [buff-mod]}
              {:name "skip"
               :hotkey \b
-              :effects [debuff-mod]})]}]]
+              :effects [debuff-mod]}]}]]
       (gen-event state recipe events)))
 
 (def enhancements [

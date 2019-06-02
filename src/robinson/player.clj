@@ -35,6 +35,11 @@
   (< (get (get-player-attribute state :buffs) buff-id 0)
      (get-in state [:world :time])))
 
+(defn wielded-item
+  [actor]
+  (first (filter (fn [item] (contains? item :wielded))
+                 (get actor :inventory))))
+
 (defn attribute-after-weapon-effects
   [state k]
   (let [player (get-player state)
@@ -368,11 +373,6 @@
 (defn player-inventory
   [state]
   (get-in state [:world :player :inventory]))
-
-(defn wielded-item
-  [actor]
-  (first (filter (fn [item] (contains? item :wielded))
-                 (get actor :inventory))))
 
 (defn worn-item
   [state]

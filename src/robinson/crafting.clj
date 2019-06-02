@@ -522,7 +522,7 @@
                                  item))
                              item
                              (get item :effects))]
-    (rp/add-to-inventory state [(get state :created-item)])))
+    (rp/add-to-inventory state [updated-item])))
 
 (defn- add-by-ids
   [state ids effects place]
@@ -573,11 +573,10 @@
         :done true}])))
 
 (defn complete? [recipe]
-  (log/info (get recipe :done))
   (get recipe :done false))
 
 (defn in-progress? [recipe]
-  (and (not recipe)
+  (and (some? recipe)
        (not (complete? recipe))))
 
 (defn recipe-name
@@ -595,7 +594,7 @@
   [recipe]
   (let [merged-effects (->>
                          (get recipe :effects)
-                         (group-by :ks)
+                         (group-by rcmp/id)
                          (map (fn [[_ effects]]
                            (rcmp/short-name (reduce rcmp/merge effects)))))]
     (clojure.string/join " " merged-effects)))
@@ -751,7 +750,7 @@
                        ; add slot indexes
                        (map-indexed vector)
                        ; remove tool clauses
-                       (remove (fn [[_ clause]] (contains? #{'tool} (first clause))))
+                       (remove (fn [[_ clause]] (contains? #{'tool} clause)))
                        ; find which items ids are in remaining slots
                        (map (fn [[slot _]] (get (slot->item state slot) :item/id))))
         add          (get-in recipe [:recipe/add])
@@ -801,4 +800,9 @@
     (or (nil? recipe)
         (get recipe :empty))))
 
+(defn full-name
+  [effect]
+  (if (satisfies? rcmp/ModQuantifiable effect)
+    (str (rcmp/full-name effect) (format "%+d" (rcmp/amount effect)))
+    (rcmp/full-name effect)))
 

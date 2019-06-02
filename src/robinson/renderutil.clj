@@ -84,7 +84,7 @@
   [item]
   (let [item-char-fg-bg (get items
                              (or (item :type)
-                                 (item :id)))]
+                                 (item :item/id)))]
     (when-not item-char-fg-bg
       (log/info item))
     (or (first item-char-fg-bg) \?)))
@@ -92,6 +92,6 @@
 (defn item->fg
   [item]
   (let [item-char-fg-bg (get items (or (item :type)
-                                       (item :id)))]
+                                       (item :item/id)))]
     (or (second item-char-fg-bg)
         :white)))

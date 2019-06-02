@@ -167,7 +167,7 @@
                   [:view {} [
                     [ruicommon/TitledList {:title "Type:" :names [recipe-name]}]
                     [:text {} [""]]
-                    [ruicommon/TitledList {:title "Attributes:" :names (map rcmp/full-name (get recipe :effects))}]]]
+                    [ruicommon/TitledList {:title "Attributes:" :names (map rcrafting/full-name (get recipe :effects))}]]]
                   [Requirements {:game-state game-state :requirements requirements :items items}]
                   [:view {:style {}} [
                     [:text {} ["Inventory"]]

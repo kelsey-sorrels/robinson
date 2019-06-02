@@ -3,6 +3,7 @@
             [robinson.common :as rc]
             [robinson.color :as rcolor]
             [robinson.update :as ru]
+            [robinson.crafting.mod-protocol :as rcmp]
             [taoensso.timbre :as log]
             [zaffre.components :as zc]
             [zaffre.components.ui :as zcui]
@@ -128,9 +129,20 @@
     (keys item))]
     r))
 
+(defn- effect-elems
+  [effects]
+  (let [item (reduce (fn [item effect]
+                       (cond
+                         (satisfies? rcmp/ModItemOnCreate effect)
+                           (rcmp/item-on-create effect item)
+                         :else
+                           item))
+                     {} effects)]
+    (attributes item)))
+
 (zc/def-component MultiSelectItem
   [this]
-  (let [{:keys [style hotkey selected count name utility wielded wielded-ranged worn alt disabled] :as props} (zc/props this)
+  (let [{:keys [style hotkey selected count name utility wielded wielded-ranged worn alt disabled effects] :as props} (zc/props this)
         hotkey-str (str (or (hotkey->str hotkey) ""))
         count-str (when count (format "%dx " (int count)))
         {:keys [hover] :or {hover false}} (zc/state this)
@@ -173,7 +185,7 @@
             [:view {:style {:display :flex
                             :flex-direction :row
                             :margin-left 1
-                            :margin-right 1}} (attributes props)]
+                            :margin-right 1}} (concat (attributes props) (effect-elems effects))]
             (when utility
               (zc/csx [:text {:style {:margin-left 1}} [(format "(%d%%)" (int utility))]]))
             [:text {} [(cond

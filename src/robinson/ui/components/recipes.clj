@@ -29,7 +29,7 @@
       [:view {:style {:width 20}} [
         [ruicommon/TitledList {:title "Type:" :names (type-names recipe)}]
         [:text {} [""]]
-        [ruicommon/TitledList {:title "Attributes:" :names (map rcmp/full-name (get recipe :effects))}]
+        [ruicommon/TitledList {:title "Attributes:" :names (map rcrafting/full-name (get recipe :effects))}]
         [:text {} [""]]
         [ruicommon/TitledList {:title "Materials:" :names (map (comp name :id) (get recipe :materials))}]]])))
 

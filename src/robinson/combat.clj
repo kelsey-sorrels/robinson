@@ -519,8 +519,7 @@
     ; attack is a keyword or item
     (or (keyword? attack)
         (contains? attack :item/id))]}
-  (let [defender             (get-in state defender-path)
-        attack-item          (rp/wielded-item attacker)
+  (let [attack-item          (rp/wielded-item attacker)
         attack-type          (cond
                                (keyword attack)
                                  :melee
@@ -534,6 +533,7 @@
                                attack)
         shot-poisoned-arrow  (when thrown-item
                                (ig/arrow-poison-tipped? state thrown-item))
+        defender             (get-in state defender-path)
         defender-body-part   (rr/rand-nth (vec (get defender :body-parts)))
         {defender-x :x defender-y :y} (get defender :pos)
         hp                   (get defender :hp)

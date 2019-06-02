@@ -2122,11 +2122,13 @@
 
 (defn transition-select-recipe-type [state]
   (if (contains? #{\a \b \c} (get-in state [:world :selected-recipe-hotkey]))
-    (if (-> state rcrafting/current-recipe rcrafting/in-progress?)
-      ; current-recipe is in progress, continue
-      (rw/assoc-current-state state :in-progress-recipe)
-      ; if current-recipe is complete, replace. Transition to select-recipe-type
-      (rw/assoc-current-state state :select-recipe-type))
+    (let [current-recipe-in-progress (-> state rcrafting/current-recipe rcrafting/in-progress?)]
+      (log/info "current-recipe-in-progress" current-recipe-in-progress)
+      (if current-recipe-in-progress
+        ; current-recipe is in progress, continue
+        (rw/assoc-current-state state :in-progress-recipe)
+        ; if current-recipe is complete, replace. Transition to select-recipe-type
+        (rw/assoc-current-state state :select-recipe-type)))
     state))
 
 (defn replace-recipe [state]

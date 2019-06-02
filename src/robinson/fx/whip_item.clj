@@ -65,13 +65,16 @@
 (defn handle-recieve
   [this state item hit-npc chains ttl fx-ks]
   (let [chain (or (first chains) [])
-        npcs (->> chain
-               (map (fn [[x y]]
-                 (rnpc/npc-at-pos state (rc/xy->pos x y))))
-               (remove nil?))
+        npcs (when-not hit-npc
+               (->> chain
+                 (map (fn [[x y]]
+                   (rnpc/npc-at-xy state x y)))
+                 (remove nil?)))
+        collision (some (fn [[x y]] (rw/collide? state x y {:include-npcs? false :collide-player? false})) chain)
         ttl-zero (zero? ttl)]
     (log/info "ttl" ttl)
-    (log/info "npcs" npcs)
+    (log/info "npcs" (vec npcs))
+    (log/info "collision" collision)
     (letfn [(cleanup [state]
               (-> state
                 (ractors/remove-actor this)
@@ -95,6 +98,10 @@
                   ; npc in cell
                   (not (empty? npcs))
                     (reduce handle-npc state npcs)
+                  ; stop on collision
+                  collision
+                    (cleanup state)
+                    #_(cleanup state)
                   #_#_trap
                     (-> state
                       handle-trigger-trap
@@ -111,16 +118,7 @@
                       ; update ttl
                       (ractors/update-actor this update :ttl dec))))]
     
-    ; will hit wall?
-    #_(if (second xy-path)
-      (let [next-pos (apply rc/xy->pos (second xy-path))
-            next-cell (rw/get-cell state next-pos)]
-        (if (rw/type->collide? (get next-cell :type))
-          ;; drop item into cell before hitting colliding cell
-          (if (= (get cell :type) :fire)
-            ; items dropped into fire add to fuel
-            (rw/update-cell state pos (fn [cell] (update-in cell [:fuel] (partial + (ig/id->fuel (get item :item/id))))))))))
-      ; Nothing happened, advance item one step
+    ; advance item one step
     (on-move state))))
 
 (defrecord WhipItemActor [item hit-npc chains ttl fx-ks]

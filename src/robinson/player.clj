@@ -40,6 +40,11 @@
   (first (filter (fn [item] (contains? item :wielded))
                  (get actor :inventory))))
 
+(defn wielded-ranged-item
+  [actor]
+  (first (filter (fn [item] (contains? item :wielded-ranged))
+                 (get actor :inventory))))
+
 (defn attribute-after-weapon-effects
   [state k]
   (let [player (get-player state)

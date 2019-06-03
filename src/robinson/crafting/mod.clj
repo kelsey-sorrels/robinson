@@ -110,9 +110,6 @@
     (when (contains? (ancestors h tag) v)
       mod)))
 
-#_(def adj-dmg-on-create (adj-item-on-create "damage" "dmg" :damage 1))
-#_(def stunning-on-create (tag-item-on-create "stunning" "stn" :stunning true))
-
 (defn apply-mods
   [actor mods protocol & args]
   (log/info mods protocol)

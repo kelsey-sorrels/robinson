@@ -6,6 +6,8 @@
             [robinson.player :as rp]
             [robinson.npc :as rnpc]
             [robinson.itemgen :as ig]
+            [robinson.crafting.mod :as rcmod]
+            [robinson.crafting.mod-protocol :as rcmp]
             [robinson.monstergen :as mg]
             [robinson.math :as rmath]
             [robinson.characterevents :as ce]
@@ -440,10 +442,20 @@
                                        2))
             (log-with-line state "12")
             ;; some thrown items can stun npcs
-            (if (and (= attack-type :thrown-item)
-                     hit
-                     (ig/id-can-stun? (get thrown-item :id)))
-              (update-in state (conj defender-path :status) (fn [state] (conj state :stunned)))
+            (if (and hit
+                     (or
+                       (ig/id-can-stun? (get attack-item :id))
+                       (< (rr/next-float! rr/*rnd*) (get attack-item :stunned 0))))
+              (->
+                state
+                ;; show fx
+                (rfx/conj-effect :blip (get defender :pos)
+                                  \!
+                                  (rcolor/color->rgb :orange)
+                                  [0 0 0 0]
+                                  3)
+                ; add tag to npc
+                (update-in (conj defender-path :status) (fn [state] (conj state :stunned))))
               state)
             (log-with-line state "13")
             (if (contains? (set attacker-or-path) :player)
@@ -519,14 +531,17 @@
     ; attack is a keyword or item
     (or (keyword? attack)
         (contains? attack :item/id))]}
-  (let [attack-item          (rp/wielded-item attacker)
-        attack-type          (cond
+  (let [attack-type          (cond
                                (keyword attack)
                                  :melee
                                (get attack :wielded-ranged)
                                  :ranged
                                :else
                                  :thrown-item)
+        attack-item          (case attack-type
+                               :melee (rp/wielded-item attacker)
+                               :ranged (rp/wielded-ranged-item attacker)
+                               :thrown-item attack)
         ranged-weapon        (when (= attack-type :ranged)
                                attack)
         thrown-item          (when (= attack-type :thrown-item)
@@ -538,6 +553,22 @@
         {defender-x :x defender-y :y} (get defender :pos)
         hp                   (get defender :hp)
         hit                  (is-hit? state attacker defender attack-type)
+        defender             (rcmod/apply-mods
+                               defender
+                               (get attack-item :effects)
+                               rcmp/ModDefenderOnAttackTemp
+                               attacker defender)
+        state                (if (contains? attacker :name)
+                               (rnpc/update-npc
+                                 state
+                                 defender
+                                 (fn [_]
+                                   (rcmod/apply-mods
+                                     defender
+                                     (get attack-item :effects)
+                                     rcmp/ModDefenderOnAttack
+                                     attacker defender)))
+                               state)
         dmg                  (cond
                                hit   (+ (calc-dmg state attacker attack attack-type defender defender-body-part) (if shot-poisoned-arrow 1 0))
                                :else 0)

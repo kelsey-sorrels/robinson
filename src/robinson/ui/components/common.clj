@@ -92,41 +92,39 @@
         (map (fn [n] (zc/csx [:text {} [n]])) names)
         [(zc/csx [:text {} ["None"]])]))])))
 
+(defn attribute-icon
+  ([s color]
+    (attribute-icon s color nil))
+  ([s color amount]
+    (let [text (or (if amount s (format "+%s" s)) "")]
+      (zc/csx [:view {:style {:display :flex
+                              :flex-direction :row
+                              :margin-right 1}} [
+        [:text {:style {:color (rcolor/color->rgb color)}} [text]]
+        (when amount
+          (zc/csx [:text {:style {:color (rcolor/color->rgb :white)}} [(format "%+d" amount)]]))]]))))
+
 (defn- attributes
   [item]
-  (let [r (reduce
-    (fn [s k]
-      (if-let [elem
-                (case k
-                  :damage
-                    (zc/csx [:view {:style {:display :flex
-                                            :flex-direction :row
-                                            :margin-right 1}} [
-                      [:text {:style {:color (rcolor/color->rgb :red)}} ["♥"]]
-                      [:text {:style {}} [(format "%+d" (get item k))]]]])
-                  :accuracy
-                    (zc/csx [:view {:style {:display :flex
-                                            :flex-direction :row
-                                            :margin-right 1}} [
-                      [:text {:style {:color (rcolor/color->rgb :brilliant-blue)}} ["»"]]
-                      [:text {:style {}} [(format "%+d" (get item k))]]]])
-                  :speed
-                    (zc/csx [:view {:style {:display :flex
-                                            :flex-direction :row
-                                            :margin-right 1}} [
-                      [:text {:style {:color (rcolor/color->rgb :green)}} ["»"]]
-                      [:text {:style {}} [(format "%+d" (get item k))]]]])
-                  :durability
-                    (zc/csx [:view {:style {:display :flex
-                                            :flex-direction :row
-                                            :margin-right 1}} [
-                      [:text {:style {:color (rcolor/color->rgb :white)}} ["≡"]]
-                      [:text {:style {}} [(format "%+d" (get item k))]]]])
-                  nil)]
-       (conj s elem)
-       s))
-    []
-    (keys item))]
+  (let [icon-color-map {:damage
+                          ["♥" :red]
+                        :accuracy
+                          ["»" :brilliant-blue]
+                        :speed
+                          ["»" :green]
+                        :durability
+                          ["≡" :white]
+                        :stunned
+                          ["stunning" :white]}
+        r (reduce
+          (fn [s effect]
+            (let [[icon color] (get icon-color-map (get effect :k) [(rcmp/full-name effect) :white])
+                  elem (if (satisfies? rcmp/ModQuantifiable effect)
+                         (attribute-icon icon color (rcmp/amount effect))
+                         (attribute-icon icon color))]
+             (conj s elem)))
+          []
+          (get item :effects))]
     r))
 
 (defn- effect-elems

@@ -108,32 +108,32 @@
 ; chance of scaring monster
 (defn mod-scare-monster
   [low high]
-  (let [n (rr/uniform-int low high)]
-    (rcmod/adj-defender-on-attack "scare" "scr" :scared n)))
+  (let [n (rr/uniform-double low high)]
+    (rcmod/tag-defender-on-attack "scare" "scr" :scared n)))
 
 ; chance of stunning monster
 (defn mod-stunning
   [low high]
-  (let [n (rr/uniform-int low high)]
-    (rcmod/adj-defender-on-attack "stun" "stn" :stunned n)))
+  (let [n (rr/uniform-double low high)]
+    (rcmod/tag-defender-on-attack "stun" "stn" :stunned n)))
 
 ; chance of dismembering monster
 (defn mod-dismembering
   [low high]
-  (let [n (rr/uniform-int low high)]
-    (rcmod/adj-defender-on-attack "dismember" "dsm" :dismembered n)))
+  (let [n (rr/uniform-double low high)]
+    (rcmod/tag-defender-on-attack "dismember" "dsm" :dismembered n)))
 
 ; chance of wounding monster
 (defn mod-bleeding
   [low high]
-  (let [n (rr/uniform-int low high)]
-    (rcmod/adj-defender-on-attack "bleeding" "bld" :bleeding n)))
+  (let [n (rr/uniform-double low high)]
+    (rcmod/tag-defender-on-attack "bleeding" "bld" :bleeding n)))
 
 ; chance of knockback
 (defn mod-knockback
   [low high]
-  (let [n (rr/uniform-int low high)]
-    (rcmod/adj-defender-on-attack "knockback" "knb" :knockbacked n)))
+  (let [n (rr/uniform-double low high)]
+    (rcmod/tag-defender-on-attack "knockback" "knb" :knockbacked n)))
 
 ; condition mod based on opponent attributes
 #_(defn mod-conditioned-heirarchy
@@ -563,10 +563,15 @@
         items (take 2 (shuffle example-items))
         item-id (or (first items) :stick)
         item-name (or (rig/id->name item-id) "unknown1")
+        _ (log/info "items:" items "item-id:" item-id "item-name:" item-name)
         buff-mod (eval-effect (first (shuffle [
-                     `(mod-accuracy 1 5)
-                     `(mod-damage 1 4)
-                     `(mod-durability 1 5)])))
+                     #_`(mod-accuracy 1 5)
+                     #_`(mod-damage 1 4)
+                     #_`(mod-durability 1 5)
+                     `(mod-stunning 0.1 0.5)
+                     #_`(mod-dismembering 0.1 0.5)
+                     #_`(mod-bleeding 0.1 0.5)
+                     #_`(mod-knockback 0.1 0.5)])))
         debuff-mod (eval-effect (first (shuffle [
                    `(mod-accuracy -5 -1)
                    `(mod-damage -6 -2)
@@ -574,7 +579,9 @@
         _ (log/info "buff-mod" buff-mod)
         events [
         {:title "Material requirements"
-         :description "New inventions require raw materials. This is no exception."
+         :description (rr/rand-nth [
+           "New inventions require raw materials. This is no exception."
+           (format "You need a %s to improve this recipe." item-name)])
          :choices [
              {:name item-name
               :hotkey \a

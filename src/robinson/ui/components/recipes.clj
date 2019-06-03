@@ -47,20 +47,22 @@
   (let [{:keys [game-state recipe]} (zc/props this)
         current-stage (get recipe :current-stage)]
     (zc/csx
-      [:view {:style {:width 25 :margin-left 5 :margin-right 5}} [
+      [:view {:style {:display :flex
+                      :align-items :center
+                      :width 25 :margin-left 5 :margin-right 5}} [
         [:text {} [(get current-stage :title "")]]
         [:text {} [""]]
         [:text {} [(get current-stage :description "")]]
         [ruicommon/MultiSelect {
-          :style {:width 30 :left 8}
+          :style {}
           :title ""
           :items (map (fn [item] (as-> item item
                                    (if (keyword (get item :hotkey))
                                      (update item :hotkey name)
                                      item)
                                    (assoc item :disabled
-                                     (let [{:keys [id amount]} (get item :material)]
-                                       (< (rp/inventory-id->count game-state id)) amount))))
+                                     (when-let [{:keys [id amount]} (get item :material)]
+                                       (<= amount (rp/inventory-id->count game-state id))))))
                       (get current-stage :choices [{:name "continue-ui" :hotkey :space}]))}]]])))
 
 

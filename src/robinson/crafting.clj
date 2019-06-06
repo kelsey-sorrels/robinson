@@ -12,20 +12,20 @@
 
 (defn current-recipe [state]
   (let [selected-recipe-hotkey (get-in state [:world :selected-recipe-hotkey])]
-    (get-in state [:world :player :recipes selected-recipe-hotkey])))
+    (get-in state [:world :recipes selected-recipe-hotkey])))
 
 (defn assoc-current-recipe [state & kvs]
   {:pre [(not (nil? state))]
    :post [(not (nil? %))]}
   (let [selected-recipe-hotkey (get-in state [:world :selected-recipe-hotkey])]
-    (update-in state [:world :player :recipes selected-recipe-hotkey]
+    (update-in state [:world :recipes selected-recipe-hotkey]
       (fn [recipe] (apply assoc recipe kvs)))))
 
 (defn update-current-recipe [state f & xs]
   {:pre [(not (nil? state))]
    :post [(not (nil? %))]}
   (let [selected-recipe-hotkey (get-in state [:world :selected-recipe-hotkey])]
-    (update-in state [:world :player :recipes selected-recipe-hotkey]
+    (update-in state [:world :recipes selected-recipe-hotkey]
       (fn [recipe] (apply f recipe xs)))))
 
 (def recipe-schema {
@@ -466,7 +466,7 @@
 
 (defn slot->item [state slot]
   (let [selected-recipe-hotkey (get-in state [:world :selected-recipe-hotkey])
-        hotkey (get-in state [:world :player :recipes selected-recipe-hotkey :slots slot])]
+        hotkey (get-in state [:world :recipes selected-recipe-hotkey :slots slot])]
     ;(log/info selected-recipe-hotkey hotkey slot)
     ;(log/info (type hotkey))
     (rp/inventory-hotkey->item state hotkey)))
@@ -491,7 +491,7 @@
                                         (assoc recipe :applicable true)
                                         recipe))
                          group)])
-      (get-in state [:world :player :recipes]))))
+      (get-in state [:world :recipes]))))
 
 (defn- exhaust-by-ids
   [state ids]
@@ -605,8 +605,8 @@
 
 (defn save-recipe [state]
   (log/info "Saving recipe")
-  (log/info (type (get-in state [:world :player :recipes])))
-  (log/info (vec (get-in state [:world :player :recipes])))
+  (log/info (type (get-in state [:world :recipes])))
+  (log/info (vec (get-in state [:world :recipes])))
   (let [recipe (current-recipe state)
         selected-recipe-hotkey (get-in state [:world :selected-recipe-hotkey])
         _ (log/info recipe)
@@ -615,7 +615,7 @@
                            get-recipe-by-types)]
     (log/info recipe-blueprint)
     (-> state
-      (update-in [:world :player :recipes] assoc
+      (update-in [:world :recipes] assoc
         selected-recipe-hotkey (-> recipe
                                  (merge recipe-blueprint)
                                  (assoc 
@@ -728,7 +728,7 @@
 
 (defn update [state recipe-ns keyin]
   (let [selected-recipe-hotkey (get-in state [:world :selected-recipe-hotkey])
-        recipe (get-in state [:world :player :recipes selected-recipe-hotkey])]
+        recipe (get-in state [:world :recipes selected-recipe-hotkey])]
     (resolve-choice state recipe-ns recipe keyin)))
 
 (defn init [state recipe-ns recipe]
@@ -782,7 +782,7 @@
            {\a empty-recipe
             \b empty-recipe
             \c empty-recipe}
-           (get-in state [:world :player :recipes] {})))))
+           (get-in state [:world :recipes] {})))))
 
 
 (defn hotkey->recipe [state hotkey]

@@ -151,7 +151,7 @@
   [this]
   (let [{:keys [game-state]} (zc/props this)
         selected-recipe-hotkey (get-in game-state [:world :selected-recipe-hotkey])
-        recipe (get-in game-state [:world :player :recipes selected-recipe-hotkey])
+        recipe (get-in game-state [:world :recipes selected-recipe-hotkey])
         recipe-name (rcrafting/recipe-name recipe)
         requirements (rcrafting/recipe-requirements recipe)
         items (rp/player-inventory game-state)]

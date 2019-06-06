@@ -12,6 +12,7 @@
             [robinson.describe :as rdesc]
             [robinson.traps :as rt]
             [robinson.dialog :as rdiag]
+            [robinson.actors :as ractors]
             [robinson.player :as rp]
             [robinson.math :as rmath]
             [robinson.itemgen  :as ig]
@@ -2117,7 +2118,7 @@
   (let [selected-recipe-hotkey (get-in state [:world :selected-recipe-hotkey])]
     (if (contains? #{\a \b \c} selected-recipe-hotkey)
       (-> state
-        (update-in [:world :player :recipes]
+        (update-in [:world :recipes]
           dissoc selected-recipe-hotkey)
         transition-select-recipe-type)
       state)))
@@ -2138,7 +2139,7 @@
             _ (assert (some? recipe-ns))
             recipe (assoc (rrecipe-gen/gen-crafting-graph) :type recipe-type)
             new-state (-> state
-                        (assoc-in [:world :player :recipes (get-in state [:world :selected-recipe-hotkey])] recipe)
+                        (assoc-in [:world :recipes (get-in state [:world :selected-recipe-hotkey])] recipe)
                         (rcrafting/init recipe-ns recipe))]
         (log/info "done with in-progress-recipes")
         new-state))))
@@ -2180,7 +2181,7 @@
   [state]
   (let [selected-recipe-hotkey (get-in state [:world :selected-recipe-hotkey])]
     (if (contains? #{\a \b \c} selected-recipe-hotkey)
-      (let [recipe (get-in state [:world :player :recipes selected-recipe-hotkey])]
+      (let [recipe (get-in state [:world :recipes selected-recipe-hotkey])]
         (rcrafting/craft-recipe state recipe))
       state)))
 
@@ -2188,14 +2189,14 @@
   "Select an inventory item to be used in a recipe."
   [state keyin]
   (let [selected-recipe-hotkey (get-in state [:world :selected-recipe-hotkey])
-        recipe (get-in state [:world :player :recipes selected-recipe-hotkey])
+        recipe (get-in state [:world :recipes selected-recipe-hotkey])
         selected-slot (get-in state [:world :selected-slot])]
     (cond
       ; in slot-selected mode, escape clears slot
       (and selected-slot (= keyin :escape))
         (-> state
           (assoc-in [:world :selected-slot] nil)
-          (assoc-in [:world :player :recipes selected-recipe-hotkey :slots selected-slot] nil))
+          (assoc-in [:world :recipes selected-recipe-hotkey :slots selected-slot] nil))
       ; regular escape, change state to recipes
       (= keyin :escape)
         (rw/assoc-current-state state :recipes)
@@ -2213,9 +2214,9 @@
       ; else, connect selected slot to inventory item by hotkey
       :default
         (let [item-inventory-count (rp/inventory-id->count state (rp/inventory-hotkey->item-id state keyin))
-              slots (keys (get-in state [:world :player :recipes selected-recipe-hotkey :slots]))
+              slots (keys (get-in state [:world :recipes selected-recipe-hotkey :slots]))
               hotkey-count (count (mapcat (fn [slot]
-                                            (let [slot-hotkey (get-in state [:world :player :recipes selected-recipe-hotkey :slots slot])]
+                                            (let [slot-hotkey (get-in state [:world :recipes selected-recipe-hotkey :slots slot])]
                                               (if (= slot-hotkey keyin)
                                                 [slot-hotkey]
                                                 [])))
@@ -2226,7 +2227,7 @@
           (if (< hotkey-count item-inventory-count)
             (-> state
               (assoc-in [:world :selected-slot] nil)
-              (assoc-in [:world :player :recipes selected-recipe-hotkey :slots selected-slot] keyin))
+              (assoc-in [:world :recipes selected-recipe-hotkey :slots selected-slot] keyin))
             state)))))
 
 (defn assoc-throw-item
@@ -3872,6 +3873,50 @@
 
 (def modifier-keys #{:lshift :lcontrol :rshift :rcontrol})
 
+(defn update-advance-time
+  [state]
+  (if (get state :advance-time)
+    (let [wtl (get-in state [:world :player :will-to-live])]
+      (-> state
+        ;; do updates that don't deal with keyin
+        ;; Get hungrier
+        (get-hungrier-and-thirstier)
+        ;; Chance of rescue
+        (get-rescued)
+        ;; Show fruit identify messages if applicable
+        (fruit-identify-activate)
+        ;; if poisoned, damage player, else heal
+        (if-poisoned-get-hurt)
+        (heal)
+        (decrease-lantern-charge)
+        (check-paralyzed)
+        (if-wounded-get-infected)
+        (if-infected-get-hurt)
+        (if-near-too-much-fire-get-hurt)
+        (update-npcs)
+        (decrease-will-to-live)
+        (update-cells)
+        (as-> state
+          (do
+            (log/info "Done updating cells")
+            state))
+        ;; TODO: Add appropriate level
+        (as-> state
+          (if (nil? (rw/current-place-id state))
+            (rnpc/add-npcs-random state)
+            state))
+        ;; update visibility
+        (update-visibility)
+        ;; update traps
+        (rt/update-traps)
+        ;; add will-to-live flavor message
+        (log-will-to-live-flavor wtl)
+        ;; maybe gain level
+        (maybe-gain-level)
+        (coalesce-logs)
+        (assoc :advance-time false)))
+    state))
+
 (defn update-state
   "Use the stage transtion table defined above to call the appropriate
    transition function and assign the appropriate final state value.
@@ -3917,7 +3962,8 @@
             ;; check to see if this has occurred if advance-time was not set in the state transition entry
             advance-time (if-not advance-time
                            (rc/inc-time? state)
-                           advance-time)
+                           ;; if advance time, only really advance time if no actors
+                           (ractors/empty-actors? state))
             state        (if advance-time
                            (assoc-in state [:world :time] new-time)
                            state)
@@ -3944,50 +3990,16 @@
                         state)
             _ (log/info "command-seq" (get-in state [:world :command-seq] :none))
             _ (log/debug "player" (get-in state [:world :player]))
-            _ (log/info "new-state" new-state)
-            wtl       (get-in state [:world :player :will-to-live])]
+            _ (log/info "new-state" new-state)]
         (some-> state
             (rw/assoc-current-state new-state)
-            (as-> state
-              (if advance-time
-                (-> state
-                  ;; do updates that don't deal with keyin
-                  ;; Get hungrier
-                  (get-hungrier-and-thirstier)
-                  ;; Chance of rescue
-                  (get-rescued)
-                  ;; Show fruit identify messages if applicable
-                  (fruit-identify-activate)
-                  ;; if poisoned, damage player, else heal
-                  (if-poisoned-get-hurt)
-                  (heal)
-                  (decrease-lantern-charge)
-                  (check-paralyzed)
-                  (if-wounded-get-infected)
-                  (if-infected-get-hurt)
-                  (if-near-too-much-fire-get-hurt)
-                  (update-npcs)
-                  (decrease-will-to-live)
-                  (update-cells)
-                  (as-> state
-                    (do
-                      (log/info "Done updating cells")
-                      state))
-                  ;; TODO: Add appropriate level
-                  (as-> state
-                    (if (nil? (rw/current-place-id state))
-                      (rnpc/add-npcs-random state)
-                      state))
-                  ;; update visibility
-                  (update-visibility)
-                  ;; update traps
-                  (rt/update-traps)
-                  ;; add will-to-live flavor message
-                  (log-will-to-live-flavor wtl)
-                  ;; maybe gain level
-                  (maybe-gain-level)
-                  (coalesce-logs))
-                state))
+            ; add :advance-time key
+            ; this gets used in revents/stream in order to toggle calling
+            ; update/update-advance-time
+            (assoc :advance-time advance-time)
+            ;; update visibility
+            (update-visibility)
+            (coalesce-logs)
             (update-quests)
             (as-> state
               (if (contains? (-> state :world :player :status) :dead)

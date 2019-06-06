@@ -16,6 +16,7 @@
   (receive [this state]
     (let [ttl-zero (or (zero? ttl) (neg? ttl))]
       (letfn [(cleanup [state]
+                (log/info "cleaning up BlipActor" ttl fx-ks)
                 (-> state
                   (ractors/remove-actor this)
                   (rc/dissoc-in fx-ks)))]

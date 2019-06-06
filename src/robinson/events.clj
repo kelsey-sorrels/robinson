@@ -6,16 +6,26 @@
             [taoensso.timbre :as log]
             [clojure.core.async :as async :refer [go go-loop]]))
 
-(defn stream [state]
+(defn stream [initial-state]
   "Return a async chan that streams out states with appropriate delays between each successive state.
    When no more states are availalble the channel is closed and will only return nil."
   (let [state-chan (async/chan)]
     ; make state immediately available
-    (async/put! state-chan state)
-    (go-loop [state state]
+    (async/put! state-chan initial-state)
+    (go-loop [state initial-state]
+        (log/info "Actors present:" (not (ractors/empty-actors? state)))
         (if (ractors/empty-actors? state)
-          ; no more actors, stop streaming
-          (async/close! state-chan)
+          ; no more actors 
+          ; tick mobs/bookkeeping
+          (if (get state :advance-time)
+            (do
+              (log/info "advancing time")
+              ; advance time, and stream the results into state-chan
+              (async/pipe (stream (rupdate/update-advance-time state)) state-chan))
+            (do
+              ; stop streaming
+              (log/info "closing  state-chan")
+              (async/close! state-chan)))
           ; actors to process, tick
           (do
             ; process actors at 60fps

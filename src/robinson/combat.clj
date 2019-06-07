@@ -231,64 +231,62 @@
 
 (defmethod is-hit? :melee
   [state attacker defender attack-type]
-  (let [attacker-stat   (dcp/get-attack-strength attacker state)
-        defender-stat   (+ (dcp/get-attack-dexterity defender state)
-                            (dcp/get-attack-toughness defender state))
+  (let [attacker-stat   (dcp/get-attack-strength attacker state attack-type)
+        defender-stat   (+ (dcp/get-attack-dexterity defender state attack-type)
+                            (dcp/get-attack-toughness defender state attack-type))
         target-value     (/ 1 (inc (rmath/exp (/ (- defender-stat attacker-stat) 4))))]
     (log/info "hit target value"  target-value)
     (> (rr/uniform-double 0.2 1.0) target-value)))
 
 (defmethod is-hit? :ranged
   [state attacker defender attack-type]
-  (let [attacker-stat   (dcp/get-attack-dexterity attacker state)
-        defender-stat   (+ (dcp/get-attack-dexterity defender state)
-                            (dcp/get-attack-toughness defender state))
+  (let [attacker-stat   (dcp/get-attack-dexterity attacker state attack-type)
+        defender-stat   (+ (dcp/get-attack-dexterity defender state attack-type)
+                            (dcp/get-attack-toughness defender state attack-type))
         target-value     (/ 1 (inc (rmath/exp (/ (- defender-stat attacker-stat) 4))))]
     (log/info "hit target value"  target-value)
     (> (rr/uniform-double 0.2 1.0) target-value)))
 
 (defmethod is-hit? :thrown-item
   [state attacker defender attack-type]
-  (let [attacker-stat   (dcp/get-attack-dexterity attacker state)
-        defender-stat   (+ (dcp/get-attack-dexterity defender state)
-                            (dcp/get-attack-toughness defender state))
+  (let [attacker-stat   (dcp/get-attack-dexterity attacker state attack-type)
+        defender-stat   (+ (dcp/get-attack-dexterity defender state attack-type)
+                            (dcp/get-attack-toughness defender state attack-type))
         target-value     (/ 1 (inc (rmath/exp (/ (- defender-stat attacker-stat) 4))))]
     (log/info "hit target value"  target-value)
     (> (rr/uniform-double 0.2 1.0) target-value)))
 
-(defmulti calc-dmg (fn [state attacker attack attack-type defender defender-body-part] attack-type))
+(defmulti calc-dmg (fn [state attacker attack-type defender defender-body-part] attack-type))
 
 (defmethod calc-dmg :melee
-  [state attacker attack attack-type defender defender-body-part]
-  #_(log/info "Attacker" attacker "attacker-type" (type attacker) "Defender" defender "defender-type" (type defender))
+  [state attacker attack-type defender defender-body-part]
+  #_(log/info "Attacker" attacker "Defender" defender "defender-type" (type defender))
   (log/info "attacker" (get attacker :race :human) "defender" (get defender :race :human))
   ;;Damage = Astr * (Adex / Dsp) * (Asize / Dsize) * (Atoughness / Dtoughness)
-  (let [attacker-strength  (dcp/get-attack-strength attacker state)
-        attacker-dexterity (dcp/get-attack-dexterity attacker state)
-        defender-speed     (dcp/get-attack-speed defender state)
+  (let [attacker-strength  (dcp/get-attack-strength attacker state attack-type)
+        attacker-dexterity (dcp/get-attack-dexterity attacker state attack-type)
+        defender-speed     (dcp/get-attack-speed defender state attack-type)
         attacker-size      (dcp/get-size attacker state)
         defender-size      (dcp/get-size defender state)
-        attack-toughness   (attack->toughness attack)
-        defender-toughness (dcp/get-attack-toughness defender state)]
+        attack-toughness   (dcp/get-attack-toughness defender state attack-type)
+        defender-toughness (dcp/get-toughness defender state)]
     (* attacker-strength
        (/ (+ 5 (rr/uniform-double (* 10 attacker-dexterity))) (+ 15 defender-speed))
        (/ (+ 125 attacker-size) (+ 125 defender-size))
        (/ attack-toughness defender-toughness))))
 
 (defn calc-dmg-ranged-or-thrown
-  [state attacker attack attack-type defender defender-body-part]
-  #_(log/info "Attacker" attacker "attacker-type" (type attacker) "attack-type" attack-type "Defender" defender "defender-type" (type defender))
+  [state attacker attack-type defender defender-body-part]
+  #_(log/info "Attacker" attacker "Defender" defender "defender-type" (type defender))
   (log/info "attacker" (get attacker :race :human) "defender" (get defender :race :human))
   ;;Damage = Astr * (Adex / Dsp) * (As / Ds) * (At / Dt)
-  (let [attacker-strength  (dcp/get-attack-strength attacker state)
-        attacker-dexterity (dcp/get-attack-dexterity attacker state)
+  (let [attacker-strength  (dcp/get-attack-strength attacker state attack-type)
+        attacker-dexterity (dcp/get-attack-dexterity attacker state attack-type)
         defender-speed     (dcp/get-speed defender state)
         attacker-size      (dcp/get-size attacker state)
         defender-size      (dcp/get-size defender state)
-        attack-toughness   (attack->toughness (if (= attack-type :thrown-item)
-                                                :thrown-item
-                                                (get attack :id (get attack :item/id))))
-        defender-toughness (dcp/get-attack-toughness defender state)]
+        attack-toughness   (dcp/get-attack-toughness attacker state attack-type)
+        defender-toughness (dcp/get-toughness defender state)]
     (* attacker-dexterity
        (/ (+ 5 (rr/uniform-double (* 10 attacker-dexterity))) (+ 15 defender-speed))
        (/ (+ 125 attacker-size attacker-strength) (+ 125 defender-size))
@@ -519,6 +517,8 @@
               (rp/update-player-died :combat))))))
 
 (defn- attack-helper
+  "Attack is one of
+    :melee, :thrown-item, or :ranged"
   [state attacker attacker-or-path defender-path attack]
   {:pre [
     ; defender-path is a seq
@@ -570,7 +570,7 @@
                                      attacker defender)))
                                state)
         dmg                  (cond
-                               hit   (+ (calc-dmg state attacker attack attack-type defender defender-body-part) (if shot-poisoned-arrow 1 0))
+                               hit   (+ (calc-dmg state attacker attack-type defender defender-body-part) (if shot-poisoned-arrow 1 0))
                                :else 0)
         is-wound             (> dmg 1.5)]
     #_(log/info "attack" attacker-or-path "is attacking defender" defender-path)

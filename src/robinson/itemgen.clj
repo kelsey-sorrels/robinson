@@ -180,26 +180,26 @@
         :properties #{:stick-like}}
        {:item/id  :rock                    :name  "rock"                       :name-plural "rocks"
         :attack :blunt
-        :ranged-attack :thrown}
+        :ranged-attack :airborn-item}
        {:item/id  :sling                   :name  "sling"                      :name-plural "slings"
-        :ranged-attack :thrown}
+        :ranged-attack :airborn-item}
        ; edged
        {:item/id  :dagger                  :name  "dagger"                     :name-plural "daggers"
         :attack :knife}
        {:item/id  :throwing-axe            :name  "throwing axe"               :name-plural "throwing axes"
         :attack :knife
-        :ranged-attack :thrown}
+        :ranged-attack :airborn-item}
        {:item/id  :boomerang               :name  "boomerang"                  :name-plural "boomerangs"
         :ranged-attack :boomerang
         :properties #{:stick-like}}
        ; piercing
        {:item/id  :spear                   :name  "spear"                      :name-plural "spears"}
        {:item/id  :throwing-spear          :name  "throwing spear"             :name-plural "throwing spears"
-        :ranged-attack :thrown}
+        :ranged-attack :airborn-item}
        {:item/id  :bow                     :name  "bow"                        :name-plural "bow"
-        :ranged-attack :thrown}
+        :ranged-attack :airborn-item}
        {:item/id  :blowgun                 :name  "blowgun"                    :name-plural "blowguns"
-        :ranged-attack :thrown}
+        :ranged-attack :airborn-item}
        ; flexible
        {:item/id  :garrote                 :name  "garrote"                    :name-plural "garrotes"
         :attack :strangle}

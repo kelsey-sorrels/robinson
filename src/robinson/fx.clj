@@ -20,6 +20,7 @@
   ([state fx]
    (conj-fx state fx (fx-id)))
   ([state fx id]
+    {:post [(some? %)]}
     (let [new-state (assoc-in state [::fx id] fx)]
       (log/info "conj-fx-transform" (keys new-state) (get new-state ::fx))
       new-state)))

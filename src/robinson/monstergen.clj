@@ -93,13 +93,13 @@
     (do-get-dexterity this state))
   (get-toughness [this state]
     (do-get-toughness this state))
-  (get-attack-speed [this state]
+  (get-attack-speed [this state attack-type]
     (do-get-attack-speed this state))
-  (get-attack-strength [this state]
+  (get-attack-strength [this state attack-type]
     (do-get-attack-strength this state))
-  (get-attack-dexterity [this state]
+  (get-attack-dexterity [this state attack-type]
     (do-get-attack-dexterity this state))
-  (get-attack-toughness [this state]
+  (get-attack-toughness [this state attack-type]
     (do-get-attack-toughness this state)))
 
 (def ^:private monsters

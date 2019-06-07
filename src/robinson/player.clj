@@ -45,15 +45,21 @@
   (first (filter (fn [item] (contains? item :wielded-ranged))
                  (get actor :inventory))))
 
+(defn attack-item [actor attack-type]
+  (case attack-type
+    :melee (wielded-item actor)
+    :ranged (wielded-ranged-item actor)
+    :thrown-item {:effects []}))
+
 (defn attribute-after-weapon-effects
-  [state k]
+  [state attack-type k]
   (let [player (get-player state)
         defender nil]
     (->
       player
       (rcmod/apply-mods
         (-> player
-          wielded-item
+          (attack-item attack-type)
           :effects)
         rcmp/ModAttackerOnAttackTemp
         player
@@ -75,30 +81,30 @@
        0)))
 
 (defn player-attack-speed
-  [state]
-  (+ (get-player-attribute state :speed)
+  [state attack-type]
+  (+ (attribute-after-weapon-effects state attack-type :speed)
      (if (buff-active? state :speed)
        0.1
        0)))
 
 (defn player-attack-strength
-  [state]
-  (+ (attribute-after-weapon-effects  state :strength)
+  [state attack-type]
+  (+ (attribute-after-weapon-effects state attack-type :strength)
      (if (buff-active? state :strength)
        0.1
        0)))
 
 (defn player-attack-dexterity
-  [state]
-  (+ (attribute-after-weapon-effects  state :dexterity)
+  [state attack-type]
+  (+ (attribute-after-weapon-effects state attack-type :dexterity)
      (if (buff-active? state :dexterity)
        0.1
        0)))
 
 (declare worn-item)
 (defn player-attack-toughness
-  [state]
-  (+ (attribute-after-weapon-effects  state :toughness)
+  [state attack-type]
+  (+ (attribute-after-weapon-effects state attack-type :toughness)
      (if (buff-active? state :toughness)
        0.1
        0)
@@ -166,8 +172,8 @@
     (get this :energy))
   (get-speed [this state]
     (player-speed state))
-  (get-attack-speed [this state]
-    (player-attack-speed state))
+  (get-attack-speed [this state attack-type]
+    (player-attack-speed state attack-type))
   (get-size [this state]
     (get this :size))
   (get-strength [this state]
@@ -176,12 +182,12 @@
     (player-dexterity state))
   (get-toughness [this state]
     (player-toughness state))
-  (get-attack-strength [this state]
-    (player-attack-strength state))
-  (get-attack-dexterity [this state]
-    (player-attack-dexterity state))
-  (get-attack-toughness [this state]
-    (player-attack-toughness state)))
+  (get-attack-strength [this state attack-type]
+    (player-attack-strength state attack-type))
+  (get-attack-dexterity [this state attack-type]
+    (player-attack-dexterity state attack-type))
+  (get-attack-toughness [this state attack-type]
+    (player-attack-toughness state attack-type)))
 
 (defn gen-player
   [inventory starting-pos]

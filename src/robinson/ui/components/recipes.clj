@@ -15,12 +15,7 @@
             [loom.graph :as lg]))
  
 (defn type-names [recipe]
-  (let [types (get recipe :types)]
-  (case (count types)
-    0 ["None"]
-    1 (map name types)
-    2 (let [r (rcrafting/recipe-name recipe)]
-        [r]))))
+  [(rcrafting/recipe-name recipe false)])
 
 (zc/def-component RecipeTotal
   [this]
@@ -62,7 +57,7 @@
                                      item)
                                    (assoc item :disabled
                                      (when-let [{:keys [id amount]} (get item :material)]
-                                       (<= amount (rp/inventory-id->count game-state id))))))
+                                       (< (rp/inventory-id->count game-state id) amount)))))
                       (get current-stage :choices [{:name "continue-ui" :hotkey :space}]))}]]])))
 
 

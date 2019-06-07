@@ -580,15 +580,22 @@
        (not (complete? recipe))))
 
 (defn recipe-name
-  [recipe]
-  (if (in-progress? recipe)
-    (str "In-progress " (name (get recipe :type "unknown")))
-    (-> recipe
-      :types
-      get-recipe-by-types
-      :recipe/id
-      ig/id->name)))
-    
+  ([recipe]
+   (recipe-name recipe true))
+  ([recipe show-progress]
+    (let [types (get recipe :types)]
+      (str
+        (if (and show-progress (in-progress? recipe))
+          "In-progress " 
+          "")
+        (case (count types)
+          0 (name (get recipe :type "unknown"))
+          1 (-> types first name)
+          2 (-> recipe
+              :types
+              get-recipe-by-types
+              :recipe/id
+              ig/id->name))))))
 
 (defn recipe-short-desc
   [recipe]

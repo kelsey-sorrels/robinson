@@ -8,8 +8,8 @@
   (get-strength [this state])
   (get-dexterity [this state])
   (get-toughness [this state])
-  (get-attack-speed [this state])
-  (get-attack-strength [this state])
-  (get-attack-dexterity [this state])
-  (get-attack-toughness [this state]))
+  (get-attack-speed [this state attack-type])
+  (get-attack-strength [this state attack-type])
+  (get-attack-dexterity [this state attack-type])
+  (get-attack-toughness [this state attack-type]))
 

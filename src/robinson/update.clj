@@ -237,9 +237,8 @@
   [state]
   {:pre [(not (nil? state))]
    :post [(not (nil? %))]}
-  (let [pos              (-> state :world :player :pos)
-        {px :x
-         py :y}          pos
+  (let [{px :x
+         py :y :as pos} (rp/player-pos state)
         sight-distance   (float (rlos/sight-distance state))
         _ (log/info "player-pos" pos)
         _ (log/info "player place-id" (str (apply rv/xy->place-id state (rc/pos->xy pos))))
@@ -1010,7 +1009,7 @@
    :post [(not (nil? %))]}
   (let [item (rp/inventory-hotkey->item state keyin)]
     (if item
-      (let [id (get item :id)]
+      (let [id (get item :item/id)]
         (-> state
           (rai/assoc-apply-item item)
           (as-> state
@@ -1873,14 +1872,12 @@
     (log/info "npc" npc)
     (log/info "ranged-weapon-item" ranged-weapon-item)
     (log/info "path" path)
-    (as-> state state
+    (-> state 
       ;; the weapon requires reloading?
-      #_(if (ig/requires-reload? ranged-weapon-item)
+      (cond-> (ig/requires-reload? ranged-weapon-item)
         ;; dec ranged weapon ammunition
-        (rp/dec-item-count state (ig/item->ranged-combat-ammunition-item-id ranged-weapon-item))
-        state)
+        (rp/dec-item-count (ig/item->ranged-combat-ammunition-item-id ranged-weapon-item)))
       (rfx/conj-effect
-        state
         (get ranged-weapon-item :ranged-attack :airborn-item)
         (assoc ranged-weapon-item :attacker (-> state rp/get-player (dissoc :recipes)))
         path
@@ -3981,10 +3978,8 @@
             _ (assert (not (nil? new-state)))
             state     (if state
                         (if-not (= keyin \r)
-                          (cond
-                            (= current-state :normal)
+                          (if (= current-state :normal)
                               (assoc-in state [:world  :command-seq] [keyin])
-                            :else
                               (rc/conj-in state [:world :command-seq] keyin))
                           (assoc-in state [:world :command-seq] command-seq))
                         state)
@@ -3998,9 +3993,9 @@
             ; update/update-advance-time
             (assoc :advance-time advance-time)
             ;; update visibility
-            (update-visibility)
-            (coalesce-logs)
-            (update-quests)
+            (cond-> advance-time update-visibility)
+            coalesce-logs
+            update-quests
             (as-> state
               (if (contains? (-> state :world :player :status) :dead)
                 (do

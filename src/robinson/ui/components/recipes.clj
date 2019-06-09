@@ -51,15 +51,18 @@
         [ruicommon/MultiSelect {
           :style {}
           :title ""
-          :items (map (fn [item] (as-> item item
-                                   (if (keyword (get item :hotkey))
-                                     (update item :hotkey name)
-                                     item)
-                                   (assoc item :disabled
-                                     (when-let [{:keys [id amount]} (get item :material)]
-                                       (< (rp/inventory-id->count game-state id) amount)))))
+          :items (map (fn [item]
+                        (-> item
+                           (cond->
+                             (keyword (get item :hotkey))
+                               (update :hotkey name))
+                           (cond->
+                             (get-in item [:material :amount])
+                               (assoc :count (get-in item [:material :amount])))
+                           (assoc :disabled
+                             (when-let [{:keys [id amount]} (get item :material)]
+                               (< (rp/inventory-id->count game-state id) amount)))))
                       (get current-stage :choices [{:name "continue-ui" :hotkey :space}]))}]]])))
-
 
 (zc/def-component CraftInProgressRecipe
   [this]

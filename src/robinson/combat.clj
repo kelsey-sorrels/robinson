@@ -156,6 +156,7 @@
                                                                                                                          (name defender-body-part) (name attack))
               [:human :*       :*             :*        :hit]  (format "You %s the %s in the %s with the %s." (rand-ranged-hit-verb) (name defender-race)
                                                                                                                                      (name defender-body-part) (name attack))
+              [:human :*       ranged-weapon? :*        :miss] (format "You shoot the %s at the %s, but miss." (name attack) (name defender-race))
               [:human :*       :*             :*        :miss] (format "You throw the %s at the %s, but miss." (name attack) (name defender-race))
               [:*     :human   :bite          :*        :miss] (format "The %s lunges at you with its mouth but misses." attacker-name)
               [:*     :human   :bite-venom    :*        :miss] (format "The %s snaps at you its mouth but misses." attacker-name)
@@ -348,7 +349,7 @@
               state)
             (log-with-line state "1")
             ;; attacks use wielded weapons
-            (if attack-item
+            (if (and (= attack-type :melee attack-item))
               (rp/dec-item-utility state (get attack-item :hotkey))
               state)
             (log-with-line state "2")
@@ -471,7 +472,7 @@
               (assert-msg "state nil")
               ;; attacks use wielded weapons
               (as-> state
-                (if attack-item
+                (if (and (= attack-type :melee) attack-item)
                   (rp/dec-item-utility state (get attack-item :hotkey))
                   state))
               (assert-msg "state nil")
@@ -494,7 +495,7 @@
               (assert-msg "state nil")
               (rw/update-cell-items defender-x defender-y
                 (fn [items]
-                  (if (> (rr/next-float! rr/*rnd*) 0.8)
+                  (if (> (rr/next-float! rr/*rnd*) 0.5)
                     (conj items (ig/gen-corpse defender))
                     items)))
               (rc/append-log (gen-attack-message attacker

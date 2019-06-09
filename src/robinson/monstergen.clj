@@ -128,7 +128,7 @@
   (Monster. :blue-frog      2  90 "blue frog"      "blue frogs"     nil  8 0 1.1   2     1    1 #{:head :body :leg :face}                   #{:claw}                      :hostile-after-attacked :follow-player-in-range-or-random       4 #{:hostile})
   (Monster. :purple-frog    2  90 "purple frog"    "purple frogs"   nil  8 0 1.1   2     1    1 #{:head :body :leg :face}                   #{:claw}                      :hostile-after-attacked :follow-player-in-range-or-random       4 #{:hostile})
   (Monster. :cobra          3 200 "cobra"          "cobras"         nil  6 0 0.8   1     4    5 #{:head :body :tail}                        #{:bite :bite-venom}          :hostile-after-attacked :random                                 2 #{:hostile})
-  (Monster. :snake          2 120 "snake"          "snakes"         nil  3 0 0.8   1     7    5 #{:head :body :tail}                        #{:bite :bite-venom}          :retreat-after-attackd  :follow-player-in-range-or-random       5 #{:hostile})
+  (Monster. :snake          2 120 "snake"          "snakes"         nil  3 0 0.8   1     7    5 #{:head :body :tail}                        #{:bite :bite-venom}          :retreat-after-attacked :follow-player-in-range-or-random       5 #{:hostile})
   (Monster. :bat            2 120 "bat"            "bats"           nil  4 0 1.6   1     2    3 #{:head :body :wing :leg :face}             #{:bite}                      :hostile-after-attacked :follow-player-in-range-or-random       7 #{:hostile})
   (Monster. :boar           3 240 "boar"           "boars"          nil  8 0 1.2  70     6    3 #{:head :body :tail :snout :face :eye :leg} #{:bite :gore}                :hostile                :follow-player-in-range-or-random       7 #{:hostile})
   (Monster. :monkey         4 300 "monkey"         "monkies"        nil 12 0 1.2  50     5    3 #{:head :neck :body :tail :leg :face :arm}  #{:bite :punch}               :hostile-after-attacked :follow-player-in-range-or-random      10 #{:hostile})
@@ -171,11 +171,10 @@
 (def monster-hierarchy
   (->
     (make-hierarchy)
-    (derive-multi ::mammal ::land-animal)
-    (derive-multi ::bird ::land-animal)
-    (derive-multi ::reptile ::land-animal)
-    (derive-multi ::mammal ::land-animal)
-    (derive-multi ::frog ::land-animal)
+    (derive-multi ::mammal ::land-animal ::tetrapod)
+    (derive-multi ::bird ::land-animal ::tetrabod)
+    (derive-multi ::reptile ::land-animal ::tetrapod)
+    (derive-multi ::frog ::land-animal ::tetrapod)
     (derive-multi ::fish ::water-animal)
     (derive-multi ::eel ::water-animal)
     (derive-multi ::mollusk ::water-animal)
@@ -247,6 +246,28 @@
   (contains? #{:clam :urchin
                :turtle :crocodile
                :crab :hermit-crab} race))
+
+(defn has-hide?
+  [race]
+  (and
+    (isa? monster-hierarchy race ::mammal)
+    (< 500 (-> race race->monster-map :size))))
+
+(defn has-skin?
+  [race]
+  (or
+    (isa? race ::reptile)
+    (and
+      (isa? monster-hierarchy race ::mammal)
+      (< (-> race race->monster-map :size) 500))))
+
+(defn has-feathers?
+  [race]
+  (isa? monster-hierarchy race ::bird))
+
+(defn has-endoskeleton?
+  [race]
+  (isa? monster-hierarchy race ::tetrapod))
 
 (def  ^:private frog-types
   #{:red-frog
@@ -355,12 +376,12 @@
 (defn gen-random-monster [level cell-type]
   "Generate one random monster."
   (let [level (min 9 level)]
-    (log/info "Generating monster at level" level)
+    (log/info "Generating monster at level" level cell-type)
     (cond
       (contains? #{:water :surf} cell-type)
-      (id->monster (rr/rand-weighted-nth (partition 2 (get water-monster-probabilities level))))
+        (id->monster (rr/rand-weighted-nth (partition 2 (get water-monster-probabilities level))))
       :else
-      (id->monster (rr/rand-weighted-nth (partition 2 (get land-monster-probabilities level)))))))
+        (id->monster (rr/rand-weighted-nth (partition 2 (get land-monster-probabilities level)))))))
 
 (defn gen-monster [id]
   (id->monster id))

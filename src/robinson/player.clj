@@ -523,6 +523,7 @@
   "Adds `item` to player's inventory assigning hotkeys as necessary."
   [state items]
   {:pre [(sequential? items)]}
+  (log/info "Adding to inventory" item)
   (let [inventory               (get-in state [:world :player :inventory])
         remaining-hotkeys       (get-in state [:world :remaining-hotkeys])
         original-remaining-hotkeys remaining-hotkeys

@@ -35,12 +35,18 @@
               (log/error (get item :attacker) [:world :player] item)
               (-> state
                   (rcombat/attack (get item :attacker) [:world :player] item)
-                  (rw/conj-cell-items x y (assoc item :count 1))))
+                  (rw/conj-cell-items x y
+                    (-> item
+                      (dissoc :attacker)
+                      (assoc :count 1)))))
             (handle-npc [state npc]
               (as-> state state
                   (rcombat/attack state [:world :player] (rnpc/npc->keys state npc) item)
                   (if (ig/requires-reload? item)
-                    (rw/conj-cell-items state x y (assoc item :count 1))
+                    (rw/conj-cell-items state x y
+                      (-> item
+                        (dissoc :attacker)
+                        (assoc :count 1)))
                     state)))
             (handle-trigger-trap [state]
               ; triggers a trap
@@ -54,7 +60,10 @@
                 ;; didn't hit anything, drop into cell at max-distance
                 (-> state
                   (rp/dec-item-count (get item :item/id))
-                  (rw/conj-cell-items x y (assoc item :count 1))))
+                  (rw/conj-cell-items x y
+                    (-> item
+                      (dissoc :attacker)
+                      (assoc :count 1)))))
               (on-move [state]
                 ; one of several things can happen
                 (cond
@@ -99,8 +108,12 @@
               (rw/conj-cell-items x
                                   y
                                   (if (get item :rot-time)
-                                    (assoc item :rot-time (inc (rw/get-time state)))
-                                    (assoc item :count 1)))
+                                    (-> item
+                                      (dissoc :attacker)
+                                      (assoc :rot-time (inc (rw/get-time state))))
+                                    (-> item
+                                      (dissoc :attacker)
+                                      (assoc :count 1))))
               cleanup
               (rc/append-log (format "Schwaff! Thump! The dart hits %s." (rdesc/describe-cell-type next-cell)))))
           ; Nothing happened, advance item one step
@@ -121,7 +134,7 @@
 (defmethod rfx/conj-effect :airborn-item [state fx-type & [item xy-path ttl]]
   (let [fx-id (rfx/fx-id)
         actor (->AirbornItemActor item xy-path ttl (rfx/fx-ks fx-id))]
-    (log/info "created AirbornItemActor " item (vec xy-path) ttl (rfx/fx-ks fx-id))
+    (log/debug "created AirbornItemActor " item (vec xy-path) ttl (rfx/fx-ks fx-id))
     (-> state
       ; create a character fx
       (rfx/conj-fx (rfx/character-fx \- (apply rc/xy->pos (first xy-path))) fx-id)

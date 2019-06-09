@@ -1455,7 +1455,7 @@
                                 '[robinson.crafting :as rcrafting]
                                 '[robinson.crafting.recipe-gen :as rrecipe-gen]
                                 '[robinson.crafting.weapon-gen :as rc-weapon-gen]
-                                '[robinson.crafting.survial-gen :as rc-survival-gen]
+                                #_'[robinson.crafting.survial-gen :as rc-survival-gen]
                                 '[robinson.worldgen :as rworldgen]
                                 '[robinson.lineofsight :as rlos]
                                 '[robinson.renderutil :as rutil]
@@ -1666,9 +1666,9 @@
           (let [new-thirst (- thirst (item :thirst))]
             (max 0 new-thirst))))
       ;; remove the item from inventory
-      (rp/remove-from-inventory (get item :id))
+      (rp/remove-from-inventory (get item :item/id))
       (as-> state
-        (case (get item :id)
+        (case (get item :item/id)
           :coconut (rp/add-to-inventory state [(ig/gen-item :coconut-empty)])
           state)))
      state))
@@ -1708,6 +1708,7 @@
    hunger the item's `:hunger` value."
   [state keyin]
   (log/info "poisoned fruit" (get-in state [:world :fruit :poisonous]))
+  (log/info (rw/inventory-and-player-cell-hotkey->item state keyin))
   (if-let [item (rw/inventory-and-player-cell-hotkey->item state keyin)]
     (-> state
       (rc/append-log (format "The %s tastes %s." (lower-case (get item :name))
@@ -1721,16 +1722,16 @@
       (as-> state
         (if (contains? (set (map :hotkey (rp/player-inventory state))) keyin)
           ;; remove the item from inventory
-          (rp/dec-item-count state (get item :id))
+          (rp/dec-item-count state (get item :item/id))
           ;; remove the item from the current-cell
-          (rw/dec-cell-item-count state (get item :id)))
-        (if (= (get item :id) :coconut-empty)
+          (rw/dec-cell-item-count state (get item :item/id)))
+        (if (= (get item :item/id) :coconut-empty)
           (rp/add-to-inventory state [(ig/gen-item :coconut-shell)])
           state))
       ;; if the item was a poisonous fruit, set a poisoned timebomb
       (as-> state
         (if (and (ig/is-fruit? item)
-                 (contains? (set (get-in state [:world :fruit :poisonous])) (get item :id)))
+                 (contains? (set (get-in state [:world :fruit :poisonous])) (get item :item/id)))
           (do
             (log/info "Ate poisoned fruit." item)
             (assoc-in state
@@ -1844,8 +1845,8 @@
           (if (pos? (rp/inventory-id->count state (ig/item->ranged-combat-ammunition-item-id ranged-weapon-item)))
             (-> state
               ;; set weapon as :loaded
-              (rp/update-inventory-item-by-id state
-                (get ranged-weapon-item :id)
+              (rp/update-inventory-item-by-id
+                (get ranged-weapon-item :item/id)
                 (fn [item] (assoc item :loaded true)))
               ;; dec ranged weapon ammunition
               (rp/dec-item-count (ig/item->ranged-combat-ammunition-item-id ranged-weapon-item))
@@ -1877,7 +1878,8 @@
 (defn fire-wielded-ranged-weapon
   [state]
   (let [target-ranged-index (get-in state [:world :target-ranged-index])
-        target-pos          (nth (get-in state [:world :target-ranged-pos-coll]) target-ranged-index)
+        target-pos          (nth (get-in state [:world :target-ranged-pos-coll])
+                                 target-ranged-index)
         npc                 (rnpc/npc-at-pos state target-pos)
         ranged-weapon-item  (first (filter (fn [item] (get item :wielded-ranged))
                                                 (rp/player-inventory state)))
@@ -1897,8 +1899,15 @@
         (rp/dec-item-count (ig/item->ranged-combat-ammunition-item-id ranged-weapon-item)))
       (rfx/conj-effect
         (get ranged-weapon-item :ranged-attack :airborn-item)
-        (assoc ranged-weapon-item :attacker (-> state rp/get-player (dissoc :recipes)))
-        path
+        (if-let [ammunition-item-id (ig/item->ranged-combat-ammunition-item-id ranged-weapon-item)]
+          ;; weapon shoots ammo
+          (-> ammunition-item-id
+            ig/id->item
+            (assoc :effects (get ranged-weapon-item :effects))
+            (assoc :attacker (rp/get-player state)))
+          ;; weapon "throws" itself
+          (assoc ranged-weapon-item :attacker (rp/get-player state)))
+        (rest path)
         (count path)))))
 
 (defn free-cursor
@@ -2272,7 +2281,7 @@
     (-> state
       (free-cursor)
       ; remove the item from inventory
-      (rp/dec-item-count (get item :id))
+      (rp/dec-item-count (get item :item/id))
       ; Add airborn item effect
       (rfx/conj-effect :airborn-item item path 5))))
 
@@ -2413,7 +2422,7 @@
   "Decrease the player's will-to-live depending on circumstances."
   [state]
   (let [[cell _ _] (rw/player-cellxy state)
-        bedroll?   (contains? (set (map :id (get cell :items []))) :bedroll)
+        bedroll?   (contains? (set (map :item/id (get cell :items []))) :bedroll)
         in-water?  (contains? #{:ocean :surf :shallow-water} (get cell :type))]
     (if (= (rw/current-state state) :sleep)
       (if bedroll?
@@ -2703,15 +2712,15 @@
         mounted (get-in state [:world :player :mounted] false)]
     (cond
       (and mounted
-           (contains? (set (map :id items)) :raft))
+           (contains? (set (map :item/id items)) :raft))
         (-> state
           (rc/append-log "You dismount the raft.")
           (assoc-in [:world :player :mounted] false))
-      (and (not mounted) (contains? (set (map :id items)) :raft))
+      (and (not mounted) (contains? (set (map :item/id items)) :raft))
         (-> state
           (rc/append-log "You mount the raft.")
           (assoc-in [:world :player :mounted] true))
-      (not (contains? (set (map :id items)) :raft))
+      (not (contains? (set (map :item/id items)) :raft))
         (rc/append-log state "There is nothing to mount here."))))
 
       

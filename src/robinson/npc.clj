@@ -246,16 +246,18 @@
              num-npcs-to-add (rr/uniform-int 1 (min 3 (max 1 (/ (count weighted-xys) 10))))
              weighted-xys    weighted-xys
              [x y]           (rr/rand-weighted-nth weighted-xys)]
-        (let [monster (mg/gen-random-monster level (get (rw/get-cell state x y) :type))]
-          (log/info "weighted-xys" weighted-xys)
-          (log/info "Adding monster" monster "@ [" x y "] d" (rc/distance (rc/xy->pos x y) (rc/xy->pos player-x player-y)))
-          (if (= 1 num-npcs-to-add)
-            (add-npc state monster x y)
-            (let [weighted-xys (remove (fn [[w v]] (= v [x y])) weighted-xys)]
-              (recur (add-npc state monster x y)
-                     (dec num-npcs-to-add)
-                     weighted-xys
-                     (rr/rand-weighted-nth weighted-xys))))))
+        (if-let [monster (mg/gen-random-monster level (get (rw/get-cell state x y) :type))]
+          (do
+            (log/info "weighted-xys" weighted-xys)
+            (log/info "Adding monster" monster "@ [" x y "] d" (rc/distance (rc/xy->pos x y) (rc/xy->pos player-x player-y)))
+            (if (= 1 num-npcs-to-add)
+              (add-npc state monster x y)
+              (let [weighted-xys (remove (fn [[w v]] (= v [x y])) weighted-xys)]
+                (recur (add-npc state monster x y)
+                       (dec num-npcs-to-add)
+                       weighted-xys
+                       (rr/rand-weighted-nth weighted-xys)))))
+          state))
       state)))
 
 (defn add-npcs-random

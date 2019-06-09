@@ -735,19 +735,19 @@
                                               (fn [ability]
                                                 [{:name (get ability :name)
                                                   :hotkey (get ability :hotkey)}
-                                                 {:name (get ability :description)}
+                                                 {:name (get ability :description "")}
                                                  {:name ""}])
                                               abilities)
                                             [{:name ""}
                                              {:name "Select hotkey or press Esc to exit."}])}])
-                (zc/csx
-                  [:view {} [
-                    [:text {} ["Nothing to do."]]
-                    [:text {} [""]]
-                    [:text {} [
-                      [:text {} ["Press "]]
-                      [ruicommon/Highlight {} ["Esc "]]
-                      [:text {} ["to exit."]]]]]]))]])))
+                    (zc/csx
+                      [:view {} [
+                        [:text {} ["Nothing to do."]]
+                        [:text {} [""]]
+                        [:text {} [
+                          [:text {} ["Press "]]
+                          [ruicommon/Highlight {} ["Esc "]]
+                          [:text {} ["to exit."]]]]]]))]])))
 
 (zc/def-component Describe
   [this]

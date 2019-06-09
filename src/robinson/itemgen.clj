@@ -9,14 +9,56 @@
 (defn gen-corpse
   "Generate a corpse from an npc."
   [npc]
-  {:id          (keyword (str (name (get npc :race)) "-corpse"))
+  {:item/id     (keyword (str (name (get npc :race)) "-corpse"))
    :type        :food
+   :race        (get npc :race)
    :name        (format "%s corpse" (name (get npc :race)))
    :name-plural (format "%s corpses" (name (get npc :race)))
    ;; food=log((size+1)/10000)+15
    :hunger      (+ (Math/log10 (/ (inc (get npc :size)) 1000)) 15)})
 
-(defn is-corpse-id? [id] (re-matches #"-corpse$" (name id)))
+(defn gen-meat
+  "Generate meat from a corpse."
+  [corpse]
+  (let [id (clojure.string/join "-" (butlast (clojure.string/split (name (get corpse :item/id)) #"-")))]
+    (-> corpse
+      (assoc
+       :item/id     (keyword (str id) "-meat")
+       :name        (format "%s meat" (name id))
+       :name-plural (format "%s meat" (name id))
+       :hunger      (* 2 (get corpse :hunger)))
+      (dissoc :hotkey))))
+
+(defn gen-hide
+  "Generate hide from a corpse."
+  [corpse]
+  (let [id (clojure.string/join "-" (butlast (clojure.string/split (name (get corpse :item/id)) #"-")))]
+    (-> corpse
+      (assoc 
+       :item/id     (keyword (str id) "-hide")
+       :name        (format "%s hide" (name id))
+       :name-plural (format "%s hide" (name id))
+       :properties  #{:flexible :planar})
+      (dissoc :hotkey :type :hunger))))
+
+(defn gen-bones
+  "Generate bones from a corpse."
+  [corpse]
+  (let [id (clojure.string/join "-" (butlast (clojure.string/split (name (get corpse :item/id)) #"-")))]
+    (-> corpse
+      (assoc 
+       :item/id     (keyword (str id) "-bones")
+       :name        (format "%s bones" (name id))
+       :name-plural (format "%s bones" (name id)))
+       :properties #{:stick-like :tube-like}
+      (dissoc :hotkey :type :hunger))))
+
+(defn is-corpse-id?
+  [id]
+  (log/info "is-corpse-id?" id (name id))
+  (re-matches
+    #".*-corpse"
+    (name id)))
 
 (defn is-corpse-poisonous?
   [state id]
@@ -170,8 +212,9 @@
        {:item/id  :jack-o-lantern          :name  "jack-o-lantern"             :name-plural "jack-o-lanterns"
         :hunger 10
         ::isa #{:fruit}}
+       {:item/id  :feather                 :name  "feather"                    :name-plural "feathers"}
        {:item/id  :bamboo                  :name  "bamboo"                     :name-plural "bamboo"
-        :fuel 100 :properties #{:stick-like}}
+        :fuel 100 :properties #{:stick-like :tube-like}}
        {:item/id  :raft                    :name  "raft"                       :name-plural "rafts"}
        ; weapons
        ; blunt
@@ -276,7 +319,8 @@
         :utility 100}
        ;; pirate ship items
        {:item/id  :spices                  :name "spices"                      :name-plural "spices"}
-       {:item/id  :sail                    :name "sail"                        :name-plural "sails"}
+       {:item/id  :sail                    :name "sail"                        :name-plural "sails"
+        :properties #{:flexible :planar}}
        {:item/id  :plank                   :name "plank"                       :name-plural "planks"
         :item/materials #{:wood}}
        {:item/id  :dice                    :name "dice"                        :name-plural "dice"}
@@ -288,7 +332,8 @@
         :properties #{:stick-like}}
        {:item/id  :spoon                   :name "spoon"                       :name-plural "spoons"
         :properties #{:stick-like}}
-       {:item/id  :rag                     :name "rag"                         :name-plural "rags"}
+       {:item/id  :rag                     :name "rag"                         :name-plural "rags"
+        :properties #{:flexible :planar}}
        {:item/id  :cutlass                 :name "cutlass"                     :name-plural "cutlasses"
         :attack :cutlass :utility 50}
        {:item/id  :pistol                  :name "flintlock pistol"            :name-plural "flintlock pistols"}
@@ -297,9 +342,9 @@
        {:item/id  :ale                     :name "bottle of ale"               :name-plural "bottles of ale"
         :thirst 50}
        {:item/id  :pirate-clothes          :name "pirate clothes"              :name-plural "pirate clothes"
-        :utility 100 :toughness 0.2}
+        :utility 100 :toughness 0.2 :properties #{:flexible :planar}}
        {:item/id  :navy-uniform            :name "navy uniform"                :name-plural "navy uniforms"
-        :utility 100 :toughness 0.2}
+        :utility 100 :toughness 0.2 :properties #{:flexible :planar}}
        ;; ruined temple items
        {:item/id  :jewlery                 :name "jewlery"                     :name-plural "jewelery"}
        {:item/id  :statue                  :name "statue"                      :name-plural "statues"}
@@ -313,7 +358,6 @@
         :attack :ritualistic-knife :utility 20}
        {:item/id  :ancient-spear           :name "ancient spear"               :name-plural "ancient spears"
         :attack :ancient-spear :utility 20}
-       {:item/id  :blowgun                 :name "blowgun"                     :name-plural "blowguns"}
        {:item/id  :blowdart                :name "blowdart"                    :name-plural "blowdarts"
         :fuel 10}
        {:item/id  :cure                    :name "cure"                        :name-plural "cures"}])

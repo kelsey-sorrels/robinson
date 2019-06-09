@@ -48,6 +48,9 @@
 (defn rock [item]
   (= (get :item/id item) :rock))
 
+(defn feather [item]
+  (= (get :item/id item) :feather))
+
 (defn flexible [item]
   (contains? (get item :properties) :flexible))
 
@@ -71,6 +74,9 @@
 
 (defn wooden [item]
   (contains? (get item :item/materials) :wood))
+
+(defn tube-like [item]
+  (contains? (get item :properties) :tube-like))
 
 (def recipe-pred->str {
   low-weight "low weight"
@@ -169,6 +175,7 @@
       :recipe/types #{:piercing :ranged}
       :recipe/example-item-requirements #{:rock :stick :branch :plant-fiber :leather :feather}
       :recipe/add [:bow]
+      :recipe/add-recipe #{:arrow}
       :recipe/requirements '[each-of
                               flexible
                               [and low-weight
@@ -178,9 +185,9 @@
       :recipe/types #{:piercing :ranged}
       :recipe/example-item-requirements #{:bamboo :stick}
       :recipe/add [:blowgun]
+      :recipe/add-recipe #{:blowdart}
       :recipe/requirements '[each-of
-                              tube-like
-                              [and low-weight stick-like]]}
+                              tube-like]}
       ; flexible
      {:recipe/id  :garrote
       :recipe/category :weapon
@@ -206,6 +213,24 @@
       :recipe/add [:whip]
       :recipe/requirements '[each-of
                               flexible]}
+     ; Ammunition
+     {:recipe/id  :arrow
+      :recipe/category :ammunition
+      :recipe/types #{}
+      :recipe/add [:arrow]
+      :recipe/requirements '[each-of
+                              [and low-weight
+                                   piercing]
+                              [and low-weight
+                                   stick-like]
+                              feather]}
+     {:recipe/id  :blowdart
+      :recipe/category :ammunition
+      :recipe/types #{}
+      :recipe/example-item-requirements #{:bamboo :stick}
+      :recipe/add [:blowdart]
+      :recipe/requirements '[each-of
+                              [and low-weight stick-like]]}
     ;;; Survival
     ;; Tools
      {:recipe/id  :saw
@@ -267,12 +292,6 @@
                               flexible]}])
 
 (comment :weapons  [
-     {:name "flint spear"            :hotkey \a :hunger 10 :thirst 20 :recipe {:exhaust [:flint-blade :stick :rope] :add [:flint-spear]}}
-     {:name "flint axe"              :hotkey \b :hunger 10 :thirst 20 :recipe {:exhaust [:flint-axe-blade :stick :rope] :add [:flint-axe]}}
-     {:name "flint knife"            :hotkey \c :hunger 10 :thirst 20 :recipe {:exhaust [:flint-blade :stick :rope] :add [:flint-knife]}}
-     {:name "obsidian spear"         :hotkey \d :hunger 10 :thirst 20 :recipe {:exhaust [:obsidian-blade :stick :rope] :add [:obsidian-spear]}}
-     {:name "obsidian axe"           :hotkey \e :hunger 10 :thirst 20 :recipe {:exhaust [:obsidian-blade :stick :rope] :add [:obsidian-axe]}}
-     {:name "obsidian knife"         :hotkey \f :hunger 10 :thirst 20 :recipe {:exhaust [:obsidian-blade :stick :rope] :add [:obsidian-knife]}}
      {:name "bow"                    :hotkey \g :hunger 10 :thirst 20 :recipe {:exhaust [:stick :rope] :add [:bow]}}
      {:name "arrow"                  :hotkey \h :hunger 10 :thirst 20 :recipe {:exhaust [:obsidian-blade :stick] :add [:arrow]}}]
    :survival [
@@ -589,7 +608,7 @@
           "In-progress " 
           "")
         (case (count types)
-          0 (name (get recipe :type "unknown"))
+          0 (name (get recipe :recipe/id "unknown"))
           1 (-> types first name)
           2 (-> recipe
               :types
@@ -774,22 +793,38 @@
     state))
 
 (defn player-recipes [state]
-  (let [empty-recipe {:name "Empty" :alt "----" :empty true}]
-    (map (fn [[hotkey recipe]]
-           #_(log/info (dissoc recipe :img :graph))
-           #_(log/info (recipe-short-desc recipe))
-           (assoc recipe :hotkey hotkey
-                         :name (if (get recipe :empty)
-                                 "Empty"
-                                 (recipe-name recipe))
-                         :alt (if (get recipe :empty)
-                                "----"
-                                (recipe-short-desc recipe))))
-         (merge
-           {\a empty-recipe
-            \b empty-recipe
-            \c empty-recipe}
-           (get-in state [:world :recipes] {})))))
+  (let [empty-recipe {:name "Empty" :alt "----" :empty true}
+        base-recipes (map (fn [[hotkey recipe]]
+                             #_(log/info (dissoc recipe :img :graph))
+                             #_(log/info (recipe-short-desc recipe))
+                             (assoc recipe :hotkey hotkey
+                                           :name (if (get recipe :empty)
+                                                   "Empty"
+                                                   (recipe-name recipe))
+                                           :alt (if (get recipe :empty)
+                                                  "----"
+                                                  (recipe-short-desc recipe))))
+                          (merge
+                            {\a empty-recipe
+                             \b empty-recipe
+                             \c empty-recipe}
+                            (get-in state [:world :recipes] {})))
+         extra-recipes (->>
+                         base-recipes
+                         (mapcat :recipe/add-recipe)
+                         set 
+                         (map (fn [hotkey id]
+                                (let [recipe (get-recipe id)]
+                                  (-> recipe
+                                    (assoc :done true
+                                           :hotkey hotkey
+                                           :alt "----")
+                                    ; break into separate step so that recipe-name can take into account :done true
+                                    (as-> recipe
+                                      (assoc recipe
+                                             :name (recipe-name recipe))))))
+                              [\d \e \f]))]
+    (concat base-recipes extra-recipes)))
 
 
 (defn hotkey->recipe [state hotkey]

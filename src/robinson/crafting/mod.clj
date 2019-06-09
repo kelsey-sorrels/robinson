@@ -112,7 +112,6 @@
 
 (defn apply-mods
   [actor mods protocol & args]
-  (log/info mods protocol)
   (let [m (first (keys (get protocol :method-map)))]
     (reduce (fn [actor mod]
               (if (satisfies? protocol mod)

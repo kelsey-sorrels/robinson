@@ -22,7 +22,7 @@
   ([state fx id]
     {:post [(some? %)]}
     (let [new-state (assoc-in state [::fx id] fx)]
-      (log/info "conj-fx-transform" (keys new-state) (get new-state ::fx))
+      (log/debug "conj-fx-transform" (keys new-state) (get new-state ::fx))
       new-state)))
 
 (defn remove-fx [state fx-ks]
@@ -56,5 +56,5 @@
  
 (defmulti conj-effect (fn [state effect-type & more] effect-type))
 (defmethod conj-effect :default [state effect-type & more]
-  (log/warn (str "Unhandled effect-type in conj-effect " effect-type "vaLid effect-type: "  (methods conj-effect))))
+  (log/warn (str "Unhandled effect-type in conj-effect " effect-type "valid effect-type: "  (methods conj-effect))))
 

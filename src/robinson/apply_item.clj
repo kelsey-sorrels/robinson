@@ -161,15 +161,38 @@
   "Apply a sharp item to the inventory item."
   [state item]
   (log/info "applying sharp item to" item)
-  (case (get item :id)
-    :unhusked-coconut
-    (-> state
-      (rp/dec-item-count (get item :id))
-      (rp/add-to-inventory [(ig/gen-item :coconut)]))
-    :stick
-    (-> state
-      (rp/dec-item-count (get item :id))
-      (rp/add-to-inventory [(ig/gen-item :sharpened-stick)]))
+  (log/info (get item :item/id))
+  (log/info (ig/is-corpse-id? (get item :item/id)))
+  
+  (rm/first-vec-match [(get item :item/id) item]
+    [ig/is-corpse-id? :*]
+      (-> state
+        (rp/dec-item-count (get item :item/id))
+        (cond->
+          ; always gen meat
+          true
+            (rp/add-to-inventory [
+              (ig/gen-meat item)])
+          ; if corpse has a skeleton gen bones
+          (mg/has-endoskeleton? (get item :race))
+            (rp/add-to-inventory [
+              (ig/gen-bones item)])
+          ; if corpse has hide gen hide
+          (mg/has-hide? (get item :race))
+            (rp/add-to-inventory [
+              (ig/gen-hide item)])
+          ; if corpse has feathers gen feathers
+          (mg/has-feathers? (get item :race))
+            (rp/add-to-inventory [
+              (ig/id->item :feather)])))
+    [:unhusked-coconut :*]
+      (-> state
+        (rp/dec-item-count (get item :item/id))
+        (rp/add-to-inventory [(ig/gen-item :coconut)]))
+    [:stick :*]
+      (-> state
+        (rp/dec-item-count (get item :item/id))
+        (rp/add-to-inventory [(ig/gen-item :sharpened-stick)]))
     state))
 
 (defn apply-pen
@@ -270,7 +293,7 @@
         trans->dir? (comp rc/is-direction? translate-directions)]
     (log/info "apply-item" [item keyin])
     (log/info "is-direction?" ((comp rc/is-direction? translate-directions) keyin))
-    (rm/first-vec-match [(get item :id) keyin]
+    (rm/first-vec-match [(get item :item/id) keyin]
       [:fishing-pole    trans->dir?] (apply-fishing-pole state (translate-directions keyin))
       [:match           trans->dir?] (-> state
                                        (apply-match (translate-directions keyin))
@@ -340,7 +363,9 @@
                                         (apply-frog-corpse (get item :id) target-item)
                                         (rw/assoc-current-state  :normal))
                                       state)
-      [:*              :*         ] (-> state
-                                      (rc/ui-hint "You're not sure how to apply it to that.")
-                                      (rw/assoc-current-state :normal)))))
+      [:*              :*         ] (do
+                                      (log/info 
+                                      (-> state
+                                        (rc/ui-hint "You're not sure how to apply it to that.")
+                                        (rw/assoc-current-state :normal)))))))
 

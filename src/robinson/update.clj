@@ -35,36 +35,24 @@
             [robinson.fx :as rfx]
             [robinson.feedback :as rf]
             robinson.macros
-            #?@(:clj (
-                [robinson.macros :as rm]
-                clojure.pprint
-                clojure.edn
-                [clojure.core.async :as async]
-                [clojure.data.json :as json]
-                [clojure.java.io :as io]
-                [taoensso.timbre :as log]
-                clj-tiny-astar.path
-                [clj-http.client :as http]
-                [clojure.stacktrace :as st]
-                clojure.inspector
-                clojure.string)
-                :cljs (
-                [robinson.macros :as rm :include-macros true]
-                [cljs.core.async :as async]
-                clojure.walk
-                cljs.reader
-                [taoensso.timbre :as log :include-macros true]
-                [goog.string.format])))
-  #?(:clj
-      (:import zaffre.terminal.Terminal
-               #_zaffre.font.TTFFont)))
-
+            [robinson.macros :as rm]
+            clojure.pprint
+            clojure.edn
+            [clojure.core.async :as async]
+            [clojure.data.json :as json]
+            [clojure.java.io :as io]
+            [taoensso.timbre :as log]
+            [dk.salza.liq.editor :as le]
+            [dk.salza.liq.adapters.ghostadapter :as lag]
+            clj-tiny-astar.path
+            [clj-http.client :as http]
+            [clojure.stacktrace :as st]
+            clojure.inspector
+            clojure.string)
+  (:import zaffre.terminal.Terminal))
 
 (defn format [s & args]
-  #?(:clj
-     (apply clojure.core/format s args)
-     :cljs
-     (apply gstring/format s args)))
+  (apply clojure.core/format s args))
 
 (defn- pass-state
   [state & more]
@@ -294,8 +282,7 @@
                     (assoc :world (loop []
                                     (if-let [w (try
                                                  (rworldgen/init-world (rc/system-time-millis))
-                                                 (catch #?@(:clj  (Throwable e)
-                                                            :cljs (js/Error e))
+                                                 (catch Throwable e
                                                    (log/error e)
                                                    nil))]
                                         w
@@ -321,10 +308,7 @@
   [state keyin]
   {:pre  [(not (nil? state))]
    :post [(not (nil? %))]}
-  (if (and #?(:clj
-              (char? keyin)
-              :cljs
-              (string? keyin))
+  (if (and (char? keyin)
            (<= (int \a) (int keyin) (int \k)))
     (let [new-state (toggle-hotkey state keyin)
           selected-hotkeys (get-in new-state [:world :selected-hotkeys])]
@@ -1426,77 +1410,34 @@
           (rw/assoc-current-state :direction-select)
           (rc/ui-hint (format "Pick a direction. (<%s>)" (apply str (map direction->unicode-char (keys directions)))))))))
 
+(def ed-chan (async/chan))
+(let [ctrl (atom false)]
+  (async/go-loop [input (async/<! ed-chan)]
+    (if (= input :lcontrol)
+      (reset! ctrl true)
+      (let [i (cond
+                  @ctrl
+                    (str "C-" input)
+                  (char? input)
+                    (str input)
+                  (keyword? input) 
+                    (get {:escape "esc"
+                          :enter "\n"
+                          :space " "} input (name input))
+                  :else
+                    (get {\: "colon"} input input))]
+        (log/info i)
+        (try
+          (lag/send-input i)
+          (catch Throwable t
+            (log/error t)))
+        (reset! ctrl false)))
+    (recur (async/<! ed-chan))))
+  
 (defn debug-input
   [state input]
-  (case input
-    :enter
-        (let [prelude "(require '[robinson.common :as rc]
-                                '[robinson.random :as rr]
-                                '[robinson.scores :as rs]
-                                '[robinson.world :as rw]
-                                '[robinson.viewport :as rv]
-                                '[robinson.font :as rfont]
-                                '[robinson.log :as rlog]
-                                '[zaffre.terminal :as zat]
-                                '[robinson.describe :as rdesc]
-                                '[robinson.traps :as rt]
-                                '[robinson.dialog :as rdiag]
-                                '[robinson.player :as rp]
-                                '[robinson.math :as rmath]
-                                '[robinson.itemgen  :as ig]
-                                '[robinson.monstergen :as mg]
-                                '[robinson.apply-item :as rai]
-                                '[robinson.startgame :as sg]
-                                '[robinson.popover :as rpop]
-                                '[robinson.fs :as rfs]
-                                '[clojure.string :refer [lower-case]]
-                                '[robinson.npc :as rnpc]
-                                '[robinson.combat :as rcombat]
-                                '[robinson.crafting :as rcrafting]
-                                '[robinson.crafting.recipe-gen :as rrecipe-gen]
-                                '[robinson.crafting.weapon-gen :as rc-weapon-gen]
-                                #_'[robinson.crafting.survial-gen :as rc-survival-gen]
-                                '[robinson.worldgen :as rworldgen]
-                                '[robinson.lineofsight :as rlos]
-                                '[robinson.renderutil :as rutil]
-                                '[robinson.fx :as rfx]
-                                '[robinson.feedback :as rf]
-                                'robinson.macros
-                                '[robinson.macros :as rm]
-                                'clojure.pprint
-                                'clojure.edn
-                                '[clojure.core.async :as async]
-                                '[clojure.data.json :as json]
-                                '[clojure.java.io :as io]
-                                '[taoensso.timbre :as log]
-                                'clj-tiny-astar.path
-                                '[clj-http.client :as http]
-                                '[clojure.stacktrace :as st]
-                                'clojure.inspector
-                                'clojure.string)
-                      (def ^:dynamic *state* nil)
-                      (fn [state]
-                        (binding [*state* state]"]
-          (try
-            (let [debug-input (get state :debug-input)
-                  source (str prelude debug-input "))")
-                  f (load-string source)]
-              (log/info source)
-              (if f
-                (-> state
-                  f
-                  (assoc :debug-input "")
-                  (rw/assoc-current-state :normal))
-                (do (log/error "new-state nil" debug-input)
-                  state)))
-            (catch Throwable t
-              (log/error t)
-              state)))
-    :space
-      (debug-input state \space)
-    :backspace
-      (update state :debug-input subs 0 (dec (count (get state :debug-input))))
-    (update state :debug-input str (str input))))
+  (async/put! ed-chan input)
+  state)
 
 (defn do-selected-direction
   [state keyin]
@@ -2740,8 +2681,7 @@
       (update-in [:world :npcs] vec)
       (rc/conj-in [:world :npcs] (get-in state [:world :player]))
       (assoc-in [:world :player] npc))]
-    #?(:clj
-       (log/debug "npcs" (with-out-str (clojure.pprint/pprint (-> state :world :npcs)))))
+    (log/debug "npcs" (with-out-str (clojure.pprint/pprint (-> state :world :npcs))))
     state))
 
 (defn save-score
@@ -2839,16 +2779,10 @@
           path                   (try
                                    (log/debug "a* params" bounds traversable? npc-pos-vec (rc/pos->xy target))
                                    (clj-tiny-astar.path/a* bounds traversable? npc-pos-vec (rc/pos->xy target))
-                                   #?(:clj
-                                      (catch Exception e
-                                        (log/error "Caught exception during a* traversal." npc-pos-vec [(target :x) (target :y)] e)
-                                        (st/print-cause-trace e)
-                                        nil)
-                                      :cljs
-                                      (catch js/Error e
-                                        (log/error "Caught exception during a* traversal." npc-pos-vec [(target :x) (target :y)] e)
-                                        ;(st/print-cause-trace e)
-                                        nil)))
+                                   (catch Exception e
+                                     (log/error "Caught exception during a* traversal." npc-pos-vec [(target :x) (target :y)] e)
+                                     (st/print-cause-trace e)
+                                     nil))
           _                      (log/debug "path to target" (str (type path)) (str path))
           new-pos                (if (and (not (nil? path))
                                           (> (count path) 1)
@@ -3397,10 +3331,7 @@
                        :points points
                        :version version)
         body    (as-> world world
-                      (clojure.walk/postwalk (fn [v] (if #?(:clj
-                                                            (char? v)
-                                                            :cljs
-                                                            (string? v))
+                      (clojure.walk/postwalk (fn [v] (if (char? v)
                                                        (str v)
                                                        v))
                                               world)
@@ -3533,105 +3464,18 @@
                            \/          [scroll-log-up          :normal          false]
                            \*          [scroll-log-down        :normal          false]
                            \R          [repeat-commands        rw/current-state false]
-                           #_#_\0          [(fn [state]
-                                          (if (get-in state [:world :dev-mode])
-                                            (-> state
-                                              (rc/append-log "log1...........................")
-                                              (rc/append-log "log2...........................")
-                                              (rc/append-log "log3...........................")
-                                              (rc/append-log "log4...........................")
-                                              (rc/append-log "log5..........................."))
-                                            state))
-                                          :normal true]
-                          #_#_\0           [(fn [state]
-                                          (log/info "monster level" (rnpc/monster-level state))
-                                          state)               :normal false]
-                          \0           [identity :debug-eval false]
-                          \1           [(fn [state]
-                                          (log/info "showing world")
-                                          (when (get-in state [:world :dev-mode])
-                                            (require 'robinson-tools.devtools)
-                                            (when-let [show-world (resolve 'robinson-tools.devtools/show-world)]
-                                              (show-world state)))
-                                          state)
-                                                                       :normal false]
-                          \2           [(fn [state]
-                                          (if (get-in state [:world :dev-mode])
-                                            (rw/assoc-current-state state :dead)
-                                            state))
-                                                                       rw/current-state true]
-                          ;; spawn trap
-                          \3           [(fn [state]
-                                          (if (get-in state [:world :dev-mode])
-                                            (let [{:keys [x y]} (rp/player-pos state)
-                                                  trap {:type :wall-darts-trigger
-                                                        :difficulty 1
-                                                        :direction :right
-                                                        :src-pos {:x (+ x 5) :y y}}]
-                                              (log/info "spawning trap " trap)
-                                              (rw/update-cell state x (inc y) (fn [cell] (merge cell trap))))
-                                            state))            :normal          true]
-                          ; add flint to inventory
-                          #_#_\3           [(fn [state]
-                                          (if (get-in state [:world :dev-mode])
-                                            (rp/add-to-inventory state [(ig/gen-item :flint)])
-                                            state))            :normal          true]
-                          \4           [(fn [state]
-                                          (if (get-in state [:world :dev-mode])
-                                            (add-monsters-debug state)
-                                            state))            :normal          false]
-                          \5           [(fn [state]
-                                          (if (get-in state [:world :dev-mode])
-                                            (do
-                                              (clojure.inspector/inspect-tree (get state :world))
-                                              state)
-                                            state))            :normal          false]
-                          #_#_\6           [(fn [state]
-                                          (if (get-in state [:world :dev-mode])
-                                            (assoc-in state [:world :npcs] [])
-                                            state))
-                                                               :normal          false]
-                          \6           [(fn [state]
-                                          (if (get-in state [:world :dev-mode])
-                                            (rw/assoc-cells state (zipmap (for [x (range 80)
-                                                                                y (range 23)]
-                                                                            [x y])
-                                                                          (repeat {:discovered (rw/get-time state)})))
-                                            state))
-                                                               :normal          false]
-                          \7           [(fn [state]
-                                          (when (get-in state [:world :dev-mode])
-                                            (let [level (get log/*config* :level)
-                                                  new-level (case level
-                                                              :debug :info
-                                                              :info :warn
-                                                              :warn :error
-                                                              :error :debug)]
-                                            (log/set-level! new-level)))
-                                          state)               :normal          false]
-                          ;; skip time
-                          \8           [(fn [state]
-                                          (if (get-in state [:world :dev-mode])
-                                            (update-in state [:world :time] (partial + 100))
-                                            state))
-                                                               :normal          false]
-                          \9           [(fn [state]
-                                          (if (get-in state [:world :dev-mode])
-                                            (rp/add-to-inventory state [(ig/id->item :raft)])
-                                            state))
-                                                               :normal          false]
-                         :f9           [(fn [state]
+                           \0          [identity :debug-eval false]
+                          :f9          [(fn [state]
                                           (-> state
                                             (rc/append-log "Development mode: on")
                                             (assoc-in [:world :dev-mode] true)))
                                                                :normal          false]
-                         :f12          [(fn [state]
+                          :f12         [(fn [state]
                                           (rf/send-report state)
                                           state)
                                                                :normal          false]
                            :escape     [identity               :quit?           false]}
-               :debug-eval {:escape [identity :normal false]
-                            :else [debug-input rw/current-state false]}
+               :debug-eval {:else [debug-input rw/current-state false]}
                :direction-select
                           {:escape     [identity               :normal          false]
                            :else       [do-selected-direction  rw/current-state false]}
@@ -4036,9 +3880,8 @@
             (as-> state
               (if (contains? (-> state :world :player :status) :dead)
                 (do
-                  #?(:clj
-                     ;; delete the save game on player death
-                     (delete-save-game))
+                  ;; delete the save game on player death
+                  (delete-save-game)
                   (-> state
                     (update-in [:world :player :status]
                      (fn [status]

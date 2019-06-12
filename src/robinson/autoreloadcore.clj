@@ -22,13 +22,15 @@
             [robinson.fx.whip-item :as rfxwhip]
             [robinson.fx.boomerang-item :as rfxboomerang]
             [clojure.core.async :as async :refer [go go-loop]]
-            [clojure.tools.nrepl.server :as nreplserver]
+            #_[clojure.tools.nrepl.server :as nreplserver]
+            [dk.salza.liq.core :as liq-core]
+            [dk.salza.liq.editor :as le]
+            [dk.salza.liq.apps.findfileapp :as liq-findfileapp]
             [overtone.at-at :as atat]
             [taoensso.timbre :as log])
     (:gen-class))
 
 ;(defonce server (nreplserver/start-server :port 7888))
-
 (def default-setup-fn (constantly {}))
 (defn default-tick-fn  [state] (do (println "default tick fn") (Thread/sleep 5000) state))
 (defn default-render-fn [state last-dom] (println "default render fn"))
@@ -71,6 +73,36 @@
 (defonce mouse-pos (atom [0 0]))
 
 (defonce done-chan (async/chan))
+
+(future
+  (liq-core/-main "--minimal --no-init-file" "--no-threads" "--ghost" "--rows=20" "--columns=60")
+  (le/add-rootfolder "src/robinson_tools/snippets")
+  (le/add-searchpath "src/robinson_tools/snippets")
+  (le/set-default-app liq-findfileapp/run)
+  (le/remove-buffer "scratch")
+  (le/new-buffer "-findfile-")
+  (le/set-global-key "f5"
+    (fn []
+      (try
+        (let [expr (le/get-content)
+              prelude "(def ^:dynamic *state* nil)
+                       (fn [state]
+                         (binding [*state* state]"
+              source (str prelude expr "))")
+              f (load-string source)]
+          (log/info source)
+          (when f
+            (swap! state-ref f)))
+        (catch Throwable t
+          (log/error t)))))
+  (le/set-global-key "f4"
+    (fn []
+       (log/info "Exiting editor")
+       (swap! state-ref rw/assoc-current-state :normal)))
+  (le/updated)
+  (doseq [i [" " "f" "f" "s" "r" "c" "down" "\n"]]
+    (Thread/sleep 20)
+    (le/handle-input i)))
 
 (defn -main
   "Entry default point to application.

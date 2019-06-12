@@ -64,7 +64,9 @@
             [clojure.xml :as xml]
             [clojure.zip :as zip]
             [clojure.pprint :as pprint]
-            clojure.string))
+            clojure.string
+            [dk.salza.liq.editor :as editor]
+            [dk.salza.liq.adapters.ghostadapter :as lag]))
 
 (set! *warn-on-reflection* true)
 
@@ -930,7 +932,8 @@
   [this]
   (let [{:keys [game-state]} (zc/props this)]
     (zc/csx [zcui/Popup {} [
-              [:text {} [
+              [:view {:style {:display :flex
+                              :flex-direction :row}} [
                 [:text {} ["Quit? ["]]
                 [ruicommon/Highlight {} ["y"]]
                 [:text {} ["/"]]
@@ -944,14 +947,70 @@
 
 (zc/def-component DebugEval
   [this]
-  (let [{:keys [game-state]} (zc/props this)]
-    (zc/csx [zcui/Popup {} [
-              [:view {:style {:width 60}} [
-                [:text {} ["Eval:"]]
-                [zcui/Input {:value (get game-state :debug-input "")
-                             :focused true
-                             :style {:width 59
-                                     :cursor-fg (rcolor/color->rgb :highlight)}}]]]]])))
+  (let [{:keys [game-state]} (zc/props this)
+        dsp (lag/get-display)
+        fgplain [255 255 255 255]
+        bgplain [0 0 0 255]
+        statusline [128 128 128 255]
+        cursor0 (rcolor/color->rgb :highlight 255)
+        cursor1 (rcolor/color->rgb :highlight 255)
+        cursor2 (rcolor/color->rgb :highlight 255)
+        green (rcolor/color->rgb :green 255)
+        yellow (rcolor/color->rgb :yellow 255)
+        red (rcolor/color->rgb :red 255)
+        type1 (rcolor/color->rgb :green 255)
+        type2 (rcolor/color->rgb :yellow 255)
+        type3 (rcolor/color->rgb :orange 255)
+        comment-color (rcolor/color->rgb :blue 255)
+        str-color (rcolor/color->rgb :red 255)
+        l (partition 60
+            (reduce (fn [l span]
+                      #_(log/info span)
+                      (let [{:keys [column row line]} span
+                            offset (+ (* (dec row) 60) (dec column))
+                            fg-face (atom fgplain)
+                            bg-face (atom bgplain)]
+                        (reduce (fn [l [i ch]]
+                                  (cond
+                                    (string? ch)
+                                      (assoc l (+ offset i) {:c (or (first ch) \space)
+                                                             :fg @fg-face :bg @bg-face})
+                                    (map? ch)
+                                      (let [{:keys [char face bgface]} ch]
+                                        (reset! fg-face (case face
+                                                           :plain fgplain
+                                                           :statusline statusline
+                                                           :cursor0 cursor0
+                                                           :cursor1 cursor0
+                                                           :cursor2 cursor0
+                                                           :type1 type1
+                                                           :type2 type2
+                                                           :type3 type3
+                                                           :green green
+                                                           :yellow yellow
+                                                           :red red
+                                                           :comment comment-color
+                                                           :string str-color
+                                                           [255 255 255 255]))
+                                        (reset! bg-face (case bgface
+                                                          :plain bgplain
+                                                          :statusline statusline
+                                                          :cursor0 cursor0
+                                                          :cursor1 cursor0
+                                                          :cursor2 cursor0
+                                                          [0 0 0 228]))
+                                        (assoc l (+ offset i) {:c (first char)
+                                                               :fg @fg-face
+                                                               :bg @bg-face}))
+                                    :else
+                                      l))
+                                l
+                                (map-indexed vector line))))
+                 (vec (repeat (* 60 20) {:c \space :fg [0 0 0 0] :bg [0 0 0 228]}))
+                 (last dsp)))]
+    (zc/csx [zcui/Popup {:style {:top -9}} [
+              [:view {} [
+                  [:img {:width 60 :height 20} l]]]]])))
 
 (zc/def-component MapUI
   [this]

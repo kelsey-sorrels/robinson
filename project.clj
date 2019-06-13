@@ -46,6 +46,7 @@
                  [net.mikera/core.matrix "0.62.0"]
                  [net.mikera/vectorz-clj "0.48.0"]
                  [clatrix "0.5.0"]
+                 [mogenslund/liquid "1.1.2"]
                  [aysylu/loom "1.0.2"]
                  [incanter "1.9.3"]]
 

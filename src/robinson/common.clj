@@ -386,7 +386,7 @@
 
 
 (def hotkeys
-  (vec (seq "abcdefghijklmnopqrstuvwxyzABCdEFGHIJKLMNOPQRSTUVWQYZ")))
+  (vec (seq "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")))
 
 (defn get-settings
   [state]

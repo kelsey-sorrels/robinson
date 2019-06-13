@@ -529,7 +529,8 @@
         inventory-hotkeys       (set (map :hotkey inventory))
         ;; find hotkeys of all items we're adding to inventory
         item-hotkeys            (set (remove nil? (map :hotkey items)))
-        _                       (log/debug remaining-hotkeys items)
+        _                       (log/info items)
+        _                       (log/debug remaining-hotkeys)
         _                       (log/debug "inventory hotkeys" (set (map :hotkey inventory)))
         _                       (log/debug "item hotkeys" (set (map :hotkey items)))
         inventory               (mapv

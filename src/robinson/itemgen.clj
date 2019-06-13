@@ -23,7 +23,7 @@
   (let [id (clojure.string/join "-" (butlast (clojure.string/split (name (get corpse :item/id)) #"-")))]
     (-> corpse
       (assoc
-       :item/id     (keyword (str id) "-meat")
+       :item/id     (keyword (str id "-meat"))
        :name        (format "%s meat" (name id))
        :name-plural (format "%s meat" (name id))
        :hunger      (* 2 (get corpse :hunger)))
@@ -35,7 +35,7 @@
   (let [id (clojure.string/join "-" (butlast (clojure.string/split (name (get corpse :item/id)) #"-")))]
     (-> corpse
       (assoc 
-       :item/id     (keyword (str id) "-hide")
+       :item/id     (keyword (str id "-hide"))
        :name        (format "%s hide" (name id))
        :name-plural (format "%s hide" (name id))
        :properties  #{:flexible :planar})
@@ -47,10 +47,10 @@
   (let [id (clojure.string/join "-" (butlast (clojure.string/split (name (get corpse :item/id)) #"-")))]
     (-> corpse
       (assoc 
-       :item/id     (keyword (str id) "-bones")
+       :item/id     (keyword (str id "-bones"))
        :name        (format "%s bones" (name id))
-       :name-plural (format "%s bones" (name id)))
-       :properties #{:stick-like :tube-like}
+       :name-plural (format "%s bones" (name id))
+       :properties #{:stick-like :tube-like})
       (dissoc :hotkey :type :hunger))))
 
 (defn is-corpse-id?

@@ -179,7 +179,7 @@
                           :align-items :flex-start}} [
             (when count-str
               (zc/csx [:text {} [count-str]]))
-            [:text {} [name]]
+            [:text {} [(or name "unknown")]]
             [:view {:style {:display :flex
                             :flex-direction :row
                             :margin-left 1
@@ -260,7 +260,7 @@
                                                          :selected
                                                            (contains? selected-hotkeys (get item :hotkey))
                                                          :text
-                                                           (str (get item :name)
+                                                           (str (get item :name "Unknown")
                                                              (if (contains? item :count)
                                                                (format " (%dx)" (int (get item :count)))
                                                                ""))}]))

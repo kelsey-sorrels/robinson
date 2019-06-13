@@ -937,7 +937,7 @@
     (if (and (>= item-index 0) (< item-index (count items)))
       (let [item (nth items item-index)
             new-state (-> state
-              (rc/append-log (format "You let the %s fall to the ground" (lower-case (get item :name))))
+              (rc/append-log (format "You let the %s fall to the ground" (lower-case (get item :name "unknown"))))
               ;; dup the item into cell
               (rw/conj-cell-items x y (dissoc item :wielded :wielded-ranged))
               ;; remove the item from inventory

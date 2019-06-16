@@ -18,12 +18,14 @@
             [taoensso.timbre :as log]))
 
 (defn handle-recieve
-  [this state item xy-path ttl fx-ks]
+  [this state item xy-path ch-cycle ttl fx-ks]
   (let [[x y] (first xy-path)
+        ch (first ch-cycle)
         pos (rc/xy->pos x y)
         player-in-cell (= pos (rp/player-pos state))
         npc (rnpc/npc-at-pos state pos)
         _ (log/info "get-cell" pos)
+        _ (log/info "ch" ch)
         cell (rw/get-cell state pos)
         trap (rw/is-trap-type? (get cell :type))
         ttl-zero (zero? ttl)]
@@ -89,8 +91,10 @@
                     (-> state
                       ; move item
                       (assoc-in (conj fx-ks :pos) (apply rc/xy->pos (second xy-path)))
+                      (assoc-in (conj fx-ks :ch) ch)
                       ; update path
                       (ractors/update-actor this update :xy-path rest)
+                      (ractors/update-actor this update :ch-cycle rest)
                       ; update ttl
                       (ractors/update-actor this update :ttl dec))))]
     
@@ -121,23 +125,24 @@
       ; Nothing happened, advance item one step
       (on-move state)))))
 
-(defrecord AirbornItemActor [item xy-path ttl fx-ks]
+(defrecord AirbornItemActor [item xy-path ch-cycle ttl fx-ks]
   rap/Actor
   (receive [this state]
     (try
-      (handle-recieve this state item xy-path ttl fx-ks)
+      (handle-recieve this state item xy-path ch-cycle ttl fx-ks)
       (catch Throwable t
         (log/error t)
         state))))
               
 
-(defmethod rfx/conj-effect :airborn-item [state fx-type & [item xy-path ttl]]
+(defmethod rfx/conj-effect :airborn-item [state fx-type & [item xy-path ttl & [ch-cycle]]]
   (let [fx-id (rfx/fx-id)
-        actor (->AirbornItemActor item xy-path ttl (rfx/fx-ks fx-id))]
-    (log/debug "created AirbornItemActor " item (vec xy-path) ttl (rfx/fx-ks fx-id))
+        ch-cycle (or (cycle ch-cycle) (repeat \-))
+        actor (->AirbornItemActor item xy-path ch-cycle ttl (rfx/fx-ks fx-id))]
+    (log/debug "created AirbornItemActor " item (vec xy-path) ch-cycle ttl (rfx/fx-ks fx-id))
     (-> state
       ; create a character fx
-      (rfx/conj-fx (rfx/character-fx \- (apply rc/xy->pos (first xy-path))) fx-id)
+      (rfx/conj-fx (rfx/character-fx (first ch-cycle) (apply rc/xy->pos (first xy-path))) fx-id)
       ; create a corresponding actor that controls the fx
       (ractors/add-actor actor))))
 

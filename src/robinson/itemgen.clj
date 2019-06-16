@@ -228,6 +228,9 @@
         :attack :blunt
         :ranged-attack :airborn-item
         :ammunition-id :rock}
+       {:item/id  :throwing-hammer         :name  "throwing hammer"            :name-plural "throwing hammers"
+        :attack :club
+        :ranged-attack :airborn-item :ch-cycle [\╒ \╖ \╛ \╙]}
        {:item/id  :sling                   :name  "sling"                      :name-plural "slings"
         :ranged-attack :airborn-item :ammunition-id :rock}
        ; edged
@@ -235,7 +238,7 @@
         :attack :knife}
        {:item/id  :throwing-axe            :name  "throwing axe"               :name-plural "throwing axes"
         :attack :knife
-        :ranged-attack :airborn-item}
+        :ranged-attack :airborn-item :ch-cycle [\╒ \╖ \╛ \╙]}
        {:item/id  :boomerang               :name  "boomerang"                  :name-plural "boomerangs"
         :ranged-attack :boomerang
         :properties #{:stick-like}}

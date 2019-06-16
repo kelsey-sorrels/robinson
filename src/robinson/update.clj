@@ -1787,7 +1787,10 @@
                 (get ranged-weapon-item :item/id)
                 (fn [item] (assoc item :loaded true)))
               ;; dec ranged weapon ammunition
-              (rp/dec-item-count (-> ranged-weapon-item ig/item->ranged-combat-ammunition-item-id :hotkey))
+              (rp/dec-item-count (-> ranged-weapon-item
+                                   ig/item->ranged-combat-ammunition-item-id
+                                   (as-> id (rp/inventory-id->item state id))
+                                   :hotkey))
               ;; successful reloading takes a turn
               (rc/inc-time))
             (rc/ui-hint state "You do not have the required ammunition."))
@@ -1837,7 +1840,8 @@
                                   ;; weapon "throws" itself
                                   (assoc ranged-weapon-item :attacker (rp/get-player state)))
                                 (rest path)
-                                (count path)))]
+                                (count path)
+                                (get ranged-weapon-item :ch-cycle)))]
 
     (log/info "player-xy" (rp/player-xy state))
     (log/info "target-ranged-index" target-ranged-index)
@@ -1847,10 +1851,18 @@
     (log/info "path" path)
     ;; the weapon requires reloading?
     (if (ig/requires-reload? ranged-weapon-item)
-      (if (< 0 (-> ranged-weapon-item ig/item->ranged-combat-ammunition-item-id rp/inventory-id->count))
+      (if (< 0 (-> ranged-weapon-item
+                 ig/item->ranged-combat-ammunition-item-id
+                 (as-> id
+                   (rp/inventory-id->count state id))))
           ;; dec ranged weapon ammunition
           (-> state
-            (rp/dec-item-count (-> ranged-weapon-item ig/item->ranged-combat-ammunition-item-id :hotkey))
+            (rp/dec-item-count
+              (-> ranged-weapon-item
+                ig/item->ranged-combat-ammunition-item-id
+                (as-> id
+                  (rp/inventory-id->item state id))
+                :hotkey))
             do-fire)
           (rc/ui-hint state "You need to reload first."))
       ; Add weapon actor and effect

@@ -46,10 +46,10 @@
   (contains? (get item :properties) :stick-like))
 
 (defn rock [item]
-  (= (get :item/id item) :rock))
+  (= (get item :item/id) :rock))
 
 (defn feather [item]
-  (= (get :item/id item) :feather))
+  (= (get item :item/id) :feather))
 
 (defn flexible [item]
   (contains? (get item :properties) :flexible))
@@ -103,16 +103,18 @@
                               [and
                                 low-weight
                                 stick-like]]}
-     {:recipe/id  :hammer
+     {:recipe/id :throwing-hammer
       :recipe/category :weapon
       :recipe/types #{:blunt :thrown}
       :recipe/example-item-requirements #{:stick :branch :rock}
-      :recipe/add [:rock]
+      :recipe/add [:throwing-hammer]
       :recipe/requirements '[each-of
+                              stick-like
                               [and
                                 low-weight
-                                rock]]}
-     {:recipe/id  :sling
+                                rock]
+                              flexible]}
+     {:recipe/id :sling
       :recipe/category :weapon
       :recipe/types #{:blunt :ranged}
       :recipe/example-item-requirements #{:rock :leather}
@@ -140,7 +142,8 @@
       :recipe/requirements '[each-of
                               edged
                               [and low-weight
-                                   stick-like]]}
+                                   stick-like]
+                              flexible]}
       {:recipe/id  :boomerang
       :recipe/category :weapon
       :recipe/types #{:edged :ranged}
@@ -534,6 +537,7 @@
 
 (defn- place-inventory
   [state id effects]
+  (log/info "placing item with id" id "in inventory")
   (let [item (ig/id->item id)
         _ (log/info item)
         updated-item (reduce (fn [item effect]

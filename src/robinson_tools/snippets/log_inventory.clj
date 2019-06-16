@@ -2,5 +2,7 @@
   '[robinson.player :as rp]
   '[taoensso.timbre :as log])
 
-(log/info (pr-str (rp/player-inventory *state*)))
+(doseq [item (rp/player-inventory *state*)]
+  (log/info (pr-str item)))
+
 *state*

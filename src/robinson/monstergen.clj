@@ -251,7 +251,7 @@
   [race]
   (and
     (isa? monster-hierarchy race ::mammal)
-    (< 500 (-> race race->monster-map :size))))
+    (< 3 (-> race race->monster-map :size))))
 
 (defn has-skin?
   [race]

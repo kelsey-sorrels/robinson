@@ -38,6 +38,8 @@
        :item/id     (keyword (str id "-hide"))
        :name        (format "%s hide" (name id))
        :name-plural (format "%s hide" (name id))
+       ; TODO: base on size? weight? something else?
+       :tensile-strength 10
        :properties  #{:flexible :planar})
       (dissoc :hotkey :type :hunger))))
 
@@ -173,16 +175,17 @@
        {:item/id  :purple-tipped-arrow     :name  "prurple-tipped arrow"       :name-plural "arrows"
         :attack :spear :fuel 10}
        {:item/id  :bow                     :name  "bow"                        :name-plural "bow"
-        :fuel 10 :utility 100 :recoverable-item [:rope :stick]}
+        :fuel 10 :utility 100 :recoverable-item [:rope :stick] :ammunition-id :arrow}
        {:item/id  :plant-fiber             :name  "plant fiber"                :name-plural "plant fibers"
-        :fuel 50}
+        :fuel 50 :properties #{:flexible}}
        {:item/id  :leaves                  :name  "leaves"                     :name-plural "leaves"
         :fuel 10}
-       {:item/id  :unhusked-coconut        :name  "unhusked coconut"           :name-plural "husked coconuts"}
+       {:item/id  :unhusked-coconut        :name  "unhusked coconut"           :name-plural "husked coconuts"
+        :ammunition-id :unhusked-coconut}
        {:item/id  :coconut                 :name  "coconut (full)"             :name-plural "coconuts (full)"
-        :thirst 30}
+        :thirst 30 :ammunition-id :coconut}
        {:item/id  :coconut-empty           :name  "coconut (empty)"            :name-plural "coconuts (empty)"
-        :hunger 30}
+        :hunger 30 :ammunition-id :coconut-empty}
        {:item/id  :coconut-shell           :name  "coconut shell"              :name-plural "coconut shells"
         :fuel 30}
        {:item/id  :red-fruit               :name  "red fruit"                  :name-plural "red fruits"
@@ -210,7 +213,7 @@
         :hunger 30
         ::isa #{:fruit}}
        {:item/id  :jack-o-lantern          :name  "jack-o-lantern"             :name-plural "jack-o-lanterns"
-        :hunger 10
+        :hunger 10 :ammunition-id :jack-o-lantern
         ::isa #{:fruit}}
        {:item/id  :feather                 :name  "feather"                    :name-plural "feathers"}
        {:item/id  :bamboo                  :name  "bamboo"                     :name-plural "bamboo"
@@ -223,9 +226,10 @@
         :properties #{:stick-like}}
        {:item/id  :rock                    :name  "rock"                       :name-plural "rocks"
         :attack :blunt
-        :ranged-attack :airborn-item}
+        :ranged-attack :airborn-item
+        :ammunition-id :rock}
        {:item/id  :sling                   :name  "sling"                      :name-plural "slings"
-        :ranged-attack :airborn-item}
+        :ranged-attack :airborn-item :ammunition-id :rock}
        ; edged
        {:item/id  :dagger                  :name  "dagger"                     :name-plural "daggers"
         :attack :knife}
@@ -242,7 +246,7 @@
        {:item/id  :bow                     :name  "bow"                        :name-plural "bow"
         :ranged-attack :airborn-item}
        {:item/id  :blowgun                 :name  "blowgun"                    :name-plural "blowguns"
-        :ranged-attack :airborn-item}
+        :ranged-attack :airborn-item :ammunition-id :blowdart}
        ; flexible
        {:item/id  :garrote                 :name  "garrote"                    :name-plural "garrotes"
         :attack :strangle}
@@ -253,7 +257,8 @@
 
        ; weapon components
        {:item/id  :obsidian                :name  "obsidian stone"             :name-plural "obsidian stones"}
-       {:item/id  :flint                   :name  "flint stone"                :name-plural "flint stones"}
+       {:item/id  :flint                   :name  "flint stone"                :name-plural "flint stones"
+        :ammunition-id :flint}
        {:item/id  :large-flint             :name  "large flint stone"          :name-plural "large flint stones"}
        {:item/id  :grass                   :name  "grass"                      :name-plural "grass"
         :fuel 20}
@@ -336,15 +341,16 @@
         :properties #{:flexible :planar}}
        {:item/id  :cutlass                 :name "cutlass"                     :name-plural "cutlasses"
         :attack :cutlass :utility 50}
-       {:item/id  :pistol                  :name "flintlock pistol"            :name-plural "flintlock pistols"}
+       {:item/id  :pistol                  :name "flintlock pistol"            :name-plural "flintlock pistols"
+        :ammunition-id :paper-cartridge}
        {:item/id  :paper-cartridge         :name "paper cartridge"             :name-plural "paper cartridges"
         :fuel 10}
        {:item/id  :ale                     :name "bottle of ale"               :name-plural "bottles of ale"
         :thirst 50}
        {:item/id  :pirate-clothes          :name "pirate clothes"              :name-plural "pirate clothes"
-        :utility 100 :toughness 0.2 :properties #{:flexible :planar}}
+        :utility 100 :toughness 0.2 :properties #{:tensile :flexible :planar}}
        {:item/id  :navy-uniform            :name "navy uniform"                :name-plural "navy uniforms"
-        :utility 100 :toughness 0.2 :properties #{:flexible :planar}}
+        :utility 100 :toughness 0.2 :properties #{:tensile :flexible :planar}}
        ;; ruined temple items
        {:item/id  :jewlery                 :name "jewlery"                     :name-plural "jewelery"}
        {:item/id  :statue                  :name "statue"                      :name-plural "statues"}
@@ -353,11 +359,11 @@
        {:item/id  :stone-tablet            :name "stone tablet"                :name-plural "stone tablets"}
        {:item/id  :codex                   :name "codex"                       :name-plural "codices"}
        {:item/id  :robe                    :name "robe"                        :name-plural "robes"
-        :fuel 20}
+        :fuel 20 :properties #{:tensile :flexible :planar}}
        {:item/id  :ritual-knife            :name "ritualistic knife"           :name-plural "ritualistic knives"
         :attack :ritualistic-knife :utility 20}
        {:item/id  :ancient-spear           :name "ancient spear"               :name-plural "ancient spears"
-        :attack :ancient-spear :utility 20}
+        :attack :ancient-spear :utility 20 :ammunition-id :ancient-spear}
        {:item/id  :blowdart                :name "blowdart"                    :name-plural "blowdarts"
         :fuel 10}
        {:item/id  :cure                    :name "cure"                        :name-plural "cures"}])
@@ -412,22 +418,19 @@
 
 (defn item->ranged-combat-ammunition-item-id
   [item]
-  (case (get item :item/id)
-    :bow :arrow
-    :flint :flint
-    :rock :rock
-    :unhusked-coconut :unhusked-coconut
-    :coconut :coconut
-    :empty-coconut :empty-coconut
-    :jack-o-lantern :jack-o-lantern
-    :pistol :paper-cartridge
-    :ancient-spear :ancient-spear
-    :blowgun :blowdart))
+  (let [q '[:find ?a
+            :in $ ?item-id
+            :where
+            [?e :item/id ?item-id]
+            [?e :ammunition-id ?a]]]
+    ;; execute query: item
+    (ffirst (d/q q
+                 item-db
+                 (get item :item/id)))))
 
 (defn requires-reload?
   [item]
-  (contains? #{:bow}
-             (get item :item/id)))
+  (some? (item->ranged-combat-ammunition-item-id item)))
 
 (defn is-drinkable?
   [item]

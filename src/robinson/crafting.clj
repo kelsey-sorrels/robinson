@@ -120,6 +120,7 @@
       :recipe/requirements '[each-of
                               flexible
                               [and tensile
+                                   flexible
                                    planar]]}
      ; edged
      {:recipe/id  :dagger
@@ -512,14 +513,14 @@
                          group)])
       (get-in state [:world :recipes]))))
 
-(defn- exhaust-by-ids
-  [state ids]
-  (reduce (fn [state id]
+(defn- exhaust-by-hotkeys
+  [state hotkeys]
+  (reduce (fn [state hotkey]
             (do 
-              (log/info "removing" id)
-              (rp/dec-item-count state id)))
+              (log/info "removing" hotkey)
+              (rp/dec-item-count state hotkey)))
           state
-          ids))
+          hotkeys))
 
 (defn- place-cell-type
   [state id effects]
@@ -770,21 +771,21 @@
 (defn craft-recipe
   "Perform the recipe."
   [state recipe]
-  (let [exhaust      (->> (get-in recipe [:recipe/requirements])
-                       ; remove 'each-of
-                       rest
-                       ; add slot indexes
-                       (map-indexed vector)
-                       ; remove tool clauses
-                       (remove (fn [[_ clause]] (contains? #{'tool} clause)))
-                       ; find which items ids are in remaining slots
-                       (map (fn [[slot _]] (get (slot->item state slot) :item/id))))
+  (let [exhaust-hotkeys (->> (get-in recipe [:recipe/requirements])
+                          ; remove 'each-of
+                          rest
+                          ; add slot indexes
+                          (map-indexed vector)
+                          ; remove tool clauses
+                          (remove (fn [[_ clause]] (contains? #{'tool} clause)))
+                          ; find which items ids are in remaining slots
+                          (map (fn [[slot _]] (get (slot->item state slot) :hotkey))))
         add          (get-in recipe [:recipe/add])
         effects      (get recipe :effects [])
         state (as-> state state
                   (add-by-ids state add effects (get recipe :place :inventory))
                   ; exhaust non-tool slot items
-                  (exhaust-by-ids state exhaust)
+                  (exhaust-by-hotkeys state exhaust-hotkeys)
                   #_(rp/player-update-hunger state (fn [current-hunger] (min (+ hunger current-hunger)
                                                                            (rp/player-max-hunger state))))
                   #_(rp/player-update-thirst state (fn [current-thirst] (min (+ hunger current-thirst)

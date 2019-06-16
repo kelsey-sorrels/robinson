@@ -53,13 +53,13 @@
               ;; remove item and trigger trap
               (-> state
                 (rc/append-log "You throw it at the trap.")
-                (rp/dec-item-count (get item :item/id))
+                (rp/dec-item-count (get item :hotkey))
                 (rt/trigger-if-trap state [x y])))
               (handle-ttl-zero [state]
                 ; hits the ground when ttl = 0
                 ;; didn't hit anything, drop into cell at max-distance
                 (-> state
-                  (rp/dec-item-count (get item :item/id))
+                  (rp/dec-item-count (get item :hotkey))
                   (rw/conj-cell-items x y
                     (-> item
                       (dissoc :attacker)

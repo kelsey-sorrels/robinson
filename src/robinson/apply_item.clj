@@ -81,9 +81,9 @@
 
 (defn apply-match
   "Light something on fire, creating chaos."
-  [state direction]
+  [state hotkey direction]
   (-> state
-    (rp/dec-item-count :match)
+    (rp/dec-item-count hotkey)
     (start-fire direction)))
 
 (defn apply-fire-plough
@@ -139,9 +139,9 @@
   (log/info "identified"  (get-in state [:world :fruit :identified]))
   (if (ig/is-fruit? item)
     (-> state
-      (rc/conj-in [:world :fruit :identified] (get item :id))
-      (rc/append-log (format "Identified %s." (name (get item :id)))))
-    (rc/append-log state (format "You're not able to identify the %s." (name (get item :id))))))
+      (rc/conj-in [:world :fruit :identified] (get item :item/id))
+      (rc/append-log (format "Identified %s." (name (get item :item/id)))))
+    (rc/append-log state (format "You're not able to identify the %s." (name (get item :item/id))))))
 
 
 (defn apply-flint
@@ -150,7 +150,7 @@
   (log/info "applying flint to" item)
   (if (ig/is-metal? item)
     (-> state
-      (assoc-apply-item {:id :flint-and-steel})
+      (assoc-apply-item {:item/id :flint-and-steel})
       (rw/assoc-current-state :apply-item-normal)
       (rc/ui-hint "Pick a direction to start a fire."))
     (-> state
@@ -167,7 +167,7 @@
   (rm/first-vec-match [(get item :item/id) item]
     [ig/is-corpse-id? :*]
       (-> state
-        (rp/dec-item-count (get item :item/id))
+        (rp/dec-item-count (get item :hotkey))
         (cond->
           ; always gen meat
           true
@@ -187,11 +187,11 @@
               (ig/id->item :feather)])))
     [:unhusked-coconut :*]
       (-> state
-        (rp/dec-item-count (get item :item/id))
+        (rp/dec-item-count (get item :hotkey))
         (rp/add-to-inventory [(ig/gen-item :coconut)]))
     [:stick :*]
       (-> state
-        (rp/dec-item-count (get item :item/id))
+        (rp/dec-item-count (get item :hotkey))
         (rp/add-to-inventory [(ig/gen-item :sharpened-stick)]))
     state))
 
@@ -199,28 +199,28 @@
   "Apply a pen to the inventory item."
   [state item]
   (log/info "applying pen item to" item)
-  (case (get item :id)
+  (case (get item :item/id)
     :paper
     (-> state
-      (rp/dec-item-count (get item :id))
+      (rp/dec-item-count (get item :hotkey))
       (rp/add-to-inventory [(ig/gen-item :note)]))
     :stick
     (-> state
-      (rp/dec-item-count (get item :id))
+      (rp/dec-item-count (get item :hotkey))
       (rp/add-to-inventory [(ig/gen-item :sharpened-stick)]))
     state))
 
 (defn apply-rock
   "Apply a rock to the inventory item."
-  [state item]
+  [state hotkey item]
   (log/info "applying rock to" item)
-  (case (get item :id)
+  (case (get item :item/id)
     :unhusked-coconut
     (if (>= (+ (rp/player-hunger state) 30) (rp/player-max-hunger state))
       (rc/append-log state "You're too hungry to do this.")
       (-> state
-        (rp/dec-item-count (get item :id))
-        (rp/dec-item-count :rock)
+        (rp/dec-item-count (get item :hotkey))
+        (rp/dec-item-count hotkey)
         (rp/player-update-hunger (partial + 30))
         (rp/add-to-inventory [(ig/gen-item :coconut)])
         (rc/append-log "You bash the husk off the coconut.")))
@@ -251,16 +251,17 @@
                                    [(get-in state [:world :player :tongue-identify-activate-time])
                                     (+ (rw/get-time state) (rr/uniform-int 5 10))])))
       state)))
+
 (defn apply-frog-corpse
   "Apply the secretions of a frog corpse to an inventory item."
   [state frog-corpse target-item]
   (log/info "poisonous frogs" (get-in state [:world :frogs]))
   (as-> state state
     (rc/append-log state (format "You touch the %s to the %s." (get frog-corpse :name) (get target-item :name)))
-    (if (= :arrow (get target-item :id))
+    (if (= :arrow (get target-item :item/id))
       (-> state
-        (rp/dec-item-count :arrow)
-        (rp/dec-item-count (get frog-corpse :id))
+        (rp/dec-item-count (get target-item :hotkey))
+        (rp/dec-item-count (get frog-corpse :hotkey))
         (rp/add-to-inventory (ig/id->item (-> (get target-item :name)
                                            (clojure.string/split #"-")
                                            first
@@ -275,7 +276,7 @@
           trans->dir? (comp rc/is-direction? translate-directions)]
       (log/info "apply-item" [item keyin])
       (log/info "is-direction?" ((comp rc/is-direction? translate-directions) keyin))
-      [(get item :id)
+      [(get item :item/id)
        ((comp rc/is-direction? translate-directions) keyin)])))
 
 (defmethod apply-item-multi [:fishing-pole :direction] [state translate-directions keyin] state)
@@ -296,7 +297,7 @@
     (rm/first-vec-match [(get item :item/id) keyin]
       [:fishing-pole    trans->dir?] (apply-fishing-pole state (translate-directions keyin))
       [:match           trans->dir?] (-> state
-                                       (apply-match (translate-directions keyin))
+                                       (apply-match keyin (translate-directions keyin))
                                        (rw/assoc-current-state :normal))
       [:fire-plough     trans->dir?] (-> state
                                        (apply-fire-plough (translate-directions keyin))
@@ -329,7 +330,7 @@
                                        state)
       [:rock            :*         ] (if-let [item (rp/inventory-hotkey->item state keyin)]
                                        (-> state
-                                         (apply-rock item)
+                                         (apply-rock keyin item)
                                          (rw/assoc-current-state :normal))
                                        state)
       [:flint-and-steel trans->dir?] (-> state
@@ -360,7 +361,7 @@
          :purple-frog-corpse}
                       :*          ] (if-let [target-item (rp/inventory-hotkey->item state keyin)]
                                       (-> state
-                                        (apply-frog-corpse (get item :id) target-item)
+                                        (apply-frog-corpse (get item :item/id) target-item)
                                         (rw/assoc-current-state  :normal))
                                       state)
       [:*              :*         ] (do

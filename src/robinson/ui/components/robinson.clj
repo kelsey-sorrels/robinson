@@ -1551,9 +1551,9 @@
                               :left 36}} [
                 [:text {} ["Loading..."]]
                 [:text {} [""]]
-                [:text {} [(format "Generating %s..." (nth loading-tidbits @tidbit-index))]]
+                [:text {:style {:left -6}} [(format "Generating %s..." (nth loading-tidbits @tidbit-index))]]
                 [:text {} [""]]
-                [:text {} [(nth ["/" "-" "\\" "|"] (mod (swap! loading-index inc) 4))]]]]]]]]]]]])))
+                [:text {:style {:left 3}} [(nth ["/" "-" "\\" "|"] (mod (swap! loading-index inc) 4))]]]]]]]]]]]])))
 
 (zc/def-component Connecting
   [this]

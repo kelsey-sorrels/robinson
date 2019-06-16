@@ -90,7 +90,7 @@
               ;; remove item and trigger trap
               (-> state
                 (rc/append-log "You throw it at the trap.")
-                (rp/dec-item-count (get item :item/id))
+                (rp/dec-item-count (get item :hotkey))
                 (rt/trigger-if-trap state [x y])))
               (on-move [state]
                 ; one of several things can happen

@@ -522,14 +522,34 @@
 (defn add-to-inventory
   "Adds `item` to player's inventory assigning hotkeys as necessary."
   [state items]
-  {:pre [(sequential? items)]}
+  {:pre [(sequential? items)]
+   ; every item has a name and hotkey
+   :post [(every? (fn [item]
+                    (assert (get item :item/id) (str "item does not have id" item))
+                    (assert (get item :name) (str "item does not have name" item))
+                    (assert (get item :hotkey (str "item does not have hotkey" item)))
+                    true)
+                  (player-inventory %))
+          ; every hotkey is used just once
+          (every? (partial = 1)
+            (->> %
+              player-inventory
+              :hotkey
+              frequencies
+              second))
+          ; remaining hotkeys are just characters
+          (every? char? (get-in % [:world :remaining-hotkeys]))
+          ; inventory hotkeys and remaining hotkeys do not overlap
+          (clojure.set/difference
+            (set (map :hotkey (player-inventory %)))
+            (set (get-in % [:world :remaining-hotkeys])))]}
   (let [inventory               (get-in state [:world :player :inventory])
         remaining-hotkeys       (get-in state [:world :remaining-hotkeys])
         original-remaining-hotkeys remaining-hotkeys
         inventory-hotkeys       (set (map :hotkey inventory))
         ;; find hotkeys of all items we're adding to inventory
         item-hotkeys            (set (remove nil? (map :hotkey items)))
-        _                       (log/info items)
+        _                       (log/info "adding items" (vec items))
         _                       (log/debug remaining-hotkeys)
         _                       (log/debug "inventory hotkeys" (set (map :hotkey inventory)))
         _                       (log/debug "item hotkeys" (set (map :hotkey items)))
@@ -545,7 +565,8 @@
         freed-inventory-hotkeys (clojure.set/difference inventory-hotkeys (set (map :hotkey inventory)))
         ;; find the hotkeys that were used in the added items that are no longer in use
         freed-item-hotkeys      (clojure.set/difference item-hotkeys (set (map :hotkey inventory)))
-        _                       (log/debug "freed-hotkeys" (clojure.set/union freed-inventory-hotkeys freed-item-hotkeys))
+        _                       (log/info "freed-hotkeys" (clojure.set/union freed-inventory-hotkeys freed-item-hotkeys))
+        _                       (log/info "remaining-hotkeys" remaining-hotkeys)
         ;; find all the free hotkeys that were the previous free hotkeys plus the newly freed item and inventory hotkeys.
         remaining-hotkeys       (vec (sort (vec (clojure.set/union remaining-hotkeys freed-item-hotkeys freed-inventory-hotkeys))))
         _                       (log/debug "remaining-hotkeys" remaining-hotkeys)
@@ -594,16 +615,17 @@
   (get (inventory-id-freqs state) id 0))
 
 (defn remove-from-inventory
-  "Removes item with `id` from player's inventory freeing hotkeys as necessary. Effectively destroys the item."
-  [state id]
-  (let [item   (first (filter (fn [item] (= (get item :item/id) id)) (get-in state [:world :player :inventory])))
-        hotkey (get item :hotkey)
+  "Removes item with `hotkey` from player's inventory freeing hotkeys as necessary. Effectively destroys the item."
+  [state hotkey]
+  (let [item   (inventory-hotkey->item state hotkey)
         _ (log/info "removing item" item)
         _ (log/info "freeing hotkey" hotkey)]
     (-> state
-      (update-in [:world :player :inventory] (rc/log-io "inventory io" (fn [inventory]
-                                                                         (vec (rc/remove-first (fn [item] (= (get item :item/id) id))
-                                                                                            inventory)))))
+      (update-in [:world :player :inventory]
+        (rc/log-io "inventory io"
+          (fn [inventory]
+            (vec (rc/remove-first (fn [item] (= (get item :hotkey) hotkey))
+                 inventory)))))
       (rc/conj-in [:world :remaining-hotkeys] hotkey))))
 
 (defn update-inventory-item
@@ -622,18 +644,24 @@
 
 (defn dec-item-count
   "Decreses the count of an item in inventory."
-  [state id]
-  (let [item       (inventory-id->item state id)
+  [state hotkey]
+  {:pre [(char? hotkey)]}
+  (let [item       (inventory-hotkey->item state hotkey)
         item-count (get item :count 1)]
     (cond
       (zero? item-count)
         state
       (= 1 item-count)
-        (remove-from-inventory state (get item :item/id))
+        (remove-from-inventory state hotkey)
       :else
-        (rc/map-in state [:world :player :inventory] (fn [item] (if (= id (get item :item/id))
-                                                               (update-in item [:count] dec)
-                                                               item))))))
+        (rc/map-in
+          state
+          [:world :player :inventory]
+          (fn [item]
+            (cond-> item
+              (= hotkey (get item :hotkey))
+              (update :count dec)))))))
+
 (defn dec-item-utility
  ([state hotkey-or-id]
   (dec-item-utility state hotkey-or-id 1))
@@ -661,7 +689,7 @@
         (if (< (get item :utility 2) 1)
           (as-> state state
             ;; item breaks
-            (dec-item-count state (get item :item/id))
+            (dec-item-count state (get item :hotkey))
             ;; add parts
             (if (pos? (count (get item :recoverable-items)))
               (add-to-inventory state [(rr/rand-nth (get item :recoverable-items))])

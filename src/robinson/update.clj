@@ -834,9 +834,6 @@
                           (rp/add-to-inventory selected-items)
                           ;; remove the item from cell
                           (rw/assoc-cell-items x y not-selected-items)
-                          ;;;; hotkey is no longer available
-                          (assoc-in [:world :remaining-hotkeys]
-                              remaining-hotkeys)
                           ;; reset selected-hotkeys
                           (assoc-in [:world :selected-hotkeys] #{}))]
           (if (= (count items) 1)
@@ -954,11 +951,11 @@
         state)))
 
 (defn apply-bandage
-  [state]
+  [state hotkey]
   {:pre  [(not (nil? state))]
    :post [(not (nil? %))]}
   (-> state
-    (rp/dec-item-count :bandage)
+    (rp/dec-item-count hotkey)
     (assoc-in [:world :player :hp] (get-in state [:world :player :max-hp]))
     (assoc-in [:world :current-state] :normal)
     (rc/append-log "You apply the bandage.")))
@@ -1017,7 +1014,7 @@
           (as-> state
             (cond
               (= id :bandage)
-                (apply-bandage state)
+                (apply-bandage state keyin)
               (= id :lantern)
                 (apply-lantern state)
               (= id :fishing-pole)
@@ -1113,7 +1110,7 @@
                           (-> state
                            (rc/append-log (format "You peice together a story about %s." (rdesc/gen-temple-text text-id)))
                            rc/inc-time)))))
-                  (rp/dec-item-count state id)
+                  (rp/dec-item-count state keyin)
                   (rw/assoc-current-state state :normal))
               ;; pirate items
               (= id :dice)
@@ -1663,7 +1660,7 @@
       (as-> state
         (if (contains? (set (map :hotkey (rp/player-inventory state))) keyin)
           ;; remove the item from inventory
-          (rp/dec-item-count state (get item :item/id))
+          (rp/dec-item-count state keyin)
           ;; remove the item from the current-cell
           (rw/dec-cell-item-count state (get item :item/id)))
         (if (= (get item :item/id) :coconut-empty)
@@ -1790,7 +1787,7 @@
                 (get ranged-weapon-item :item/id)
                 (fn [item] (assoc item :loaded true)))
               ;; dec ranged weapon ammunition
-              (rp/dec-item-count (ig/item->ranged-combat-ammunition-item-id ranged-weapon-item))
+              (rp/dec-item-count (-> ranged-weapon-item ig/item->ranged-combat-ammunition-item-id :hotkey))
               ;; successful reloading takes a turn
               (rc/inc-time))
             (rc/ui-hint state "You do not have the required ammunition."))
@@ -1826,30 +1823,38 @@
                                                 (rp/player-inventory state)))
         [target-x
          target-y]          (rc/pos->xy target-pos)
-        path                (rlos/line-segment (rp/player-xy state) [target-x target-y])]
+        path                (rlos/line-segment (rp/player-xy state) [target-x target-y])
+        do-fire             (fn [state]
+                              (rfx/conj-effect
+                                state
+                                (get ranged-weapon-item :ranged-attack :airborn-item)
+                                (if-let [ammunition-item-id (ig/item->ranged-combat-ammunition-item-id ranged-weapon-item)]
+                                  ;; weapon shoots ammo
+                                  (-> ammunition-item-id
+                                    ig/id->item
+                                    (assoc :effects (get ranged-weapon-item :effects))
+                                    (assoc :attacker (rp/get-player state)))
+                                  ;; weapon "throws" itself
+                                  (assoc ranged-weapon-item :attacker (rp/get-player state)))
+                                (rest path)
+                                (count path)))]
+
     (log/info "player-xy" (rp/player-xy state))
     (log/info "target-ranged-index" target-ranged-index)
     (log/info "target-ranged-pos-coll" (get-in state [:world :target-ranged-pos-coll]))
     (log/info "npc" npc)
     (log/info "ranged-weapon-item" ranged-weapon-item)
     (log/info "path" path)
-    (-> state 
-      ;; the weapon requires reloading?
-      (cond-> (ig/requires-reload? ranged-weapon-item)
-        ;; dec ranged weapon ammunition
-        (rp/dec-item-count (ig/item->ranged-combat-ammunition-item-id ranged-weapon-item)))
-      (rfx/conj-effect
-        (get ranged-weapon-item :ranged-attack :airborn-item)
-        (if-let [ammunition-item-id (ig/item->ranged-combat-ammunition-item-id ranged-weapon-item)]
-          ;; weapon shoots ammo
-          (-> ammunition-item-id
-            ig/id->item
-            (assoc :effects (get ranged-weapon-item :effects))
-            (assoc :attacker (rp/get-player state)))
-          ;; weapon "throws" itself
-          (assoc ranged-weapon-item :attacker (rp/get-player state)))
-        (rest path)
-        (count path)))))
+    ;; the weapon requires reloading?
+    (if (ig/requires-reload? ranged-weapon-item)
+      (if (< 0 (-> ranged-weapon-item ig/item->ranged-combat-ammunition-item-id rp/inventory-id->count))
+          ;; dec ranged weapon ammunition
+          (-> state
+            (rp/dec-item-count (-> ranged-weapon-item ig/item->ranged-combat-ammunition-item-id :hotkey))
+            do-fire)
+          (rc/ui-hint state "You need to reload first."))
+      ; Add weapon actor and effect
+      (do-fire state))))
 
 (defn free-cursor
   "Dissassociate the cursor from the world."
@@ -2222,7 +2227,7 @@
     (-> state
       (free-cursor)
       ; remove the item from inventory
-      (rp/dec-item-count (get item :item/id))
+      (rp/dec-item-count (get item :hotkey))
       ; Add airborn item effect
       (rfx/conj-effect :airborn-item item path 5))))
 
@@ -3200,6 +3205,7 @@
                       num-harvestable (get @harvestable-counts place-id 0)]
                   (if (< (rr/uniform-int 0 100000)
                          (/ (case cell-type
+                              :bamboo 10
                               :palm-tree 10
                               :tree 25
                               :tall-grass 2

@@ -1,3 +1,7 @@
+(require '[robinson.player :as rp]
+         '[robinson.world :as rw]
+         '[taoensso.timbre :as log])
+
 (let [{:keys [x y]} (rp/player-pos *state*)
       trap {:type :wall-darts-trigger
             :difficulty 1

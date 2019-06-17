@@ -1839,6 +1839,7 @@
                                     (assoc :attacker (rp/get-player state)))
                                   ;; weapon "throws" itself
                                   (assoc ranged-weapon-item :attacker (rp/get-player state)))
+                                true ;persist-item
                                 (rest path)
                                 (count path)
                                 (get ranged-weapon-item :ch-cycle)))]
@@ -1866,7 +1867,10 @@
             do-fire)
           (rc/ui-hint state "You need to reload first."))
       ; Add weapon actor and effect
-      (do-fire state))))
+      (-> state
+        (cond-> (= (ranged-weapon-item :ranged-attack) :airborn-item)
+          (rp/dec-item-count (get ranged-weapon-item :hotkey)))
+        do-fire))))
 
 (defn free-cursor
   "Dissassociate the cursor from the world."
@@ -2241,7 +2245,7 @@
       ; remove the item from inventory
       (rp/dec-item-count (get item :hotkey))
       ; Add airborn item effect
-      (rfx/conj-effect :airborn-item item path 5))))
+      (rfx/conj-effect :airborn-item item true path 5))))
 
 (defn scroll-log-up
   [state]

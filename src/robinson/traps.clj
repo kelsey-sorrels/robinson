@@ -197,6 +197,7 @@
           state 
           :airborn-item
           (assoc (ig/gen-item :blowdart) :attacker src-trap)
+          true
           path
           5)))))
 

@@ -18,7 +18,7 @@
             [taoensso.timbre :as log]))
 
 (defn handle-recieve
-  [this state item xy-path ch-cycle ttl fx-ks]
+  [this state item persist-item xy-path ch-cycle ttl fx-ks]
   (let [[x y] (first xy-path)
         ch (first ch-cycle)
         pos (rc/xy->pos x y)
@@ -125,20 +125,20 @@
       ; Nothing happened, advance item one step
       (on-move state)))))
 
-(defrecord AirbornItemActor [item xy-path ch-cycle ttl fx-ks]
+(defrecord AirbornItemActor [item persist-item xy-path ch-cycle ttl fx-ks]
   rap/Actor
   (receive [this state]
     (try
-      (handle-recieve this state item xy-path ch-cycle ttl fx-ks)
+      (handle-recieve this state item persist-item xy-path ch-cycle ttl fx-ks)
       (catch Throwable t
         (log/error t)
         state))))
               
 
-(defmethod rfx/conj-effect :airborn-item [state fx-type & [item xy-path ttl & [ch-cycle]]]
+(defmethod rfx/conj-effect :airborn-item [state fx-type & [item xy-path persist-item ttl & [ch-cycle]]]
   (let [fx-id (rfx/fx-id)
         ch-cycle (or (cycle ch-cycle) (repeat \-))
-        actor (->AirbornItemActor item xy-path ch-cycle ttl (rfx/fx-ks fx-id))]
+        actor (->AirbornItemActor item persist-item xy-path ch-cycle ttl (rfx/fx-ks fx-id))]
     (log/debug "created AirbornItemActor " item (vec xy-path) ch-cycle ttl (rfx/fx-ks fx-id))
     (-> state
       ; create a character fx

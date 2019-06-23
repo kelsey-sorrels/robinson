@@ -84,7 +84,9 @@
 (def min-mono (zcolor/const-color 6 6 11))
 (defn rgb->mono
   [rgba]
-  (let [avg (int (/  (+ (max-rgb rgba) (min-rgb rgba)) 2))]
+  (let [hi-rgb (int (max-rgb rgba))
+        lo-rgb (int (min-rgb rgba))
+        avg (int (/  (+ hi-rgb lo-rgb) (int 2)))]
    (max-color (zcolor/color avg avg avg)
               min-mono)))
 
@@ -93,7 +95,7 @@
     (color->rgb color 255))
   ([color alpha]
   {:post [(integer? %)]}
-  (zcolor/with-alpha (get color-to-rgb-map color color) alpha)))
+  (zcolor/with-alpha (color color-to-rgb-map color) alpha)))
 
 (def min-dark (zcolor/const-color 5 5 7))
 (defn darken-rgb
@@ -140,11 +142,11 @@
 
 (defn target-tint-npc
   [[s fg bg] targeted?]
-   [s fg (if targeted? (color->rgb :green) bg)])
+   [s fg (if targeted? (:green color->rgb) bg)])
 
 (defn color-bloodied-char
-  [bloodied? char-fg-bg]
+  [bloodied? fg]
   (if bloodied?
-    (assoc char-fg-bg 1 :dark-red)
-    char-fg-bg))
+    :dark-red
+    fg))
 

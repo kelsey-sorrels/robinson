@@ -3,6 +3,7 @@
   (:require [robinson.random :as rr]
             [robinson.monstergen :as mg]
             [robinson.materials :as rmat]
+            [robinson.crafting.mod :as rcmod]
             [taoensso.timbre :as log]
             [datascript.core :as d]))
 
@@ -11,7 +12,8 @@
   [npc]
   {:item/id     (keyword (str (name (get npc :race)) "-corpse"))
    :type        :food
-   :race        (get npc :race)
+   :race        (:race npc)
+   :weight      (:size npc)
    :name        (format "%s corpse" (name (get npc :race)))
    :name-plural (format "%s corpses" (name (get npc :race)))
    ;; food=log((size+1)/10000)+15
@@ -254,10 +256,10 @@
        {:item/id  :garrote                 :name  "garrote"                    :name-plural "garrotes"
         :attack :strangle}
        {:item/id  :bolas                   :name  "bolas"                      :name-plural "bolas"
-        :ranged-attack :tangle}
+        :ranged-attack :airborn-item :ch-cycle [\╒ \╖ \╛ \╙]
+        :effects [(rcmod/tag-defender-on-attack "tangle" "tgl" :entangled 0.9)]}
        {:item/id  :whip                    :name  "whip"                       :name-plural "whips"
         :ranged-attack :whip}
-
        ; weapon components
        {:item/id  :obsidian                :name  "obsidian stone"             :name-plural "obsidian stones"}
        {:item/id  :flint                   :name  "flint stone"                :name-plural "flint stones"

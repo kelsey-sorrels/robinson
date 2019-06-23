@@ -121,7 +121,7 @@
             (log/error "Error logging error" t)))
         (ractors/remove-actor state this)))))
  
-(defmethod rfx/conj-effect :boomerang [state fx-type & [item xy-path ttl]]
+(defmethod rfx/conj-effect :boomerang [state fx-type & [item persist-item xy-path ttl]]
   (let [fx-id (rfx/fx-id)
         start-pos (apply rc/xy->pos (first xy-path))
         target-pos (apply rc/xy->pos (last xy-path))

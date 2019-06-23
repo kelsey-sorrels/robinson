@@ -1,5 +1,6 @@
 (ns robinson.ui.mouse
-  (:require [taoensso.timbre :as log]))
+  (:require [clojure.inspector]
+            [taoensso.timbre :as log]))
 
 (defn leaf-elements
   [dom]
@@ -23,9 +24,9 @@
 
 (defn handle-click [state col row dom]
   (log/info col row)
-  #_(log/info (meta dom))
   (let [layout-elements (-> dom meta :layout-elements)
         hits (filter (partial in-element? col row) (reverse layout-elements))]
+    (clojure.inspector/inspect-tree layout-elements)
     (log/info "hits:" (count hits))
     (reduce (fn [state hit]
               (if-let [on-click (-> hit second :on-click)]

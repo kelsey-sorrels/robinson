@@ -165,7 +165,7 @@
     dedupe))
 
 
-(defmethod rfx/conj-effect :whip [state fx-type & [item xy-path ttl]]
+(defmethod rfx/conj-effect :whip [state fx-type & [item persist-item xy-path ttl]]
   (let [fx-id (rfx/fx-id)
         [xi yi :as start] (first xy-path)
         [xf yf :as end] (last xy-path)

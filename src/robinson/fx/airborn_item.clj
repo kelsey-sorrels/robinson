@@ -135,7 +135,7 @@
         state))))
               
 
-(defmethod rfx/conj-effect :airborn-item [state fx-type & [item xy-path persist-item ttl & [ch-cycle]]]
+(defmethod rfx/conj-effect :airborn-item [state fx-type & [item persist-item xy-path ttl & [ch-cycle]]]
   (let [fx-id (rfx/fx-id)
         ch-cycle (or (cycle ch-cycle) (repeat \-))
         actor (->AirbornItemActor item persist-item xy-path ch-cycle ttl (rfx/fx-ks fx-id))]

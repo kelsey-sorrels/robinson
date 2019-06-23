@@ -23,6 +23,7 @@
             [robinson.fx.boomerang-item :as rfxboomerang]
             [clojure.core.async :as async :refer [go go-loop]]
             #_[clojure.tools.nrepl.server :as nreplserver]
+            [clj-async-profiler.core :as prof]
             [dk.salza.liq.core :as liq-core]
             [dk.salza.liq.editor :as le]
             [dk.salza.liq.apps.findfileapp :as liq-findfileapp]
@@ -74,35 +75,37 @@
 
 (defonce done-chan (async/chan))
 
-(future
-  (liq-core/-main "--minimal --no-init-file" "--no-threads" "--ghost" "--rows=20" "--columns=60")
-  (le/add-rootfolder "src/robinson_tools/snippets")
-  (le/add-searchpath "src/robinson_tools/snippets")
-  (le/set-default-app liq-findfileapp/run)
-  (le/remove-buffer "scratch")
-  (le/new-buffer "-findfile-")
-  (le/set-global-key "f5"
-    (fn []
-      (try
-        (let [expr (le/get-content)
-              prelude "(def ^:dynamic *state* nil)
-                       (fn [state]
-                         (binding [*state* state]"
-              source (str prelude expr "))")
-              f (load-string source)]
-          (log/info source)
-          (when f
-            (swap! state-ref f)))
-        (catch Throwable t
-          (log/error t)))))
-  (le/set-global-key "f4"
-    (fn []
-       (log/info "Exiting editor")
-       (swap! state-ref rw/assoc-current-state :normal)))
-  (le/updated)
-  (doseq [i [" " "f" "f" "s" "r" "c" "down" "\n"]]
-    (Thread/sleep 20)
-    (le/handle-input i)))
+(defn init-editor
+  []
+  (future
+    (liq-core/-main "--minimal --no-init-file" "--no-threads" "--ghost" "--rows=20" "--columns=60")
+    (le/add-rootfolder "src/robinson_tools/snippets")
+    (le/add-searchpath "src/robinson_tools/snippets")
+    (le/set-default-app liq-findfileapp/run)
+    (le/remove-buffer "scratch")
+    (le/new-buffer "-findfile-")
+    (le/set-global-key "f5"
+      (fn []
+        (try
+          (let [expr (le/get-content)
+                prelude "(def ^:dynamic *state* nil)
+                         (fn [state]
+                           (binding [*state* state]"
+                source (str prelude expr "))")
+                _ (log/info source)
+                f (load-string source)]
+            (when f
+              (swap! state-ref f)))
+          (catch Throwable t
+            (log/error t)))))
+    (le/set-global-key "f4"
+      (fn []
+         (log/info "Exiting editor")
+         (swap! state-ref rw/assoc-current-state :normal)))
+    (le/updated)
+    (doseq [i [" " "f" "f" "s" "r" "c" "down" "\n"]]
+      (Thread/sleep 20)
+      (le/handle-input i))))
 
 (defn -main
   "Entry default point to application.
@@ -122,6 +125,7 @@
     (reset! click-fn (resolve 'robinson.ui.mouse/handle-click))
     (reset! move-fn (resolve 'robinson.ui.mouse/handle-mouse-move))
     (start-nstracker)
+    (init-editor)
     (@setup-fn
       (fn [state]
         (zgl/create-terminal
@@ -152,7 +156,7 @@
                                               (reset! state-ref (@tick-fn new-state :advance)))))
                                                
             (reset! state-ref state)
-            (zt/do-frame terminal 16
+            (zt/do-frame terminal 0
               (binding [zc/*updater* ruu/updater]
                 (when (zt/destroyed? terminal)
                   (log/info "terminal destroyed")
@@ -162,29 +166,27 @@
                       ui (@render-fn terminal state @dom-ref)]
                   (reset! dom-ref ui)
                   (swap! frames inc)
-                  (assert (zc/element? ui))
-                  ;; update component instance states
-                  (log/debug "---End Frame---"))))
-              (zevents/add-event-listener terminal :keypress (fn [keyin]
-                ; tick the old state through the tick-fn to get the new state
-                (try
-                  (when (= keyin :exit)
-                    (System/exit 0))
-                  (if keyin
-                    (do
-                      (log/info "Core current-state" (rw/current-state state))
-                      (log/info "Core got key" keyin)
-                      (let [new-state (@tick-fn (assoc @state-ref :screen terminal) keyin)
-                            state-stream (revents/stream new-state)]
-                        (doseq [state (revents/chan-seq state-stream)]
-                          (log/info "got new state from stream")
-                          (reset! state-ref state))
-                          (log/info "got new state from stream")
-                        (log/info "End of game loop"))))
-                   (catch Throwable ex
-                     (log/error ex)
-                     (print-stack-trace ex)
-                     state))))
+                  (assert (zc/element? ui)))))
+            (zevents/add-event-listener terminal :keypress (fn [keyin]
+              ; tick the old state through the tick-fn to get the new state
+              (try
+                (when (= keyin :exit)
+                  (System/exit 0))
+                (if keyin
+                  (do
+                    (log/info "Core current-state" (rw/current-state state))
+                    (log/info "Core got key" keyin)
+                    (let [new-state (@tick-fn (assoc @state-ref :screen terminal) keyin)
+                          state-stream (revents/stream new-state)]
+                      (doseq [state (revents/chan-seq state-stream)]
+                        (log/info "got new state from stream")
+                        (reset! state-ref state))
+                        (log/info "got new state from stream")
+                      (log/info "End of game loop"))))
+                 (catch Throwable ex
+                   (log/error ex)
+                   (print-stack-trace ex)
+                   state))))
               (zevents/add-event-listener terminal :close (fn [keyin] (log/info "received :close") (System/exit 0)))
               (zevents/add-event-listener terminal :font-change (fn [{:keys [character-width
                                                                              character-height]}]
@@ -195,38 +197,38 @@
                                                                   (zt/set-window-size! terminal
                                                                                        {:width (* columns character-width)
                                                                                         :height (* rows character-height)}))))
-              (zevents/add-event-listener terminal :drag-and-drop
-                (fn [{:keys [names]}]
-                  (log/info "received :drag-and-drop")
-                  (let [new-state (@tick-fn (assoc @state-ref :screen terminal) {:drag-and-drop names})]
-                      (reset! state-ref new-state))))
-              (zevents/add-event-listener terminal :click
-                (fn [{:keys [button col row group-id]}]
-                  (log/info "received :click" button col row group-id)
+            (zevents/add-event-listener terminal :drag-and-drop
+              (fn [{:keys [names]}]
+                (log/info "received :drag-and-drop")
+                (let [new-state (@tick-fn (assoc @state-ref :screen terminal) {:drag-and-drop names})]
+                    (reset! state-ref new-state))))
+            (zevents/add-event-listener terminal :click
+              (fn [{:keys [button col row group-id]}]
+                (log/info "received :click" button col row group-id)
+                (try
+                  (binding [zc/*updater* ruu/updater]
+                    
+                    (let [new-state (swap! state-ref @click-fn col row @dom-ref)
+                          state-stream (revents/stream new-state)]
+                      (doseq [state (revents/chan-seq state-stream)]
+                        (log/info "got new state from stream")
+                        (reset! state-ref state))
+                        (log/info "got new state from stream")
+                      (log/info "End of game loop")))
+                  (catch Throwable t
+                    (log/error t)))))
+            (zevents/add-event-listener terminal :mouse-enter
+              (fn [{:keys [col row]}]
+                (log/trace "received :mouse-enter" col row)
+                (let [[last-col last-row] @mouse-pos]
                   (try
-                    (binding [zc/*updater* ruu/updater]
-                      
-                      (let [new-state (swap! state-ref @click-fn col row @dom-ref)
-                            state-stream (revents/stream new-state)]
-                        (doseq [state (revents/chan-seq state-stream)]
-                          (log/info "got new state from stream")
-                          (reset! state-ref state))
-                          (log/info "got new state from stream")
-                        (log/info "End of game loop")))
+                      (swap! state-ref
+                        (fn [& more]
+                          (binding [zc/*updater* ruu/updater]
+                            (apply @move-fn more)))
+                        col row last-col last-row @dom-ref)
+                    (reset! mouse-pos [col row])
                     (catch Throwable t
-                      (log/error t)))))
-              (zevents/add-event-listener terminal :mouse-enter
-                (fn [{:keys [col row]}]
-                  (log/trace "received :mouse-enter" col row)
-                  (let [[last-col last-row] @mouse-pos]
-                    (try
-                        (swap! state-ref
-                          (fn [& more]
-                            (binding [zc/*updater* ruu/updater]
-                              (apply @move-fn more)))
-                          col row last-col last-row @dom-ref)
-                      (reset! mouse-pos [col row])
-                      (catch Throwable t
-                        (log/error t))))))
-            (async/<!! done-chan)))))))
- 
+                      (log/error t))))))
+          (async/<!! done-chan)))))))
+

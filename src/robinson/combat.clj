@@ -189,45 +189,6 @@
      (log/debug "attack message" msg)
      msg))
 
-(defn attack->toughness
-  [attack]
-  (case attack
-  :bite        5
-  :bite-venom  5
-  :clamp       3
-  :claw        5
-  :gore        4
-  :punch       1
-  :spike      10
-  :squeeze     3
-  :shot-arrow 10
-  :sting-venom 8
-  :thrown-item 1
-  :knife      15
-  :saw         3
-  :obsidian-knife 3
-  :obsidian-axe 4
-  :obsidian-spear 3
-  :sharpened-stick 2
-  :flint 1.5
-  :rock 1
-  :coconut 2
-  :unhusked-coconut 2
-  :empty-coconut 1
-  :jack-o-lantern 5
-  :whip 2
-  :boomerang 1
-  ;; pirate items
-  :cutlass 20
-  :pistol 20
-  ;; ruined temple items
-  :ritual-knife 30
-  :ancient-spear 20
-  :blowgun 10
-  ;; traps
-  :poisonous-gas 2
-  (throw (Exception. (format "No value specified for %s" (name attack))))))
-
 (defmulti is-hit? (fn [state attacker defender attack-type] attack-type))
 
 (defmethod is-hit? :melee

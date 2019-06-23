@@ -218,9 +218,9 @@
     (zc/csx [:view {:style (merge {:display :flex
                                    :flex-direction :column
                                    :align-items :flex-start} style)}
-                   (concat (when title
-                             [(zc/csx [:text {:style {:color (rcolor/color->rgb :white)}} [title]])
-                              (zc/csx [:text {} [" "]])])
+                   (cons (when title
+                           (zc/csx [:view {:style {:margin-bottom 1}} [
+                             [:text {:style {:color (rcolor/color->rgb :white)}} [title]]]]))
                            children)])))
 
 

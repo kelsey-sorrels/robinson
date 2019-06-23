@@ -204,7 +204,8 @@
   [this]
   (let [{:keys [game-state]} (zc/props this)]
     (zc/csx
-      [:view {:style {:top 21
+      [:view {:style {:position :fixed
+                      :top 21
                       :left 0
                       :width 80
                       :display :flex
@@ -247,11 +248,12 @@
 
 (zc/def-component MapInViewport
   [this]
-  (let [{:keys [cells current-time font-type]} (zc/props this)]
+  (let [{:keys [cells current-time font-type]} (zc/props this)
+        t (mod (/ (System/currentTimeMillis) 4000) 10000)]
     (zc/csx [:img {:width 80 :height 23}
                    (map-indexed (fn [y line]
                              (map-indexed (fn [x cell]
-                               (ruc/render-cell cell x y current-time font-type))
+                               (ruc/render-cell cell x y t current-time font-type))
                                line))
                            cells)])))
 
@@ -364,7 +366,7 @@
 
 (defn render-npc [npc current-time font-type]
   (apply ruc/fill-put-string-color-style-defaults
-    0 0
+    0 0 0
     (rcolor/color-bloodied-char 
       (< current-time (get npc :bloodied 0))
       [((case font-type
@@ -376,10 +378,12 @@
 (zc/def-component CharactersInViewport
   [this]
   (let [{:keys [npcs player-pos player-bloodied player-on-raft? vx vy current-time font-type]} (zc/props this)]
-    (zc/csx [:view {}
+    (zc/csx [:view {:style {:position :fixed
+                            :top 0
+                            :left 0}}
                    (reduce (fn [children npc]
-                             (let [x         (-> npc :pos :x)
-                                   y         (-> npc :pos :y)
+                             (let [x         (->> npc :pos :x)
+                                   y         (->> npc :pos :y)
                                    ;targeted? (when (= (current-state state) :select-ranged-target)
                                    ;            (let [target-ranged-index (get-in state [:world :target-ranged-index])
                                    ;                  target-ranged-pos-coll (get-in state [:world :target-ranged-pos-coll])
@@ -395,8 +399,8 @@
                                                                       :background-color bg}} [(str c)]]))))
                            ; Always render player
                            [(zc/csx [:text {:style {:position :fixed
-                                                    :top (- (get player-pos :y) vy)
-                                                    :left (- (get player-pos :x) vx)
+                                                    :top (- (:y player-pos) vy)
+                                                    :left (- (:x player-pos) vx)
                                                     :color (rcolor/color->rgb (if player-bloodied :dark-red :white))
                                                     :background-color (rcolor/color->rgb (if player-on-raft?
                                                                                             :brown
@@ -432,13 +436,13 @@
   [this]
   (let [{:keys [game-state trap vx vy]} (zc/props this)
         current-time (rw/get-time game-state)
-        ch (case (get trap :direction)
+        ch (case (trap :direction)
              :up    "╧"
              :down  "╤"
              :left  "╢"
              :right "╟")]
     (zc/csx [:view {} 
-              (for [[x y] (first (get trap :locations))
+              (for [[x y] (first (trap :locations))
                     :when (= (get (rw/get-cell game-state x y) :discovered) current-time)]
                     (zc/csx [:view {:style {:position :fixed
                                             :max-width 1 :max-height 1
@@ -563,7 +567,7 @@
     (zc/csx [:img {:width 80 :height 23 :style {:mix-blend-mode :multiply}}
                   (map-indexed (fn [y line]
                             (map-indexed (fn [x cell]
-                              (if (= (get cell :discovered 0) current-time)
+                              (if (= (or (cell :discovered) 0) current-time)
                                 (let [distance-from-player (rc/distance player-screen-pos (rc/xy->pos x y))]
                                   {:c \space :fg [0 0 0 0]
                                    :bg (render-lighting cell distance-from-player sight-distance lantern-on)})
@@ -633,9 +637,9 @@
 (zc/def-component RightPane
   [this]
   (let [{:keys [children]} (zc/props this)]
-    (zc/csx [:view {:style {:width 40
+    (zc/csx [:view {:style {:position :fixed
+                            :width 40
                             :height 20
-                            :position :fixed
                             :left 40
                             :top 0
                             :padding 1
@@ -758,20 +762,22 @@
          cursor-y :y} (get-in game-state [:world :cursor])
         [x y]         (rv/viewport-xy game-state)
         [w _]         (rv/viewport-wh game-state)
-        _             (log/info "cursor-x" cursor-x "w" w)
+        #_#__             (log/info "cursor-x" cursor-x "cursor-y" cursor-y)
         position      (if (< cursor-x (/ w 2))
                         :right
                         :left)
         description   (rdesc/describe-cell-at-xy game-state (+ x cursor-x) (+ y cursor-y))
-        text          (if (get-in game-state [:world :dev-mode])
-                         (str description "[" (+ x cursor-x) " " (+ y cursor-y) "]"
-                              (get-cell game-state (+ x cursor-x) (+ y cursor-y)))
-                         description)
         cursor-x      (if (= position :left)
-                        (dec (- cursor-x (count text)))
+                        (dec (- cursor-x (count description)))
                         (inc cursor-x))]
-  (zc/csx [:text {:style {:position :fixed :top cursor-y :left cursor-x
-                          :background-color (zcolor/with-alpha (rcolor/color->rgb :black) 246)}} [text]])))
+  (zc/csx [:view {:style {:position :fixed
+                          :top cursor-y
+                          :left cursor-x
+                          :max-height 2}} [
+            [:text {:style {:height 1 :background-color (zcolor/with-alpha (rcolor/color->rgb :black) 246)}} [description]]
+            (when (get-in game-state [:world :dev-mode])
+              (zc/csx [:text {:style {:background-color (zcolor/with-alpha (rcolor/color->rgb :black) 246)}} [
+                        (str (get-cell game-state (+ x cursor-x) (+ y cursor-y)))]]))]])))
 
 
 
@@ -1047,7 +1053,7 @@
       :quit?                (zc/csx [QuitPrompt {:game-state game-state}])
       :harvest              (zc/csx [Harvest {:game-state game-state}])
       :debug-eval           (zc/csx [DebugEval {:game-state game-state}])
-      (zc/csx [:view {} []]))
+      nil)
     ;; draw cursor
     #_(if-let [cursor-pos (-> state :world :cursor)]
       (move-cursor screen (cursor-pos :x) (cursor-pos :y))
@@ -1221,45 +1227,45 @@
                          :sight-distance sight-distance
                          :lantern-on lantern-on}]]]]]
           [:layer {:id :ui} [
-            (when-let [cursor-pos (-> game-state :world :cursor)]
-              (zc/csx [:view {} [
-                 [ruicommon/Cursor {:pos (rv/world-pos->screen-pos game-state cursor-pos)}]]]))
-            (when (contains? #{:select-ranged-target :select-throw-target} (current-state game-state))
-              (zc/csx [:view {} [
-                        (let [ranged-weapon-item  (first (filter (fn [item] (get item :wielded-ranged))
-                                                                 (rp/player-inventory game-state)))]
-                          (if (= :boomerang (get ranged-weapon-item :item/id))
-                            (let [target (target-pos game-state)
-                                  midpoint (rc/midpoint player-screen-pos target)
-                                  tangent (rc/tangent (rc/sub-pos target player-screen-pos))
-                                  mp1 (rc/sub-pos midpoint (rc/scale 0.5 tangent))
-                                  mp2 (rc/add-pos midpoint (rc/scale 0.5 tangent))
-                                  s1 (rc/sub-pos player-screen-pos (rc/scale 0.2 tangent))
-                                  s2 (rc/sub-pos player-screen-pos (rc/scale -0.2 tangent))]
-                            (zc/csx [Spline {:ch "\u25CF"
-                                           :color (rcolor/color->rgb :green 255)
-                                           :background-color [0 0 0 0]
-                                           :control-points (rfx-boomerang-item/boomerang-control-points
-                                                                player-screen-pos
-                                                                target)}]))
-                            (zc/csx [Line {:ch "\u25CF"
-                                           :color (rcolor/color->rgb :green 255)
-                                           :background-color [0 0 0 0]
-                                           :start-pos  player-screen-pos
-                                           :end-pos (target-pos game-state)}])))
-                        [HighlightNpcs {:visible-npcs visible-npcs
-                                        :vx vx
-                                        :vy vy
-                                        :start-pos  (rv/world-pos->screen-pos game-state player-pos)
-                                        :end-pos (target-pos game-state)
-                                        :font-type font-type}]]]))
-            (if-let [ui-hint (get-in game-state [:world :ui-hint])]
-              ;; ui-hint
-              (zc/csx [UIHint {:ui-hint ui-hint}])
-              ;; regular concise message log
-              (zc/csx [Message {:game-state game-state}]))
-            [Hud {:game-state game-state}]
-            [MapUI {:game-state game-state}]]]]]]])))
+            [:view {:style {:top 0 :left 0 :width 80 :height 24}} [
+              (when (contains? #{:select-ranged-target :select-throw-target} (current-state game-state))
+                (zc/csx [:view {} [
+                          (let [ranged-weapon-item  (first (filter (fn [item] (get item :wielded-ranged))
+                                                                   (rp/player-inventory game-state)))]
+                            (if (= :boomerang (get ranged-weapon-item :item/id))
+                              (let [target (target-pos game-state)
+                                    midpoint (rc/midpoint player-screen-pos target)
+                                    tangent (rc/tangent (rc/sub-pos target player-screen-pos))
+                                    mp1 (rc/sub-pos midpoint (rc/scale 0.5 tangent))
+                                    mp2 (rc/add-pos midpoint (rc/scale 0.5 tangent))
+                                    s1 (rc/sub-pos player-screen-pos (rc/scale 0.2 tangent))
+                                    s2 (rc/sub-pos player-screen-pos (rc/scale -0.2 tangent))]
+                              (zc/csx [Spline {:ch "\u25CF"
+                                             :color (rcolor/color->rgb :green 255)
+                                             :background-color [0 0 0 0]
+                                             :control-points (rfx-boomerang-item/boomerang-control-points
+                                                                  player-screen-pos
+                                                                  target)}]))
+                              (zc/csx [Line {:ch "\u25CF"
+                                             :color (rcolor/color->rgb :green 255)
+                                             :background-color [0 0 0 0]
+                                             :start-pos  player-screen-pos
+                                             :end-pos (target-pos game-state)}])))
+                          [HighlightNpcs {:visible-npcs visible-npcs
+                                          :vx vx
+                                          :vy vy
+                                          :start-pos  (rv/world-pos->screen-pos game-state player-pos)
+                                          :end-pos (target-pos game-state)
+                                          :font-type font-type}]]]))
+              (if-let [ui-hint (get-in game-state [:world :ui-hint])]
+                ;; ui-hint
+                (zc/csx [UIHint {:ui-hint ui-hint}])
+                ;; regular concise message log
+                (zc/csx [Message {:game-state game-state}]))
+              (when-let [cursor-pos (-> game-state :world :cursor)]
+                (zc/csx [ruicommon/Cursor {:pos cursor-pos}]))
+              [Hud {:game-state game-state}]
+              [MapUI {:game-state game-state}]]]]]]]]])))
 
 
 (defn cp437->unicode

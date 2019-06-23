@@ -240,7 +240,7 @@
     (log/info "monster-level" level)
     (log/info "sd" sd "r" r)
     (log/info "xys" (vec xys))
-    (log/info "weighted-xys" weighted-xys)
+    (log/info "weighted-xys" (vec weighted-xys))
     (if (seq weighted-xys)
       (loop [state           state
              num-npcs-to-add (rr/uniform-int 1 (min 3 (max 1 (/ (count weighted-xys) 10))))

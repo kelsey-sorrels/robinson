@@ -25,21 +25,21 @@
   (= #{:x :y} (-> pos keys set)))
 
 (defn add-pos [pos & poss]
-  {:x (reduce + (pos :x) (map :x poss))
-   :y (reduce + (pos :y) (map :y poss))})
+  {:x (reduce + (:x pos) (map :x poss))
+   :y (reduce + (:y pos) (map :y poss))})
 
 (defn sub-pos [pos & poss]
-  {:x (reduce - (pos :x) (map :x poss))
-   :y (reduce - (pos :y) (map :y poss))})
+  {:x (reduce - (:x pos) (map :x poss))
+   :y (reduce - (:y pos) (map :y poss))})
 
 (defn midpoint [pos & poss]
-  {:x (/ (reduce + (pos :x) (map :x poss)) (inc (count poss)))
-   :y (/ (reduce + (pos :y) (map :y poss)) (inc (count poss)))})
+  {:x (/ (reduce + (:x pos) (map :x poss)) (inc (count poss)))
+   :y (/ (reduce + (:y pos) (map :y poss)) (inc (count poss)))})
 
 (defn cross
   [u v]
-  {:x (- (* (u :y) (v :z)) (* (u :z) (v :y)))
-   :y (- (* (u :z) (v :x)) (* (u :x) (v :z)))})
+  {:x (- (* (:y u) (:z v)) (* (u :z) (v :y)))
+   :y (- (* (:z u) (:x v)) (* (u :x) (v :z)))})
 
 (defn tangent
   [pos]
@@ -62,8 +62,8 @@
 (defn chebyshev-distance
   "Chebyshev/chessboard distance between 2 points"
   [p1 p2]
-  (max (math/abs (long (- (get p1 :x) (get p2 :x))))
-       (math/abs (long (- (get p1 :y) (get p2 :y))))))
+  (max (math/abs (long (- (p1 :x) (p2 :x))))
+       (math/abs (long (- (p1 :y) (p2 :y))))))
 
 (defn distance-sq
   [p1 p2]

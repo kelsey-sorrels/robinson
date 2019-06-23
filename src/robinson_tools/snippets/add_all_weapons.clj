@@ -3,19 +3,33 @@
   '[robinson.itemgen :as ig]
   '[robinson.monstergen :as mg])
 
-(let [item-ids [:rope
-                :stick
-                :feather
-                :knife
-                :bamboo
-                :rock]
-      rat (mg/id->monster :rat)
-      rat-corpse (ig/gen-corpse rat)
-      rat-bones (ig/gen-bones rat-corpse)
-      rat-hide (ig/gen-hide rat-corpse)]
+(let [item-ids [:knife
+                :club
+                :throwing-hammer
+                :sling
+                :dagger
+                :throwing-axe
+                :boomerang
+                :spear
+                :throwing-spear
+                :bow
+                :blowgun
+                :garrote
+                :bolas
+                :whip
+                :rock
+                :rock
+                :rock
+                :rock
+                :arrow
+                :arrow
+                :arrow
+                :arrow
+                :arrow
+                :blowdart
+                :blowdart
+                :blowdart
+                :blowdart
+                :blowdart]]
   (rp/add-to-inventory *state*
-    (concat [rat-corpse
-             rat-bones
-             rat-hide]
-          (map ig/gen-item item-ids))))
-
+    (map ig/gen-item item-ids)))

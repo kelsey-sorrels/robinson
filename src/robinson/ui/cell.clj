@@ -26,9 +26,9 @@
 
 (def palette-noise (rnoise/create-noise))
 (defn cell-type->color
-  [wx wy cell-type]
-  (let [r (rnoise/noise3d palette-noise wx wy (mod (/ (System/currentTimeMillis) 4000) 10000))
-        palette (get cell-type-palette cell-type)
+  [wx wy t cell-type]
+  (let [r (rnoise/noise3d palette-noise wx wy t)
+        palette (cell-type-palette cell-type)
         start-idx (int (* r (count palette)))
         end-idx (mod (inc start-idx) (count palette))
         start (nth palette start-idx)
@@ -46,17 +46,15 @@
 
 (defn fill-put-string-color-style-defaults
   ([string]
-    (fill-put-string-color-style-defaults 0 0 string :white :black #{}))
-  ([wx wy string]
-    (fill-put-string-color-style-defaults wx wy string :white :black #{}))
-  ([wx wy string fg]
-    (fill-put-string-color-style-defaults wx wy string fg :black #{}))
-  ([wx wy string fg bg]
-    (fill-put-string-color-style-defaults wx wy string fg bg #{}))
-  ([wx wy string fg bg styles]
+    (fill-put-string-color-style-defaults 0 0 (System/currentTimeMillis) string :white :black))
+  ([wx wy t string]
+    (fill-put-string-color-style-defaults wx wy t string :white :black))
+  ([wx wy t string fg]
+    (fill-put-string-color-style-defaults wx wy t string fg :black))
+  ([wx wy t string fg bg]
    {:pre [(clojure.set/superset? #{:underline :bold} styles)]}
    (let [new-fg (rcolor/color->rgb (if (has-palette? fg)
-                                     (cell-type->color wx wy fg)
+                                     (cell-type->color wx wy t fg)
                                      fg))
          bg     (rcolor/color->rgb bg)]
      {:c string :fg new-fg :bg bg})))
@@ -173,13 +171,13 @@
   {:post [(char? %)]}
   (or (and (#{:freshwater-hole :saltwater-hole} type) (if (< water 10) \0 \~))
       (and (trap-type? type) (if trap-found \^ \.))
-      (get cell-type->cp437-character type \?)
+      (or (cell-type->cp437-character type) \?)
       \?))
 
 
 (defn cell->unicode-character
   [cell]
-  (case (get cell :type)
+  (case (:type cell)
      :mountain    \u2206 ;; ∆
      :fruit-tree  \u2648 ;; ♈
      :dune        \u1d16 ;; ᴖ
@@ -190,26 +188,26 @@
 
 (defn cell->color
   [cell current-time]
-  (case (get cell :type)
+  (case (:type cell)
      :open-door       :brown
      :close-door      :brown
      :corridor        :light-gray
-     :fire            (if (= (cell :discovered) current-time)
+     :fire            (if (= (:discovered cell) current-time)
                          :fire
                          :red)
-     :water           (if (= (cell :discovered) current-time)
+     :water           (if (= (:discovered cell) current-time)
                          :water
                          :blue)
-     :surf            (if (= (cell :discovered) current-time)
+     :surf            (if (= (:discovered cell) current-time)
                          :surf
                          :light-blue)
-     :shallow-water   (if (= (cell :discovered) current-time)
+     :shallow-water   (if (= (:discovered cell) current-time)
                          :shallow-water
                          :light-blue)
-     :swamp           (if (= (cell :discovered) current-time)
+     :swamp           (if (= (:discovered cell) current-time)
                          :swamp
                          :light-blue)
-     :lava            (if (= (cell :discovered) current-time)
+     :lava            (if (= (:discovered cell) current-time)
                          :lava
                          :light-blue)
      :mountain        :gray
@@ -319,43 +317,61 @@
      :snakes-trigger :white
      :white))
 
-(defn render-cell [cell wx wy current-time font-type]
-  {:post [(fn [c] (log/info c) (char? (get c :c)))
-          (integer? (get % :fg))
-          (integer? (get % :bg))]}
-  (let [cell-items (get cell :items)
-        in-view? (= current-time (get cell :discovered 0))
-        has-been-discovered? (> (get cell :discovered 0) 1)
+(def empty-cell
+  {:c \  :fg (zcolor/color 0 0 0 0) :bg (zcolor/color 0 0 0 0)})
+
+(defn render-cell [cell wx wy t current-time font-type]
+  {:post [(fn [c] (log/info c) (char? (:c c)))
+          (integer? (:fg %))
+          (integer? (:bg %))]}
+  (let [cell-items (:items cell)
+        in-view? (= current-time (or (:discovered cell) 0))
+        has-been-discovered? (> (or (:discovered cell) 0) 1)
         harvestable? (contains? cell :harvestable)
-        apply? (fn [pred f]
-                 (if pred
-                   f
-                   identity))]
+        render-path (if (and cell-items
+                             (seq cell-items)
+                             (= (:discovered cell) current-time))
+                      (cond
+                        (contains? #{:chest :artifact-chest} (:type cell))
+                            :chest
+                          (some (fn [item] (= (:item/id item) :raft)) cell-items)
+                            :raft
+                          :default
+                            :item)
+                        :default)]
     (if (or in-view? has-been-discovered?)
       (->
-        (apply fill-put-string-color-style-defaults
-          wx wy
+        (fill-put-string-color-style-defaults
+          wx wy t
+          ; char
+          (case render-path
+            :chest \■ 
+            :raft \░
+            :item (rutil/item->char (first cell-items))
+            :default ((case font-type
+                      :ttf   cell->unicode-character
+                      :cp437 cell->cp437-character) cell))
+          ; fg
           (rcolor/color-bloodied-char 
-            (< current-time (get cell :bloodied 0))
-            (if (and cell-items
-                     (seq cell-items)
-                     (= (cell :discovered) current-time))
-              (cond
-                (contains? #{:chest :artifact-chest} (get cell :type))
-                  [\■ :dark-beige :black]
-                (some (fn [item] (= (get item :id) :raft)) cell-items)
-                  [\░ :beige :brown]
-                :default
-                  [(rutil/item->char (first cell-items))
-                   (rutil/item->fg   (first cell-items))
-                   :black])
-              [((case font-type
-                  :ttf   cell->unicode-character
-                  :cp437 cell->cp437-character) cell)
-               (cell->color cell current-time) :black])))
-        ((apply? (not in-view?)
-           (fn [{:keys [c fg bg]}] {:c c :fg (rcolor/rgb->mono fg) :bg (rcolor/rgb->mono bg)})))
-        ((apply? (and in-view? harvestable?)
-           (fn [{:keys [c fg bg]}] {:c c :fg bg :bg fg}))))
-      {:c \  :fg (zcolor/color 0 0 0 0) :bg (zcolor/color 0 0 0 0)})))
+            (< current-time (or (:bloodied cell) 0))
+            (case render-path
+              :chest :dark-beige
+              :raft :beige
+              :item (rutil/item->fg   (first cell-items))
+              :default (cell->color cell current-time)))
+            ; bg
+            (case render-path
+              :chest :black
+              :raft :brown
+              :item :black
+              :default :black))
+        (cond-> (not in-view?)
+           (as-> c-fg-bg
+             (let [{:keys [c fg bg]} c-fg-bg]
+               {:c c :fg (rcolor/rgb->mono fg) :bg (rcolor/rgb->mono bg)})))
+        (cond-> (and in-view? harvestable?)
+           (as-> c-fg-bg
+             (let [{:keys [c fg bg]} c-fg-bg]
+               {:c c :fg bg :bg fg}))))
+      empty-cell)))
 

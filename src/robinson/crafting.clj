@@ -191,7 +191,8 @@
       :recipe/add [:blowgun]
       :recipe/add-recipe #{:blowdart}
       :recipe/requirements '[each-of
-                              tube-like]}
+                              [and tube-like
+                                high-weight]]}
       ; flexible
      {:recipe/id  :garrote
       :recipe/category :weapon

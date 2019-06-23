@@ -3075,7 +3075,8 @@
                 (fn [state npc]
                   ;; only update npcs that are in the current place and have an :energy value.
                   (if (and (contains? npc :energy)
-                           (not (rnpc/has-status? npc :stunned)))
+                           (not (rnpc/has-status? npc :stunned))
+                           (not (rnpc/has-status? npc :entangled)))
                     (let [npc-keys (rnpc/npc->keys state npc)
                           ;; add speed value to energy.
                           ;_ (trace "adding speed to" (select-keys npc [:race :place :pos :speed :energy]))

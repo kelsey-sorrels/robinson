@@ -48,7 +48,10 @@
                  [clatrix "0.5.0"]
                  [mogenslund/liquid "1.1.2"]
                  [aysylu/loom "1.0.2"]
-                 [incanter "1.9.3"]]
+                 [incanter "1.9.3"]
+                 ;dev
+                 [com.clojure-goes-fast/clj-async-profiler "0.4.0"]
+               ]
 
   :main robinson.autoreloadcore
   :manifest {"SplashScreen-Image" "icon.png"}
@@ -103,11 +106,16 @@
                        robinson.combat robinson.core robinson.describe robinson.endgame robinson.lineofsight robinson.main robinson.monstergen
                        robinson.player robinson.render robinson.swingterminal robinson.viewport robinson.worldgen]}
   :repl-options {:timeout 920000}
-  :global-vars {*warn-on-reflection* true}
+  :global-vars {*warn-on-reflection* true
+                *assert* false}
   :jlink-modules ["java.base" "java.desktop" "java.sql" "java.naming" "jdk.unsupported"]
   :launch4j-install-dir "/home/santos/bin/launch4j"
   :launch4j-config-file "dev-resources/config.xml"
   :jvm-opts [
+             "-Djdk.attach.allowAttachSelf"
+             "-Xverify:none"
+             "-XX:+UnlockDiagnosticVMOptions"
+             "-XX:+DebugNonSafepoints"
              "-XX:-OmitStackTraceInFastThrow"
              "-XX:MaxGCPauseMillis=20"
              "-Dhttps.protocols=TLSv1"

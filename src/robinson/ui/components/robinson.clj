@@ -118,7 +118,7 @@
   [this]
   (let [{:keys [children]} (zc/props this)]
     (zc/csx
-      [:view {:style {:position :fixed :top 0 :left 0 :hight 1}} children])))
+      [:view {:style {:position :absolute :top 0 :left 0 :hight 1}} children])))
 
 (zc/def-component Atmo
   [this]
@@ -128,6 +128,7 @@
         frame  (nth atmo-data t)
         indexed-colors (cons (repeat 7 [0 0 0]) (apply map vector (partition 3 frame)))]
     (zc/csx
+      ; TODO: Is this :view required?
       [:view {} [
         [zcui/ListImage {:data indexed-colors}]]])))
 
@@ -139,7 +140,10 @@
         infected-color (rcolor/color->rgb (if infected :yellow :black))
         gray-color (rcolor/color->rgb :gray)]
     (zc/csx
-      [:view {:style (merge {:width 7 :background-color gray-color} style)} [
+      [:view {:style (merge {:width 7
+                             :height 1
+                             :background-color gray-color}
+                            style)} [
         [:text {:style {:background-color gray-color}} [
           [:text {} [" "]]
           [:text {:style {:color wounded-color}} ["\u2665"]]
@@ -158,8 +162,11 @@
         diff (- width root padding)
         black-color (rcolor/color->rgb :black)]
           (zc/csx
-              [:view {:style (merge {:display :flex
-                                     :flex-direction (case direction :left :row :right :row-reverse)}
+              [:view {:style (merge {:height 1
+                                     :display :flex
+                                     :flex-direction (case direction
+                                                       :left :row
+                                                       :right :row-reverse)}
                                     style)} [
                 #_[:text {} [(format "%.2f %.2f" (float p1) (float p2))]]
                 [:text {:style {:color black-color
@@ -204,7 +211,7 @@
   [this]
   (let [{:keys [game-state]} (zc/props this)]
     (zc/csx
-      [:view {:style {:position :fixed
+      [:view {:style {:position :absolute
                       :top 21
                       :left 0
                       :width 80
@@ -365,20 +372,20 @@
     :white))
 
 (defn render-npc [npc current-time font-type]
-  (apply ruc/fill-put-string-color-style-defaults
+  (ruc/fill-put-string-color-style-defaults
     0 0 0
+    ((case font-type
+             :ttf npc->unicode-character
+             :cp437 npc->cp437-character) npc)
     (rcolor/color-bloodied-char 
       (< current-time (get npc :bloodied 0))
-      [((case font-type
-         :ttf npc->unicode-character
-         :cp437 npc->cp437-character) npc)
-       (npc->color npc)
-       :black])))
+       (npc->color npc))
+       :black))
 
 (zc/def-component CharactersInViewport
   [this]
   (let [{:keys [npcs player-pos player-bloodied player-on-raft? vx vy current-time font-type]} (zc/props this)]
-    (zc/csx [:view {:style {:position :fixed
+    (zc/csx [:view {:style {:position :absolute
                             :top 0
                             :left 0}}
                    (reduce (fn [children npc]
@@ -392,13 +399,13 @@
                                    ;t       (rw/get-time state)
                                    {:keys [c fg bg]} (render-npc npc current-time font-type)]
                                ;(log/debug "npc@" x y "visible?" visible)
-                               (conj children (zc/csx [:text {:style {:position :fixed
+                               (conj children (zc/csx [:text {:style {:position :absolute
                                                                       :top (- y vy)
                                                                       :left (- x vx)
                                                                       :color fg
                                                                       :background-color bg}} [(str c)]]))))
                            ; Always render player
-                           [(zc/csx [:text {:style {:position :fixed
+                           [(zc/csx [:text {:style {:position :absolute
                                                     :top (- (:y player-pos) vy)
                                                     :left (- (:x player-pos) vx)
                                                     :color (rcolor/color->rgb (if player-bloodied :dark-red :white))
@@ -416,14 +423,14 @@
         points (set (rest (rlos/line-segment-fast
                             [start-x start-y]
                             [end-x end-y])))]
-    (zc/csx [:view {}
+    (zc/csx [:view {:style {:position :absolute}}
                    (reduce (fn [children npc]
                              (let [sx        (- (-> npc :pos :x) vx)
                                    sy        (- (-> npc :pos :y) vy)
                                    targeted (contains? points [sx sy])
                                    {:keys [c fg bg]} (render-npc npc 0 font-type)]
                                (if targeted
-                                 (conj children (zc/csx [:text {:style {:position :fixed
+                                 (conj children (zc/csx [:text {:style {:position :absolute
                                                                         :top sy
                                                                         :left sx
                                                                         :color (rcolor/color->rgb :black)
@@ -444,7 +451,7 @@
     (zc/csx [:view {} 
               (for [[x y] (first (trap :locations))
                     :when (= (get (rw/get-cell game-state x y) :discovered) current-time)]
-                    (zc/csx [:view {:style {:position :fixed
+                    (zc/csx [:view {:style {:position :absolute
                                             :max-width 1 :max-height 1
                                             :left (- x vx) :top (- y vy)
                                             :color (rcolor/color->rgb :gray)}} [
@@ -461,7 +468,7 @@
                         r2 (rnoise/noise3d palette-noise x y (mod (/ (System/currentTimeMillis) 5001) 10000))
                         bg (rcolor/color->rgb (nth [:yellow :yellow :light-green :green :dark-green] (int (* r1 5))))
                         ch (nth ["\u2591" "\u2592" "\u2593"] (int (* r2 3)))]
-                    (zc/csx [:view {:style {:position :fixed
+                    (zc/csx [:view {:style {:position :absolute
                                             :max-width 1 :max-height 1
                                             :left (- x vx) :top (- y vy)
                                             :color (rcolor/color->rgb :black)
@@ -488,7 +495,9 @@
         {:keys [pos ch color background-color]} fx
         {:keys [x y]} pos]
     ;(log/info "rendering CharacterFX" ch y vy x vx)
-    (zc/csx [:text {:style {:position :fixed :top (- y vy) :left (- x vx)
+    (zc/csx [:text {:style {:position :absolute
+                            :top (- y vy) :left (- x vx)
+                            :width 1 :height 1
                             :color (or color (rcolor/color->rgb :white))
                             :background-color (or background-color (rcolor/color->rgb :black))}} [(str ch)]])))
 
@@ -500,7 +509,7 @@
     (zc/csx [:view {} (map (fn [{:keys [ch pos]}]
                            (let [[x y] (rc/pos->xy pos)]
                         (zc/csx
-                          [:text {:style {:position :fixed :top (- y vy) :left (- x vx)
+                          [:text {:style {:position :absolute :top (- y vy) :left (- x vx)
                                           :color (or color (rcolor/color->rgb :white))
                                           :background-color (or background-color (rcolor/color->rgb :black))}} [(str ch)]])))
                            ch-pos)])))
@@ -531,7 +540,7 @@
 (zc/def-component FX
   [this]
   (let [{:keys [fx vx vy]} (zc/props this)]
-    (zc/csx [:view {}
+    (zc/csx [:view {:style {:position :absolute :top 0 :left 0}}
       (map (fn [[effect-id effect]]
              (log/debug "rendering effect " effect)
              (case (get effect :type)
@@ -583,8 +592,9 @@
             ;(put-string screen :ui sx sy "\u25CF" :green :black))))
     (zc/csx [:view {}
       (map (fn [[x y]]
+               ;(log/info x y)
                (zc/csx [:view {} [
-                 [:text {:style {:position :fixed :top y :left x
+                 [:text {:style {:position :absolute :top y :left x
                                  :color (or color [0 255 0 255])
                                  :background-color (or background-color [0 0 0 0])}} [(or (str ch) "*")]]]]))
         (rlos/line-segment-fast-without-endpoints
@@ -597,7 +607,7 @@
     (zc/csx [:view {}
       (map (fn [[x y]]
                (zc/csx [:view {} [
-                 [:text {:style {:position :fixed :top y :left x
+                 [:text {:style {:position :absolute :top y :left x
                                  :color (or color [0 255 0 255])
                                  :background-color (or background-color [0 0 0 0])}} [(or (str ch) "*")]]]]))
         (rcr/catmull-rom-chain (map rc/pos->xy control-points)))])))
@@ -618,7 +628,7 @@
                                        cell-items)]
    (zc/csx [:view {:style {:width 40
                            :height 20
-                           :position :fixed
+                           :position :absolute
                            :left 40
                            :top 0
                            :padding 1
@@ -637,9 +647,9 @@
 (zc/def-component RightPane
   [this]
   (let [{:keys [children]} (zc/props this)]
-    (zc/csx [:view {:style {:position :fixed
+    (zc/csx [:view {:style {:position :absolute
                             :width 40
-                            :height 20
+                            :height 21
                             :left 40
                             :top 0
                             :padding 1
@@ -770,7 +780,7 @@
         cursor-x      (if (= position :left)
                         (dec (- cursor-x (count description)))
                         (inc cursor-x))]
-  (zc/csx [:view {:style {:position :fixed
+  (zc/csx [:view {:style {:position :absolute
                           :top cursor-y
                           :left cursor-x
                           :max-height 2}} [
@@ -869,7 +879,7 @@
 		[:group {:id :app} [
 		  [:layer {:id :ui} [
             [:view {:style {:width "100%" :height "100%" :background-color (rcolor/color->rgb :black)}} [
-              [:view {:style {:position :fixed
+              [:view {:style {:position :absolute
                               :top 4
                               :left 20}} [
                 [:text {:style {:width 40}} [(str start-text)]]
@@ -1053,11 +1063,7 @@
       :quit?                (zc/csx [QuitPrompt {:game-state game-state}])
       :harvest              (zc/csx [Harvest {:game-state game-state}])
       :debug-eval           (zc/csx [DebugEval {:game-state game-state}])
-      nil)
-    ;; draw cursor
-    #_(if-let [cursor-pos (-> state :world :cursor)]
-      (move-cursor screen (cursor-pos :x) (cursor-pos :y))
-      (move-cursor screen -1 -1))))
+      nil)))
 
 (zc/def-component Message
   [this]
@@ -1083,8 +1089,10 @@
         darken-factor    (inc  (* (/ -1 5) (- current-time (message :time))))
         log-color        (rcolor/darken-rgb (rcolor/color->rgb (get message :color)) darken-factor)]
     (zc/csx
-        [:view {} [
-          [:text {:style {:position :fixed :top 0 :left 0}} [
+        [:view {:style {:position :absolute
+                        :top 0 :left 0
+                        :height 1}} [
+          [:text {} [
             (if msg-above?
               (zc/csx [:text {} [
                         [ruicommon/Highlight {} ["/"]]
@@ -1118,7 +1126,8 @@
         (log/debug "target-pos" target-pos)
         (rv/world-pos->screen-pos game-state target-pos))
     :select-throw-target
-      (rv/get-cursor-pos game-state)))
+      (rv/get-cursor-pos game-state)
+    (rv/get-cursor-pos game-state)))
 
 (defn parse-ui-hint
   [s]
@@ -1127,7 +1136,7 @@
       (let [c (get s i)]
         (case c
           \<
-            (let [t (.substring s start i)]
+            (let [t (.substring (str s) start i)]
               (recur (conj r (case state
                                :text
                                  (zc/csx [:text {} [t]])
@@ -1135,7 +1144,7 @@
                                  (zc/csx [ruicommon/Highlight {} [t]])))
                      (inc i) (inc i) :tag))
           \>
-            (let [t (.substring s start i)]
+            (let [t (.substring (str s) start i)]
               (recur (conj r (case state
                                :text
                                  (zc/csx [:text {} [t]])
@@ -1143,17 +1152,18 @@
                                  (zc/csx [ruicommon/Highlight {} [t]])))
                      (inc i) (inc i) :text))
           (recur r (inc i) start state)))
-      (let [t (.substring s start i)]
+      (let [t (.substring (str s) start i)]
         (conj r (zc/csx [:text {} [t]]))))))
 
 (zc/def-component UIHint
   [this]
   (let [{:keys [ui-hint]} (zc/props this)]
-    (zc/csx [:view {:style {:display :flex
-                            :flex-direction :row}} (parse-ui-hint ui-hint) #_[
-      [:text {:style {:position :fixed :top 0 :left 0
-                        :background-color [0 0 0 0]}} [
-                  [:text {:style {:background-color [0 0 0]}} [ui-hint]]]]]])))
+    (zc/csx [:view {:style {:position :absolute
+                            :top 0 :left 0
+                            :height 1
+                            :display :flex
+                            :flex-direction :row
+                            :background-color [0 0 0 0]}} (parse-ui-hint ui-hint)])))
 
 (zc/def-component Map
   [this]
@@ -1199,7 +1209,7 @@
                    :style {:top 0 :left 0}} [
               [MapInViewport {:cells cells :current-time current-time :font-type font-type}]]]]]
 		  [:layer {:id :features} [
-            [:view {:style {:top 0 :left 0}} [
+            [:view {:style {:position :absolute :top 0 :left 0 :width 80 :height 24}} [
               [CharactersInViewport {:npcs visible-npcs
                                      :player-pos (rp/player-pos game-state)
                                      :player-bloodied (get player :bloodied)
@@ -1208,7 +1218,7 @@
                                      :vy vy
                                      :current-time current-time
                                      :font-type font-type}]]]
-            [:view {:style {:top 0 :left 0}} [
+            [:view {:style {:position :absolute :top 0 :left 0}} [
               [Traps {:game-state game-state
                       :player-pos (rp/player-pos game-state)
                       :player-bloodied (get player :bloodied)
@@ -1216,10 +1226,9 @@
                       :vy vy
                       :current-time current-time}]]]
             [FishingPole {:game-state game-state}]
-            [:view {:style {:top 0 :left 0}} [
-              [FX {:vx vx
-                   :vy vy
-                   :fx (rfx/fx game-state)}]]]]]
+            [FX {:vx vx
+                 :vy vy
+                 :fx (rfx/fx game-state)}]]]
           [:layer {:id :shading} [
             [:view {:style {:top 0 :left 0}} [
               [ShadeImg {:cells cells :current-time current-time
@@ -1229,40 +1238,34 @@
           [:layer {:id :ui} [
             [:view {:style {:top 0 :left 0 :width 80 :height 24}} [
               (when (contains? #{:select-ranged-target :select-throw-target} (current-state game-state))
-                (zc/csx [:view {} [
-                          (let [ranged-weapon-item  (first (filter (fn [item] (get item :wielded-ranged))
-                                                                   (rp/player-inventory game-state)))]
-                            (if (= :boomerang (get ranged-weapon-item :item/id))
-                              (let [target (target-pos game-state)
-                                    midpoint (rc/midpoint player-screen-pos target)
-                                    tangent (rc/tangent (rc/sub-pos target player-screen-pos))
-                                    mp1 (rc/sub-pos midpoint (rc/scale 0.5 tangent))
-                                    mp2 (rc/add-pos midpoint (rc/scale 0.5 tangent))
-                                    s1 (rc/sub-pos player-screen-pos (rc/scale 0.2 tangent))
-                                    s2 (rc/sub-pos player-screen-pos (rc/scale -0.2 tangent))]
-                              (zc/csx [Spline {:ch "\u25CF"
-                                             :color (rcolor/color->rgb :green 255)
-                                             :background-color [0 0 0 0]
-                                             :control-points (rfx-boomerang-item/boomerang-control-points
-                                                                  player-screen-pos
-                                                                  target)}]))
-                              (zc/csx [Line {:ch "\u25CF"
-                                             :color (rcolor/color->rgb :green 255)
-                                             :background-color [0 0 0 0]
-                                             :start-pos  player-screen-pos
-                                             :end-pos (target-pos game-state)}])))
-                          [HighlightNpcs {:visible-npcs visible-npcs
-                                          :vx vx
-                                          :vy vy
-                                          :start-pos  (rv/world-pos->screen-pos game-state player-pos)
-                                          :end-pos (target-pos game-state)
-                                          :font-type font-type}]]]))
+                (let [target (target-pos game-state)]
+                  (zc/csx [:view {:style {:position :absolute}} [
+                            (let [ranged-weapon-item  (first (filter (fn [item] (get item :wielded-ranged))
+                                                                     (rp/player-inventory game-state)))]
+                              (if (= :boomerang (get ranged-weapon-item :item/id))
+                                (zc/csx [Spline {:ch "\u25CF"
+                                               :color (rcolor/color->rgb :green 255)
+                                               :background-color [0 0 0 0]
+                                               :control-points (rfx-boomerang-item/boomerang-control-points
+                                                                    player-screen-pos
+                                                                    target)}])
+                                (zc/csx [Line {:ch "\u25CF"
+                                               :color (rcolor/color->rgb :green 255)
+                                               :background-color [0 0 0 0]
+                                               :start-pos  player-screen-pos
+                                               :end-pos target}])))
+                              [HighlightNpcs {:visible-npcs visible-npcs
+                                              :vx vx
+                                              :vy vy
+                                              :start-pos  (rv/world-pos->screen-pos game-state player-pos)
+                                              :end-pos target
+                                              :font-type font-type}]]])))
               (if-let [ui-hint (get-in game-state [:world :ui-hint])]
                 ;; ui-hint
                 (zc/csx [UIHint {:ui-hint ui-hint}])
                 ;; regular concise message log
                 (zc/csx [Message {:game-state game-state}]))
-              (when-let [cursor-pos (-> game-state :world :cursor)]
+              (when-let [cursor-pos (target-pos game-state)]
                 (zc/csx [ruicommon/Cursor {:pos cursor-pos}]))
               [Hud {:game-state game-state}]
               [MapUI {:game-state game-state}]]]]]]]]])))
@@ -1347,7 +1350,7 @@
         [:layer {:id :ui} [
               [:view {:style {:color [255 255 255 255]
                               :background-color [0 0 0 0]
-                              :position :fixed
+                              :position :absolute
                               :top 18
                               :left 30}} [
                 [:view {:style {:display :flex :flex-direction :row}} [
@@ -1364,7 +1367,7 @@
 	  [:terminal {} [
 		[:group {:id :app} [
 		  [:layer {:id :ui} [
-			[:view {:style {:position :fixed
+			[:view {:style {:position :absolute
 							:top 3
 							:left 35}} [
 			  [:text {} ["Configure"]]
@@ -1383,7 +1386,7 @@
 	  [:terminal {} [
 		[:group {:id :app} [
 		  [:layer {:id :ui} [
-			[:view {:style {:position :fixed
+			[:view {:style {:position :absolute
 							:top 3
 							:left 35}} [
 			  [:text {} ["Configure Font"]]
@@ -1417,11 +1420,11 @@
 	  [:terminal {} [
 		[:group {:id :app} [
 		  [:layer {:id :ui} [
-			[:view {:style {:position :fixed
+			[:view {:style {:position :absolute
 							:top 3
 							:left 35}} [
 			  [:text {} ["Create Font"]]]]
-			[:view {:style {:position :fixed
+			[:view {:style {:position :absolute
 							:top 4
 							:left 22}} [
               [:text {} [""]]
@@ -1445,7 +1448,7 @@
               (if create-font-error
 			    (zc/csx [:text {:style {:color (rcolor/color->rgb :red)}} [(str "Error: " create-font-error)]])
                 (zc/csx [:text {} [""]]))]]
-			[:view {:style {:position :fixed
+			[:view {:style {:position :absolute
 							:top 12
 							:left 30}} [
               [:view {:style {:border 1
@@ -1494,7 +1497,7 @@
             [:view {:style {:width "100%" :height "100%" :background-color (rcolor/color->rgb :black)}} [
               [:view {:style {:align-items :center
                               :justify-content :center
-                              :position :fixed
+                              :position :absolute
                               :top 2
                               :left 0}} [
                 [ruicommon/MultiSelect {:title "Choose up to three things to take with you:"
@@ -1552,7 +1555,7 @@
 		[:group {:id :app} [
 		  [:layer {:id :ui} [
             [:view {:style {:width "100%" :height "100%" :background-color (rcolor/color->rgb :black)}} [
-              [:view {:style {:position :fixed
+              [:view {:style {:position :absolute
                               :top 10
                               :left 36}} [
                 [:text {} ["Loading..."]]
@@ -1569,7 +1572,7 @@
 		[:group {:id :app} [
 		  [:layer {:id :ui} [
             [:view {:style {:width "100%" :height "100%" :background-color (rcolor/color->rgb :black)}} [
-              [:view {:style {:position :fixed
+              [:view {:style {:position :absolute
                               :top 10
                               :left 36}} [
                 [:text {} ["Connecting..."]]]]]]]]]]]])))
@@ -1582,7 +1585,7 @@
 		[:group {:id :app} [
 		  [:layer {:id :ui} [
             [:view {:style {:width "100%" :height "100%" :background-color (rcolor/color->rgb :black)}} [
-              [:view {:style {:position :fixed
+              [:view {:style {:position :absolute
                               :top 10
                               :left 36}} [
                 [:text {} ["Connection Failed."]]
@@ -1753,7 +1756,7 @@
                               :flex-direction :row}} [
                  ;; Title
                  [:text {} ["Top scores"]]
-                 [:view {:style {:position :fixed :top 3 :left 0}} [
+                 [:view {:style {:position :absolute :top 3 :left 0}} [
                    [ruicommon/ItemList {:items (map-indexed
                                        (fn [index score]
                                          (if score
@@ -1778,25 +1781,25 @@
                                 [:text {} ["/"]]
                                 [ruicommon/Highlight {} ["n"]]
                                 [:text {} ["] "]]]]]]]]
-                 [:view {:style {:position :fixed :top 0 :left 40}} [
+                 [:view {:style {:position :absolute :top 0 :left 40}} [
                    [:text {} ["Performance"]]
-                   [:view {:style {:position :fixed :top 3 :left 0}} [
+                   [:view {:style {:position :absolute :top 3 :left 0}} [
                      [Histogram {:title "Points"
                                  :value     (get game-state :points)
                                  :histogram (get game-state :point-data)}]]]
-                   [:view {:style {:position :fixed :top 3 :left 10}} [
+                   [:view {:style {:position :absolute :top 3 :left 10}} [
                      [Histogram {:title "Turns"
                                  :value     (rw/get-time game-state)
                                  :histogram (get game-state :time-data)}]]]
-                   [:view {:style {:position :fixed :top 11 :left 0}} [
+                   [:view {:style {:position :absolute :top 11 :left 0}} [
                      [Histogram {:title "Kills"
                                  :value     (reduce + 0 (map second (get-in game-state [:world :player :stats :num-animals-killed])))
                                  :histogram (get game-state :kills-data)}]]]
-                   [:view {:style {:position :fixed :top 11 :left 10}} [
+                   [:view {:style {:position :absolute :top 11 :left 10}} [
                      [Histogram {:title "Items Crafted"
                                  :value     (reduce + 0 (map second (get-in game-state [:world :player :stats :num-items-crafted])))
                                  :histogram (get game-state :crafted-data)}]]]
-                   [:view {:style {:position :fixed :top 19 :left 0}} [
+                   [:view {:style {:position :absolute :top 19 :left 0}} [
                      [:text {} [
                        [:text {} ["Your Performance "]]
                        [ruicommon/Highlight {} ["^"]]]]]]]]]]]]]]]]]])))

@@ -65,79 +65,84 @@
     (zc/csx
       [RequirementItem {:satisfied satisfied :slot slot :slot-item slot-item :slot-selected slot-selected :text "Tool:"}])))
 
-(zc/def-component Requirements-Tree
-  [this]
-  (let [{:keys [game-state requirements slot slot-item slot-selected]} (zc/props this)]
-    (if (coll? requirements)
-      (let [head-requirements (first requirements)
-            rest-requirements (rest requirements)]
-        (zc/csx
-          [:view {}
-            (case head-requirements
-              each-of
-                (let [satisfied (rcrafting/requirements-satisfied? game-state requirements)]
-                  (cons
-                    (zc/csx [Requirement-Each-Of {:satisfied satisfied
-                                                  :slots-filled (every? (partial rcrafting/slot->item game-state)
-                                                                        (range (count rest-requirements)))}])
-                    (map-indexed (fn [idx req]
-                      (let [selected-slot (get-in game-state [:world :selected-slot])
-                            slot-selected (= idx selected-slot)]
-                        (zc/csx [:view {:style {:left 1}} [
-                          [Requirements-Tree {:game-state game-state
-                                              :requirements req
-                                              :slot-item (rcrafting/slot->item game-state idx)
-                                              :slot idx
-                                              :slot-selected slot-selected}]]])))
-                      rest-requirements)))
-              tool
-                (let [satisfied (rcrafting/item-satisfies-requirement-clause? slot-item requirements)]
-                  (cons
-                    (zc/csx [Requirement-Tool {:satisfied satisfied
+
+;; Drop down to fn->component definition due to recursive nature of this component
+(def RequirementsTree (zc/fn->component
+  (fn RequirementsTreeFn
+    [this]
+    (let [{:keys [game-state requirements slot slot-item slot-selected]} (zc/props this)]
+      (if (coll? requirements)
+        (let [head-requirements (first requirements)
+              rest-requirements (rest requirements)]
+          (zc/csx
+            [:view {}
+              (case head-requirements
+                each-of
+                  (let [satisfied (rcrafting/requirements-satisfied? game-state requirements)]
+                    (cons
+                      (zc/csx [Requirement-Each-Of {:satisfied satisfied
+                                                    :slots-filled (every? (partial rcrafting/slot->item game-state)
+                                                                          (range (count rest-requirements)))}])
+                      (map-indexed
+                        (fn [idx req]
+                          (let [selected-slot (get-in game-state [:world :selected-slot])
+                                slot-selected (= idx selected-slot)]
+                            (zc/csx [:view {:style {:left 1}} [
+                              [RequirementsTree {:game-state game-state
+                                                 :requirements req
+                                                 :slot idx
+                                                 :slot-item (rcrafting/slot->item game-state idx)
+                                                 :slot-selected slot-selected}]]])))
+                        rest-requirements)))
+                tool
+                  (let [satisfied (rcrafting/item-satisfies-requirement-clause? slot-item requirements)]
+                    (cons
+                      (zc/csx [Requirement-Tool {:satisfied satisfied
+                                                 :slot slot
+                                                 :slot-item slot-item
+                                                 :slot-selected slot-selected}])
+                      (map (fn [req]
+                             (zc/csx [:view {:style {:left 1}} [
+                                 [RequirementsTree {:game-state game-state
+                                                     :requirements req
+                                                     :slot-item slot-item}]]]))
+                        rest-requirements)))
+                and
+                  (let [satisfied (rcrafting/item-satisfies-requirement-clause? slot-item requirements)]
+                    (cons
+                      (zc/csx [Requirement-And {:satisfied satisfied
+                                                :slot slot
+                                                :slot-item slot-item
+                                                :slot-selected slot-selected}])
+                      (map (fn [req]
+                             (zc/csx [:view {:style {:left 1}} [
+                                [RequirementsTree {:game-state game-state
+                                                    :requirements req
+                                                    :slot-item slot-item}]]]))
+                        rest-requirements)))
+                or
+                  (let [satisfied (rcrafting/item-satisfies-requirement-clause? slot-item requirements)]
+                    (cons
+                      (zc/csx [Requirement-Or {:satisfied satisfied
                                                :slot slot
                                                :slot-item slot-item
                                                :slot-selected slot-selected}])
-                    (map (fn [req]
-                           (zc/csx [:view {:style {:left 1}} [
-                               [Requirements-Tree {:game-state game-state
-                                                   :requirements req
-                                                   :slot-item slot-item}]]]))
-                      rest-requirements)))
-              and
-                (let [satisfied (rcrafting/item-satisfies-requirement-clause? slot-item requirements)]
-                  (cons
-                    (zc/csx [Requirement-And {:satisfied satisfied
-                                              :slot slot
-                                              :slot-item slot-item
-                                              :slot-selected slot-selected}])
-                    (map (fn [req]
-                           (zc/csx [:view {:style {:left 1}} [
-                               [Requirements-Tree {:game-state game-state
-                                                   :requirements req
-                                                   :slot-item slot-item}]]]))
-                      rest-requirements)))
-              or
-                (let [satisfied (rcrafting/item-satisfies-requirement-clause? slot-item requirements)]
-                  (cons
-                    (zc/csx [Requirement-Or {:satisfied satisfied
-                                              :slot slot
-                                              :slot-item slot-item
-                                              :slot-selected slot-selected}])
-                    (map (fn [req]
-                           (zc/csx [:view {:style {:left 1}} [
-                               [Requirements-Tree {:game-state game-state
-                                                   :requirements req
-                                                   :slot-item slot-item}]]]))
-                      rest-requirements))))]))
-      (let [satisfied (when slot-item
-                        (rcrafting/item-satisfies-requirement-clause? slot-item requirements))]
-        (zc/csx
-          [RequirementItem {:satisfied satisfied
-                            :slot slot
-                            :slot-item slot-item
-                            :slot-selected slot-selected
-                            :text (str requirements)
-                            :style {:left 1}}])))))
+                      (map (fn [req]
+                             (zc/csx [:view {:style {:left 1}} [
+                                 [RequirementsTree {:game-state game-state
+                                                    :requirements req
+                                                    :slot-item slot-item}]]]))
+                        rest-requirements))))]))
+        (let [satisfied (when slot-item
+                          (rcrafting/item-satisfies-requirement-clause? slot-item requirements))]
+          (zc/csx
+            [RequirementItem {:satisfied satisfied
+                              :slot slot
+                              :slot-item slot-item
+                              :slot-selected slot-selected
+                              :text (str requirements)
+                              :style {:left 1}}])))))
+    "RequirementsTree"))
 
 (zc/def-component Requirements
   [this]
@@ -145,7 +150,7 @@
     (zc/csx
       [:view {:style {:margin-left 5 :margin-right 5}} [
         [:text {} ["Requirements"]]
-        [Requirements-Tree {:game-state game-state :requirements requirements}] ]])))
+        [RequirementsTree {:game-state game-state :requirements requirements}] ]])))
 
 (zc/def-component Craft
   [this]

@@ -72,7 +72,11 @@
   (let [{:keys [pos]} (zc/props this)
         pos-style (if pos
                     (let [[x y] (rc/pos->xy pos)]
-                      {:position :fixed :top y :left x})
+                      {:position :absolute
+                       :top y
+                       :left x
+                       :width 1
+                       :height 1})
                     {})]
     (if (< (mod (/ (System/currentTimeMillis) 300) 2) 1)
       (let [color (rcolor/color->rgb :highlight 255)

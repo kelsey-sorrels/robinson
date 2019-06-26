@@ -416,6 +416,7 @@
 
 (defn assoc-cursor-pos
   [state pos]
+  (log/info "Moving cursor to" pos)
   (assoc-in state [:world :cursor] pos))
 
 (defn get-cursor-pos

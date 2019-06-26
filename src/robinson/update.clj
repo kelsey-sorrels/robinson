@@ -1687,7 +1687,7 @@
         viewport-xy  (rv/viewport-xy state)
         cursor-pos   (apply rc/xy->pos (rv/-xy player-xy viewport-xy))]
       ; cursor pos = player pos in screen coordinates
-      (assoc-in state [:world :cursor] cursor-pos)))
+      (rv/assoc-cursor-pos state cursor-pos)))
 
 (defn find-trap
   [state x y]
@@ -1883,7 +1883,7 @@
         [player-x
          player-y]    (rv/world-xy->screen-xy state (rp/player-xy state))
         {cursor-x :x
-         cursor-y :y} (get-in state [:world :cursor])
+         cursor-y :y} (rv/get-cursor-pos state)
         target-x      (+ cursor-x (case direction
                                     :left -1
                                     :right 1
@@ -2236,10 +2236,12 @@
 (defn throw-selected-inventory
   [state]
   {:pre  [(rv/get-cursor-pos state)]}
-  (let [item           (get-throw-item state)
+  (let [item           (-> state
+                         get-throw-item
+                         (assoc :attacker (rp/get-player state)))
         [target-x
          target-y]     (rv/get-cursor-world-xy state)
-        path           (rlos/line-segment (rp/player-xy state) [target-x target-y])]
+        path           (rest (rlos/line-segment (rp/player-xy state) [target-x target-y]))]
     (-> state
       (free-cursor)
       ; remove the item from inventory

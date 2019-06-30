@@ -59,6 +59,13 @@
     (zc/csx
       [RequirementItem {:satisfied satisfied :slot slot :slot-item slot-item :slot-selected slot-selected :text "Or:"}])))
 
+(zc/def-component Requirement-Repeat
+  [this]
+  (let [{:keys [requirements satisfied slot slot-item slot-selected n]} (zc/props this)]
+    (zc/csx
+      [RequirementItem {:satisfied satisfied :slot slot :slot-item slot-item :slot-selected slot-selected
+                        :text (str "Repeat " n ":")}])))
+
 (zc/def-component Requirement-Tool
   [this]
   (let [{:keys [requirements satisfied slot slot-item slot-selected]} (zc/props this)]
@@ -132,7 +139,21 @@
                                  [RequirementsTree {:game-state game-state
                                                     :requirements req
                                                     :slot-item slot-item}]]]))
-                        rest-requirements))))]))
+                        rest-requirements)))
+                count
+                  (let [satisfied (rcrafting/item-satisfies-requirement-clause? slot-item requirements)]
+                    (cons
+                      (zc/csx [Requirement-Repeat {:satisfied satisfied
+                                                   :slot slot
+                                                   :slot-item slot-item
+                                                   :slot-selected slot-selected
+                                                   :n (first rest-requirements)}])
+                      (map (fn [req]
+                             (zc/csx [:view {:style {:left 1}} [
+                                 [RequirementsTree {:game-state game-state
+                                                    :requirements req
+                                                    :slot-item slot-item}]]]))
+                        (rest rest-requirements)))))]))
         (let [satisfied (when slot-item
                           (rcrafting/item-satisfies-requirement-clause? slot-item requirements))]
           (zc/csx

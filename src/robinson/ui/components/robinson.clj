@@ -1091,7 +1091,7 @@
     (zc/csx
         [:view {:style {:position :absolute
                         :top 0 :left 0
-                        :height 1}} [
+                        :height 1 :width 80}} [
           [:text {} [
             (if msg-above?
               (zc/csx [:text {} [

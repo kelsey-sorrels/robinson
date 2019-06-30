@@ -1063,7 +1063,7 @@
       :quit?                (zc/csx [QuitPrompt {:game-state game-state}])
       :harvest              (zc/csx [Harvest {:game-state game-state}])
       :debug-eval           (zc/csx [DebugEval {:game-state game-state}])
-      nil)))
+      (zc/csx [:view nil []]))))
 
 (zc/def-component Message
   [this]
@@ -1206,7 +1206,7 @@
                                   (rc/find-point-relation-ext
                                     [player-screen-x player-screen-y]
                                     [client-x client-y]))))
-                   :style {:top 0 :left 0}} [
+                   :style {:top 0 :left 0 :width 80 :height 24}} [
               [MapInViewport {:cells cells :current-time current-time :font-type font-type}]]]]]
 		  [:layer {:id :features} [
             [:view {:style {:position :absolute :top 0 :left 0 :width 80 :height 24}} [
@@ -1348,17 +1348,18 @@
         [:layer {:id :map} [
           [zcui/Image {:src (rfs/cwd-path "images/robinson-mainmenu.jpg")}]]]
         [:layer {:id :ui} [
-              [:view {:style {:color [255 255 255 255]
-                              :background-color [0 0 0 0]
-                              :position :absolute
-                              :top 18
-                              :left 30}} [
-                [:view {:style {:display :flex :flex-direction :row}} [
-                  [:text {} ["Press "]]
-                  [ruicommon/HotkeyLabel {:hotkey :space :sep " " :label "to play"}]]]
-                [:text {} [""]]
-                [ruicommon/HotkeyLabel {:hotkey \c :label "configure"}]
-                [ruicommon/HotkeyLabel {:hotkey \q :label "quit"}]]]]]]]]]))
+          [:view {:style {:position :absolute
+                          :width 80
+                          :height 24
+                          :top 18
+                          :left 30}} [
+            [:view {:style {:display :flex
+                            :flex-direction :row}} [
+              [:text {} ["Press "]]
+              [ruicommon/HotkeyLabel {:hotkey :space :sep " " :label "to play"}]]]
+            [:text {} [""]]
+            [ruicommon/HotkeyLabel {:hotkey \c :label "configure"}]
+            [ruicommon/HotkeyLabel {:hotkey \q :label "quit"}]]]]]]]]]))
 
 (zc/def-component Configure
   [this]
@@ -1494,17 +1495,18 @@
 	  [:terminal {} [
 		[:group {:id :app} [
 		  [:layer {:id :ui} [
-            [:view {:style {:width "100%" :height "100%" :background-color (rcolor/color->rgb :black)}} [
-              [:view {:style {:align-items :center
-                              :justify-content :center
-                              :position :absolute
-                              :top 2
-                              :left 0}} [
-                [ruicommon/MultiSelect {:title "Choose up to three things to take with you:"
-                                 :selected-hotkeys selected-hotkeys
-                                 :use-applicable true
-                                 :items start-inventory}]
-                [ruicommon/HotkeyLabel {:hotkey :enter :label "continue"}]]]]]]]]]]])))
+            [:view {:style {:align-items :center
+                            :justify-content :center
+                            :position :absolute
+                            :width 80
+                            :height 24
+                            :top 2
+                            :left 0}} [
+              [ruicommon/MultiSelect {:title "Choose up to three things to take with you:"
+                               :selected-hotkeys selected-hotkeys
+                               :use-applicable true
+                               :items start-inventory}]
+              [ruicommon/HotkeyLabel {:hotkey :enter :label "continue"}]]]]]]]]])))
 
 (def loading-index (atom 0))
 (def loading-tidbits
@@ -1557,7 +1559,9 @@
             [:view {:style {:width "100%" :height "100%" :background-color (rcolor/color->rgb :black)}} [
               [:view {:style {:position :absolute
                               :top 10
-                              :left 36}} [
+                              :left 36
+                              :width 80
+                              :height 24}} [
                 [:text {} ["Loading..."]]
                 [:text {} [""]]
                 [:text {:style {:left -6}} [(format "Generating %s..." (nth loading-tidbits @tidbit-index))]]

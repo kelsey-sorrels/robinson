@@ -139,9 +139,9 @@
 
 (defmethod rfx/conj-effect :airborn-item [state fx-type & [item persist-item xy-path ttl & [ch-cycle]]]
   (let [fx-id (rfx/fx-id)
-        ch-cycle (or (cycle ch-cycle) (repeat \-))
+        ch-cycle (if ch-cycle (cycle ch-cycle) (repeat \*))
         actor (->AirbornItemActor item persist-item xy-path ch-cycle ttl (rfx/fx-ks fx-id))]
-    (log/debug "created AirbornItemActor " item (vec xy-path) ch-cycle ttl (rfx/fx-ks fx-id))
+    (log/debug "created AirbornItemActor " item (vec xy-path) (take 10 ch-cycle) ttl (rfx/fx-ks fx-id))
     (-> state
       ; create a character fx
       (rfx/conj-fx (rfx/character-fx (first ch-cycle) (apply rc/xy->pos (first xy-path))) fx-id)

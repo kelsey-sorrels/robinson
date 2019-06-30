@@ -227,6 +227,8 @@
         :attack :blunt
         :properties #{:stick-like}}
        {:item/id  :rock                    :name  "rock"                       :name-plural "rocks"
+        :weight 0.5
+        :roundness 0.8
         :attack :blunt
         :ranged-attack :airborn-item
         :ammunition-id :rock}

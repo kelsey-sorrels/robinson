@@ -61,7 +61,7 @@
   (contains? (get item :properties) :planar))
 
 (defn pointed [item]
-  (< (get item :roundness 1) 1))
+  (< (get item :roundness 1) 0.2))
 
 (defn sharp [item]
   (< 1 (get item :sharpness)))
@@ -70,7 +70,7 @@
   (contains? (get item :properties) :edged))
 
 (defn round [item]
-  (< (get item :roundness 1) 1))
+  (< 0.5 (get item :roundness 1)))
 
 (defn wooden [item]
   (contains? (get item :item/materials) :wood))
@@ -483,6 +483,11 @@
       (every? (partial item-satisfies-requirement-clause? item) (rest clause))
     (= (first clause) 'or)
       (some (partial item-satisfies-requirement-clause? item) (rest clause))
+    (= (first clause) 'count)
+      (let [[n sub-clause] (rest clause)]
+        (and
+          (<= n (get item :count 1))
+          (item-satisfies-requirement-clause? item sub-clause)))
     (contains? #{'tool} (first clause))
       (item-satisfies-requirement-clause? item (second clause))
     (= (first clause) not)

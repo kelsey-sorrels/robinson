@@ -52,7 +52,6 @@
   ([wx wy t string fg]
     (fill-put-string-color-style-defaults wx wy t string fg :black))
   ([wx wy t string fg bg]
-   {:pre [(clojure.set/superset? #{:underline :bold} styles)]}
    (let [new-fg (rcolor/color->rgb (if (has-palette? fg)
                                      (cell-type->color wx wy t fg)
                                      fg))

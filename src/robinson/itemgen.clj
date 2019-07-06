@@ -220,6 +220,8 @@
        {:item/id  :feather                 :name  "feather"                    :name-plural "feathers"}
        {:item/id  :bamboo                  :name  "bamboo"                     :name-plural "bamboo"
         :fuel 100 :properties #{:stick-like :tube-like}}
+       {:item/id  :leather                 :name  "leather"                    :name-plural "leather"
+        :properties #{:planar :flexible}}
        {:item/id  :raft                    :name  "raft"                       :name-plural "rafts"}
        ; weapons
        ; blunt

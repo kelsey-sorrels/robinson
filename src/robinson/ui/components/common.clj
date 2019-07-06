@@ -29,6 +29,12 @@
   (cond
     (= hotkey :escape)
       "Esc"
+    (= hotkey :enter)
+      "enter"
+    (= hotkey :space)
+      "space"
+    (= hotkey \space)
+      "space"
     (keyword? hotkey)
       (name hotkey)
     :default

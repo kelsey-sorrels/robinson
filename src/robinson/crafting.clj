@@ -64,7 +64,7 @@
   (< (get item :roundness 1) 0.2))
 
 (defn sharp [item]
-  (< 1 (get item :sharpness)))
+  (< 1 (get item :sharpness 0)))
 
 (defn edged [item]
   (contains? (get item :properties) :edged))
@@ -91,13 +91,48 @@
   round "round"
 })
 
-(def recipes [
+(defn add-flags
+  "Takes recipe example items and runs them through item flags associating the result to :recipe/example-item-flags"
+  [recipe]
+  (let [flag-fns (into {} (map (fn [fn-sym] [(keyword fn-sym) (ns-resolve 'robinson.crafting fn-sym)])
+                               ['low-weight
+                                'medium-weight
+                                'high-weight
+                                'stick-like
+                                'rock
+                                'feather
+                                'flexible
+                                'tensile
+                                'planar
+                                'pointed
+                                'sharp
+                                'edged
+                                'round
+                                'wooden
+                                'tube-like]))]
+  (assoc recipe
+    :recipe/example-item-flags
+    (->> recipe
+      :recipe/example-item-requirements
+      (map (fn [example-item-id]
+             (reduce-kv (fn [s k v]
+                          (log/info (:recipe/id recipe) example-item-id s k v (ig/id->item example-item-id))
+                          (if (v (ig/id->item example-item-id))
+                            (conj s k)
+                            s))
+                        #{}
+                        flag-fns)))
+      (apply clojure.set/union)))))
+
+(def recipes
+  (mapv add-flags [
   ;; weapons
      ; blunt
      {:recipe/id  :club
       :recipe/category :weapon
       :recipe/types #{:blunt :melee}
       :recipe/example-item-requirements #{:stick :branch}
+      :recipe/components #{:handle :head}
       :recipe/add [:club]
       :recipe/requirements '[each-of
                               [and
@@ -107,6 +142,7 @@
       :recipe/category :weapon
       :recipe/types #{:blunt :thrown}
       :recipe/example-item-requirements #{:stick :branch :rock}
+      :recipe/components #{:handle :head}
       :recipe/add [:throwing-hammer]
       :recipe/requirements '[each-of
                               stick-like
@@ -118,6 +154,7 @@
       :recipe/category :weapon
       :recipe/types #{:blunt :ranged}
       :recipe/example-item-requirements #{:rock :leather}
+      :recipe/components #{:cord :pocket}
       :recipe/add [:sling]
       :recipe/requirements '[each-of
                               flexible
@@ -129,6 +166,7 @@
       :recipe/category :weapon
       :recipe/types #{:edged :melee}
       :recipe/example-item-requirements #{:rock :stick :branch :plant-fiber :leather}
+      :recipe/components #{:handle :blade :binder}
       :recipe/add [:dagger]
       :recipe/requirements '[each-of
                               edged
@@ -138,6 +176,7 @@
       :recipe/category :weapon
       :recipe/types #{:edged :thrown}
       :recipe/example-item-requirements #{:rock :stick :branch :plant-fiber :leather}
+      :recipe/components #{:handle :blade :binder}
       :recipe/add [:throwing-axe]
       :recipe/requirements '[each-of
                               edged
@@ -148,6 +187,7 @@
       :recipe/category :weapon
       :recipe/types #{:edged :ranged}
       :recipe/example-item-requirements #{:stick :branch}
+      :recipe/components #{:blade}
       :recipe/add [:boomerang]
       :recipe/requirements '[each-of
                               [and
@@ -160,6 +200,7 @@
       :recipe/category :weapon
       :recipe/types #{:piercing :melee}
       :recipe/example-item-requirements #{:rock :stick :branch :plant-fiber :leather}
+      :recipe/components #{:shaft :point}
       :recipe/add [:spear]
       :recipe/requirements '[each-of
                               pointed
@@ -169,6 +210,7 @@
       :recipe/category :weapon
       :recipe/types #{:piercing :thrown}
       :recipe/example-item-requirements #{:rock :stick :branch :plant-fiber :leather}
+      :recipe/components #{:shaft :point}
       :recipe/add [:throwing-spear]
       :recipe/requirements '[each-of
                               sharp
@@ -178,6 +220,7 @@
       :recipe/category :weapon
       :recipe/types #{:piercing :ranged}
       :recipe/example-item-requirements #{:rock :stick :branch :plant-fiber :leather :feather}
+      :recipe/components #{:string :length}
       :recipe/add [:bow]
       :recipe/add-recipe #{:arrow}
       :recipe/requirements '[each-of
@@ -188,6 +231,7 @@
       :recipe/category :weapon
       :recipe/types #{:piercing :ranged}
       :recipe/example-item-requirements #{:bamboo :stick}
+      :recipe/components #{:tube}
       :recipe/add [:blowgun]
       :recipe/add-recipe #{:blowdart}
       :recipe/requirements '[each-of
@@ -198,6 +242,7 @@
       :recipe/category :weapon
       :recipe/types #{:flexible :melee}
       :recipe/example-item-requirements #{:plant-fiber :stick}
+      :recipe/components #{:string :grip}
       :recipe/add [:garrote]
       :recipe/requirements '[each-of
                               flexible
@@ -206,6 +251,7 @@
       :recipe/category :weapon
       :recipe/types #{:flexible :thrown}
       :recipe/example-item-requirements #{:plant-fiber :stick :rope :rock}
+      :recipe/components #{:string :ball}
       :recipe/add [:bolas]
       :recipe/requirements '[each-of
                               flexible
@@ -215,6 +261,7 @@
       :recipe/category :weapon
       :recipe/types #{:flexible :ranged}
       :recipe/example-item-requirements #{:plant-fiber :rope}
+      :recipe/components #{:handle :thong}
       :recipe/add [:whip]
       :recipe/requirements '[each-of
                               flexible]}
@@ -294,7 +341,7 @@
       :recipe/example-item-requirements #{:stick :branch :log :rope}
       :recipe/add [:log-raft]
       :recipe/requirements '[each-of
-                              flexible]}])
+                              flexible]}]))
 
 (comment :weapons  [
      {:name "bow"                    :hotkey \g :hunger 10 :thirst 20 :recipe {:exhaust [:stick :rope] :add [:bow]}}

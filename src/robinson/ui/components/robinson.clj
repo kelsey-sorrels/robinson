@@ -576,7 +576,7 @@
     (zc/csx [:img {:width 80 :height 23 :style {:mix-blend-mode :multiply}}
                   (map-indexed (fn [y line]
                             (map-indexed (fn [x cell]
-                              (if (= (or (cell :discovered) 0) current-time)
+                              (if (= (or (if cell (:discovered cell) false) 0) current-time)
                                 (let [distance-from-player (rc/distance player-screen-pos (rc/xy->pos x y))]
                                   {:c \space :fg [0 0 0 0]
                                    :bg (render-lighting cell distance-from-player sight-distance lantern-on)})
@@ -670,20 +670,19 @@
         height (if (seq abilities)
                  (+ 3 (* 3 (count abilities)))
                  4)]
-    (zc/csx [RightPane [
-            (if (seq abilities)
-              (zc/csx [zcui/Popup {} [
-                        [:view {} [
-                          [ruicommon/MultiSelect {:title "Abilities"
-                                        :items abilities}]]]]])
-              (zc/csx [zcui/Popup {} [
+    (if (seq abilities)
+      (zc/csx [zcui/Popup {} [
                 [:view {} [
-                  [:text {} ["No abilities."]]
-                  [:text {} [""]]
-                  [:text {} [
-                    [:text {} ["Press "]]
-                    [ruicommon/Highlight {} ["Esc "]]
-                    [:text {} ["to exit."]]]]]]]]))]])))
+                  [ruicommon/MultiSelect {:title "Abilities"
+                                :items abilities}]]]]])
+      (zc/csx [zcui/Popup {} [
+        [:view {} [
+          [:text {} ["No abilities."]]
+          [:text {} [""]]
+          [:view {:style {:display :flex :flex-direction :row}} [
+            [:text {} ["Press "]]
+            [ruicommon/Highlight {} ["Esc "]]
+            [:text {} ["to exit."]]]]]]]]))))
 
 ; Render the player character stats  menu if the world state is `:player-stats`.
 (zc/def-component PlayerStats
@@ -1291,32 +1290,43 @@
         max-count (reduce (fn [m data](max m (get data "count"))) 0 (get histogram "data"))
         height 6]
     (zc/csx
-      [:view {} [
-        [:text {:style {:left 1}} [title]]
+      [:view {:style {:width 15 :height 10}} [
+        [:view {} [[:text {} [title]]]]
         ; histogram
         [:view {:style {:width 8 :height height :top 1 :left 1
                         :border-left 1 :border-bottom 1
                         :position :absolute
-                        :display :flex :align-items :flex-end}} 
-               (for [[index data] (map-indexed vector (sort-by #(get % "group") (get histogram "data")))
-                     :when (get data "group")
-                     :let [group (get data "group")
-                           count (get data "count")
-                           x (+ 1 (/ group group-size))
-                           bar-height (max 1 (* (- height 2) (/ count max-count)))
-                           bg (rcolor/color->rgb
-                                (if (< group (inc value) (+ group group-size 1))
-                                  :highlight
-                                  :dark-gray))]]
-                 ; histogram bar
-                 (zc/csx [:view {:style {:width 1 :height bar-height
-                                         :position :absolute
-                                         :left index
-                                         :bottom 0
-                                         :background-color bg}} []]))]
+                        :display :flex
+                        :flex-direction :row
+                        :align-items :flex-end}} 
+               (mapcat identity
+                 (for [[index data] (map-indexed vector (sort-by #(get % "group") (get histogram "data")))
+                       :when (get data "group")
+                       :let [group (get data "group")
+                             count (get data "count")
+                             x (+ 1 (/ group group-size))
+                             height (double (* (- height 2) (/ count max-count)))
+                             bar-height (Math/ceil height)
+                             bg (rcolor/color->rgb
+                                  (if (< group (inc value) (+ group group-size 1))
+                                    :highlight
+                                    :dark-gray))]] [
+                   ; histogram bar
+                   (zc/csx [:view {:style {:display :flex
+                                           :flex-direction :column
+                                           :width 1
+                                           #_#_:height height}} [
+                     [:view {:style {:width 1 :height 1
+                                     :color (if (= (double (Math/round height)) bar-height) (rcolor/color->rgb :black) bg)
+                                     :background-color (rcolor/color->rgb :black)}} [
+                       [:text {} ["\u2584"]]]]
+                     [:view {:style {:width 1 :height (dec bar-height)
+                                           :background-color bg}} []]]])]))]
         ; caret
-        [:text {:style {:top (dec height) :left (inc caret-x)
-                        :color (rcolor/color->rgb :highlight)}} ["^"]]]])))
+        [:view {:style {:position :absolute
+                        :width 1 :height 1
+                        :top height :left (inc caret-x)
+                        :color (rcolor/color->rgb :highlight)}} [[:text {} ["^"]]]]]])))
 
 (defn rockpick->render-map
   [layers]
@@ -1477,13 +1487,15 @@
             [:view {:style {:width 80 :height 24 :background-color (rcolor/color->rgb :black)}} [
               [:view {:style {:top 10
                               :left 25
-                              :width 50
-                              :display :flex
-                              :flex-direction :row}} [
-                [:view {:style {:width 5}} [[:text {} ["Name:"]]]]
+                              :width 50}} [
+                [:view {:style {:display :flex
+                                :flex-direction :row}} [
+                  [:view {:style {:width 5}} [[:text {} ["Name:"]]]]
                   [zcui/Input {:value player-name
                                :focused true
-                               :style {:width 30 :cursor-fg (rcolor/color->rgb :highlight)}}]]]]]]]]]]])))
+                               :style {:width 30 :cursor-fg (rcolor/color->rgb :highlight)}}]]]
+                [:view {:style {:height 1}}]
+                [ruicommon/HotkeyLabel {:hotkey :enter :label " continue"}]]]]]]]]]]])))
 
 (zc/def-component StartInventory
   [this]
@@ -1629,7 +1641,7 @@
                 [:text {} [(format "Points: %s." points)]]
                 [:text {} [(format "Survived for %d %s. (%d turns)"
                                      days-survived
-                                     (if (> 1 days-survived) "days" "day")
+                                     (if (< 1 days-survived) "days" "day")
                                      turns-survived)]]
                 [:text {} [(format "Died from %s" cause-of-death)]]
                 [:text {} [""]]
@@ -1791,7 +1803,7 @@
                      [Histogram {:title "Points"
                                  :value     (get game-state :points)
                                  :histogram (get game-state :point-data)}]]]
-                   [:view {:style {:position :absolute :top 3 :left 10}} [
+                   [:view {:style {:position :absolute :top 3 :left 15}} [
                      [Histogram {:title "Turns"
                                  :value     (rw/get-time game-state)
                                  :histogram (get game-state :time-data)}]]]
@@ -1799,7 +1811,7 @@
                      [Histogram {:title "Kills"
                                  :value     (reduce + 0 (map second (get-in game-state [:world :player :stats :num-animals-killed])))
                                  :histogram (get game-state :kills-data)}]]]
-                   [:view {:style {:position :absolute :top 11 :left 10}} [
+                   [:view {:style {:position :absolute :top 11 :left 15}} [
                      [Histogram {:title "Items Crafted"
                                  :value     (reduce + 0 (map second (get-in game-state [:world :player :stats :num-items-crafted])))
                                  :histogram (get game-state :crafted-data)}]]]

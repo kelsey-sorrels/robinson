@@ -157,6 +157,14 @@
   (let [n (rr/uniform-int low high)]
     (rcmod/adj-player-on-create "wtl" "wtl" :wtl n)))
 
+;; :requirements is a set of any
+;;  :recipe/flags
+;;  :recipe/types
+;;  :recipe/id
+;;  :recipe/components
+;;  Any matches between the recipe and the complication will mark the complication
+;;  for inclusion. Any complication with empty or nil :requirements will always
+;;  be marked for inclusion.
 (def weapon-complications [
   {:title "Rushing!"
    :description "You've been rushing again."
@@ -171,9 +179,11 @@
    :choices [
      {:hotkey \a
       :name "Keep searching"
+      :one-of [`(mod-thirst -5 -10)
+               `(mod-hunger -5 -10)]
       :events [
         {:description "You spend hours looking for the right materials."
-          :one-of [`(mod-thirst -5 -10)
+          :one-of [`(mod-wtl -5 -10)
                    `(mod-hunger -5 -10)]}
         {:description "After hours of searching, you find the right material."
          :one-of [`(mod-wtl 5 7)]}]}
@@ -234,6 +244,7 @@
        `(mod-durability -7 -3)]}]}
   {:title "Warped edge!"
    :description "The edge keeps warping when it should be straight."
+   :requirements #{:edged}
    :choices [{
      :hotkey :space
      :name "continue"
@@ -241,62 +252,71 @@
        `(mod-damage -7 -3)]}]}
   {:title "Chipped edge!"
    :description "The edge should be smooth, not full of chips."
+   :requirements #{:edged}
    :choices [{
      :hotkey :space
      :name "continue"
      :one-of [
        `(mod-damage -7 -3)]}]}
   {:title "Rolled edge!"
-   :description ""
+   :description "The edge you were woking with has rolled causing your to start over."
+   :requirements #{:edged :blade}
    :choices [{
      :hotkey :space
      :name "continue"
      :one-of [
        `(mod-damage 11 21)]}]}
   {:title "Too heavy!"
-   :description ""
+   :description "The balance is all off on this. It really should be lighter."
+   :requirements #{:low-weight :high-weight}
    :choices [{
      :hotkey :space
      :name "continue"
      :one-of [
        `(mod-thirst 11 21)]}]}
   {:title "Too light!"
-   :description ""
+   :description "You need something heavier to work with. This is too light."
+   :requirements #{:low-weight :high-weight}
    :choices [{
      :hotkey :space
      :name "continue"
      :one-of [
        `(mod-thirst 11 21)]}]}
   {:title "Hard to grasp!"
-   :description ""
+   :description "You can hardly hold onto this. You need to find something easier to hold."
+   :requirements #{:handle}
    :choices [{
      :hotkey :space
      :name "continue"
      :one-of [
        `(mod-thirst 11 21)]}]}
   {:title "Too stiff!"
-   :description ""
+   :description "There should be a little more give to this. You know it's going to break."
+   :requirements #{:flexible}
    :choices [{
      :hotkey :space
      :name "continue"
      :one-of [
        `(mod-thirst 11 21)]}]}
   {:title "Bent wood!"
-   :description ""
+   :description "This wood is really bent. It's just not going to work."
+   :requirements #{:wooden}
    :choices [{
      :hotkey :space
      :name "continue"
      :one-of [
        `(mod-thirst 11 21)]}]}
   {:title "Green wood!"
-   :description ""
+   :description "This wood is green. It should be more seasoned."
+   :requirements #{:wooden}
    :choices [{
      :hotkey :space
      :name "continue"
      :one-of [
        `(mod-thirst 11 21)]}]}
-  {:title "Rotten wood!"
-   :description ""
+  {:title "Rotted wood!"
+   :description "This wood is full of holes caused by unending seasons of wind and rain."
+   :requirements #{:wooden}
    :choices [{
      :hotkey :space
      :name "continue"
@@ -332,6 +352,7 @@
        `(mod-thirst 11 21)]}]}
   {:title "Handle burns!"
    :description ""
+   :requirements #{:handle :wooden}
    :choices [{
      :hotkey :space
      :name "continue"
@@ -339,6 +360,7 @@
        `(mod-thirst 11 21)]}]}
   {:title "Handle uneven!"
    :description ""
+   :requirements #{:handle :wooden}
    :choices [{
      :hotkey :space
      :name "continue"
@@ -346,6 +368,7 @@
        `(mod-thirst 11 21)]}]}
   {:title "Handle popping out!"
    :description ""
+   :requirements #{:handle}
    :choices [{
      :hotkey :space
      :name "continue"
@@ -353,6 +376,7 @@
        `(mod-thirst 11 21)]}]}
   {:title "Not bent enough!"
    :description ""
+   :requirements #{:boomerang}
    :choices [{
      :hotkey :space
      :name "continue"
@@ -360,6 +384,7 @@
        `(mod-thirst 11 21)]}]}
   {:title "Cracked wood!"
    :description ""
+   :requirements #{:wooden}
    :choices [{
      :hotkey :space
      :name "continue"
@@ -367,6 +392,7 @@
        `(mod-thirst 11 21)]}]}
   {:title "Cracked forming!"
    :description ""
+   :requirements #{:wooden}
    :choices [{
      :hotkey :space
      :name "continue"
@@ -374,6 +400,7 @@
        `(mod-thirst 11 21)]}]}
   {:title "Pin knots!"
    :description ""
+   :requirements #{:wooden}
    :choices [{
      :hotkey :space
      :name "continue"
@@ -381,6 +408,7 @@
        `(mod-thirst 11 21)]}]}
   {:title "Splinters!"
    :description ""
+   :requirements #{:wooden}
    :choices [{
      :hotkey :space
      :name "continue"
@@ -388,6 +416,7 @@
        `(mod-thirst 11 21)]}]}
   {:title "Weather worn wood!"
    :description ""
+   :requirements #{:wooden}
    :choices [{
      :hotkey :space
      :name "continue"
@@ -402,6 +431,7 @@
        `(mod-thirst 11 21)]}]}
   {:title "Knotted!"
    :description ""
+   :requirements #{:wooden}
    :choices [{
      :hotkey :space
      :name "continue"
@@ -409,6 +439,7 @@
        `(mod-thirst 11 21)]}]}
   {:title "Weak joinery!"
    :description ""
+   :requirements #{:wooden}
    :choices [{
      :hotkey :space
      :name "continue"
@@ -416,6 +447,7 @@
        `(mod-thirst 11 21)]}]}
   {:title "Poisonous material!"
    :description ""
+   :requirements #{:wooden}
    :choices [{
      :hotkey :space
      :name "continue"
@@ -423,6 +455,7 @@
        `(mod-thirst 11 21)]}]}
   {:title "Allergic to material!"
    :description ""
+   :requirements #{:wooden}
    :choices [{
      :hotkey :space
      :name "continue"
@@ -540,8 +573,24 @@
     (log/info "gen-event next-stage" next-stage)
     (rcrafting/assoc-current-recipe state :current-stage next-stage)))
 
-(defn gen-complication [state recipe]
-  (gen-event state recipe weapon-complications))
+(defn gen-complication [state {:keys [recipe/id
+                                      recipe/category
+                                      recipe/types
+                                      recipe/components
+                                      recipe/example-item-flags] :as recipe}]
+  (let [recipe-pool (clojure.set/union (when id #{id})
+                                       (when category #{category})
+                                       types
+                                       components
+                                       example-item-flags)]
+    (log/info "recipe-pool" recipe-pool)
+    (gen-event state recipe
+      (filter
+        (fn [complication]
+          (let [requirements (get complication :requirements #{})]
+            (or (clojure.set/intersection recipe-pool requirements)
+                (empty? requirements))))
+        weapon-complications))))
 
 (def remedies [{
     :title "Remedies"
@@ -564,14 +613,15 @@
         item-id (or (first items) :stick)
         item-name (or (rig/id->name item-id) "unknown1")
         _ (log/info "items:" items "item-id:" item-id "item-name:" item-name)
+        amount (+ 1 (rand-int 4))
         buff-mod (eval-effect (first (shuffle [
-                     #_`(mod-accuracy 1 5)
-                     #_`(mod-damage 1 4)
-                     #_`(mod-durability 1 5)
+                     `(mod-accuracy 1 5)
+                     `(mod-damage 1 4)
+                     `(mod-durability 1 5)
                      `(mod-stunning 0.1 0.5)
-                     #_`(mod-dismembering 0.1 0.5)
-                     #_`(mod-bleeding 0.1 0.5)
-                     #_`(mod-knockback 0.1 0.5)])))
+                     `(mod-dismembering 0.1 0.5)
+                     `(mod-bleeding 0.1 0.5)
+                     `(mod-knockback 0.1 0.5)])))
         debuff-mod (eval-effect (first (shuffle [
                    `(mod-accuracy -5 -1)
                    `(mod-damage -6 -2)
@@ -580,15 +630,14 @@
         events [
         {:title "Material requirements"
          :description (rr/rand-nth [
-           "New inventions require raw materials. This is no exception."
-           (format "You need a %s to improve this recipe." item-name)])
+           (format "You need %d %s to improve this recipe." amount item-name)])
          :choices [
              {:name item-name
-              :hotkey \a
-              :material {:id item-id :amount (+ 1 (rand-int 4))}
+              :hotkey :enter
+              :material {:id item-id :amount amount}
               :effects [buff-mod]}
              {:name "skip"
-              :hotkey \b
+              :hotkey :space
               :effects [debuff-mod]}]}]]
       (gen-event state recipe events)))
 

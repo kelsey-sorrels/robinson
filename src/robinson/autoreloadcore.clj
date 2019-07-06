@@ -152,7 +152,7 @@
                                                 (log/info "Got quit state. Exiting.")
                                                 (async/>!! done-chan true)
                                                 (System/exit 0))
-                                            (when (contains? #{:loading :connecting} (rw/current-state new-state))
+                                            (when (contains? #{:loading :connecting :sleep} (rw/current-state new-state))
                                               (reset! state-ref (@tick-fn new-state :advance)))))
                                                
             (reset! state-ref state)

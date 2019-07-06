@@ -3204,7 +3204,7 @@
               cell-items       (get cell :items)
               hole-types       #{:freshwater-hole :saltwater-hole}
               still-types      #{:solar-still}
-              harvest-types    #{:gravel :tree :palm-tree :tall-grass}
+              harvest-types    #{:bamboo :gravel :tree :palm-tree :tall-grass}
               fruit-tree-types #{:fruit-tree}]
           #_(log/info "updating cell" cell "@" x y)
           #_(log/info "viewport" (get-in state [:world :viewport]))
@@ -3224,7 +3224,7 @@
                       num-harvestable (get @harvestable-counts place-id 0)]
                   (if (< (rr/uniform-int 0 100000)
                          (/ (case cell-type
-                              :bamboo 10
+                              :bamboo 4
                               :palm-tree 10
                               :tree 25
                               :tall-grass 2

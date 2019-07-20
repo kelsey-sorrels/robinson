@@ -55,9 +55,21 @@
 
 (defmod-type tag-player-on-create
   :tag true
+  rcmp/ModPlayerOnCreate
+  (player-on-create [this player]
+    (assoc player k n)))
+
+(defmod-type tag-player-immediate
+  :tag true
   rcmp/ModPlayerImmediate
   (player-immediate [this player]
     (assoc player k n)))
+
+(defmod-type conj-player-immediate
+  :tag true
+  rcmp/ModPlayerImmediate
+  (player-immediate [this player]
+    (update player k conj n)))
 
 (defmod-type adj-attacker-on-attack
   rcmp/ModAttackerOnAttack

@@ -47,7 +47,7 @@
                       :width 25 :margin-left 5 :margin-right 5}} [
         [:text {} [(get current-stage :title "")]]
         [:text {} [""]]
-        [:text {} [(get current-stage :description "")]]
+        [:text {} [(str (get current-stage :description ""))]]
         [ruicommon/MultiSelect {
           :style {}
           :title ""
@@ -62,7 +62,7 @@
                            (assoc :disabled
                              (when-let [{:keys [id amount]} (get item :material)]
                                (< (rp/inventory-id->count game-state id) amount)))))
-                      (get current-stage :choices [{:name "continue-ui" :hotkey :space}]))}]]])))
+                      (get current-stage :event/choices [{:name "continue" :hotkey :space}]))}]]])))
 
 (zc/def-component CraftInProgressRecipe
   [this]

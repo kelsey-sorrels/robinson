@@ -470,6 +470,37 @@
     (mapcat identity)
     set)))
 
+(defn get-example-item-flags-by-types [types]
+  (let [rules '[[(matches-all ?info ?seq ?first ?rest ?empty ?e ?a ?vs)
+                 [(?seq ?vs)]
+                 [(?first ?vs) ?v]
+                 [?e ?a ?v]
+                 [?e :recipe/id ?recipe-id]
+                 [(?rest ?vs) ?vs-rest]
+                 (matches-all ?info ?seq ?first ?rest ?empty ?e ?a ?vs-rest)]
+                [(matches-all ?info ?seq ?first ?rest ?empty ?e ?a ?vs)
+                 [?e :recipe/id ?recipe-id]
+                 [(?empty ?vs)]]]]
+  (->>
+    (d/q '[:find ?v
+           :in $ % ?info ?seq ?first ?rest ?empty ?types
+           :where
+           [(?info ?types)]
+           ;[?e :recipe/id :club]
+           (matches-all ?info ?seq ?first ?rest ?empty ?e :recipe/types ?types)
+           [?e :recipe/example-item-flags ?v]]
+          recipe-db
+          rules
+          (fn info [x] (log/info x) true)
+          seq
+          first
+          rest
+          empty?
+          types)
+    (mapcat identity)
+    (mapcat identity)
+    set)))
+
 (defn satisfies-helper?
   [l expr]
   "Counts the items in that 'satisfy' the expression.
@@ -710,10 +741,10 @@
   [event]
   (if
     ; next-event has choices,
-    (seq (get event :choices))
+    (seq (get event :event/choices))
       event
     ; next event has no choices
-    (assoc event :choices [{
+    (assoc event :event/choices [{
       :hotkey :space
       :name "continue"}])))
 
@@ -723,29 +754,45 @@
     (assoc choice :done true)
     choice))
 
+(defn meta-or-into
+  [recipe-ns val-in-result val-in-latter]
+  (if-let [merge-sym (-> val-in-latter meta :merge)]
+    (let [f (ns-resolve recipe-ns merge-sym)]
+      (log/info f)
+      (f val-in-result val-in-latter))
+    (into val-in-result val-in-latter)))
+
 ; Input handlers
 (defn resolve-choice [state recipe-ns recipe keyin]
+  {:post [(not (nil? %))]}
   (let [current-stage (get recipe :current-stage)]
         ; find selected choice
-    (if-let [choice (->> (get current-stage :choices)
+    (if-let [choice (->> (get current-stage :event/choices)
                       (filter #(= (get % :hotkey) keyin))
                       first)]
       ;; check material requirement is met if any exists
       (if (if-let [{:keys [id amount]} (get choice :material)]
             (<= amount (rp/inventory-id->count state id))
             true)
-        (let [results (merge (select-keys choice [:types :effects :materials :done])
-                             (select-keys current-stage [:gen]))
+        (let [results (into {} (map (fn [[k v]]
+                                      ; change non-collection values to sets so they are mergeable
+                                      (if (coll? v)
+                                        [k v]
+                                        [k #{v}]))
+                                    (merge (select-keys choice [:types :effects :materials :done :event/id :choice/id])
+                                           (select-keys current-stage [:gen]))))
+              _ (log/info "results" results)
               ; merge results into current recipe
-              state-with-results (update-current-recipe state (partial merge-with into) results)]
+              state-with-results (update-current-recipe state (partial merge-with (partial meta-or-into recipe-ns)) results)]
+          (assert (not (nil? state-with-results)))
           ; done with recipe?
           (if (contains? choice :done)
             (save-recipe state-with-results)
             ;; either a regular event, or a direction event
             ; if choice has a events pick one,
-            (if (seq (get choice :events))
+            (if (seq (get choice :choice/events))
               ; find next event
-              (let [next-event (rand-nth (get choice :events))
+              (let [next-event (rand-nth (get choice :choice/events))
                     ; fill in event defaults
                     next-event (fill-event next-event)]
                 ; assign next event and return
@@ -766,7 +813,9 @@
                       \& (ns-resolve recipe-ns 'gen-material)
                       \☼ (ns-resolve recipe-ns 'gen-enhancement)
                       (assert false (str "next node type unknown " next-node next-node-type)))
-                      state-with-results (current-recipe state-with-results)))
+                      state-with-results
+                      (let [recipe (current-recipe state-with-results)]
+                        (assoc recipe :recipe/example-item-flags (get-example-item-flags-by-types (get recipe :types))))))
                   (assoc-current-recipe :current-node next-node))
                 ; choice does not point to next node
                 (let [next-node-choices (next-node-choices recipe)]
@@ -779,7 +828,7 @@
                       (assoc-current-recipe state-with-results
                         :current-stage
                         {:title "Done"
-                         :choices [
+                         :event/choices [
                             {:name "finish recipe"
                              :hotkey :space
                              :done true}]})
@@ -799,15 +848,19 @@
                             \& (ns-resolve recipe-ns 'gen-material)
                             \☼ (ns-resolve recipe-ns 'gen-enhancement)
                             (assert false (str "next node type unknown " next-node next-node-type)))
-                            state-with-results (current-recipe state-with-results)))
+                            state-with-results
+                            (let [recipe (current-recipe state-with-results)]
+                              (assoc recipe :recipe/example-item-flags (get-example-item-flags-by-types (get recipe :types))))))
                         (assoc-current-recipe :current-node (-> next-node-choices first :next-node)))
                     ;; else multiple choices to next node, create event to choose
                     :else
-                      (assoc-current-recipe
-                        state-with-results
-                        :current-stage
-                        {:title "Choose path"
-                         :choices next-node-choices})))))))
+                      (do
+                        (log/info "multiple choices to next node. Choose from" next-node-choices)
+                        (assoc-current-recipe
+                          state-with-results
+                          :current-stage
+                          {:title "Choose path"
+                           :event/choices next-node-choices}))))))))
         state))))
 
 (defn update [state recipe-ns keyin]

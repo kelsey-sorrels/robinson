@@ -14,6 +14,7 @@
             [robinson.dialog :as rdiag]
             [robinson.actors :as ractors]
             [robinson.player :as rp]
+            [robinson.inventory :as ri]
             [robinson.math :as rmath]
             [robinson.itemgen  :as ig]
             [robinson.monstergen :as mg]
@@ -266,7 +267,7 @@
   (let [_                  (log/info "selected-hotkeys" selected-hotkeys)
         start-inventory    (filter #(contains? (set selected-hotkeys) (get % :hotkey)) (sg/start-inventory))
         _                  (log/info "Adding to starting inventory:" start-inventory)
-        state              (rp/add-to-inventory state start-inventory)]
+        state              (ri/add-to-inventory state start-inventory)]
     state))
 
 (defn reinit-world
@@ -831,7 +832,7 @@
         (let [new-state (-> state
                           (rc/append-log "You pick up:")
                           ;; dup the item into inventory with hotkey
-                          (rp/add-to-inventory selected-items)
+                          (ri/add-to-inventory selected-items)
                           ;; remove the item from cell
                           (rw/assoc-cell-items x y not-selected-items)
                           ;; reset selected-hotkeys
@@ -911,7 +912,7 @@
         (let [new-state (-> state
                           (rc/append-log "You pick up:")
                           ;; dup the item into inventory with hotkey
-                          (rp/add-to-inventory selected-items)
+                          (ri/add-to-inventory selected-items)
                           ;; remove the item from cell
                           (rw/assoc-cell-items x y [])
                           ;;;; hotkey is no longer available
@@ -955,7 +956,7 @@
   {:pre  [(not (nil? state))]
    :post [(not (nil? %))]}
   (-> state
-    (rp/dec-item-count hotkey)
+    (ri/dec-item-count hotkey)
     (assoc-in [:world :player :hp] (get-in state [:world :player :max-hp]))
     (assoc-in [:world :current-state] :normal)
     (rc/append-log "You apply the bandage.")))
@@ -964,12 +965,12 @@
   [state]
   {:pre  [(not (nil? state))]
    :post [(not (nil? %))]}
-  (let [item         (rp/inventory-id->item state :lantern)
+  (let [item         (ri/inventory-id->item state :lantern)
         item-state   (get item :state :off)]
     (case item-state
       :on
       (-> state
-        (rp/update-inventory-item-by-id :lantern (fn [item] (assoc item :state :off)))
+        (ri/update-inventory-item-by-id :lantern (fn [item] (assoc item :state :off)))
         (rc/append-log "You turn the lantern off.")
         (rc/inc-time)
         ;TODO: remove?
@@ -978,7 +979,7 @@
       :off
       (if (pos? (get item :charge))
         (-> state
-          (rp/update-inventory-item-by-id :lantern (fn [item] (assoc item :state :on)))
+          (ri/update-inventory-item-by-id :lantern (fn [item] (assoc item :state :on)))
           (rc/append-log "You turn the lantern on.")
           (rc/inc-time)
           ;TODO: remove?
@@ -1006,7 +1007,7 @@
   [state keyin]
   {:pre  [(not (nil? state))]
    :post [(not (nil? %))]}
-  (let [item (rp/inventory-hotkey->item state keyin)]
+  (let [item (ri/inventory-hotkey->item state keyin)]
     (if item
       (let [id (get item :item/id)]
         (-> state
@@ -1095,7 +1096,7 @@
                         rc/inc-time))
                     ;; otherwise choose between identifying fruit and flavor text
                     (let [text-id (ig/gen-text-id state)
-                          item    (rp/inventory-id->item state id)]
+                          item    (ri/inventory-id->item state id)]
                       (if (rp/player-status-contains? state text-id)
                         (-> state
                           (rc/append-log "You've already read that story.")
@@ -1110,7 +1111,7 @@
                           (-> state
                            (rc/append-log (format "You peice together a story about %s." (rdesc/gen-temple-text text-id)))
                            rc/inc-time)))))
-                  (rp/dec-item-count state keyin)
+                  (ri/dec-item-count state keyin)
                   (rw/assoc-current-state state :normal))
               ;; pirate items
               (= id :dice)
@@ -1182,7 +1183,7 @@
     (if (empty? harvest-items)
       (rc/append-log state "You don't find anything.")
       (-> state
-        (rp/add-to-inventory harvest-items)
+        (ri/add-to-inventory harvest-items)
         (rw/update-cell target-x target-y (fn [cell] (dissoc cell :harvestable)))
         (as-> state (reduce rp/update-harvested state harvest-items))
         (rc/append-log (format "You gather %s." (clojure.string/join ", " (map #(if (> (get % :count 1) 1)
@@ -1530,7 +1531,7 @@
                                                                           (get cell :type))))
                                                (rw/player-adjacent-cells-ext state)))
         _ (log/info "player-adj-cells" (rw/player-adjacent-cells state))
-        quaffable-inventory-item? (some (fn [item] (contains? item :thirst)) (rp/player-inventory state))]
+        quaffable-inventory-item? (some (fn [item] (contains? item :thirst)) (ri/player-inventory state))]
     (cond
       (and (or (pos? num-adjacent-quaffable-cells)
                (pos? num-adjacent-dangerous-quaffable-cells))
@@ -1593,7 +1594,7 @@
 
 (defn quaff-inventory
   [state keyin]
-  (if-let [item (rp/inventory-hotkey->item state keyin)]
+  (if-let [item (ri/inventory-hotkey->item state keyin)]
     (-> state
       (rc/append-log (format "The %s tastes %s." (lower-case (get item :name))
                                               (rr/rand-nth ["great" "foul" "greasy" "delicious" "burnt" "sweet" "salty"])))
@@ -1604,10 +1605,10 @@
           (let [new-thirst (- thirst (item :thirst))]
             (max 0 new-thirst))))
       ;; remove the item from inventory
-      (rp/remove-from-inventory (get item :item/id))
+      (ri/remove-from-inventory (get item :item/id))
       (as-> state
         (case (get item :item/id)
-          :coconut (rp/add-to-inventory state [(ig/gen-item :coconut-empty)])
+          :coconut (ri/add-to-inventory state [(ig/gen-item :coconut-empty)])
           state)))
      state))
      
@@ -1658,13 +1659,13 @@
           (let [new-hunger (- hunger (item :hunger))]
             (max 0 new-hunger))))
       (as-> state
-        (if (contains? (set (map :hotkey (rp/player-inventory state))) keyin)
+        (if (contains? (set (map :hotkey (ri/player-inventory state))) keyin)
           ;; remove the item from inventory
-          (rp/dec-item-count state keyin)
+          (ri/dec-item-count state keyin)
           ;; remove the item from the current-cell
           (rw/dec-cell-item-count state (get item :item/id)))
         (if (= (get item :item/id) :coconut-empty)
-          (rp/add-to-inventory state [(ig/gen-item :coconut-shell)])
+          (ri/add-to-inventory state [(ig/gen-item :coconut-shell)])
           state))
       ;; if the item was a poisonous fruit, set a poisoned timebomb
       (as-> state
@@ -1747,7 +1748,7 @@
 (defn init-select-ranged-target
   [state]
   (let [ranged-weapon-item  (first (filter (fn [item] (get item :wielded-ranged))
-                                           (rp/player-inventory state)))]
+                                           (ri/player-inventory state)))]
     (log/info "ranged-weapon-item" ranged-weapon-item)
     ;; check if the player has a ranged wielded weapon
     (if ranged-weapon-item
@@ -1772,7 +1773,7 @@
 (defn reload-ranged-weapon
   [state]
   (let [ranged-weapon-item  (first (filter (fn [item] (get item :wielded-ranged))
-                                           (rp/player-inventory state)))]
+                                           (ri/player-inventory state)))]
     ;; player is weilding ranged weapon?
     (if ranged-weapon-item
       ;; ranged weapon is not already loaded?
@@ -1780,16 +1781,16 @@
         ;; the weapon requires reloading?
         (if (ig/requires-reload? ranged-weapon-item)
           ;; the player has ammo for the weapon?
-          (if (pos? (rp/inventory-id->count state (ig/item->ranged-combat-ammunition-item-id ranged-weapon-item)))
+          (if (pos? (ri/inventory-id->count state (ig/item->ranged-combat-ammunition-item-id ranged-weapon-item)))
             (-> state
               ;; set weapon as :loaded
-              (rp/update-inventory-item-by-id
+              (ri/update-inventory-item-by-id
                 (get ranged-weapon-item :item/id)
                 (fn [item] (assoc item :loaded true)))
               ;; dec ranged weapon ammunition
-              (rp/dec-item-count (-> ranged-weapon-item
+              (ri/dec-item-count (-> ranged-weapon-item
                                    ig/item->ranged-combat-ammunition-item-id
-                                   (as-> id (rp/inventory-id->item state id))
+                                   (as-> id (ri/inventory-id->item state id))
                                    :hotkey))
               ;; successful reloading takes a turn
               (rc/inc-time))
@@ -1823,7 +1824,7 @@
                                  target-ranged-index)
         npc                 (rnpc/npc-at-pos state target-pos)
         ranged-weapon-item  (first (filter (fn [item] (get item :wielded-ranged))
-                                                (rp/player-inventory state)))
+                                                (ri/player-inventory state)))
         [target-x
          target-y]          (rc/pos->xy target-pos)
         path                (rlos/line-segment (rp/player-xy state) [target-x target-y])
@@ -1855,21 +1856,21 @@
       (if (< 0 (-> ranged-weapon-item
                  ig/item->ranged-combat-ammunition-item-id
                  (as-> id
-                   (rp/inventory-id->count state id))))
+                   (ri/inventory-id->count state id))))
           ;; dec ranged weapon ammunition
           (-> state
-            (rp/dec-item-count
+            (ri/dec-item-count
               (-> ranged-weapon-item
                 ig/item->ranged-combat-ammunition-item-id
                 (as-> id
-                  (rp/inventory-id->item state id))
+                  (ri/inventory-id->item state id))
                 :hotkey))
             do-fire)
           (rc/ui-hint state "You need to reload first."))
       ; Add weapon actor and effect
       (-> state
         (cond-> (= (ranged-weapon-item :ranged-attack) :airborn-item)
-          (rp/dec-item-count (get ranged-weapon-item :hotkey)))
+          (ri/dec-item-count (get ranged-weapon-item :hotkey)))
         do-fire))))
 
 (defn free-cursor
@@ -2199,7 +2200,7 @@
             (rw/assoc-current-state :normal)))
       ; else, connect selected slot to inventory item by hotkey
       :default
-        (let [item-inventory-count (rp/inventory-id->count state (rp/inventory-hotkey->item-id state keyin))
+        (let [item-inventory-count (ri/inventory-id->count state (ri/inventory-hotkey->item-id state keyin))
               slots (keys (get-in state [:world :recipes selected-recipe-hotkey :slots]))
               hotkey-count (count (mapcat (fn [slot]
                                             (let [slot-hotkey (get-in state [:world :recipes selected-recipe-hotkey :slots slot])]
@@ -2245,7 +2246,7 @@
     (-> state
       (free-cursor)
       ; remove the item from inventory
-      (rp/dec-item-count (get item :hotkey))
+      (ri/dec-item-count (get item :hotkey))
       ; Add airborn item effect
       (rfx/conj-effect :airborn-item item true path 5))))
 
@@ -2338,7 +2339,7 @@
           (update-in [:world :player :hunger] (partial + 0.01))
           (update-in [:world :player :thirst] (partial + 0.05)))
         (-> state
-          (update-in [:world :player :hunger] (partial + 0.09 (* 0.025 (count (rp/player-inventory state)))))
+          (update-in [:world :player :hunger] (partial + 0.09 (* 0.025 (count (ri/player-inventory state)))))
           (update-in [:world :player :thirst] (partial + 0.19))))
       (if (> (rp/player-hunger state) (rp/player-max-hunger state))
         (do
@@ -2646,8 +2647,8 @@
   [state]
   {:pre [(not (nil? state))]
    :post [(not (nil? %))]}
-  (if-let [lantern (rp/inventory-id->item state :lantern)]
-    (rp/update-inventory-item-by-id state :lantern (fn [lantern] (as-> lantern lantern
+  (if-let [lantern (ri/inventory-id->item state :lantern)]
+    (ri/update-inventory-item-by-id state :lantern (fn [lantern] (as-> lantern lantern
                                                                     (if (= (get lantern :state :off) :on)
                                                                         (update-in lantern [:charge] dec)
                                                                         lantern)

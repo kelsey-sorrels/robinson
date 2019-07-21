@@ -6,6 +6,7 @@
             [robinson.crafting.recipe-gen :as rcrg]
             [robinson.crafting.weapon-gen :as rcwg]
             [robinson.player :as rp]
+            [robinson.inventory :as ri]
             [robinson.itemgen :as ig]
             [robinson.color :as rcolor]
             [taoensso.timbre :as log]
@@ -180,7 +181,7 @@
         recipe (get-in game-state [:world :recipes selected-recipe-hotkey])
         recipe-name (rcrafting/recipe-name recipe)
         requirements (rcrafting/recipe-requirements recipe)
-        items (rp/player-inventory game-state)]
+        items (ri/player-inventory game-state)]
     (zc/csx [zcui/Popup {:style {:top -7}} [
               [:text {:style {:bottom 1 :left 28}} ["| Craft |"]]
               [:view {:style {:padding-left 2 :padding-right 2}} [

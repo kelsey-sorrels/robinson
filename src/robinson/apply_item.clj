@@ -5,6 +5,7 @@
             [robinson.random :as rr]
             [robinson.world :as rw]
             [robinson.player :as rp]
+            [robinson.inventory :as ri]
             [robinson.itemgen  :as ig]
             [robinson.monstergen :as mg]
             robinson.macros
@@ -55,7 +56,7 @@
     (cond
       (= p 0)
       ;; catch a fish
-      (rp/add-to-inventory state [(ig/gen-corpse (mg/gen-random-monster 1 :water))])
+      (ri/add-to-inventory state [(ig/gen-corpse (mg/gen-random-monster 1 :water))])
       :else
       state)))
 
@@ -83,7 +84,7 @@
   "Light something on fire, creating chaos."
   [state hotkey direction]
   (-> state
-    (rp/dec-item-count hotkey)
+    (ri/dec-item-count hotkey)
     (start-fire direction)))
 
 (defn apply-fire-plough
@@ -91,7 +92,7 @@
   [state direction]
   (-> state
     (rp/player-update-thirst inc)
-    (rp/dec-item-utility :fire-plough)
+    (ri/dec-item-utility :fire-plough)
     (start-fire direction)))
 
 (defn apply-hand-drill
@@ -99,14 +100,14 @@
   [state direction]
   (-> state
     (rp/player-update-hunger inc)
-    (rp/dec-item-utility :hand-drill)
+    (ri/dec-item-utility :hand-drill)
     (start-fire direction)))
 
 (defn apply-bow-drill
   "Light something on fire, creating chaos."
   [state direction]
   (-> state
-    (rp/dec-item-utility :bow-drill)
+    (ri/dec-item-utility :bow-drill)
     (start-fire direction)))
 
 (defn saw
@@ -123,7 +124,7 @@
         ;; sawing = more hunger
         (update-in [:world :player :hunger] (partial + 10))
         ;; decrease item utility
-        (rp/dec-item-utility :saw)
+        (ri/dec-item-utility :saw)
         (rw/update-cell target-x
                         target-y
                         (fn [cell] (-> cell
@@ -167,32 +168,32 @@
   (rm/first-vec-match [(get item :item/id) item]
     [ig/is-corpse-id? :*]
       (-> state
-        (rp/dec-item-count (get item :hotkey))
+        (ri/dec-item-count (get item :hotkey))
         (cond->
           ; always gen meat
           true
-            (rp/add-to-inventory [
+            (ri/add-to-inventory [
               (ig/gen-meat item)])
           ; if corpse has a skeleton gen bones
           (mg/has-endoskeleton? (get item :race))
-            (rp/add-to-inventory [
+            (ri/add-to-inventory [
               (ig/gen-bones item)])
           ; if corpse has hide gen hide
           (mg/has-hide? (get item :race))
-            (rp/add-to-inventory [
+            (ri/add-to-inventory [
               (ig/gen-hide item)])
           ; if corpse has feathers gen feathers
           (mg/has-feathers? (get item :race))
-            (rp/add-to-inventory [
+            (ri/add-to-inventory [
               (ig/id->item :feather)])))
     [:unhusked-coconut :*]
       (-> state
-        (rp/dec-item-count (get item :hotkey))
-        (rp/add-to-inventory [(ig/gen-item :coconut)]))
+        (ri/dec-item-count (get item :hotkey))
+        (ri/add-to-inventory [(ig/gen-item :coconut)]))
     [:stick :*]
       (-> state
-        (rp/dec-item-count (get item :hotkey))
-        (rp/add-to-inventory [(ig/gen-item :sharpened-stick)]))
+        (ri/dec-item-count (get item :hotkey))
+        (ri/add-to-inventory [(ig/gen-item :sharpened-stick)]))
     state))
 
 (defn apply-pen
@@ -202,12 +203,12 @@
   (case (get item :item/id)
     :paper
     (-> state
-      (rp/dec-item-count (get item :hotkey))
-      (rp/add-to-inventory [(ig/gen-item :note)]))
+      (ri/dec-item-count (get item :hotkey))
+      (ri/add-to-inventory [(ig/gen-item :note)]))
     :stick
     (-> state
-      (rp/dec-item-count (get item :hotkey))
-      (rp/add-to-inventory [(ig/gen-item :sharpened-stick)]))
+      (ri/dec-item-count (get item :hotkey))
+      (ri/add-to-inventory [(ig/gen-item :sharpened-stick)]))
     state))
 
 (defn apply-rock
@@ -219,10 +220,10 @@
     (if (>= (+ (rp/player-hunger state) 30) (rp/player-max-hunger state))
       (rc/append-log state "You're too hungry to do this.")
       (-> state
-        (rp/dec-item-count (get item :hotkey))
-        (rp/dec-item-count hotkey)
+        (ri/dec-item-count (get item :hotkey))
+        (ri/dec-item-count hotkey)
         (rp/player-update-hunger (partial + 30))
-        (rp/add-to-inventory [(ig/gen-item :coconut)])
+        (ri/add-to-inventory [(ig/gen-item :coconut)])
         (rc/append-log "You bash the husk off the coconut.")))
     state))
 
@@ -260,9 +261,9 @@
     (rc/append-log state (format "You touch the %s to the %s." (get frog-corpse :name) (get target-item :name)))
     (if (= :arrow (get target-item :item/id))
       (-> state
-        (rp/dec-item-count (get target-item :hotkey))
-        (rp/dec-item-count (get frog-corpse :hotkey))
-        (rp/add-to-inventory (ig/id->item (-> (get target-item :name)
+        (ri/dec-item-count (get target-item :hotkey))
+        (ri/dec-item-count (get frog-corpse :hotkey))
+        (ri/add-to-inventory (ig/id->item (-> (get target-item :name)
                                            (clojure.string/split #"-")
                                            first
                                            (str "-tipped-arrow")
@@ -308,7 +309,7 @@
       [:bow-drill       trans->dir?] (-> state
                                        (apply-bow-drill (translate-directions keyin))
                                        (rw/assoc-current-state :normal))
-      [:plant-guide     :*         ] (if-let [item (rp/inventory-hotkey->item state keyin)]
+      [:plant-guide     :*         ] (if-let [item (ri/inventory-hotkey->item state keyin)]
                                        (-> state
                                          (apply-plant-guide item)
                                          (rw/assoc-current-state  :normal))
@@ -325,10 +326,10 @@
       [:saw             trans->dir?] (-> state
                                        (saw (translate-directions keyin) keyin)
                                        (rw/assoc-current-state :normal))
-      [:flint           :*         ] (if-let [item (rp/inventory-hotkey->item state keyin)]
+      [:flint           :*         ] (if-let [item (ri/inventory-hotkey->item state keyin)]
                                        (apply-flint state item)
                                        state)
-      [:rock            :*         ] (if-let [item (rp/inventory-hotkey->item state keyin)]
+      [:rock            :*         ] (if-let [item (ri/inventory-hotkey->item state keyin)]
                                        (-> state
                                          (apply-rock keyin item)
                                          (rw/assoc-current-state :normal))
@@ -340,7 +341,7 @@
       [:flare-gun       \<         ] (apply-flare-gun state item)
       [:locator-beacon  :*         ] (apply-locator-beacon state item)
       [:signal-mirror   :*         ] (apply-signal-mirror state item)
-      [ig/id-is-sharp?  :*         ] (if-let [item (rp/inventory-hotkey->item state keyin)]
+      [ig/id-is-sharp?  :*         ] (if-let [item (ri/inventory-hotkey->item state keyin)]
                                        (-> state
                                          (apply-sharp-item item)
                                          (rw/assoc-current-state :normal))
@@ -359,7 +360,7 @@
          :green-frog-corpse
          :blue-frog-corpse
          :purple-frog-corpse}
-                      :*          ] (if-let [target-item (rp/inventory-hotkey->item state keyin)]
+                      :*          ] (if-let [target-item (ri/inventory-hotkey->item state keyin)]
                                       (-> state
                                         (apply-frog-corpse (get item :item/id) target-item)
                                         (rw/assoc-current-state  :normal))

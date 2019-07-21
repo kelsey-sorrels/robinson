@@ -1,6 +1,7 @@
 (ns robinson.lineofsight
   (:require [robinson.common :as rc]
             [robinson.player :as rp]
+            [robinson.inventory :as ri]
             [taoensso.timbre :as log]
             [robinson.macros :as rm]
             [robinson.world :as rw]
@@ -385,7 +386,7 @@
           t      (mod (get-in state [:world :time]) frames)
           frame  (nth atmo t)
           values (flatten frame)
-          item   (rp/inventory-id->item state :lantern)
+          item   (ri/inventory-id->item state :lantern)
           on     (and item (= (get item :state) :on))
           #_#__      (log/info "sight-distance. lantern:" item "state:" on)
           values (map (fn [v] (if on (max v 100) v)) values)]

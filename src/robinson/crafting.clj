@@ -5,6 +5,7 @@
             [robinson.itemgen :as ig]
             [robinson.world :as rw]
             [robinson.player :as rp]
+            [robinson.inventory :as ri]
             [taoensso.timbre :as log]
             [loom.graph :as lg]
             [loom.label :as ll]
@@ -576,7 +577,7 @@
         hotkey (get-in state [:world :recipes selected-recipe-hotkey :slots slot])]
     ;(log/info selected-recipe-hotkey hotkey slot)
     ;(log/info (type hotkey))
-    (rp/inventory-hotkey->item state hotkey)))
+    (ri/inventory-hotkey->item state hotkey)))
 
 (defn requirements-satisfied?
   [state requirements]
@@ -605,7 +606,7 @@
   (reduce (fn [state hotkey]
             (do 
               (log/info "removing" hotkey)
-              (rp/dec-item-count state hotkey)))
+              (ri/dec-item-count state hotkey)))
           state
           hotkeys))
 
@@ -630,7 +631,7 @@
                                  item))
                              item
                              (get item :effects))]
-    (rp/add-to-inventory state [updated-item])))
+    (ri/add-to-inventory state [updated-item])))
 
 (defn- add-by-ids
   [state ids effects place]
@@ -718,7 +719,9 @@
   [recipe]
   (-> recipe :types get-recipe-by-types :recipe/requirements))
 
-(defn save-recipe [state]
+(defn save-recipe
+  [state]
+  {:post [(not (nil? %))]}
   (log/info "Saving recipe")
   (log/info (type (get-in state [:world :recipes])))
   (log/info (vec (get-in state [:world :recipes])))
@@ -762,18 +765,42 @@
       (f val-in-result val-in-latter))
     (into val-in-result val-in-latter)))
 
+(defn trigger-immediate-effects
+  [state effects]
+  {:post [(not (nil? %))]}
+  (reduce (fn [state effect]
+            (cond
+              (satisfies? rcmp/ModPlayerImmediate effect)
+                (rp/update-player state (partial rcmp/player-immediate effect))
+              (satisfies? rcmp/ModPlayerDecInventoryImmediate effect)
+                (rcmp/player-dec-inventory-immediate effect state)
+              :else
+                state))
+          state
+          effects))
+  
+(defn choice-requirements-satisfied?
+  [state choice]
+ (if-let [{:keys [id amount]} (get choice :material)]
+            (<= amount (ri/inventory-id->count state id))
+            true))
+
 ; Input handlers
-(defn resolve-choice [state recipe-ns recipe keyin]
+(defn resolve-choice
+  [state recipe-ns recipe keyin]
   {:post [(not (nil? %))]}
   (let [current-stage (get recipe :current-stage)]
         ; find selected choice
+
+    (log/info "choices" (vec (->> (get current-stage :event/choices))))
+    (log/info "choice" (->> (get current-stage :event/choices)
+                      (filter #(= (get % :hotkey) keyin))
+                      first))
     (if-let [choice (->> (get current-stage :event/choices)
                       (filter #(= (get % :hotkey) keyin))
                       first)]
       ;; check material requirement is met if any exists
-      (if (if-let [{:keys [id amount]} (get choice :material)]
-            (<= amount (rp/inventory-id->count state id))
-            true)
+      (if (choice-requirements-satisfied? state choice)
         (let [results (into {} (map (fn [[k v]]
                                       ; change non-collection values to sets so they are mergeable
                                       (if (coll? v)
@@ -783,7 +810,9 @@
                                            (select-keys current-stage [:gen]))))
               _ (log/info "results" results)
               ; merge results into current recipe
-              state-with-results (update-current-recipe state (partial merge-with (partial meta-or-into recipe-ns)) results)]
+              state-with-results (-> state
+                                   (update-current-recipe (partial merge-with (partial meta-or-into recipe-ns)) results)
+                                   (trigger-immediate-effects (get choice :effects)))]
           (assert (not (nil? state-with-results)))
           ; done with recipe?
           (if (contains? choice :done)

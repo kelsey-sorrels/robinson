@@ -1,6 +1,7 @@
 (ns robinson.crafting.weapon-gen
   (:require [robinson.random :as rr]
             [robinson.world :as rw]
+            [robinson.inventory :as ri]
             [robinson.crafting :as rcrafting]
             [robinson.crafting.mod :as rcmod]
             [robinson.crafting.mod-protocol :as rcmp]
@@ -58,37 +59,45 @@
     (clojure.set/difference wield-types)
     (clojure.set/union new-types)))
 
+(defn merge-contact
+  [contact-type]
+  (with-meta #{contact-type} {:merge 'replace-contact}))
+
+(defn merge-wield
+  [wield-type]
+  (with-meta #{wield-type} {:merge 'replace-wield}))
+
 (def contact-choices
   {:blunt
      {:name "Blunt"
       :hotkey \a
-      :types (with-meta #{:blunt} {:merge 'replace-contact})}
+      :types (merge-contact :blunt)}
    :edged
      {:name "Edged"
       :hotkey \b
-      :types (with-meta #{:edged} {:merge 'replace-contact})}
+      :types (merge-contact :edged)}
    :piercing
      {:name "Piercing"
       :hotkey \c
-      :types (with-meta #{:piercing} {:merge 'replace-contact})}
+      :types (merge-contact :piercing)}
    :flexible
      {:name "Flexible"
       :hotkey \d
-      :types (with-meta #{:flexible} {:merge 'replace-contact})}})
+      :types (merge-contact :flexible)}})
 
 (def wield-choices
   {:melee
     {:name "Melee"
      :hotkey \a
-     :types (with-meta #{:melee} {:merge 'replace-wield})}
+     :types (merge-wield :melee)}
    :thrown
      {:name "Thrown"
       :hotkey \b
-      :types (with-meta #{:thrown} {:merge 'replace-wield})}
+      :types (merge-wield :thrown)}
    :ranged
      {:name "Ranged"
       :hotkey \c
-      :types (with-meta #{:ranged} {:merge 'replace-wield})}})
+      :types (merge-wield :ranged)}})
 
 ; Weapon questions are two-tiered :contact-type and :wield-type
 ; :contact-type is one of
@@ -172,6 +181,11 @@
   (let [n (rr/uniform-double low high)]
     (rcmod/tag-defender-on-attack "dismember" "dsm" :dismembered n)))
 
+; fire hardened
+(defn mod-firehardened
+  []
+  (rcmod/adj-item-on-create "fire hardened" "frhd" :durability 10))
+
 ; chance of wounding monster
 (defn mod-bleeding
   [low high]
@@ -211,6 +225,9 @@
         t (rr/uniform-int time-low time-high)]
     (rcmod/conj-player-immediate "wound" "wnd" :wounds {:dmg dmg :time t})))
 
+(defn mod-dec-inventory [hotkey]
+  (rcmod/dec-inventory-by-hotkey "use" "use" hotkey))
+
 ;; :requirements is a set of any
 ;;  :event/id
 ;;  :choice/id
@@ -233,9 +250,9 @@
        :hotkey :space
        :name "continue"
        :choice/one-of [
-         `(mod-hunger 10 20)
-         `(mod-accuracy -5 -1)
-         `(mod-damage -6 -2)]}]}
+         (mod-hunger 10 20)
+         (mod-accuracy -5 -1)
+         (mod-damage -6 -2)]}]}
 
     ; Material complications
     #_{:event/id :material
@@ -248,24 +265,24 @@
         :choice/events [
           {:description "You give up after spending hours looking for the right materials."
             :choice/one-of [`(mod-thirst -5 -10)
-                     `(mod-hunger -5 -10)
-                     `(mod-wtl -5 -10)]}
+                     (mod-hunger -5 -10)
+                     (mod-wtl -5 -10)]}
           {:description ["You spend hours looking for the right material."
                          "After hours of searching, you find the right material."]
            :choice/one-of [`(mod-wtl 5 7)
-                    `(mod-thirst -5 -10)
-                    `(mod-hunger -5 -10)]}]}
+                    (mod-thirst -5 -10)
+                    (mod-hunger -5 -10)]}]}
        {:hotkey \b
         :name "Give up"
         :choice/events [
           {:description "You learn to make do without the right parts."
            :choice/one-of [
-             `(mod-durability -3 -1)
-             `(mod-wtl -5 -10)]}
+             (mod-durability -3 -1)
+             (mod-wtl -5 -10)]}
           {:description "You stop and take a break. After a few minutes inspiration strikes."
            :choice/one-of [
-             `(mod-durability 1 3)
-             `(mod-wtl 1 5)]}]}]}
+             (mod-durability 1 3)
+             (mod-wtl 1 5)]}]}]}
 
     ; Bodily Limit
     #_{:event/id :body-constraint
@@ -274,7 +291,7 @@
        :hotkey :space
        :name "continue"
        :choice/one-of [
-         `(mod-thirst 11 21)]}]}
+         (mod-thirst 11 21)]}]}
 
     ; Edged
     #_{:event/id :edged
@@ -286,7 +303,7 @@
        :hotkey :space
        :name "continue"
        :choice/one-of [
-         `(mod-damage -7 -3)]}]}
+         (mod-damage -7 -3)]}]}
 
     ; Too much or too little in size, shape, weight
     #_{:event/id :physical-property
@@ -300,7 +317,7 @@
        :hotkey :space
        :name "continue"
        :choice/one-of [
-         `(mod-thirst 11 21)]}]}
+         (mod-thirst 11 21)]}]}
 
     ; Handled weapon complications
     #_{:event/id :handle
@@ -310,7 +327,7 @@
        :hotkey :space
        :name "continue"
        :choice/one-of [
-         `(mod-thirst 11 21)]}]}
+         (mod-thirst 11 21)]}]}
 
     ; Flexible weapon complications
     #_{:event/id :flexibe
@@ -320,48 +337,59 @@
        :hotkey :space
        :name "continue"
        :choice/one-of [
-         `(mod-thirst 11 21)]}]}
+         (mod-thirst 11 21)]}]}
 
-    ; Wooden weapon complications
+    ; Wooden
     {:event/id :wooden
-     :description ["This wood is really bent. It's just not going to work."
-                   "This wood is green. It should be more seasoned."
-                   "This wood is full of holes caused by unending seasons of wind and rain."
-                   "Cracked wood"
-                   "Crack forming"
-                   "Pin knots"
-                   "Weatherworn wood"]
+     :description ["The wood you have is really bent. It's just not going to work."
+                   "The wood you have is green. It should be more seasoned."
+                   "The wood is full of holes caused by unending seasons of wind and rain."
+                   "The wood you have is cracked."
+                   "A crack is forming in the wood you are using."
+                   "The wood you have is full of pin knots."
+                   "The wood you have is weatherworn."]
      :requirements #{:wooden}
      :event/choices [{
        :choice/id :wooden-find-replacement
        :hotkey \a
        :name "find replacement"
        :choice/one-of [
-         `(mod-hunger 11 21)
-         `(mod-thirst 11 21)]
+         (mod-hunger 11 21)
+         (mod-thirst 11 21)]
       }{
        :choice/id :wooden-change-design
        :hotkey \b
        :name "change design"
        :choice/one-of [
-         `(mod-durability -3 -1)
-         `(mod-damage -3 -1)
-         `(mod-accuracy -3 -1)]
+         (mod-durability -3 -1)
+         (mod-damage -3 -1)
+         (mod-accuracy -3 -1)]
       }{
        :choice/id :wooden-use-anyway
        :hotkey \c
        :name "use anyway"
        :choice/one-of [
-         `(mod-durability -5 -1)
-         `(mod-damage -5 -1)
-         `(mod-accuracy -5 -1)]}]}
+         (mod-durability -5 -1)
+         (mod-damage -5 -1)
+         (mod-accuracy -5 -1)]}]}
+
+    ; Wooden - find replacement - complication
+    {:event/id :wooden-find-replacement-complication
+     :description ["Your search for a replacement fails. You cannot find the part you need."]
+     :requirements #{:wooden-find-replacement}
+     :event/choices [{
+       :hotkey :space
+       :name "continue"
+       :choice/one-of [
+         (mod-hunger -10 -5)
+         (mod-thirst -10 -5)]
+      }]}
 
     ; Change Type
     {:event/id :change-type
      :description ["The design change took a wrong turn. You find yourself making something completely different."]
      :requirements #{:wooden-change-design
                      :edged-change-design}
-     ; TODO choose between types or get assigned a type?
      :event/choices (let [types (get recipe :types)]
        (log/info "change-type" types)
        (map (fn [recipe-type]
@@ -385,7 +413,7 @@
        :hotkey :space
        :name "continue"
        :choice/one-of [
-         `(mod-thirst 11 21)]}]}
+         (mod-thirst 11 21)]}]}
 
     ; Special Boomerange Complications
     #_{:event/id :boomerang
@@ -395,7 +423,7 @@
        :hotkey :space
        :name "continue"
        :choice/one-of [
-         `(mod-thirst 11 21)]}]}
+         (mod-thirst 11 21)]}]}
 
     ; Splinter
     #_{:event/id :splinter
@@ -406,7 +434,7 @@
        :hotkey :space
        :name "continue"
        :choice/one-of [
-         `(mod-thirst 11 21)]}]}
+         (mod-thirst 11 21)]}]}
 
     ; Wooden joints
     #_{:event/id :weak-joinery
@@ -416,7 +444,7 @@
        :hotkey :space
        :name "continue"
        :choice/one-of [
-         `(mod-thirst 11 21)]}]}
+         (mod-thirst 11 21)]}]}
 
     ; Poisonous material
     #_{:event/id :allergic
@@ -427,7 +455,7 @@
        :hotkey :space
        :name "continue"
        :choice/one-of [
-         `(mod-thirst 11 21)]}]}
+         (mod-thirst 11 21)]}]}
 
     ; Hunger
     #_{:event/id :hunger
@@ -436,7 +464,7 @@
        :hotkey :space
        :name "continue"
        :choice/one-of [
-         `(mod-thirst 11 21)]}]}
+         (mod-thirst 11 21)]}]}
 
     ; Thirst
     #_{:event/id :thirst
@@ -445,7 +473,7 @@
        :hotkey :space
        :name "continue"
        :choice/one-of [
-         `(mod-thirst 11 21)]}]}
+         (mod-thirst 11 21)]}]}
 
     ; Low light
     #_{:event/id :low-light
@@ -454,7 +482,7 @@
        :hotkey :space
        :name "continue"
        :choice/one-of [
-         `(mod-thirst 11 21)]}]}
+         (mod-thirst 11 21)]}]}
 
     ; Sound
     #_{:event/id :sound
@@ -464,7 +492,7 @@
        :hotkey :space
        :name "continue"
        :choice/one-of [
-         `(mod-thirst 11 21)]}]}
+         (mod-thirst 11 21)]}]}
 
     ; Empty prototype -----------------
     #_{:title ""
@@ -473,7 +501,7 @@
        :hotkey :space
        :name "continue"
        :choice/one-of [
-         `(mod-thirst 11 21)]}]}
+         (mod-thirst 11 21)]}]}
 
     ; Spider
     #_{:event/id :spider
@@ -488,9 +516,9 @@
               :name "attack"
               :choice/events [
                 {:description "You hit the spider and your thigh."
-                 :choice/one-of [`(mod-hp 5 7)]}]}]}
+                 :choice/one-of [(mod-hp 5 7)]}]}]}
            {:description "Before you can hit it the spider sinks its fangs into your leg."
-            :choice/one-of [`(mod-hp 5 7)]}
+            :choice/one-of [(mod-hp 5 7)]}
            {:description "You slap the spider. There is not enough meat to eat."}]}
        {:hotkey \b
         :name "brush it off"
@@ -500,21 +528,46 @@
            :event/choices [
              {:hotkey \a
               :name "just give up and die"
-              :choice/one-of [`(mod-hp 10 50)]}
+              :choice/one-of [(mod-hp 10 50)]}
              {:hotkey \b
               :name "slap all of them"
-              :choice/one-of [`(mod-hp 5 7)]}
+              :choice/one-of [(mod-hp 5 7)]}
              {:hotkey \c
               :name "roll on the ground"}]}]}]}])
 
- 
-(defn eval-effect [effect]
-  (apply (resolve (first effect)) (rest effect)))
 
-(defn gen-event [state recipe events]
+;;  :event/id
+;;  :choice/id
+;;  :recipe/id
+;;  :recipe/categoy
+;;  :recipe/types
+;;  :recipe/flags
+;;  :recipe/components
+(defn gen-event [state {:recipe/keys [category
+                                      types
+                                      flags
+                                      components
+                                      example-item-flags]
+                        recipe-id :recipe/id
+                        event-id :event/id
+                        choice-id :choice/id
+                        :as recipe} events]
   (log/info (dissoc recipe :graph :img))
   (log/info (get recipe :past-events #{}))
-  (let [blueprint (->> events
+  (let [recipe-pool (clojure.set/union (when recipe-id #{recipe-id})
+                                       (when event-id #{event-id})
+                                       (when choice-id #{choice-id})
+                                       (when category #{category})
+                                       types
+                                       components
+                                       example-item-flags)
+        events (filter
+                 (fn [event]
+                   (let [requirements (get event :requirements #{})]
+                     (or (some? (clojure.set/intersection recipe-pool requirements))
+                         (empty? requirements))))
+                 events)
+        blueprint (->> events
                     (remove (fn [event]
                       (when-let [event-id (get event :event/id)]
                         (contains? (get recipe :past-events #{}) event-id))))
@@ -529,46 +582,16 @@
                                               (if-let [effect (rand-nth (get choice :choice/one-of))]
                                                 (do (log/info "gen-event choice" choice "effect" effect)
                                                 (assoc choice
-                                                   :effects [(eval-effect effect)]))
+                                                   :effects [effect]))
                                                 choice)))))]
     (log/info "gen-event next-stage" next-stage)
     (rcrafting/assoc-current-recipe state
        :current-stage next-stage
        :past-events (conj (get recipe :past-events #{}) (get next-stage :event/id)))))
 
-;;  :event/id
-;;  :choice/id
-;;  :recipe/id
-;;  :recipe/categoy
-;;  :recipe/types
-;;  :recipe/flags
-;;  :recipe/components
-(defn gen-complication [state {:recipe/keys [category
-                                             types
-                                             flags
-                                             components
-                                             example-item-flags]
-                              recipe-id :recipe/id
-                              event-id :event/id
-                              choice-id :choice/id
-                              :as recipe}]
-  (log/info recipe-id event-id choice-id category types components example-item-flags)
-  (log/info (dissoc recipe :graph :img))
-  (let [recipe-pool (clojure.set/union (when recipe-id #{recipe-id})
-                                       (when event-id #{event-id})
-                                       (when choice-id #{choice-id})
-                                       (when category #{category})
-                                       types
-                                       components
-                                       example-item-flags)]
-    (log/info "recipe-pool" recipe-pool)
+(defn gen-complication [state recipe]
     (gen-event state recipe
-      (filter
-        (fn [complication]
-          (let [requirements (get complication :requirements #{})]
-            (or (some? (clojure.set/intersection recipe-pool requirements))
-                (empty? requirements))))
-        (weapon-complications recipe)))))
+      (weapon-complications recipe)))
 
 (def remedies [{
     :title "Remedies"
@@ -592,18 +615,18 @@
         item-name (or (rig/id->name item-id) "unknown1")
         _ (log/info "items:" items "item-id:" item-id "item-name:" item-name)
         amount (+ 1 (rand-int 4))
-        buff-mod (eval-effect (first (shuffle [
-                     `(mod-accuracy 1 5)
-                     `(mod-damage 1 4)
-                     `(mod-durability 1 5)
-                     `(mod-stunning 0.1 0.5)
-                     `(mod-dismembering 0.1 0.5)
-                     `(mod-bleeding 0.1 0.5)
-                     `(mod-knockback 0.1 0.5)])))
-        debuff-mod (eval-effect (first (shuffle [
-                   `(mod-accuracy -5 -1)
-                   `(mod-damage -6 -2)
-                   `(mod-durability -6 -2)])))
+        buff-mod (first (shuffle [
+                     (mod-accuracy 1 5)
+                     (mod-damage 1 4)
+                     (mod-durability 1 5)
+                     (mod-stunning 0.1 0.5)
+                     (mod-dismembering 0.1 0.5)
+                     (mod-bleeding 0.1 0.5)
+                     (mod-knockback 0.1 0.5)]))
+        debuff-mod (first (shuffle [
+                     (mod-accuracy -5 -1)
+                     (mod-damage -6 -2)
+                     (mod-durability -6 -2)]))
         _ (log/info "buff-mod" buff-mod)
         events [
         {:title "Material requirements"
@@ -619,19 +642,54 @@
               :effects [debuff-mod]}]}]]
       (gen-event state recipe events)))
 
-(def enhancements [
-  {:title "Increased Accuracy"
-   :description "A truly fortuitous event!. You find a way to make your weapon more accurate."
-   :event/choices [{
-     :hotkey :space
-     :name "continue"
-     :choice/one-of [`(mod-accuracy 1 2)]}]}
-  {:title "Increased Damage"
-   :description "With great care, you make the weapon much more powerful"
-   :event/choices [{
-     :hotkey :space
-     :name "continue"
-     :choice/one-of [`(mod-damage 1 2)]}]}])
+(defn enhancements
+  [state]
+  (let [debuff-mod (first (shuffle [
+                     (mod-accuracy -5 -1)
+                     (mod-damage -6 -2)
+                     (mod-durability -6 -2)]))]
+    [
+    #_{:title "Increased Accuracy"
+     :description "A truly fortuitous event!. You find a way to make your weapon more accurate."
+     :event/choices [{
+       :hotkey :space
+       :name "continue"
+       :choice/one-of [(mod-accuracy 1 2)]}]}
+    #_{:title "Increased Damage"
+     :description "With great care, you make the weapon much more powerful"
+     :event/choices [{
+       :hotkey :space
+       :name "continue"
+       :choice/one-of [(mod-damage 1 2)]}]}
+    ; wooden - find replacement
+    {:description "In a flash of insight, you decide you can cannibalize another item for parts."
+     :requirements #{:wooden-find-replacement
+                     :edged-find-replacement}
+     :event/choices
+       (let [wooden-inventory (take 2 (shuffle (filter rcrafting/wooden (ri/player-inventory state))))
+             choices (map (fn [item]
+                            {:hotkey (get item :hotkey)
+                             :name (get item :name)
+                             :choice/one-of [(mod-dec-inventory (get item :hotkey))]})
+                          wooden-inventory)]
+         (if (empty? choices)
+           [{:name "skip"
+             :hotkey :space
+             :effects [debuff-mod]}]
+           choices))}
+    ; wooden - change design
+    {:description "You can turn this into a fire hardened  weapon if you find a fire."
+     :requirements #{:wooden-change-design}
+     :event/choices [
+         {:name "Use fire"
+          :hotkey :enter
+          ; FIXME: toggle on when next to fire (campfile/magma)
+          :requirements {}
+          :effects [(mod-firehardened)]}
+         {:name "skip"
+          :hotkey :space
+          :effects [debuff-mod]}]}]))
 
 (defn gen-enhancement [state recipe]
-  (gen-event state recipe enhancements))
+  (gen-event state recipe
+    (enhancements state)))

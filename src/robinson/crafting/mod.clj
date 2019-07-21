@@ -1,5 +1,6 @@
 (ns robinson.crafting.mod
   (:require [robinson.crafting.mod-protocol :as rcmp]
+            [robinson.inventory :as ri]
             [taoensso.timbre :as log]))
 
 (defn adj-val [v amount]
@@ -70,6 +71,12 @@
   rcmp/ModPlayerImmediate
   (player-immediate [this player]
     (update player k conj n)))
+
+(defmod-type dec-inventory-by-hotkey
+  :tag true
+  rcmp/ModPlayerDecInventoryImmediate
+  (player-dec-inventory-immediate [this state]
+    (ri/dec-item-count state k)))
 
 (defmod-type adj-attacker-on-attack
   rcmp/ModAttackerOnAttack

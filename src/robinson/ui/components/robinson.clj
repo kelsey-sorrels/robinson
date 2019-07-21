@@ -29,6 +29,7 @@
                                             player-wounded?
                                             player-poisoned?
                                             player-infected?]]
+            [robinson.inventory :as ri]
             [robinson.describe :as rdesc]
             [robinson.endgame :as rendgame :refer [gen-end-madlib]]
             [robinson.fx :as rfx]
@@ -1187,7 +1188,7 @@
         player-screen-pos                           (rv/world-pos->screen-pos game-state player-pos)
         sight-distance                              (rlos/sight-distance game-state)
         [vx vy]                                     (rc/pos->xy viewport-pos)
-        lantern-on                                  (when-let [lantern (rp/inventory-id->item game-state :lantern)]
+        lantern-on                                  (when-let [lantern (ri/inventory-id->item game-state :lantern)]
                                                       (= (get lantern :state :off) :on))
         font-type                                   (get (rfont/current-font game-state) :type :ttf)]
     (zc/csx
@@ -1240,7 +1241,7 @@
                 (let [target (target-pos game-state)]
                   (zc/csx [:view {:style {:position :absolute}} [
                             (let [ranged-weapon-item  (first (filter (fn [item] (get item :wielded-ranged))
-                                                                     (rp/player-inventory game-state)))]
+                                                                     (ri/player-inventory game-state)))]
                               (if (= :boomerang (get ranged-weapon-item :item/id))
                                 (zc/csx [Spline {:ch "\u25CF"
                                                :color (rcolor/color->rgb :green 255)

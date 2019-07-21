@@ -13,6 +13,9 @@
 (defprotocol ModPlayerImmediate
   (player-immediate [this player]))
 
+(defprotocol ModPlayerDecInventoryImmediate
+  (player-dec-inventory-immediate [this state]))
+
 (defprotocol ModItemOnCreate
   (item-on-create [this item]))
 

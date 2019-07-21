@@ -4,6 +4,7 @@
             [robinson.random :as rr]
             [taoensso.timbre :as log]
             [robinson.player :as rp]
+            [robinson.inventory :as ri]
             [robinson.viewport :as rv]
             [clojure.core.async :as async])
   (:import [java.io DataInputStream DataOutputStream]))
@@ -747,7 +748,7 @@
 (defn inventory-and-player-cell-items
   [state]
   (let [[cell _ _]        (player-cellxy state)
-        inventory         (rp/player-inventory state)
+        inventory         (ri/player-inventory state)
         cell-items        (get cell :items [])
         remaining-hotkeys (get-in state [:world :remaining-hotkeys])
         inventory         (vec (rc/fill-missing #(not (contains? % :hotkey))

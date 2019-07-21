@@ -6,6 +6,7 @@
             [robinson.crafting.recipe-gen :as rcrg]
             [robinson.crafting.weapon-gen :as rcwg]
             [robinson.player :as rp]
+            [robinson.inventory :as ri]
             [robinson.itemgen :as ig]
             [taoensso.timbre :as log]
             [zaffre.components :as zc]
@@ -61,7 +62,7 @@
                                (assoc :count (get-in item [:material :amount])))
                            (assoc :disabled
                              (when-let [{:keys [id amount]} (get item :material)]
-                               (< (rp/inventory-id->count game-state id) amount)))))
+                               (< (ri/inventory-id->count game-state id) amount)))))
                       (get current-stage :event/choices [{:name "continue" :hotkey :space}]))}]]])))
 
 (zc/def-component CraftInProgressRecipe

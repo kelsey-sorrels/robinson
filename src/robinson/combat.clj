@@ -4,6 +4,7 @@
             [robinson.random :as rr]
             [robinson.world :as rw]
             [robinson.player :as rp]
+            [robinson.inventory :as ri]
             [robinson.npc :as rnpc]
             [robinson.itemgen :as ig]
             [robinson.crafting.mod :as rcmod]
@@ -311,7 +312,7 @@
             (log-with-line state "1")
             ;; attacks use wielded weapons
             (if (and (= attack-type :melee attack-item))
-              (rp/dec-item-utility state (get attack-item :hotkey))
+              (ri/dec-item-utility state (get attack-item :hotkey))
               state)
             (log-with-line state "2")
             ;; awaken player if attacked while sleeping
@@ -321,7 +322,7 @@
               state)
             ;; degrade player clothing if worn
             (if (contains? (set defender-path) :player)
-              (rp/update-worn-item-utility state dec)
+              (ri/update-worn-item-utility state dec)
               state)
             (log-with-line state "3")
             ;; provoke temperamental animal
@@ -369,7 +370,7 @@
               state)
 
             (log-with-line state "8")
-            ;; chance of being wounded
+            ;; ciance of being wounded
             (update-in state defender-path (fn [defender] (if (and is-wound
                                                                    (contains? defender :wounds))
                                                             (update-in defender [:wounds]
@@ -434,7 +435,7 @@
               ;; attacks use wielded weapons
               (as-> state
                 (if (and (= attack-type :melee) attack-item)
-                  (rp/dec-item-utility state (get attack-item :hotkey))
+                  (ri/dec-item-utility state (get attack-item :hotkey))
                   state))
               (assert-msg "state nil")
               ;; update stats and will-to-live
@@ -616,14 +617,14 @@
                                :player attacker
                                :time 0}}
         knife  (assoc (ig/gen-item :knife) :wielded true)
-        #_#_state         (rp/add-to-inventory state [knife])
+        #_#_state         (ri/add-to-inventory state [knife])
         attacker-path [:world :player]
         defender-path [:world :npcs 0]
         pass-through  (fn [m & _] m)]
     (with-redefs [rw/update-cell       pass-through
                   rw/get-time          (fn [state] 1)
                   blood-splatter       pass-through
-                  rp/dec-item-utility  pass-through
+                  ri/dec-item-utility  pass-through
                   rc/append-log        pass-through
                   ce/on-hit            (fn [_ state] state)
                   ce/on-death          (fn [_ state] state)

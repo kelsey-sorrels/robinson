@@ -61,8 +61,7 @@
                              (get-in item [:material :amount])
                                (assoc :count (get-in item [:material :amount])))
                            (assoc :disabled
-                             (when-let [{:keys [id amount]} (get item :material)]
-                               (< (ri/inventory-id->count game-state id) amount)))))
+                             (not (rcrafting/choice-requirements-satisfied? game-state item)))))
                       (get current-stage :event/choices [{:name "continue" :hotkey :space}]))}]]])))
 
 (zc/def-component CraftInProgressRecipe

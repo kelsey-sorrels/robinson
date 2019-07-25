@@ -16,6 +16,9 @@
 (defprotocol ModPlayerDecInventoryImmediate
   (player-dec-inventory-immediate [this state]))
 
+(defprotocol ModRecipeRemoveEffectImmediate
+  (recipe-remove-effect-immediate [this state]))
+
 (defprotocol ModItemOnCreate
   (item-on-create [this item]))
 

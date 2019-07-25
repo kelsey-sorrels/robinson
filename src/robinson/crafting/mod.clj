@@ -78,6 +78,15 @@
   (player-dec-inventory-immediate [this state]
     (ri/dec-item-count state k)))
 
+(defmod-type remove-effect
+  :tag true
+  rcmp/ModRecipeRemoveEffectImmediate
+  (recipe-remove-effect-immediate [this state]
+    (let [selected-recipe-hotkey (get-in state [:world :selected-recipe-hotkey])]
+      (update-in state [:world :recipes selected-recipe-hotkey :effects]
+        (fn [effects]
+          (remove (partial = k) effects))))))
+
 (defmod-type adj-attacker-on-attack
   rcmp/ModAttackerOnAttack
   (attacker-on-attack [this attacker defender]

@@ -241,7 +241,7 @@
         :ranged-attack :airborn-item :ammunition-id :rock}
        ; edged
        {:item/id  :dagger                  :name  "dagger"                     :name-plural "daggers"
-        :attack :knife}
+        :attack :knife :roundness 0.01}
        {:item/id  :throwing-axe            :name  "throwing axe"               :name-plural "throwing axes"
         :attack :knife
         :ranged-attack :airborn-item :ch-cycle [\╒ \╖ \╛ \╙]}
@@ -304,7 +304,8 @@
        {:item/id  :match                   :name  "match"                      :name-plural "matches"
         :fuel 10}
        {:item/id  :knife                   :name  "knife"                      :name-plural "knives"
-        :attack :knife :utility 100 :properties #{:edged}}
+        :attack :knife :roundness 0.01
+        :utility 100 :properties #{:edged}}
        {:item/id  :plant-guide             :name  "plant guide"                :name-plural "plant guides"
         :fuel 100}
        {:item/id  :bandage                 :name  "bandage"                    :name-plural "bandages"

@@ -79,6 +79,10 @@
 (defn tube-like [item]
   (contains? (get item :properties) :tube-like))
 
+(defn handled? [item]
+  ; FIXME: implement
+  true)
+
 (def recipe-pred->str {
   low-weight "low weight"
   stick-like "sticklike"
@@ -92,8 +96,8 @@
   round "round"
 })
 
-(defn add-flags
-  "Takes recipe example items and runs them through item flags associating the result to :recipe/example-item-flags"
+(defn add-example-item-properties
+  "Takes recipe example items and runs them through item properties associating the result to :recipe/example-item-properties"
   [recipe]
   (let [flag-fns (into {} (map (fn [fn-sym] [(keyword fn-sym) (ns-resolve 'robinson.crafting fn-sym)])
                                ['low-weight
@@ -112,28 +116,28 @@
                                 'wooden
                                 'tube-like]))]
   (assoc recipe
-    :recipe/example-item-flags
+    :recipe/example-item-properties
     (->> recipe
       :recipe/example-item-requirements
       (map (fn [example-item-id]
              (reduce-kv (fn [s k v]
                           (log/info (:recipe/id recipe) example-item-id s k v (ig/id->item example-item-id))
                           (if (v (ig/id->item example-item-id))
-                            (conj s k)
+                            (conj s (keyword "recipe.item.property" (name k)))
                             s))
                         #{}
                         flag-fns)))
       (apply clojure.set/union)))))
 
 (def recipes
-  (mapv add-flags [
+  (mapv add-example-item-properties [
   ;; weapons
      ; blunt
      {:recipe/id  :club
       :recipe/category :weapon
       :recipe/types #{:blunt :melee}
       :recipe/example-item-requirements #{:stick :branch}
-      :recipe/components #{:handle :head}
+      :recipe/components #{:recipe.component/handle :recipe.component/head}
       :recipe/add [:club]
       :recipe/requirements '[each-of
                               [and
@@ -143,7 +147,7 @@
       :recipe/category :weapon
       :recipe/types #{:blunt :thrown}
       :recipe/example-item-requirements #{:stick :branch :rock}
-      :recipe/components #{:handle :head}
+      :recipe/components #{:recipe.component/handle :recipe.component/head}
       :recipe/add [:throwing-hammer]
       :recipe/requirements '[each-of
                               stick-like
@@ -155,7 +159,7 @@
       :recipe/category :weapon
       :recipe/types #{:blunt :ranged}
       :recipe/example-item-requirements #{:rock :leather}
-      :recipe/components #{:cord :pocket}
+      :recipe/components #{:recipe.component/cord :recipe.component/pocket}
       :recipe/add [:sling]
       :recipe/requirements '[each-of
                               flexible
@@ -167,7 +171,7 @@
       :recipe/category :weapon
       :recipe/types #{:edged :melee}
       :recipe/example-item-requirements #{:rock :stick :branch :plant-fiber :leather}
-      :recipe/components #{:handle :blade :binder}
+      :recipe/components #{:recipe.component/handle :recipe.component/blade :recipe.component/binder}
       :recipe/add [:dagger]
       :recipe/requirements '[each-of
                               edged
@@ -177,7 +181,7 @@
       :recipe/category :weapon
       :recipe/types #{:edged :thrown}
       :recipe/example-item-requirements #{:rock :stick :branch :plant-fiber :leather}
-      :recipe/components #{:handle :blade :binder}
+      :recipe/components #{:recipe.component/handle :recipe.component/blade :recipe.component/binder}
       :recipe/add [:throwing-axe]
       :recipe/requirements '[each-of
                               edged
@@ -188,7 +192,7 @@
       :recipe/category :weapon
       :recipe/types #{:edged :ranged}
       :recipe/example-item-requirements #{:stick :branch}
-      :recipe/components #{:blade}
+      :recipe/components #{:recipe.component/blade}
       :recipe/add [:boomerang]
       :recipe/requirements '[each-of
                               [and
@@ -201,7 +205,7 @@
       :recipe/category :weapon
       :recipe/types #{:piercing :melee}
       :recipe/example-item-requirements #{:rock :stick :branch :plant-fiber :leather}
-      :recipe/components #{:shaft :point}
+      :recipe/components #{:recipe.component/shaft :recipe.component/point}
       :recipe/add [:spear]
       :recipe/requirements '[each-of
                               pointed
@@ -211,7 +215,7 @@
       :recipe/category :weapon
       :recipe/types #{:piercing :thrown}
       :recipe/example-item-requirements #{:rock :stick :branch :plant-fiber :leather}
-      :recipe/components #{:shaft :point}
+      :recipe/components #{:recipe.component/shaft :recipe.component/point}
       :recipe/add [:throwing-spear]
       :recipe/requirements '[each-of
                               sharp
@@ -221,7 +225,7 @@
       :recipe/category :weapon
       :recipe/types #{:piercing :ranged}
       :recipe/example-item-requirements #{:rock :stick :branch :plant-fiber :leather :feather}
-      :recipe/components #{:string :length}
+      :recipe/components #{:recipe.component/string :recipe.component/length}
       :recipe/add [:bow]
       :recipe/add-recipe #{:arrow}
       :recipe/requirements '[each-of
@@ -232,7 +236,7 @@
       :recipe/category :weapon
       :recipe/types #{:piercing :ranged}
       :recipe/example-item-requirements #{:bamboo :stick}
-      :recipe/components #{:tube}
+      :recipe/components #{:recipe.component/tube}
       :recipe/add [:blowgun]
       :recipe/add-recipe #{:blowdart}
       :recipe/requirements '[each-of
@@ -243,7 +247,7 @@
       :recipe/category :weapon
       :recipe/types #{:flexible :melee}
       :recipe/example-item-requirements #{:plant-fiber :stick}
-      :recipe/components #{:string :grip}
+      :recipe/components #{:recipe.component/string :recipe.component/grip}
       :recipe/add [:garrote]
       :recipe/requirements '[each-of
                               flexible
@@ -252,7 +256,7 @@
       :recipe/category :weapon
       :recipe/types #{:flexible :thrown}
       :recipe/example-item-requirements #{:plant-fiber :stick :rope :rock}
-      :recipe/components #{:string :ball}
+      :recipe/components #{:recipe.component/string :recipe.component/ball}
       :recipe/add [:bolas]
       :recipe/requirements '[each-of
                               flexible
@@ -262,7 +266,7 @@
       :recipe/category :weapon
       :recipe/types #{:flexible :ranged}
       :recipe/example-item-requirements #{:plant-fiber :rope}
-      :recipe/components #{:handle :thong}
+      :recipe/components #{:recipe.component/handle :recipe.component/thong}
       :recipe/add [:whip]
       :recipe/requirements '[each-of
                               flexible]}
@@ -471,7 +475,7 @@
     (mapcat identity)
     set)))
 
-(defn get-example-item-flags-by-types [types]
+(defn get-example-item-properties-by-types [types]
   (let [rules '[[(matches-all ?info ?seq ?first ?rest ?empty ?e ?a ?vs)
                  [(?seq ?vs)]
                  [(?first ?vs) ?v]
@@ -489,7 +493,7 @@
            [(?info ?types)]
            ;[?e :recipe/id :club]
            (matches-all ?info ?seq ?first ?rest ?empty ?e :recipe/types ?types)
-           [?e :recipe/example-item-flags ?v]]
+           [?e :recipe/example-item-properties ?v]]
           recipe-db
           rules
           (fn info [x] (log/info x) true)
@@ -706,6 +710,13 @@
               :recipe/id
               ig/id->name))))))
 
+(defn merge-effects
+  [effects]
+  (->> effects
+   (group-by rcmp/id)
+   (map (fn [[_ effects]]
+     (reduce rcmp/merge effects)))))
+
 (defn recipe-short-desc
   [recipe]
   (let [merged-effects (->>
@@ -742,15 +753,16 @@
 
 (defn fill-event
   [event]
-  (if
-    ; next-event has choices,
-    (seq (get event :event/choices))
-      event
-    ; next event has no choices
-    (assoc event :event/choices [{
-      :hotkey :space
-      :name "continue"}])))
-
+  (-> event
+    (assoc :description (let [description (:description event)]
+                          (if (sequential? description)
+                            (rand-nth description)
+                            description)))
+    (cond-> (empty? (get event :event/choices))
+      (assoc :event/choices [{
+        :hotkey :space
+        :name "continue"}]))))
+ 
 (defn fill-choice
   [add-done choice]
   (if add-done
@@ -774,6 +786,8 @@
                 (rp/update-player state (partial rcmp/player-immediate effect))
               (satisfies? rcmp/ModPlayerDecInventoryImmediate effect)
                 (rcmp/player-dec-inventory-immediate effect state)
+              (satisfies? rcmp/ModRecipeRemoveEffectImmediate effect)
+                (rcmp/recipe-remove-effect-immediate effect state)
               :else
                 state))
           state
@@ -781,9 +795,15 @@
   
 (defn choice-requirements-satisfied?
   [state choice]
- (if-let [{:keys [id amount]} (get choice :material)]
-            (<= amount (ri/inventory-id->count state id))
-            true))
+  (if-let [{:keys [material adjacent-to-fire]} (get choice :requirements)]
+    (cond
+      material
+        (let [{:keys [id amount]} material]
+          (<= amount (ri/inventory-id->count state id)))
+      adjacent-to-fire
+        (some (fn [cell] (rw/type->on-fire? (get cell :type)))
+              (rw/player-adjacent-cells state)))
+    true))
 
 ; Input handlers
 (defn resolve-choice
@@ -799,14 +819,19 @@
     (if-let [choice (->> (get current-stage :event/choices)
                       (filter #(= (get % :hotkey) keyin))
                       first)]
-      ;; check material requirement is met if any exists
+      ;; check choice requirement is met if any exists
       (if (choice-requirements-satisfied? state choice)
         (let [results (into {} (map (fn [[k v]]
                                       ; change non-collection values to sets so they are mergeable
                                       (if (coll? v)
                                         [k v]
                                         [k #{v}]))
-                                    (merge (select-keys choice [:types :effects :materials :done :event/id :choice/id])
+                                    (merge (select-keys choice [:types
+                                                                :effects
+                                                                :materials
+                                                                :done
+                                                                :event/id
+                                                                :choice/id])
                                            (select-keys current-stage [:gen]))))
               _ (log/info "results" results)
               ; merge results into current recipe
@@ -844,7 +869,7 @@
                       (assert false (str "next node type unknown " next-node next-node-type)))
                       state-with-results
                       (let [recipe (current-recipe state-with-results)]
-                        (assoc recipe :recipe/example-item-flags (get-example-item-flags-by-types (get recipe :types))))))
+                        (assoc recipe :recipe/example-item-properties (get-example-item-properties-by-types (get recipe :types))))))
                   (assoc-current-recipe :current-node next-node))
                 ; choice does not point to next node
                 (let [next-node-choices (next-node-choices recipe)]
@@ -879,7 +904,7 @@
                             (assert false (str "next node type unknown " next-node next-node-type)))
                             state-with-results
                             (let [recipe (current-recipe state-with-results)]
-                              (assoc recipe :recipe/example-item-flags (get-example-item-flags-by-types (get recipe :types))))))
+                              (assoc recipe :recipe/example-item-properties (get-example-item-properties-by-types (get recipe :types))))))
                         (assoc-current-recipe :current-node (-> next-node-choices first :next-node)))
                     ;; else multiple choices to next node, create event to choose
                     :else
@@ -943,7 +968,8 @@
                                                    (recipe-name recipe))
                                            :alt (if (get recipe :empty)
                                                   "----"
-                                                  (recipe-short-desc recipe))))
+                                                  (recipe-short-desc recipe))
+                                           :effects (merge-effects (get recipe :effects))))
                           (merge
                             {\a empty-recipe
                              \b empty-recipe

@@ -565,6 +565,10 @@
   [t]
   (contains? #{:tree :palm-tree :fruit-tree :bamboo :tall-grass :short-grass :campfire} t))
 
+(defn type->on-fire?
+  [t]
+  (contains? #{:lava :fire :campfire} t))
+
 (defn type->shelter?
   [t]
   (contains? #{:ramada :lean-to :tarp-shelter} t))

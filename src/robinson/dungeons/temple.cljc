@@ -65,6 +65,7 @@
                                         :gong
                                         :stone-tablet
                                         :codex
+                                        :oil
                                         :rag]))]
     (log/debug "gen-chest item" item)
     (case (get item :type)

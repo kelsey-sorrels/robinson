@@ -85,6 +85,7 @@
     (let [selected-recipe-hotkey (get-in state [:world :selected-recipe-hotkey])]
       (update-in state [:world :recipes selected-recipe-hotkey :effects]
         (fn [effects]
+          (log/info "Removing " k " from " effects)
           (remove (partial = k) effects))))))
 
 (defmod-type adj-attacker-on-attack

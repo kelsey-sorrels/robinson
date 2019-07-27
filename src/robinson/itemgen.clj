@@ -155,9 +155,9 @@
 
 (def ^:private items [
        {:item/id  :stick                   :name  "stick"                      :name-plural "sticks"
-        :fuel 100 :utility 100 :weight 0.5 :properties #{:stick-like} :item/materials #{:wood}}
+        :fuel 100 :utility 100 :weight 0.5 :properties #{:stick-like :handled} :item/materials #{:wood}}
        {:item/id  :branch                  :name  "branch"                     :name-plural "branches"
-        :fuel 100 :utility 100 :weight 2 :properties #{:stick-like} :item/materials #{:wood}}
+        :fuel 100 :utility 100 :weight 2 :properties #{:stick-like :handled} :item/materials #{:wood}}
        {:item/id  :log                     :name  "log"                        :name-plural "logs"
         :fuel 500 :weight 20 :properties #{:stick-like} :item/materials #{:wood}}
        {:item/id  :sharpened-stick         :name  "sharpened stick"            :name-plural "sharpened sticks"
@@ -227,7 +227,7 @@
        ; blunt
        {:item/id  :club                    :name  "club"                       :name-plural "clubs"
         :attack :blunt
-        :properties #{:stick-like}}
+        :properties #{:stick-like :handled}}
        {:item/id  :rock                    :name  "rock"                       :name-plural "rocks"
         :weight 0.5
         :roundness 0.8
@@ -236,14 +236,18 @@
         :ammunition-id :rock}
        {:item/id  :throwing-hammer         :name  "throwing hammer"            :name-plural "throwing hammers"
         :attack :club
+        :properties #{:handled}
         :ranged-attack :airborn-item :ch-cycle [\╒ \╖ \╛ \╙]}
        {:item/id  :sling                   :name  "sling"                      :name-plural "slings"
         :ranged-attack :airborn-item :ammunition-id :rock}
        ; edged
        {:item/id  :dagger                  :name  "dagger"                     :name-plural "daggers"
-        :attack :knife :roundness 0.01}
+        :attack :knife
+        :properties #{:handled}
+        :roundness 0.01}
        {:item/id  :throwing-axe            :name  "throwing axe"               :name-plural "throwing axes"
         :attack :knife
+        :properties #{:handled}
         :ranged-attack :airborn-item :ch-cycle [\╒ \╖ \╛ \╙]}
        {:item/id  :boomerang               :name  "boomerang"                  :name-plural "boomerangs"
         :ranged-attack :boomerang
@@ -258,12 +262,14 @@
         :ranged-attack :airborn-item :ammunition-id :blowdart}
        ; flexible
        {:item/id  :garrote                 :name  "garrote"                    :name-plural "garrotes"
-        :attack :strangle}
+        :attack :strangle
+        :properties #{:handled}}
        {:item/id  :bolas                   :name  "bolas"                      :name-plural "bolas"
         :ranged-attack :airborn-item :ch-cycle [\╒ \╖ \╛ \╙]
         :effects [(rcmod/tag-defender-on-attack "tangle" "tgl" :entangled 0.9)]}
        {:item/id  :whip                    :name  "whip"                       :name-plural "whips"
-        :ranged-attack :whip}
+        :ranged-attack :whip
+        :properties #{:handled}}
        ; weapon components
        {:item/id  :obsidian                :name  "obsidian stone"             :name-plural "obsidian stones"}
        {:item/id  :flint                   :name  "flint stone"                :name-plural "flint stones"
@@ -305,7 +311,7 @@
         :fuel 10}
        {:item/id  :knife                   :name  "knife"                      :name-plural "knives"
         :attack :knife :roundness 0.01
-        :utility 100 :properties #{:edged}}
+        :utility 100 :properties #{:edged :handled}}
        {:item/id  :plant-guide             :name  "plant guide"                :name-plural "plant guides"
         :fuel 100}
        {:item/id  :bandage                 :name  "bandage"                    :name-plural "bandages"
@@ -318,7 +324,7 @@
        {:item/id  :bedroll                 :name  "bedroll"                    :name-plural "bedrolls"}
        {:item/id  :tarp                    :name  "tarp"                       :name-plural "tarps"}
        {:item/id  :saw                     :name  "saw"                        :name-plural "saws"
-        :utility 100 :properties #{:edged}}
+        :utility 100 :properties #{:edged :handled}}
        {:item/id  :glass-bottle            :name  "glass bottle"               :name-plural "glass-bottles"}
        {:item/id  :paper                   :name  "paper"                      :name-plural "pages of paper"}
        {:item/id  :pen                     :name  "pen"                        :name-plural "pens"
@@ -334,6 +340,8 @@
         :utility 100}
        ;; pirate ship items
        {:item/id  :spices                  :name "spices"                      :name-plural "spices"}
+       {:item/id  :file                    :name "file"                        :name-plural "files"}
+       {:item/id  :oil                     :name "oil"                         :name-plural "oil"}
        {:item/id  :sail                    :name "sail"                        :name-plural "sails"
         :properties #{:flexible :planar}}
        {:item/id  :plank                   :name "plank"                       :name-plural "planks"
@@ -350,9 +358,12 @@
        {:item/id  :rag                     :name "rag"                         :name-plural "rags"
         :properties #{:flexible :planar}}
        {:item/id  :cutlass                 :name "cutlass"                     :name-plural "cutlasses"
-        :attack :cutlass :utility 50}
+        :attack :cutlass
+        :properties #{:handled}
+        :utility 50}
        {:item/id  :pistol                  :name "flintlock pistol"            :name-plural "flintlock pistols"
-        :ammunition-id :paper-cartridge}
+        :ammunition-id :paper-cartridge
+        :properties #{:handled}}
        {:item/id  :paper-cartridge         :name "paper cartridge"             :name-plural "paper cartridges"
         :fuel 10}
        {:item/id  :ale                     :name "bottle of ale"               :name-plural "bottles of ale"
@@ -371,7 +382,9 @@
        {:item/id  :robe                    :name "robe"                        :name-plural "robes"
         :fuel 20 :properties #{:tensile :flexible :planar}}
        {:item/id  :ritual-knife            :name "ritualistic knife"           :name-plural "ritualistic knives"
-        :attack :ritualistic-knife :utility 20}
+        :attack :ritualistic-knife
+        :properties #{:handled}
+        :utility 20}
        {:item/id  :ancient-spear           :name "ancient spear"               :name-plural "ancient spears"
         :attack :ancient-spear :utility 20 :ammunition-id :ancient-spear}
        {:item/id  :blowdart                :name "blowdart"                    :name-plural "blowdarts"

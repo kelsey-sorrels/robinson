@@ -80,8 +80,7 @@
   (contains? (get item :properties) :tube-like))
 
 (defn handled? [item]
-  ; FIXME: implement
-  true)
+  (contains? (get item :properties) :handled))
 
 (def recipe-pred->str {
   low-weight "low weight"

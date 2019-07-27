@@ -199,6 +199,11 @@
   (let [n (rr/uniform-double low high)]
     (rcmod/tag-defender-on-attack "knockback" "knb" :knockbacked n)))
 
+; serrated
+(defn mod-serrated
+  []
+  (rcmod/adj-item-on-create "serrated" "srr" :damage 10))
+
 ; condition mod based on opponent attributes
 #_(defn mod-conditioned-heirarchy
   [id mod]
@@ -866,18 +871,33 @@
       (weapon-complications recipe)))
 
 (defn remedies
-  [state]
-  [{:title "Remedies"
-    :event/choices [
-      {:name "Slow down"
-       :hotkey \a
-       :remedies [:slow-down]}
-      {:name "Push through"
-       :hotkey \b
-       :remedies [:push-through]}]}])
+  [state recipe]
+  (let [debuffs (get recipe :effects)
+        choices (map (fn [effect hotkey]
+                        {:hotkey hotkey
+                         :name (str "fix " (rcmp/full-name effect))
+                         :choice/one-of [(mod-remove-effect effect)]})
+                    debuffs
+                    [\a \b \c])
+        choices (if (empty? choices)
+                  [{:name "no wooden items - skip"
+                    :hotkey :space}]
+                  choices)]
+    [{:title "Remedies"
+      :event/choices [
+        {:name "Slow down"
+         :hotkey \a
+         :choice/events [{
+           :description ["You slow down, examining your work. You see how to fix the issue."]
+           :event/choices choices}]}
+        {:name "Push through"
+         :hotkey \b
+         :choice/events [{
+           :description ["You force it to work despite the flaws."]
+           :event/choices choices}]}]}]))
 
 (defn gen-remedy [state recipe]
-  (gen-event state recipe (remedies state)))
+  (gen-event state recipe (remedies state recipe)))
 
 (defn gen-material [state recipe]
   (log/info (get recipe :types))
@@ -885,9 +905,12 @@
         _ (log/info "example-items" (vec example-items))
         items (take 2 (shuffle example-items))
         item-id (or (first items) :stick)
-        item-name (or (rig/id->name item-id) "unknown1")
-        _ (log/info "items:" items "item-id:" item-id "item-name:" item-name)
         amount (+ 1 (rand-int 4))
+        item-name (or (if (< 1 amount)
+                        (rig/id->name-plural item-id)
+                        (rig/id->name item-id))
+                      "unknown")
+        _ (log/info "items:" items "item-id:" item-id "item-name:" item-name)
         buff-mod (first (shuffle [
                      (mod-accuracy 1 5)
                      (mod-damage 1 4)
@@ -915,7 +938,7 @@
               :hotkey :space
               :effects [debuff-mod]}]}
 
-        ; Wooden - change design - find codex
+        ; wooden - change design - find codex
         {:description "If you find the right kind of wood, you can see how to fix your problem."
          :event/choices
            (let [wooden-inventory (take 2 (shuffle (filter rcrafting/wooden (ri/player-inventory state))))
@@ -935,9 +958,31 @@
                               wooden-inventory)]
              (if (empty? choices)
                [{:name "no wooden items - skip"
-                 :hotkey :space
-                 :effects [debuff-mod]}]
-               choices))}]]
+                 :hotkey :space}]
+               choices))}
+
+        ; edged - change design - find file
+        {:description "If you find a file, you can turn this into a serrated weapon."
+         :requirements #{:choice.id/edged-change-design}
+         :event/choices [
+             {:name "use file"
+              :hotkey :enter
+              :requirements {:material {:id :file :amount 1}}
+              :effects [(mod-serrated)]}
+             {:name "skip"
+              :hotkey :space}]}
+
+        ; edged - change design - find file
+        {:description "If you find a file, you can turn this into a serrated weapon."
+         :requirements #{:choice.id/flexible-change-design}
+         :event/choices [
+             {:name "use oil"
+              :hotkey :enter
+              :requirements {:material {:id :oil :amount 1}}
+              :effects [buff-mod]}
+             {:name "skip"
+              :hotkey :space}]}
+]]
       (gen-event state recipe events)))
 
 (defn enhancements
@@ -1163,6 +1208,18 @@
               :hotkey :space
               :effects [(mod-knockback 0.1 0.5)]}]}]}]}
 
+    ; mental - perseverence
+    {:description "You think about how to much you've struggeled so far and how far you have come."
+     :requirements #{:choice.id/handled-change-design}
+     :event/choices [
+         {:name "continue"
+          :hotkey :space
+          :choice/events [{
+            :description "You start to feel better about your chances of survival."
+            :event/choices [{
+              :name "continue"
+              :hotkey :space
+              :effects [(mod-wtl 1 5)]}]}]}]}
 
 ]))
 

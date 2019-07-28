@@ -11,24 +11,24 @@
                  [lein-jlink "0.2.0"]
                  [lein-binplus "0.6.4"]
                  [lein-launch4j "0.1.2"]]
-  :dependencies [[org.clojure/clojure "1.10.0"]
-                 [org.clojure/core.async "0.4.474"]
-                 [org.clojure/core.cache "0.7.1"]
-                 [org.clojure/core.match "0.3.0-alpha4"]
-                 [org.clojure/core.memoize "0.7.1"]
+  :dependencies [[org.clojure/clojure "1.10.1"]
+                 [org.clojure/core.async "0.4.500"]
+                 [org.clojure/core.cache "0.7.2"]
+                 [org.clojure/core.match "0.3.0"]
+                 [org.clojure/core.memoize "0.7.2"]
                  [org.clojure/tools.nrepl "0.2.13"]
-                 [org.clojure/tools.reader "1.3.0"]
+                 [org.clojure/tools.reader "1.3.2"]
                  [org.clojure/data.generators "0.1.2"]
-                 [org.clojure/math.combinatorics "0.1.4"]
+                 [org.clojure/math.combinatorics "0.1.6"]
                  [org.clojure/clojure-contrib "1.2.0"]
                  [org.clojars.vishk/algotools "0.1.0"]
                  [org.clojure/data.json "0.2.6"]
-                 [org.clojure/tools.namespace "0.2.11"]
+                 [org.clojure/tools.namespace "0.3.0"]
                  [clj-audio "0.1.0"]
                  [org.clojars.automata/jl "1.0.0"]
                  [org.clojars.automata/mp3spi "1.9.4"]
                  [seesaw "1.5.0"]
-                 [ns-tracker "0.3.1"]
+                 [ns-tracker "0.4.0"]
                  [tailrecursion/cljson "1.0.7"]
                  [servant "0.1.5"]
                  [rockpick "0.1.0"]
@@ -42,11 +42,11 @@
                  [clojure-watch "0.1.14"]
                  [overtone/at-at "1.2.0"]
                  [rm-hull/monet "0.2.2"]
-                 [datascript "0.17.1"]
+                 [datascript "0.18.4"]
                  [net.mikera/core.matrix "0.62.0"]
                  [net.mikera/vectorz-clj "0.48.0"]
                  [clatrix "0.5.0"]
-                 [mogenslund/liquid "1.1.2"]
+                 [mogenslund/liquid "1.1.3"]
                  [aysylu/loom "1.0.2"]
                  [incanter "1.9.3"]
                  ;dev
@@ -72,10 +72,11 @@
   :profiles {
     :dev {:dependencies [[org.clojure/test.check "0.9.0"]]
           :jvm-opts ["-Xdebug"]}
-    :test {:dependencies [[mvxcvi/puget "1.0.1"]
-                          [fipp "0.6.8"]]}
+    :test {:dependencies [[mvxcvi/puget "1.1.2"]
+                          [quil "3.0.0"]
+                          [fipp "0.6.18"]]}
     :demos {:dependencies 
-              [[quil "2.7.1"]]}
+              [[quil "3.0.0"]]}
     :uberjar {:aot [#"robinson/.*.clj"]
               :main robinson.autoreloadcore
               :keep-non-project-classes true}
@@ -107,7 +108,7 @@
                        robinson.player robinson.render robinson.swingterminal robinson.viewport robinson.worldgen]}
   :repl-options {:timeout 920000}
   :global-vars {*warn-on-reflection* true
-                *assert* false}
+                *assert* true}
   :jlink-modules ["java.base" "java.desktop" "java.sql" "java.naming" "jdk.unsupported"]
   :launch4j-install-dir "/home/santos/bin/launch4j"
   :launch4j-config-file "dev-resources/config.xml"

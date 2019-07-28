@@ -39,11 +39,13 @@
         :name "rat corpse",
         :name-plural "rat corpses",
         :hunger 12.079181246047625
+        :weight 0.2
         :hotkey \A}
        {:item/id :rat-bones,
         :race :rat,
         :name "rat bones",
         :name-plural "rat bones",
+        :weight 0.2
         :properties #{:tube-like :stick-like},
         :hotkey \B}
        {:item/id :rope,
@@ -58,7 +60,7 @@
         :fuel 100,
         :utility 100,
         :weight 0.5,
-        :properties #{:stick-like},
+        :properties #{:stick-like :handled},
         :item/materials #{:wood}
         :hotkey \D}
        {:item/id :feather,
@@ -70,7 +72,8 @@
         :name-plural "knives",
         :attack :knife,
         :utility 100,
-        :properties #{:edged}
+        :roundness 0.01
+        :properties #{:edged :handled}
         :hotkey \F}
        {:item/id :bamboo,
         :name "bamboo",
@@ -83,6 +86,9 @@
         :name-plural "rocks",
         :attack :blunt,
         :ranged-attack :airborn-item
+        :ammunition-id :rock
+        :roundness 0.8
+        :weight 0.5
         :hotkey \H}])))
 
 (deftest test-dec-items
@@ -148,7 +154,8 @@
         :name-plural "knives",
         :attack :knife,
         :utility 100,
-        :properties #{:edged}
+        :roundness 0.01
+        :properties #{:edged :handled}
         :hotkey \B}
        {:item/id :rat-corpse,
         :type :food,
@@ -156,10 +163,12 @@
         :name "rat corpse",
         :name-plural "rat corpses",
         :hunger 12.079181246047625
+        :weight 0.2
         :hotkey \C}
        {:item/id :rat-bones,
         :race :rat,
         :name "rat bones",
         :name-plural "rat bones",
+        :weight 0.2
         :properties #{:tube-like :stick-like},
         :hotkey \D}])))

@@ -1,6 +1,6 @@
-(ns robinson.player-test
+(ns robinson.inventory-test
   (:require [robinson.common :as rc]
-            [robinson.player :as rp]
+            [robinson.inventory :as ri]
             [robinson.monstergen :as mg]
             [robinson.itemgen :as ig]
             [clojure.test :as t
@@ -16,7 +16,7 @@
       [items expected]
         ; expected = actual
         (= expected
-           (rp/player-inventory (rp/add-to-inventory state items)))
+           (ri/player-inventory (ri/add-to-inventory state items)))
       ; items
       (let [item-ids [:rope
                       :stick
@@ -103,8 +103,8 @@
         ; expected = actual
         (= expected
            (-> state
-            (rp/dec-item-count \C)
-            rp/player-inventory))
+            (ri/dec-item-count \C)
+            ri/player-inventory))
       ; items
       [{:item/id :rope,
        :name "rope",
@@ -125,9 +125,9 @@
         ; expected = actual
         (= expected
            (-> state
-             (rp/add-to-inventory (map ig/gen-item [:rope :knife]))
-             (rp/add-to-inventory items)
-             rp/player-inventory))
+             (ri/add-to-inventory (map ig/gen-item [:rope :knife]))
+             (ri/add-to-inventory items)
+             ri/player-inventory))
       ; items
       (let [rat (mg/id->monster :rat)
             rat-corpse (ig/gen-corpse rat)

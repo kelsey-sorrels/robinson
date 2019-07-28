@@ -9,7 +9,8 @@
             [taoensso.timbre :as log]
             [loom.graph :as lg]
             [loom.label :as ll]
-            [datascript.core :as d]))
+            [datascript.core :as d]
+            [clojure.math.combinatorics :as combo]))
 
 (defn current-recipe [state]
   (let [selected-recipe-hotkey (get-in state [:world :selected-recipe-hotkey])]
@@ -120,7 +121,7 @@
       :recipe/example-item-requirements
       (map (fn [example-item-id]
              (reduce-kv (fn [s k v]
-                          (log/info (:recipe/id recipe) example-item-id s k v (ig/id->item example-item-id))
+                          #_(log/info (:recipe/id recipe) example-item-id s k v (ig/id->item example-item-id))
                           (if (v (ig/id->item example-item-id))
                             (conj s (keyword "recipe.item.property" (name k)))
                             s))
@@ -132,7 +133,7 @@
   (mapv add-example-item-properties [
   ;; weapons
      ; blunt
-     {:recipe/id  :club
+     {:recipe/id :club
       :recipe/category :weapon
       :recipe/types #{:blunt :melee}
       :recipe/example-item-requirements #{:stick :branch}
@@ -405,6 +406,15 @@
   (-> (d/empty-db recipe-schema)
       (d/db-with recipes)))
 
+(defn get-recipes-by-category [category]
+  (map first
+    (d/q '[:find (pull ?e [*])
+           :in $ ?category
+           :where
+           [?e :recipe/category ?category]]
+            recipe-db
+            category)))
+
 (defn get-recipe [id]
   (ffirst
     (d/q '[:find (pull ?e [*])
@@ -428,8 +438,6 @@
     (d/q '[:find (pull ?e [*])
            :in $ % ?info ?seq ?first ?rest ?empty ?types
            :where
-           ;[(?info ?types)]
-           ;[?e :recipe/id :club]
            (matches-all ?info ?seq ?first ?rest ?empty ?e :recipe/types ?types)]
           recipe-db
           rules
@@ -458,8 +466,6 @@
     (d/q '[:find ?v
            :in $ % ?info ?seq ?first ?rest ?empty ?types
            :where
-           ;[(?info ?types)]
-           ;[?e :recipe/id :club]
            (matches-all ?info ?seq ?first ?rest ?empty ?e :recipe/types ?types)
            [?e :recipe/example-item-requirements ?v]]
           recipe-db
@@ -490,7 +496,6 @@
            :in $ % ?info ?seq ?first ?rest ?empty ?types
            :where
            [(?info ?types)]
-           ;[?e :recipe/id :club]
            (matches-all ?info ?seq ?first ?rest ?empty ?e :recipe/types ?types)
            [?e :recipe/example-item-properties ?v]]
           recipe-db
@@ -552,9 +557,9 @@
 
 (defn item-satisfies-requirement-clause?
   [item clause]
-  ;(log/info item)
-  ;(log/info clause)
-  ;(log/info (type clause))
+  #_(log/info item)
+  #_(log/info clause)
+  #_(log/info (type clause))
   (cond
     (fn? clause)
       (clause item)
@@ -583,16 +588,29 @@
     (ri/inventory-hotkey->item state hotkey)))
 
 (defn requirements-satisfied?
-  [state requirements]
-  (let [rest-requirements (rest requirements)
-        satisfied (every? identity
-                          (map-indexed (fn [idx req]
-                                         (let [slot-item (slot->item state idx)]
-                                           (item-satisfies-requirement-clause? slot-item req)))
-                            rest-requirements))]
-    satisfied))
+  [recipe]
+  (let [rest-requirements (-> recipe :recipe/requirements rest)]
+    (when (= (count (get recipe :slots))
+             (count rest-requirements))
+      (let [satisfied (every? identity
+                              (map-indexed (fn [idx req]
+                                             (let [slot-item (get-in recipe [:slots idx])]
+                                               (item-satisfies-requirement-clause? slot-item req)))
+                                rest-requirements))]
+        satisfied))))
 
-(defn get-recipes
+(defn valid-recipes [items recipes]
+  (set (for [recipe recipes
+       :when (not-empty items)
+        permutation (combo/permutations items)
+       :let [recipe-with-filled-slots (reduce (fn [recipe [idx item]]
+                                                (assoc-in recipe [:slots idx] item))
+                                              recipe
+                                              (map-indexed vector permutation))]
+       :when (requirements-satisfied? recipe-with-filled-slots)]
+    recipe)))
+
+(defn applicable-recipes
   "Return recipes tagged with :applicable true if the recipe has the required pre-requisites."
   [state]
   (apply hash-map
@@ -794,7 +812,7 @@
   
 (defn choice-requirements-satisfied?
   [state choice]
-  (if-let [{:keys [material adjacent-to-fire]} (get choice :requirements)]
+  (if-let [{:keys [material adjacent-to-fire]} (get choice :recipe/requirements)]
     (cond
       material
         (let [{:keys [id amount]} material]
@@ -928,6 +946,10 @@
     (log/info "current node label" (ll/label (get recipe :graph) n))
     ((case (get (ll/label (get recipe :graph) n) :type)
         \? (ns-resolve recipe-ns 'gen-question)
+        \! (ns-resolve recipe-ns 'gen-complication)
+        \+ (ns-resolve recipe-ns 'gen-remedy)
+        \& (ns-resolve recipe-ns 'gen-material)
+        \☼ (ns-resolve recipe-ns 'gen-enhancement)
         (assert false (str "current node not question" n (get recipe :graph))))
        state recipe)))
 

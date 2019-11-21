@@ -16,11 +16,14 @@
 (defmacro defmod-type [sym & args]
   (let [pascal (kebab-to-pascal sym)
         pascal# pascal
-        body (take-last 2 args)
         constructor# (symbol (str "->" (name pascal)))
-        {:keys [tag]} (drop-last 2 args)
+        [tag body] (if (= (first args) :tag)
+                     [(second args) (drop 2 args)]
+                     [nil args])
         tag# tag
         body# body]
+    (println "tag" tag)
+    (println "body" body)
     `(do
       (defrecord ~pascal# ~'[full-name short-name k n]
         rcmp/Mod
@@ -49,7 +52,9 @@
   (item-on-create [this item]
     (assoc item k n)))
 
-(defmod-type adj-player-on-create
+(defmod-type adj-player-immediate
+  :tag false
+  rcmp/ModImmediate
   rcmp/ModPlayerImmediate
   (player-immediate [this player]
     (update player k adj-val n)))
@@ -62,24 +67,28 @@
 
 (defmod-type tag-player-immediate
   :tag true
+  rcmp/ModImmediate
   rcmp/ModPlayerImmediate
   (player-immediate [this player]
     (assoc player k n)))
 
 (defmod-type conj-player-immediate
   :tag true
+  rcmp/ModImmediate
   rcmp/ModPlayerImmediate
   (player-immediate [this player]
     (update player k conj n)))
 
 (defmod-type dec-inventory-by-hotkey
   :tag true
+  rcmp/ModImmediate
   rcmp/ModPlayerDecInventoryImmediate
   (player-dec-inventory-immediate [this state]
     (ri/dec-item-count state k)))
 
 (defmod-type remove-effect
   :tag true
+  rcmp/ModImmediate
   rcmp/ModRecipeRemoveEffectImmediate
   (recipe-remove-effect-immediate [this state]
     (let [selected-recipe-hotkey (get-in state [:world :selected-recipe-hotkey])]

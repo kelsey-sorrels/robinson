@@ -286,6 +286,18 @@
     (let [[l1 l2] (split-with (complement e) coll)]
       (concat l1 (rest l2)))))
 
+(defmacro fn-cond->
+  "Like cond-> but threads values through test functions as well."
+  [expr & clauses]
+  (let [g (gensym)
+        steps (map (fn [[test step]] `(if (~test ~g) (-> ~g ~step) ~g))
+                   (partition 2 clauses))]
+    `(let [~g ~expr
+           ~@(interleave (repeat g) (butlast steps))]
+       ~(if (empty? steps)
+          g
+          (last steps)))))
+
 (comment
 (t/defalias HasHotkey (t/HMap :mandatory {:hotkey Character}))
 (t/defalias Item (t/HMap :mandatory {:id t/Kw :name String :name-plural String}

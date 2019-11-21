@@ -874,20 +874,13 @@
   [this]
   (let [{:keys [game-state]} (zc/props this)
         start-text (sg/start-text game-state)]
-    (zc/csx
-	  [:terminal {} [
-		[:group {:id :app} [
-		  [:layer {:id :ui} [
-            [:view {:style {:width "100%" :height "100%" :background-color (rcolor/color->rgb :black)}} [
-              [:view {:style {:position :absolute
-                              :top 4
-                              :left 20}} [
-                [:text {:style {:width 40}} [(str start-text)]]
-                [:view {:style {:display :flex :flex-direction :row :top 10}} [
-                  [:text {} ["Press "]]
-                  [ruicommon/HotkeyLabel {:hotkey :space :sep " " :label "to continue "}]
-                  [:text {:style {:margin-right 1}} ["and"]]
-                  [ruicommon/HotkeyLabel {:hotkey \? :sep " " :label "to view help"}]]]]]]]]]]]]])))
+    (zc/csx [zcui/Popup {:style {:border-style :double :padding 1 :top -5}} [
+      [:text {:style {:width 40}} [(str start-text)]]
+      [:view {:style {:display :flex :flex-direction :row :margin-top 2}} [
+        [:text {} ["Press "]]
+        [ruicommon/HotkeyLabel {:hotkey :space :sep " " :label "to continue "}]
+        [:text {:style {:margin-right 1}} ["and"]]
+        [ruicommon/HotkeyLabel {:hotkey \? :sep " " :label "to view help"}]]]]])))
 
 (zc/def-component ContinuePopover
   [this]
@@ -1511,11 +1504,13 @@
             [:view {:style {:align-items :center
                             :justify-content :center
                             :position :absolute
+                            :background-color (rcolor/color->rgb :black)
                             :width 80
                             :height 24
-                            :top 2
                             :left 0}} [
-              [ruicommon/MultiSelect {:title "Choose up to three things to take with you:"
+              [ruicommon/MultiSelect {:style {:margin-top 2
+                                              :margin-bottom 2}
+                               :title "Choose up to three things to take with you:"
                                :selected-hotkeys selected-hotkeys
                                :use-applicable true
                                :items start-inventory}]
@@ -1891,9 +1886,6 @@
         (zc/csx [Connecting {:game-state game-state}])
       (= (current-state game-state) :connection-failed)
         (zc/csx [ConnectionFailed {:game-state game-state}])
-      (= (current-state game-state) :start-text)
-        (zc/csx [StartText {:game-state game-state}])
-      ;  (render-start-text game-state)
       ;; Is player dead?
       (contains? #{:game-over-dead :game-over-rescued} (current-state game-state))
         ;; Render game over

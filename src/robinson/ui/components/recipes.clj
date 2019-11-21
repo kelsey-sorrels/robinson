@@ -27,7 +27,7 @@
         [:text {} [""]]
         [ruicommon/TitledList {:title "Attributes:" :names (map rcrafting/full-name (get recipe :effects))}]
         [:text {} [""]]
-        [ruicommon/TitledList {:title "Materials:" :names (map (comp name :id) (get recipe :materials))}]]])))
+        [ruicommon/TitledList {:title "Materials:" :names (map :name (get recipe :items))}]]])))
 
 (zc/def-component SelectRecipeNode
   [this]
@@ -41,14 +41,18 @@
 (zc/def-component RecipeChoice
   [this]
   (let [{:keys [game-state recipe]} (zc/props this)
-        current-stage (get recipe :current-stage)]
+        current-stage (get recipe :current-stage)
+        choices (get current-stage :event/choices [{:name "continue" :hotkey :space}])
+        done (some (fn [choice] (get choice :done)) choices)]
     (zc/csx
       [:view {:style {:display :flex
                       :align-items :center
                       :width 25 :margin-left 5 :margin-right 5}} [
         [:text {} [(get current-stage :title "")]]
         [:text {} [""]]
-        [:text {} [(str (get current-stage :description ""))]]
+        (if done
+          (zc/csx [RecipeTotal {:recipe recipe}])
+          (zc/csx [:text {} [(str (get current-stage :description ""))]]))
         [ruicommon/MultiSelect {
           :style {}
           :title ""
@@ -62,18 +66,18 @@
                                (assoc :count (get-in item [:material :amount])))
                            (assoc :disabled
                              (not (rcrafting/choice-requirements-satisfied? game-state item)))))
-                      (get current-stage :event/choices [{:name "continue" :hotkey :space}]))}]]])))
+                      choices)}]]])))
 
 (zc/def-component CraftInProgressRecipe
   [this]
   (let [{:keys [game-state]} (zc/props this)
         recipe (rcrafting/current-recipe game-state)]
     (zc/csx [zcui/Popup {:style {:margin-top 3
-                                 :height 16}} [
+                                 :height 20}} [
               [:text {:style {:left 30 :bottom 1}} ["| New Recipe |"]]
               [:view {:style {:display :flex
                               :flex-direction :row}} [
-                [:view {:style {:width 9 :height 13
+                #_[:view {:style {:width 9 :height 13
                                 :margin-right 5
                                 :left 1}} [
                   (zc/csx [:img {:width 9 :height 13} (get recipe :img)])

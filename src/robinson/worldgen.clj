@@ -470,7 +470,7 @@
            :log []
            :ui-hint nil
            :dialog-log []
-           :random-numbers [(rr/uniform-int 100) (rr/uniform-int 100) (rr/uniform-int 100) (rr/uniform-int 100)]
+           :random-numbers (vec (repeatedly 10 (fn [] (rr/uniform-int 100))))
            :player (rp/gen-player
                     inventory-with-hotkeys
                     starting-pos)

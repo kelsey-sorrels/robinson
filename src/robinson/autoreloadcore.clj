@@ -118,7 +118,8 @@
    the next state after one iteration."
   []
   ; start with initial state from setup-fn
-  (let [frames (atom 0)]
+  (let [frames (atom 0)
+        show-frames (atom true)]
     (reset! render-fn (resolve 'robinson.render/render))
     (reset! setup-fn (resolve 'robinson.main/setup))
     (reset! tick-fn (resolve 'robinson.main/tick))
@@ -140,7 +141,8 @@
                           character-height]} (get groups :app)
                           fps-fn (atat/every 1000
 								   #(do
-									 (log/info "frames " @frames)
+                                     (when  @show-frames
+									   (log/info "frames " @frames))
 									 (reset! frames 0))
 								   zc/*pool*)]
               (log/info "Terminal groups" groups)
@@ -172,20 +174,21 @@
               (try
                 (when (= keyin :exit)
                   (System/exit 0))
-                (if keyin
-                  (do
-                    (log/info "Core current-state" (rw/current-state state))
-                    (log/info "Core got key" keyin)
-                    (let [new-state (@tick-fn (assoc @state-ref :screen terminal) keyin)
-                          state-stream (revents/stream new-state)]
-                      (doseq [state (revents/chan-seq state-stream)]
-                        (log/info "got new state from stream")
-                        (reset! state-ref state))
-                        (log/info "got new state from stream")
-                      (log/info "End of game loop"))))
+                (when keyin
+                  (log/info "Core current-state" (rw/current-state state))
+                  (log/info "Core got key" keyin)
+                  (let [new-state (@tick-fn (assoc @state-ref :screen terminal) keyin)
+                        state-stream (revents/stream new-state)]
+                    (reset! show-frames true)
+                    (doseq [state (revents/chan-seq state-stream)]
+                      (log/info "got new state from stream")
+                      (reset! state-ref state))
+                    (log/info "got new state from stream")
+                    (log/info "End of game loop")))
                  (catch Throwable ex
                    (log/error ex)
                    (print-stack-trace ex)
+                   (reset! show-frames false)
                    state))))
               (zevents/add-event-listener terminal :close (fn [keyin] (log/info "received :close") (System/exit 0)))
               (zevents/add-event-listener terminal :font-change (fn [{:keys [character-width

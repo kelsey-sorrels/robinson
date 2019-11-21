@@ -27,13 +27,25 @@
     inventory-with-hotkeys))
 
 (defn start-text [state]
-  (let [[n1 n2]            (get-in state [:world :random-numbers])
-        modes-of-transport ["boat" "carriage" "horseback" "wagon" "stagewagon"
-                           "sailboat" "barge" "ship" "ferry" "foot"]
-        mode-of-transport (nth modes-of-transport (mod n1 (count modes-of-transport)))
-        natural-disasters ["hurricane" "tornado" "dark storm" "cyclone" "squall"]
-        natural-disaster  (nth natural-disasters (mod n2 (count natural-disasters)))
-        text              (format "While traveling by %s, a %s engulfs you.\nYou awake on an island.\nOne thing is certain - you'll have to escape."
-             mode-of-transport
-             natural-disaster)]
+  (let [[mode-of-transport
+         natural-disaster
+         group
+         group-name
+         attack
+         unconscious-action] (mapv (fn [corpus rnd]
+                                     (nth corpus (mod rnd (count corpus))))
+                                   [["boat" "carriage" "horseback" "wagon" "stagewagon"
+                                     "sailboat" "barge" "ship" "ferry" "foot"]
+                                    ["hurricane" "tornado" "dark storm" "cyclone" "squall"]
+                                    ["band" "troop" "company" "gand" "party" "horde"]
+                                    ["bandits" "pirates" "marauders" "theives" "cultists" "sectarians"]
+                                    ["ambush" "stalk and overpower" "trick and hypnotize" "surround and beat" "assail"]
+                                    ["falling unconscious" "being stunned" "getting knocked out" "being overpowered" "being clobbered" "getting trounced"]]
+                                   (get-in state [:world :random-numbers]))
+        which             (first (take 1 (get-in state [:world :random-numbers])))
+        text              (if (even? which)
+                            (format "While traveling by %s, a %s engulfs you.\nYou awake on an island.\nOne thing is certain - you'll have to escape."
+                              mode-of-transport natural-disaster)
+                             (format "While traveling by %s, a %s of %s %s you.\nAfter %s, you awake on an island.\nOne thing is certain - you'll have to escape."
+                               mode-of-transport group group-name attack unconscious-action))]
     text))

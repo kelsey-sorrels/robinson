@@ -2124,7 +2124,7 @@
                         #_#_:food rc-food-gen)
             _ (log/info "recipe-ns" recipe-ns)
             _ (assert (some? recipe-ns))
-            recipe (assoc (rrecipe-gen/gen-crafting-graph) :type recipe-type)
+            recipe {:type recipe-type}
             new-state (-> state
                         (assoc-in [:world :recipes (get-in state [:world :selected-recipe-hotkey])] recipe)
                         (rcrafting/init recipe-ns recipe))]
@@ -2156,6 +2156,8 @@
   [state keyin]
   (let [recipe (rcrafting/current-recipe state)
         recipe-type (get recipe :type)
+        _ (log/info "Recipe type" recipe-type)
+        _ (log/info "Recipe"  recipe)
         recipe-ns (case recipe-type
                         :weapon 'robinson.crafting.weapon-gen
                         :survival 'robinson.crafting.survival-gen
@@ -2194,7 +2196,7 @@
             (assoc-in state [:world :selected-slot] (Integer/parseInt (str keyin))))
       ; make the item
       (= keyin :space)
-        (let [satisfied (rcrafting/requirements-satisfied? state (rcrafting/recipe-requirements recipe))]
+        (let [satisfied (rcrafting/requirements-satisfied? (rcrafting/recipe-requirements recipe))]
           (-> state
             (rcrafting/craft-recipe recipe)
             (rw/assoc-current-state :normal)))

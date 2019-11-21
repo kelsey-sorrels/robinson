@@ -86,7 +86,7 @@
             [:view {}
               (case head-requirements
                 each-of
-                  (let [satisfied (rcrafting/requirements-satisfied? game-state requirements)]
+                  (let [satisfied (rcrafting/requirements-satisfied? requirements)]
                     (cons
                       (zc/csx [Requirement-Each-Of {:satisfied satisfied
                                                     :slots-filled (every? (partial rcrafting/slot->item game-state)

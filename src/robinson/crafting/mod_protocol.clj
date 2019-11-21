@@ -10,6 +10,13 @@
 (defprotocol ModQuantifiable
   (amount [this]))
 
+(defprotocol ModImmediate)
+
+(defn immediate?
+  [x]
+  (println "immediate?" x (satisfies? ModImmediate x))
+  (satisfies? ModImmediate x))
+
 (defprotocol ModPlayerImmediate
   (player-immediate [this player]))
 

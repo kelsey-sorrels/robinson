@@ -30,6 +30,12 @@
     (update-in state [:world :recipes selected-recipe-hotkey]
       (fn [recipe] (apply f recipe xs)))))
 
+(defn recipe-event-types [recipe]
+  (->> (get recipe :events)
+    (map :event/type)
+    (remove nil?)
+    set))
+
 (def recipe-schema {
   :recipe/id {:db/unique :db.unique/identity}
   #_#_:recipe/components {:db/cardinality :db.cardinality/many}
@@ -82,6 +88,31 @@
 
 (defn handled? [item]
   (contains? (get item :properties) :handled))
+
+(defn extreme-word
+  [item]
+  (let [m {low-weight ["heavy"]
+           medium-weight ["light" "heavy"]
+           high-weight ["light"]
+           stick-like ["thin" "thick" "brittle" "curved"]
+           rock ["rough"]
+           feather ["downy"]
+           flexible ["stiff" "springy" "elastic"]
+           tensile ["brittle" "stiff" "springy" "elastic"]
+           planar ["thick" "thin"]
+           pointed ["dull" "jagged"]
+           sharp ["dull" "jagged" "rough"]
+           edged ["dull" "rough"]
+           round ["rough" "asymmetrical"]
+           wooden ["rotted"]
+           tube-like ["bent" "obstructed"]
+           handled? ["loose"]}]
+    (or
+      (->> m
+        (mapcat (fn [[f adjs]] (if (f item) adjs [])))
+        vec
+        rand-nth)
+      (str item))))
 
 (def recipe-pred->str {
   low-weight "low weight"
@@ -277,7 +308,7 @@
       :recipe/add [:arrow]
       :recipe/requirements '[each-of
                               [and low-weight
-                                   piercing]
+                                   pointed]
                               [and low-weight
                                    stick-like]
                               feather]}
@@ -547,7 +578,7 @@
           count))
     :else
       (assert false (str "Invalid expression" expr))))
-  
+
 (defn has-prerequisites?
   "Return true if the player has the ability to make the recipe."
   [state recipe]
@@ -557,9 +588,10 @@
 
 (defn item-satisfies-requirement-clause?
   [item clause]
-  #_(log/info item)
-  #_(log/info clause)
-  #_(log/info (type clause))
+  (log/info "item-satisfies-requirement-clause?")
+  (log/info item)
+  (log/info clause)
+  (log/info (type clause))
   (cond
     (fn? clause)
       (clause item)
@@ -579,6 +611,17 @@
       (item-satisfies-requirement-clause? item (second clause))
     (= (first clause) not)
       (not ((second clause) item))))
+
+(defn item-satisfies-any-clause?
+  [item]
+  (some
+    (partial item-satisfies-requirement-clause? item)
+    (mapcat (fn [recipe] (-> recipe :recipe/requirements rest))
+            recipes)))
+
+(defn inventory-crafting-components
+  [state]
+  (filter item-satisfies-any-clause? (ri/player-inventory state)))
 
 (defn slot->item [state slot]
   (let [selected-recipe-hotkey (get-in state [:world :selected-recipe-hotkey])
@@ -713,7 +756,7 @@
   ([recipe]
    (recipe-name recipe true))
   ([recipe show-progress]
-    (let [types (get recipe :types)]
+    (let [types (get recipe :recipe/types)]
       (str
         (if (and show-progress (in-progress? recipe))
           "In-progress " 
@@ -722,7 +765,7 @@
           0 (name (get recipe :recipe/id "unknown"))
           1 (-> types first name)
           2 (-> recipe
-              :types
+              :recipe/types
               get-recipe-by-types
               :recipe/id
               ig/id->name))))))
@@ -745,7 +788,7 @@
 
 (defn recipe-requirements
   [recipe]
-  (-> recipe :types get-recipe-by-types :recipe/requirements))
+  (-> recipe :recipe/types get-recipe-by-types :recipe/requirements))
 
 (defn save-recipe
   [state]
@@ -757,7 +800,7 @@
         selected-recipe-hotkey (get-in state [:world :selected-recipe-hotkey])
         _ (log/info recipe)
         recipe-blueprint (-> recipe
-                           :types
+                           :recipe/types
                            get-recipe-by-types)]
     (log/info recipe-blueprint)
     (-> state
@@ -769,16 +812,14 @@
       (rw/assoc-current-state :recipes))))
 
 (defn fill-event
-  [event]
-  (-> event
-    (assoc :description (let [description (:description event)]
-                          (if (sequential? description)
-                            (rand-nth description)
-                            description)))
-    (cond-> (empty? (get event :event/choices))
-      (assoc :event/choices [{
-        :hotkey :space
-        :name "continue"}]))))
+  [event recipe]
+  (letfn [(invoke-fn [f] (log/info "invoke-fn" f recipe) (f recipe))]
+    (log/info "fill-event" event)
+    (-> event
+      (cond-> (empty? (get event :event/choices))
+        (assoc :event/choices [{
+          :hotkey :space
+          :name "continue"}])))))
  
 (defn fill-choice
   [add-done choice]
@@ -822,12 +863,44 @@
               (rw/player-adjacent-cells state)))
     true))
 
+(defn rand-event
+  [state recipe-ns recipe]
+  (let [num-events (count (get recipe :events []))
+        next-node-type (rand-nth
+                         (cond 
+                           (zero? num-events)
+                             [\@ \! \& \☼]
+                           (get recipe :recipe/types)
+                             [:done]
+                           (not (contains? (recipe-event-types recipe) :complication))
+                             [\? \@ \! \& \☼]
+                           :else
+                             [\? \@ \! \+ \& \☼]))]
+    (if (= next-node-type :done)
+      ; no more nodes, create finish recipe event
+      (assoc-current-recipe state
+        :current-stage
+        {:title "Done"
+         :event/choices [
+            {:name "finish recipe"
+             :hotkey :space
+             :done true}]})
+      ((case next-node-type
+        \? (ns-resolve recipe-ns 'gen-random)
+        \@ (ns-resolve recipe-ns 'gen-player)
+        \! (ns-resolve recipe-ns 'gen-complication)
+        \+ (ns-resolve recipe-ns 'gen-remedy)
+        \& (ns-resolve recipe-ns 'gen-material)
+        \☼ (ns-resolve recipe-ns 'gen-enhancement)
+        (assert false (str "next node type unknown " next-node-type)))
+        state recipe))))
+
 ; Input handlers
 (defn resolve-choice
   [state recipe-ns recipe keyin]
   {:post [(not (nil? %))]}
   (let [current-stage (get recipe :current-stage)]
-        ; find selected choice
+    ; find selected choice
 
     (log/info "choices" (vec (->> (get current-stage :event/choices))))
     (log/info "choice" (->> (get current-stage :event/choices)
@@ -843,9 +916,12 @@
                                       (if (coll? v)
                                         [k v]
                                         [k #{v}]))
-                                    (merge (select-keys choice [:types
+                                    (merge (select-keys choice [:recipe/types
                                                                 :effects
-                                                                :materials
+                                                                :items
+                                                                ; ids of items "used" in events
+                                                                ; so that items don't get contradictory events
+                                                                :event-item/id
                                                                 :done
                                                                 :event/id
                                                                 :choice/id])
@@ -853,7 +929,10 @@
               _ (log/info "results" results)
               ; merge results into current recipe
               state-with-results (-> state
-                                   (update-current-recipe (partial merge-with (partial meta-or-into recipe-ns)) results)
+                                   (update-current-recipe
+                                     (partial merge-with (partial meta-or-into recipe-ns))
+                                     ; remove immediate effects from choice before merging into recipe
+                                     (update results :effects (partial remove rcmp/immediate?)))
                                    (trigger-immediate-effects (get choice :effects)))]
           (assert (not (nil? state-with-results)))
           ; done with recipe?
@@ -863,95 +942,46 @@
             ; if choice has a events pick one,
             (if (seq (get choice :choice/events))
               ; find next event
-              (let [next-event (rand-nth (get choice :choice/events))
-                    ; fill in event defaults
-                    next-event (fill-event next-event)]
-                ; assign next event and return
-                (assoc-current-recipe
-                  state-with-results
-                  :current-stage next-event))
-              ; else the choice has no events, then the next step is to move to the next node
-              (if-let [next-node (get choice :next-node)]
-                ; choice points to next-node
-                ; gen event for next node and advance to it
-                ; typical direction choice
-                (->
-                  (let [next-node-type (get (ll/label (get recipe :graph) next-node) :type)]
-                    ((case next-node-type
-                      \? (ns-resolve recipe-ns 'gen-question)
-                      \! (ns-resolve recipe-ns 'gen-complication)
-                      \+ (ns-resolve recipe-ns 'gen-remedy)
-                      \& (ns-resolve recipe-ns 'gen-material)
-                      \☼ (ns-resolve recipe-ns 'gen-enhancement)
-                      (assert false (str "next node type unknown " next-node next-node-type)))
+              (let [next-event (rand-nth (get choice :choice/events))]
+                (if (keyword? next-event)
+                  ((ns-resolve recipe-ns (-> next-event name symbol)) state recipe)
+                  ; fill in event defaults
+                  (let [next-event (fill-event next-event recipe)]
+                    (log/info "next-event" next-event)
+                    ; assign next event and return
+                    (assoc-current-recipe
                       state-with-results
-                      (let [recipe (current-recipe state-with-results)]
-                        (assoc recipe :recipe/example-item-properties (get-example-item-properties-by-types (get recipe :types))))))
-                  (assoc-current-recipe :current-node next-node))
-                ; choice does not point to next node
-                (let [next-node-choices (next-node-choices recipe)]
-                  (log/info "NO NEXT NODE in CHOICE")
-                  (log/info "choice" choice)
-                  (log/info "next-node-choices" (vec next-node-choices))
-                  (cond
-                    ; no more nodes, create finish recipe event
-                    (not (seq (next-nodes recipe)))
-                      (assoc-current-recipe state-with-results
-                        :current-stage
-                        {:title "Done"
-                         :event/choices [
-                            {:name "finish recipe"
-                             :hotkey :space
-                             :done true}]})
-                    ; one path to next node? auto-increment
-                    (= 1 (count next-node-choices))
-                      (->
-                        (let [next-node (-> next-node-choices first :next-node)
-                              _ (log/info "next-node" next-node)
-                              next-node-type (get (ll/label (get recipe :graph)
-                                                            next-node)
-                                                  :type)]
-   
-                          ((case next-node-type
-                            \? (ns-resolve recipe-ns 'gen-question)
-                            \! (ns-resolve recipe-ns 'gen-complication)
-                            \+ (ns-resolve recipe-ns 'gen-remedy)
-                            \& (ns-resolve recipe-ns 'gen-material)
-                            \☼ (ns-resolve recipe-ns 'gen-enhancement)
-                            (assert false (str "next node type unknown " next-node next-node-type)))
-                            state-with-results
-                            (let [recipe (current-recipe state-with-results)]
-                              (assoc recipe :recipe/example-item-properties (get-example-item-properties-by-types (get recipe :types))))))
-                        (assoc-current-recipe :current-node (-> next-node-choices first :next-node)))
-                    ;; else multiple choices to next node, create event to choose
-                    :else
-                      (do
-                        (log/info "multiple choices to next node. Choose from" next-node-choices)
-                        (assoc-current-recipe
-                          state-with-results
-                          :current-stage
-                          {:title "Choose path"
-                           :event/choices next-node-choices}))))))))
-        state))))
+                      :current-stage next-event))))
+              ; else the choice has no events, then the next step is to move to the next node
+              ; gen event for next node and advance to it
+              (let [next-node (rand-event state-with-results recipe-ns (current-recipe state-with-results))
+                    recipe (current-recipe state-with-results)]
+                (assoc recipe
+                  :recipe/example-item-properties (get-example-item-properties-by-types (get recipe :recipe/types)))
+                (update-current-recipe
+                  next-node
+                  update :events conj (get recipe :current-stage))))))
+        state)
+      state)))
 
 (defn update [state recipe-ns keyin]
   (let [selected-recipe-hotkey (get-in state [:world :selected-recipe-hotkey])
-        recipe (get-in state [:world :recipes selected-recipe-hotkey])]
-    (resolve-choice state recipe-ns recipe keyin)))
+        recipe (get-in state [:world :recipes selected-recipe-hotkey])
+        new-state (resolve-choice state recipe-ns recipe keyin)]
+    (log/info "current-recipe" (current-recipe new-state))
+    new-state))
 
 (defn init [state recipe-ns recipe]
   {:pre [(not (nil? state))]
    :post [(not (nil? %))]}
-  (let [n (get recipe :current-node)]
-    (log/info "current node label" (ll/label (get recipe :graph) n))
-    ((case (get (ll/label (get recipe :graph) n) :type)
-        \? (ns-resolve recipe-ns 'gen-question)
-        \! (ns-resolve recipe-ns 'gen-complication)
-        \+ (ns-resolve recipe-ns 'gen-remedy)
-        \& (ns-resolve recipe-ns 'gen-material)
-        \☼ (ns-resolve recipe-ns 'gen-enhancement)
-        (assert false (str "current node not question" n (get recipe :graph))))
-       state recipe)))
+  (assoc-current-recipe
+      state
+      :current-stage {
+        :description (str "You begin crafting a " (name (get recipe :type)) ". You'll need to start with an item.")
+        :event/choices [{
+          :hotkey :space
+          :name "continue"
+          :choice/events [:gen-material]}]}))
 
 (defn craft-recipe
   "Perform the recipe."

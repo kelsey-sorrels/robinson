@@ -246,7 +246,7 @@
 
 (def black [3 5 5])
 
-(def question-cell-type
+(def random-cell-type
   ; ?
   {:c \? :fg black :bg (db32 :topaz)})
 
@@ -266,22 +266,36 @@
   ; ☼
   {:c \☼ :fg black :bg (db32 :christi)})
 
+(def morale-cell-type
+  ; p
+  {:c \@ :fg black :bg (db32 :plum )})
+
 (defn ch->cell-type [ch]
   (let [m {
-            \? question-cell-type
+            \? random-cell-type
             \! complication-cell-type
             \+ remedy-cell-type
             \& material-component-cell-type
-            \☼ enhancement-cell-type}]
+            \☼ enhancement-cell-type
+            \@ morale-cell-type}]
     (assert (contains? m ch) (str ch (int ch) "not found in " m))
     (get m ch)))
 
-(def cell-type-freqs
-  [complication-cell-type
-   remedy-cell-type
-   remedy-cell-type
-   material-component-cell-type
-   enhancement-cell-type])
+(defn cell-type-freqs
+  [layers y]
+  (if (< y (/ (count layers) 2))
+    [complication-cell-type
+     complication-cell-type
+     material-component-cell-type
+     material-component-cell-type
+     remedy-cell-type
+     random-cell-type]
+    [remedy-cell-type
+     remedy-cell-type
+     material-component-cell-type
+     enhancement-cell-type
+     morale-cell-type
+     random-cell-type]))
 
 (defn node->row
   [layers n]
@@ -393,16 +407,21 @@
   (+ (* (- 1 amount) a) (* amount b)))
 
 (defn semi-shuffle [amount xs]
+  "Interpolate between sorted and shuffled. If amount = 0 then equivalent to (sort xs).
+   If amount = 1 then equivalent to (shuffle xs). If amount = 0.5 then halfway between
+   sorted and shuffled."
   ; k = x, v = index
   (let [sorted (into {} (map-indexed (comp vec reverse vector) (sort xs)))
         shuffled (into {} (map-indexed (comp vec reverse vector) (shuffle xs)))]
-    (println sorted)
-    (println shuffled)
+    (log/debug sorted)
+    (log/debug shuffled)
     (map first
       (sort #(< (second %1) (second %2))
         (merge-with (partial interp amount) sorted shuffled)))))
 
 (defn color-paths-once
+  "Color nodes so that each path contains exactly one colored node.
+   Return set of colored nodes."
   ([g] (color-paths-once
          (lag/trace-paths
            (partial lg/predecessors g)
@@ -474,36 +493,38 @@
   (let [selected-nodes (color-paths-once g)
         min-node (reduce min (lg/nodes g))
         num-nodes (count (lg/nodes g))
-        ; ? is always first.
+        ; & is always first.
         ; have an even mix of types after that
-        types (atom (cycle (mapcat shuffle (repeat (map :c cell-type-freqs)))))
+        top-types (atom (cycle (mapcat shuffle (repeat (map :c (cell-type-freqs layers 0))))))
+        bottom-types (atom (cycle (mapcat shuffle (repeat (map :c (cell-type-freqs layers 50))))))
+        types (fn [y] (if (< y (/ (count layers) 2)) top-types bottom-types))
         labeled-graph (reduce (fn [g n]
                         #_(log/info n "selected-node?" (contains? selected-nodes n))
                         (let [x (node-x layers n)
                               y (node-y layers n)]
                         (cond
-                          ; root, \?
+                          ; root, \&
                           (= n min-node)
                             (do
-                              #_(log/info "labeling root node ?")
-                              (ll/add-label g n {:type \? :x x :y y}))
-                          ; selected, \?
+                              #_(log/info "labeling root node &")
+                              (ll/add-label g n {:type \& :x x :y y}))
+                          ; selected (all paths colored once)
                           (contains? selected-nodes n)
                             (do
                               #_(log/info "labeling selected-node" n)
-                              (ll/add-label g n {:type \? :x x :y y}))
+                              (ll/add-label g n {:type \! :x x :y y}))
                           ; if paths to root contains \! but not \+
                           (and
                             (all-paths-contain-type? g min-node \! n)
                             (not-any-paths-contain-type? g min-node \+ n))
                             (do
                               #_(log/info "labeling ! descendant node" n)
-                              (ll/add-label g n {:type (next-type types g n) :x x :y y}))
+                              (ll/add-label g n {:type (next-type (types y) g n) :x x :y y}))
                           :else
                             ; else, label, but not \+
                             (do
                               #_(log/info "labeling" n)
-                              (ll/add-label g n {:type (next-type types g n \+) :x x :y y})))))
+                              (ll/add-label g n {:type (next-type (types y) g n \+) :x x :y y})))))
                         g
                         (lg/nodes g))]
     (log/info "label-graph selected-nodes" selected-nodes)
@@ -540,7 +561,9 @@
                  (< 3 (reduce + (filter #(< 1 %) (map (comp count (partial lg/successors loom-graph))
                                                       (lg/nodes loom-graph))))))
           (let [labeled-graph (label-graph layers loom-graph)
-                question-nodes (filter (fn [n] (= (get (ll/label labeled-graph n) :type) \?))
+                complication-nodes (filter (fn [n] (= (get (ll/label labeled-graph n) :type) \!))
+                                       (lg/nodes labeled-graph))
+                material-nodes (filter (fn [n] (= (get (ll/label labeled-graph n) :type) \&))
                                        (lg/nodes labeled-graph))
                 node-labels (map (fn [n] (get (ll/label labeled-graph n) :type))
                                   (sort (vec (lg/nodes labeled-graph))))
@@ -548,27 +571,42 @@
                              node-labels)]
 
             (log/info "i" i "j" j "k" k)
-            (log/info "question-nodes" question-nodes)
+            #_(log/info "question-nodes" question-nodes)
             #_(log/info "min-question" (reduce min question-nodes))
             #_(log/info "max-question" (reduce max question-nodes))
             #_(log/info "sum-question" (reduce + 0 question-nodes))
             #_(log/info "max-nodes" (* 0.8 (reduce + layers)))
 
             #_(log (draw labeled-graph layers))
+            (log/info "or" (= 1 (count material-nodes))
+                (< 1 (std-dev (map (partial node-y layers)
+                                   (rest (sort material-nodes))))))
+            ;; material node toward top
+            (log/info "<" (/ (reduce + 0 (map (partial node-y layers) material-nodes))
+                  (count material-nodes))
+               (* 0.5 (count layers)))
+            ;; complication nodes toward top
+            (log/info "<" (/ (reduce + 0 (map (partial node-y layers) complication-nodes))
+                  (inc (count complication-nodes)))
+               (* 0.5 (count layers)))
 
             ;; select coloring
             (if (and
                   ;; no nil labels
                   (not-any? nil? node-labels)
-                  ;; question node count and dispersion
-                  (or (= 1 (count question-nodes))
+                  ;; material node count and dispersion
+                  (or (= 1 (count material-nodes))
                       (< 1 (std-dev (map (partial node-y layers)
-                                         (rest (sort question-nodes))))))
-                  ;; question node toward top
-                  (< (/ (reduce + 0 question-nodes)
-                        (count question-nodes))
-                     (* 0.5 (count node-labels)))
-                  ;; at least one of each node type present
+                                         (rest (sort material-nodes))))))
+                  ;; material node toward top
+                  (< (/ (reduce + 0 (map (partial node-y layers) material-nodes))
+                        (count material-nodes))
+                     (* 0.75 (count layers)))
+                  ;; complication nodes toward top
+                  (< (/ (reduce + 0 (map (partial node-y layers) complication-nodes))
+                        (inc (count complication-nodes)))
+                     (* 0.75 (count layers)))
+                  ;; at least four node types present
                   (< 4 (count (keys node-freqs)))
                   ;; not too many siblings of same type
                   (< (reduce +

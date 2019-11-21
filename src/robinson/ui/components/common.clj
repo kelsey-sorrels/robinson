@@ -106,7 +106,13 @@
   ([s color]
     (attribute-icon s color nil))
   ([s color amount]
-    (let [text (or (if amount s (format "+%s" s)) "")]
+    (let [text (cond
+                 amount
+                   s
+                 (< 0 (count s))
+                   (format "+%s" s)
+                 :else
+                   s )]
       (zc/csx [:view {:style {:display :flex
                               :flex-direction :row
                               :margin-right 1}} [

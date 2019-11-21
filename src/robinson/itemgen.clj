@@ -153,7 +153,7 @@
   [id]
   (contains? #{:yellow-fruit :tarp} id))
 
-(def ^:private items [
+(def ^:private item-data [
        {:item/id  :stick                   :name  "stick"                      :name-plural "sticks"
         :fuel 100 :utility 100 :weight 0.5 :properties #{:stick-like :handled} :item/materials #{:wood}}
        {:item/id  :branch                  :name  "branch"                     :name-plural "branches"
@@ -391,14 +391,16 @@
         :fuel 10}
        {:item/id  :cure                    :name "cure"                        :name-plural "cures"}])
 
+(def items item-data)
+
 (def ^:private item-db
   (-> (d/empty-db (merge rmat/material-schema rmat/item-schema))
       (d/db-with rmat/material-heirarchy)
-      (d/db-with items)))
+      (d/db-with item-data)))
 
 (def ^:private id->item-map
   (apply hash-map (mapcat (fn [[k v]] [k (first v)])
-                          (group-by :item/id items))))
+                          (group-by :item/id item-data))))
 
 (defn id->item
   [id]

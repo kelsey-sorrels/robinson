@@ -4,13 +4,6 @@
             [clojure.test :as t
               :refer (is are deftest with-test run-tests testing)]))
 
-(deftest test-has-prerequisites?
-  (let [recipe (rcrafting/get-recipe :garrote)
-        items [(assoc (ig/id->item :stick) :count 2)
-               (assoc (ig/id->item :rope) :count 2)]]
-  (are [recipe items expected] (= (rcrafting/has-prerequisites? (assoc-in {} [:world :player :inventory] items) recipe) expected)
-    recipe items true)))
-
 (deftest test-item-satisfies-requirement-clause?
   (are [recipe-id clause-idx item-id]
     (rcrafting/item-satisfies-requirement-clause?
@@ -41,7 +34,7 @@
                                       (->> item-ids
                                         (map ig/id->item)
                                         (map-indexed vector))))
-    :throwing-hammer [:stick :knife]))
+    :throwing-hammer [:stick :rock :plant-fiber]))
 
 (deftest test-valid-recipes
   (are [item-ids recipe-ids]

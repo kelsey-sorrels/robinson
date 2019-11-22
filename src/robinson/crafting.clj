@@ -541,51 +541,6 @@
     (mapcat identity)
     set)))
 
-(defn satisfies-helper?
-  [l expr]
-  "Counts the items in that 'satisfy' the expression.
-   Results >= 1 indicate satisfaction. Results < 1
-   indicate that the expression is unsatisfied."
-  (cond
-    (nil? expr)
-      (assert false (str "Invalid expression" expr))
-    (= (first expr) 'count)
-      (let [[_ n arg] expr]
-        ;(println "count" n arg)
-        (/ (satisfies-helper? l arg) n))
-    (= (first expr) 'and)
-      (let [[_ & args] expr]
-        ;(println "and" args)
-        (reduce min (map (partial satisfies-helper? l) args)))
-    (= (first expr) 'or)
-      (let [[_ & args] expr]
-        ;(println "or" args)
-        (reduce + (map (partial satisfies-helper? l) args)))
-    (keyword? (first expr))
-      (let [[arg] expr]
-        ;(println "keyword" arg expr)
-        (->> l
-           (map :item/id)
-           (filter (partial = arg))
-           (map count)
-           (reduce + 0)))
-    (symbol? (first expr))
-      ; when multiple symbols are present, use the conjunction of all of them s0 and s1 and .... and sn
-      (let [preds-juxt (apply juxt (map (partial ns-resolve 'robinson.crafting expr) expr))
-            and-comp (fn [e] (every? identity (preds-juxt e)))]
-        (->> l
-          (filter and-comp)
-          count))
-    :else
-      (assert false (str "Invalid expression" expr))))
-
-(defn has-prerequisites?
-  "Return true if the player has the ability to make the recipe."
-  [state recipe]
-  (let [inventory        (get-in state [:world :player :inventory])
-        requirements     (get recipe :recipe/requirements)]
-    (<= 1 (satisfies-helper? inventory requirements))))
-
 (defn item-satisfies-requirement-clause?
   [item clause]
   (log/info "item-satisfies-requirement-clause?")
@@ -653,17 +608,8 @@
        :when (requirements-satisfied? recipe-with-filled-slots)]
     recipe)))
 
-(defn applicable-recipes
-  "Return recipes tagged with :applicable true if the recipe has the required pre-requisites."
-  [state]
-  (apply hash-map
-    (mapcat
-      (fn [[group-name group]]
-        [group-name (map (fn [recipe] (if (has-prerequisites? state recipe)
-                                        (assoc recipe :applicable true)
-                                        recipe))
-                         group)])
-      (get-in state [:world :recipes]))))
+(defn valid-recipe? [items recipe]
+  (not-empty (valid-recipes items [recipe])))
 
 (defn- exhaust-by-hotkeys
   [state hotkeys]

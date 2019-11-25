@@ -133,10 +133,9 @@
         _ (log/info "freeing hotkey" hotkey)]
     (-> state
       (update-in [:world :player :inventory]
-        (rc/log-io "inventory io"
-          (fn [inventory]
-            (vec (rc/remove-first (fn [item] (= (get item :hotkey) hotkey))
-                 inventory)))))
+        (fn [inventory]
+          (vec (rc/remove-first (fn [item] (= (get item :hotkey) hotkey))
+               inventory))))
       (rc/conj-in [:world :remaining-hotkeys] hotkey))))
 
 (defn update-inventory-item

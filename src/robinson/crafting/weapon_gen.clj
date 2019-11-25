@@ -139,19 +139,19 @@
 
 ;; Weapon mods
 (defn mod-accuracy
-  [low high]
+  [low high & [cause]]
   (let [n (rr/uniform-int low high)]
-    (rcmod/adj-item-on-create "accuracy" "acc" :accuracy n)))
+    (rcmod/adj-item-on-create "accuracy" "acc" :accuracy n :cause cause)))
 
 (defn mod-damage
-  [low high]
+  [low high & [cause]]
   (let [n (rr/uniform-int low high)]
-    (rcmod/adj-item-on-create "damage" "dmg" :damage n)))
+    (rcmod/adj-item-on-create "damage" "dmg" :damage n :cause cause)))
 
 (defn mod-durability
-  [low high]
+  [low high & [cause]]
   (let [n (rr/uniform-int low high)]
-    (rcmod/adj-item-on-create "durability" "dbl" :durability n)))
+    (rcmod/adj-item-on-create "durability" "dbl" :durability n :cause cause)))
 
 ; Reduces opponent toughness
 (defn mod-piercing
@@ -236,7 +236,7 @@
   (rcmod/dec-inventory-by-hotkey "" "" hotkey nil))
 
 (defn mod-remove-effect [effect]
-  (rcmod/remove-effect "remove" "remove" effect nil))
+  (rcmod/remove-effect "" "" effect nil))
 
 (defn rand-unused-item
   [recipe]
@@ -279,8 +279,11 @@
               :choice/one-of [(mod-thirst -10 -5)
                                (mod-hunger -10 -5)
                                (mod-wtl -10 -5)]}
-            {:description ["You spend hours looking for the right material."
-                           "After hours of searching, you find the right material."]
+            {:description "You spend hours looking for the right material."
+             :choice/one-of [(mod-wtl 5 7)
+                              (mod-thirst -10 -5)
+                              (mod-hunger -10 -5)]}
+            {:description "After hours of searching, you find the right material."
              :choice/one-of [(mod-wtl 5 7)
                               (mod-thirst -10 -5)
                               (mod-hunger -10 -5)]}]}
@@ -397,35 +400,36 @@
       }]}
 
     ; Dimensional
-    {:event/id :event.id/dimensional
-     :description [(format "The %s you have is too big. You can't get it to work without finding something smaller."
-                       (-> recipe :items vec rand-nth :name))
-                   (format "The %s you have is too wide It should be more narrow."
-                     (-> recipe :items vec rand-nth :name))
-                   (format "The  you are trying to use is too thick. Something flatter would work better."
-                       (-> recipe :items vec rand-nth :name))]
-     :requirements #{}
-     :event/choices [{
-       :hotkey :space
-       :name "continue"
-       :choice/one-of [
-         (mod-durability -3 -1)
-         (mod-damage -3 -1)
-         (mod-accuracy -3 -1)]
-       :choice/events [{
-         :description "How do you want to try to to fix it?"
-         :event/choices [{
-           :choice/id :choice.id/dimensional-find-replacement
-           :hotkey \a
-           :name "find replacement"
-          }{
-           :choice/id :choice.id/dimensional-change-design
-           :hotkey \b
-           :name "change design"
-          }{
-           :choice/id :choice.id/dimensional-use-anyway
-           :hotkey \c
-           :name "use anyway"}]}]}]}
+    (when-let [item (rand-unused-item recipe)]
+      {:event/id :event.id/dimensional
+       :description [(format "The %s you have is too big. You can't get it to work without finding something smaller."
+                       (get item :name))
+                     (format "The %s you have is too wide It should be more narrow."
+                       (get item :name))
+                     (format "The  you are trying to use is too thick. Something flatter would work better."
+                       (get item :name))]
+       :requirements #{}
+       :event/choices [{
+         :hotkey :space
+         :name "continue"
+         :choice/one-of [
+           (mod-durability -3 -1 item)
+           (mod-damage -3 -1 item )
+           (mod-accuracy -3 -1 item)]
+         :choice/events [{
+           :description "How do you want to try to to fix it?"
+           :event/choices [{
+             :choice/id :choice.id/dimensional-find-replacement
+             :hotkey \a
+             :name "find replacement"
+            }{
+             :choice/id :choice.id/dimensional-change-design
+             :hotkey \b
+             :name "change design"
+            }{
+             :choice/id :choice.id/dimensional-use-anyway
+             :hotkey \c
+             :name "use anyway"}]}]}]})
 
     ; Dimensional - find replacement - complication
     {:event/id :event.id/dimensional-find-replacement-complication
@@ -827,12 +831,17 @@
 
 (defn gen-complication [state recipe]
     (gen-event state recipe
-      :complication
+      :event-type/complication
       (weapon-complications recipe)))
+
+(defn negative-effect?
+  [effect]
+  (and (rcmp/normative? effect)
+       (neg? (rcmp/utility effect))))
 
 (defn remedies
   [state recipe]
-  (let [debuffs (get recipe :effects)
+  (let [debuffs (filter negative-effect? (get recipe :effects))
         _ (log/info "remedies debuffs" debuffs)
         choices (map (fn [effect hotkey]
                         (log/info "remedy effect" effect hotkey)
@@ -840,20 +849,18 @@
                          :name (str "fix " (rcmp/full-name effect))
                          :choice/one-of [(mod-remove-effect effect)]})
                     debuffs
-                    [\a \b \c])
-        choices (if (empty? choices)
-                  [{:name "no wooden items - skip"
-                    :hotkey :space}]
-                  choices)]
+                    [\a \b \c])]
     (log/info "remedy choices" (vec choices))
     ; slowdown
     ; push through
-    [{:title "Remedy"
-      :description "You think you can fix a problem with this item." 
-      :event/choices choices}]))
+    (if (not-empty choices)
+      [{:title "Remedy"
+        :description "You think you can fix a problem with this item." 
+        :event/choices choices}]
+      [])))
 
 (defn gen-remedy [state recipe]
-  (gen-event state recipe :remedy (remedies state recipe)))
+  (gen-event state recipe :event-type/remedy (remedies state recipe)))
 
 (defn gen-material [state recipe]
   (log/info (get recipe :recipe/types))
@@ -889,6 +896,7 @@
                                                                     (rcrafting/get-recipes-by-category :weapon)))]
                       (assoc choice :choice/events [{
                         :description "You feel like the design is starting to take shape. Commit to a design?"
+                        :event/type :event-type/material
                         :event/choices 
                           (concat
                             (map (fn [recipe hotkey]
@@ -899,8 +907,14 @@
                                     :choice/events [{:description (str "You wrap up the " (rcrafting/recipe-name recipe false) ".")}]})
                                    valid-recipes
                                    [\a \b \c \d \e \f \g])
-                            [{:name "keep working"
-                              :hotkey :space}])}])
+                            (if (< (->> recipe
+                                     :events
+                                     (map :event/type)
+                                     (filter (partial = :event-type/material))
+                                     count) 6)
+                              [{:name "keep working"
+                                :hotkey :space}]
+                              []))}])
                     choice)))
                 (rcrafting/inventory-crafting-components state))
         events (if (empty? choices)
@@ -915,7 +929,7 @@
                       choices
                       [{:name "no item - skip"
                         :hotkey :space}])}])]
-        events       (gen-event state recipe :material events)))
+        events       (gen-event state recipe :event-type/material events)))
 
 (defn enhancements
   [state recipe]
@@ -1164,7 +1178,7 @@
 
 (defn gen-enhancement [state recipe]
   (gen-event state recipe
-    :enhancement
+    :event-type/enhancement
     (enhancements state recipe)))
 
 (defn gen-player [state recipe]
@@ -1240,7 +1254,7 @@
          (mod-wtl -10 -5)
       ]}]}]]
   (gen-event state recipe
-    :player
+    :event-type/player
     player-events)))
 
 (defn gen-random [state recipe]

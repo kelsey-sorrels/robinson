@@ -25,7 +25,7 @@
     (println "tag" tag)
     (println "body" body)
     `(do
-      (defrecord ~pascal# ~'[full-name short-name k n]
+      (defrecord ~pascal# ~'[full-name short-name k n cause]
         rcmp/Mod
         ~'(full-name [this] full-name)
         ~'(short-name [this] short-name)
@@ -37,11 +37,29 @@
         ~@(when-not tag#
             `(rcmp/ModQuantifiable
              ~'(amount [this] n)))
+        ~@`(rcmp/ModCause
+            ~'(cause [this] cause))
         ~@body#)
-      (defn ~sym ~'[full-name short-name k amount]
-        (~constructor# ~'full-name ~'short-name ~'k ~'amount)))))
+      (defn ~sym ~'[full-name short-name k amount & args]
+        (let [argmap# (->> ~'args (partition 2) (map vec) (into {} ))]
+          (~constructor#
+            ~'full-name
+            ~'short-name
+            ~'k
+            ~'amount
+            (:cause argmap#)))))))
 
 (defmod-type adj-item-on-create
+  rcmp/ModNormative
+  (utility [this] n)
+  rcmp/ModItemOnCreate
+  (item-on-create [this item]
+    (update item k adj-val n)))
+
+(defmod-type adj-item-on-create-with-cause
+  rcmp/ModNormative
+  (utility [this] n)
+  rcmp/ModCause
   rcmp/ModItemOnCreate
   (item-on-create [this item]
     (update item k adj-val n)))

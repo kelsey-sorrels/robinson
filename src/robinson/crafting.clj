@@ -114,6 +114,30 @@
         rand-nth)
       (str item))))
 
+(defn property-match?
+  [item1 item2]
+  (letfn [(property-vec [item]
+            (juxt [low-weight
+                   medium-weight
+                   high-weight
+                   stick-like
+                   rock
+                   feather
+                   flexible
+                   tensile
+                   planar
+                   pointed
+                   sharp
+                   edged
+                   round
+                   wooden
+                   tube-like
+                   handled?] item))]
+    (some identity
+      (map #(and %1 %2)
+        (property-vec item1)
+        (property-vec item2)))))
+
 (def recipe-pred->str {
   low-weight "low weight"
   stick-like "sticklike"
@@ -173,6 +197,7 @@
       :recipe/requirements '[each-of
                               [and
                                 low-weight
+                                wooden
                                 stick-like]]}
      {:recipe/id :throwing-hammer
       :recipe/category :weapon
@@ -543,10 +568,6 @@
 
 (defn item-satisfies-requirement-clause?
   [item clause]
-  (log/info "item-satisfies-requirement-clause?")
-  (log/info item)
-  (log/info clause)
-  (log/info (type clause))
   (cond
     (fn? clause)
       (clause item)
@@ -598,15 +619,20 @@
         satisfied))))
 
 (defn valid-recipes [items recipes]
-  (set (for [recipe recipes
-       :when (not-empty items)
-        permutation (combo/permutations items)
-       :let [recipe-with-filled-slots (reduce (fn [recipe [idx item]]
-                                                (assoc-in recipe [:slots idx] item))
-                                              recipe
-                                              (map-indexed vector permutation))]
-       :when (requirements-satisfied? recipe-with-filled-slots)]
-    recipe)))
+  (if-let [item-permutations (->> items
+                            vec
+                            combo/subsets
+                            (remove empty?)
+                            (mapcat combo/permutations))]
+    (set (for [recipe recipes
+               item-permutation item-permutations
+               :let [recipe-with-filled-slots (reduce (fn [recipe [idx item]]
+                                                        (assoc-in recipe [:slots idx] item))
+                                                      recipe
+                                                      (map-indexed vector item-permutation))]
+               :when (requirements-satisfied? recipe-with-filled-slots)]
+      recipe))
+    #{}))
 
 (defn valid-recipe? [items recipe]
   (not-empty (valid-recipes items [recipe])))
@@ -811,17 +837,29 @@
 
 (defn rand-event
   [state recipe-ns recipe]
+  (log/info "rand-event" (-> recipe :events))
+  (log/info "rand-event" (-> recipe :events last))
+  (log/info "rand-event" (keys recipe))
   (let [num-events (count (get recipe :events []))
         next-node-type (rand-nth
                          (cond 
                            (zero? num-events)
-                             [\@ \! \& \☼]
+                             [:event-type/material]
                            (get recipe :recipe/types)
                              [:done]
-                           (not (contains? (recipe-event-types recipe) :complication))
-                             [\? \@ \! \& \☼]
+                           (not= (-> recipe :events last :event/type) :event-type/material)
+                             [:event-type/material]
+                           (not (contains? (recipe-event-types recipe) :event-type/complication))
+                             [:event-type/random
+                              :event-type/player
+                              :event-type/complication
+                              :event-type/enhancement]
                            :else
-                             [\? \@ \! \+ \& \☼]))]
+                             [:event-type/random
+                              :event-type/player
+                              :event-type/complication
+                              :event-type/remedy
+                              :event-type/enhancement]))]
     (if (= next-node-type :done)
       ; no more nodes, create finish recipe event
       (assoc-current-recipe state
@@ -832,12 +870,12 @@
              :hotkey :space
              :done true}]})
       ((case next-node-type
-        \? (ns-resolve recipe-ns 'gen-random)
-        \@ (ns-resolve recipe-ns 'gen-player)
-        \! (ns-resolve recipe-ns 'gen-complication)
-        \+ (ns-resolve recipe-ns 'gen-remedy)
-        \& (ns-resolve recipe-ns 'gen-material)
-        \☼ (ns-resolve recipe-ns 'gen-enhancement)
+        :event-type/random (ns-resolve recipe-ns 'gen-random)
+        :event-type/player (ns-resolve recipe-ns 'gen-player)
+        :event-type/complication (ns-resolve recipe-ns 'gen-complication)
+        :event-type/remedy (ns-resolve recipe-ns 'gen-remedy)
+        :event-type/material (ns-resolve recipe-ns 'gen-material)
+        :event-type/enhancement (ns-resolve recipe-ns 'gen-enhancement)
         (assert false (str "next node type unknown " next-node-type)))
         state recipe))))
 
@@ -879,7 +917,10 @@
                                      (partial merge-with (partial meta-or-into recipe-ns))
                                      ; remove immediate effects from choice before merging into recipe
                                      (update results :effects (partial remove rcmp/immediate?)))
-                                   (trigger-immediate-effects (get choice :effects)))]
+                                   (trigger-immediate-effects (get choice :effects))
+                                   ; track completed events in recipe
+                                   (update-current-recipe
+                                     update :events conj (get recipe :current-stage)))]
           (assert (not (nil? state-with-results)))
           ; done with recipe?
           (if (contains? choice :done)
@@ -922,6 +963,7 @@
    :post [(not (nil? %))]}
   (assoc-current-recipe
       state
+      :events []
       :current-stage {
         :description (str "You begin crafting a " (name (get recipe :type)) ". You'll need to start with an item.")
         :event/choices [{

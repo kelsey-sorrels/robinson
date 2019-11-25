@@ -11,11 +11,19 @@
   (amount [this]))
 
 (defprotocol ModImmediate)
+(defprotocol ModNormative
+  (utility [this]))
+
+(defprotocol ModCause
+  (cause [this]))
 
 (defn immediate?
   [x]
-  (println "immediate?" x (satisfies? ModImmediate x))
   (satisfies? ModImmediate x))
+
+(defn normative?
+  [x]
+  (satisfies? ModNormative x))
 
 (defprotocol ModPlayerImmediate
   (player-immediate [this player]))

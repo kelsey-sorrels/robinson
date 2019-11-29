@@ -239,13 +239,14 @@
   (rcmod/remove-effect "" "" effect nil))
 
 (defn rand-unused-item
-  [recipe]
-  (log/info "rand-unused-item" (-> recipe :items) (-> recipe :event-item/id))
-  (-> recipe
-    :items
-    (->>
-      (remove (fn [{id :item/id}] (contains? (get recipe :event-item/id #{}) id))))
-    rand-nth))
+  [recipe ns]
+  (let [id (keyword ns "id")]
+    (log/info "rand-unused-item" (get recipe :items) (get recipe id))
+    (-> recipe
+      :items
+      (->>
+        (remove (fn [{id :item/id}] (contains? (get recipe id #{}) id))))
+      rand-nth)))
 
 ;; :requirements is a set of any
 ;;  :event/id
@@ -259,9 +260,9 @@
 ;;  be marked for inclusion.
 (defn weapon-complications
   [recipe]
-  [
-    ; Material complications
-    (when-let [item (rand-unused-item recipe)]
+  (if-let [item (rand-unused-item recipe "event.complication.item")]
+    [
+      ; Material complications
       {:event/id :material
        :description ["You can't find the materials you need."
                      (fn [recipe]
@@ -273,7 +274,7 @@
        :event/choices [
          {:hotkey \a
           :name "Search for something better"
-          :event-item/id (get item :item/id)
+          :event.complication.item/id (get item :item/id)
           :choice/events [
             {:description "You give up after spending hours looking for the right materials."
               :choice/one-of [(mod-thirst -10 -5)
@@ -289,7 +290,7 @@
                               (mod-hunger -10 -5)]}]}
          {:hotkey \b
           :name "Give up"
-          :event-item/id (get item :item/id)
+          :event.complication.item/id (get item :item/id)
           :choice/events [
             {:description "You learn to make do without the right parts."
              :choice/one-of [
@@ -298,109 +299,108 @@
             {:description "You stop and take a break. After a few minutes inspiration strikes."
              :choice/one-of [
                (mod-durability 1 3)
-               (mod-wtl 1 5)]}]}]})
+               (mod-wtl 1 5)]}]}]}
 
-    ; Bodily Limit
-    #_{:event/id :body-constraint
-     :description "You are overexerted. Slow down survivor. Take your time."
-     :event/choices [{
-       :hotkey :space
-       :name "continue"
-       :choice/one-of [
-         (mod-thirst 11 21)]}]}
+      ; Bodily Limit
+      #_{:event/id :body-constraint
+       :description "You are overexerted. Slow down survivor. Take your time."
+       :event/choices [{
+         :hotkey :space
+         :name "continue"
+         :choice/one-of [
+           (mod-thirst 11 21)]}]}
 
-    ; Edged
-    #_{:event/id :edged
-     :description ["The edge keeps warping when it should be straight."
-                   "The edge should be smooth, not full of chips."
-                   "The edge you were woking with has rolled causing your to start over."]
-     :requirements #{:edged}
-     :event/choices [{
-       :hotkey :space
-       :name "continue"
-       :choice/one-of [
-         (mod-damage -7 -3)]}]}
+      ; Edged
+      #_{:event/id :edged
+       :description ["The edge keeps warping when it should be straight."
+                     "The edge should be smooth, not full of chips."
+                     "The edge you were woking with has rolled causing your to start over."]
+       :requirements #{:edged}
+       :event/choices [{
+         :hotkey :space
+         :name "continue"
+         :choice/one-of [
+           (mod-damage -7 -3)]}]}
 
-    ; Too much or too little in size, shape, weight
-    #_{:event/id :physical-property
-     :description ["Too heavy. The balance is all off on this. It really should be lighter."
-                   "Too light. You need something heavier to work with. This is too light."
-                   "Too long!"
-                   "Too short!"
-                   "Not tapered enough!"]
-     :requirements #{:low-weight :high-weight}
-     :event/choices [{
-       :hotkey :space
-       :name "continue"
-       :choice/one-of [
-         (mod-thirst 11 21)]}]}
+      ; Too much or too little in size, shape, weight
+      #_{:event/id :physical-property
+       :description ["Too heavy. The balance is all off on this. It really should be lighter."
+                     "Too light. You need something heavier to work with. This is too light."
+                     "Too long!"
+                     "Too short!"
+                     "Not tapered enough!"]
+       :requirements #{:low-weight :high-weight}
+       :event/choices [{
+         :hotkey :space
+         :name "continue"
+         :choice/one-of [
+           (mod-thirst 11 21)]}]}
 
-    ; Handled weapon complications
-    #_{:event/id :handle
-     :description "You can hardly hold onto this. You need to find something easier to hold."
-     :requirements #{:handle}
-     :event/choices [{
-       :hotkey :space
-       :name "continue"
-       :choice/one-of [
-         (mod-thirst 11 21)]}]}
+      ; Handled weapon complications
+      #_{:event/id :handle
+       :description "You can hardly hold onto this. You need to find something easier to hold."
+       :requirements #{:handle}
+       :event/choices [{
+         :hotkey :space
+         :name "continue"
+         :choice/one-of [
+           (mod-thirst 11 21)]}]}
 
-    ; Flexible weapon complications
-    #_{:event/id :flexibe
-     :description "There should be a little more give to this. You know it's going to break."
-     :requirements #{:flexible}
-     :event/choices [{
-       :hotkey :space
-       :name "continue"
-       :choice/one-of [
-         (mod-thirst 11 21)]}]}
+      ; Flexible weapon complications
+      #_{:event/id :flexibe
+       :description "There should be a little more give to this. You know it's going to break."
+       :requirements #{:flexible}
+       :event/choices [{
+         :hotkey :space
+         :name "continue"
+         :choice/one-of [
+           (mod-thirst 11 21)]}]}
 
-    ; Wooden
-    {:event/id :event.id/wooden
-     :description ["The wood you have is bent. It's just not going to work."
-                   "The wood you have is green. It should be more seasoned."
-                   "The wood is full of holes caused by unending seasons of wind and rain."
-                   "The wood you have is cracked."
-                   "A crack is forming in the wood you are using."
-                   "The wood you have is full of pin knots."
-                   "The wood you have is weatherworn."]
-     :requirements #{:recipe.item.property/wooden}
-     :event/choices [{
-       :hotkey :space
-       :name "continue"
-       :choice/one-of [
-         (mod-durability -3 -1)
-         (mod-damage -3 -1)
-         (mod-accuracy -3 -1)]
-       :choice/events [{
-         :description "You try to find a way to fix it."
-         :event/choices [{
-           :choice/id :choice.id/wooden-find-replacement
-           :hotkey \a
-           :name "find replacement"
-          }{
-           :choice/id :choice.id/wooden-change-design
-           :hotkey \b
-           :name "change design"
-          }{
-           :choice/id :choice.id/wooden-use-anyway
-           :hotkey \c
-           :name "use anyway"}]}]}]}
+      ; Wooden
+      {:event/id :event.id/wooden
+       :description ["The wood you have is bent. It's just not going to work."
+                     "The wood you have is green. It should be more seasoned."
+                     "The wood is full of holes caused by unending seasons of wind and rain."
+                     "The wood you have is cracked."
+                     "A crack is forming in the wood you are using."
+                     "The wood you have is full of pin knots."
+                     "The wood you have is weatherworn."]
+       :requirements #{:recipe.item.property/wooden}
+       :event/choices [{
+         :hotkey :space
+         :name "continue"
+         :choice/one-of [
+           (mod-durability -3 -1)
+           (mod-damage -3 -1)
+           (mod-accuracy -3 -1)]
+         :choice/events [{
+           :description "You try to find a way to fix it."
+           :event/choices [{
+             :choice/id :choice.id/wooden-find-replacement
+             :hotkey \a
+             :name "find replacement"
+            }{
+             :choice/id :choice.id/wooden-change-design
+             :hotkey \b
+             :name "change design"
+            }{
+             :choice/id :choice.id/wooden-use-anyway
+             :hotkey \c
+             :name "use anyway"}]}]}]}
 
-    ; Wooden - find replacement - complication
-    {:event/id :event.id/wooden-find-replacement-complication
-     :description ["Your search for a replacement fails. You cannot find the part you need."]
-     :requirements #{:choice.id/wooden-find-replacement}
-     :event/choices [{
-       :hotkey :space
-       :name "continue"
-       :choice/one-of [
-         (mod-hunger -10 -5)
-         (mod-thirst -10 -5)]
-      }]}
+      ; Wooden - find replacement - complication
+      {:event/id :event.id/wooden-find-replacement-complication
+       :description ["Your search for a replacement fails. You cannot find the part you need."]
+       :requirements #{:choice.id/wooden-find-replacement}
+       :event/choices [{
+         :hotkey :space
+         :name "continue"
+         :choice/one-of [
+           (mod-hunger -10 -5)
+           (mod-thirst -10 -5)]
+        }]}
 
-    ; Dimensional
-    (when-let [item (rand-unused-item recipe)]
+      ; Dimensional
       {:event/id :event.id/dimensional
        :description [(format "The %s you have is too big. You can't get it to work without finding something smaller."
                        (get item :name))
@@ -429,319 +429,320 @@
             }{
              :choice/id :choice.id/dimensional-use-anyway
              :hotkey \c
-             :name "use anyway"}]}]}]})
+             :name "use anyway"}]}]}]}
 
-    ; Dimensional - find replacement - complication
-    {:event/id :event.id/dimensional-find-replacement-complication
-     :description ["Your search for a replacement fails. You cannot find the part you need."]
-     :requirements #{:choice.id/dimensional-find-replacement}
-     :event/choices [{
-       :hotkey :space
-       :name "continue"
-       :choice/one-of [
-         (mod-hunger -10 -5)
-         (mod-thirst -10 -5)]
-      }]}
+      ; Dimensional - find replacement - complication
+      {:event/id :event.id/dimensional-find-replacement-complication
+       :description ["Your search for a replacement fails. You cannot find the part you need."]
+       :requirements #{:choice.id/dimensional-find-replacement}
+       :event/choices [{
+         :hotkey :space
+         :name "continue"
+         :choice/one-of [
+           (mod-hunger -10 -5)
+           (mod-thirst -10 -5)]
+        }]}
 
-    ; Edged
-    {:event/id :event.id/edged
-     :description ["The edge you are working with is chipped. You need a clean edge to move on."
-                   "The edge you have is dull. It needs to be sharp."]
-     :requirements #{:edged}
-     :event/choices [{
-       :hotkey :space
-       :name "continue"
-       :choice/one-of [
-         (mod-damage -5 -3)]
-       :choice/events [{
-         :description "How do you want to try to to fix it?"
-         :event/choices [{
-           :choice/id :choice.id/edged-find-replacement
-           :hotkey \a
-           :name "find replacement"
-          }{
-           :choice/id :choice.id/edged-change-design
-           :hotkey \b
-           :name "change design"
-          }{
-           :choice/id :choice.id/edged-use-anyway
-           :hotkey \c
-           :name "use anyway"}]}]}]}
+      ; Edged
+      {:event/id :event.id/edged
+       :description ["The edge you are working with is chipped. You need a clean edge to move on."
+                     "The edge you have is dull. It needs to be sharp."]
+       :requirements #{:edged}
+       :event/choices [{
+         :hotkey :space
+         :name "continue"
+         :choice/one-of [
+           (mod-damage -5 -3)]
+         :choice/events [{
+           :description "How do you want to try to to fix it?"
+           :event/choices [{
+             :choice/id :choice.id/edged-find-replacement
+             :hotkey \a
+             :name "find replacement"
+            }{
+             :choice/id :choice.id/edged-change-design
+             :hotkey \b
+             :name "change design"
+            }{
+             :choice/id :choice.id/edged-use-anyway
+             :hotkey \c
+             :name "use anyway"}]}]}]}
 
-    ; Edged - find replacement - complication
-    {:event/id :event.id/edged-find-replacement-complication
-     :description ["Your search for a replacement edge fails. You cannot find the edged item you need."]
-     :requirements #{:choice.id/edged-find-replacement}
-     :event/choices [{
-       :hotkey :space
-       :name "continue"
-       :choice/one-of [
-         (mod-hunger -10 -5)
-         (mod-thirst -10 -5)]
-      }]}
+      ; Edged - find replacement - complication
+      {:event/id :event.id/edged-find-replacement-complication
+       :description ["Your search for a replacement edge fails. You cannot find the edged item you need."]
+       :requirements #{:choice.id/edged-find-replacement}
+       :event/choices [{
+         :hotkey :space
+         :name "continue"
+         :choice/one-of [
+           (mod-hunger -10 -5)
+           (mod-thirst -10 -5)]
+        }]}
 
-    ; Flexible
-    {:event/id :event.id/flexible
-     :description ["The part you are working with is too ridged You need a more supple part to move on."
-                   "The part you are using is not strong enough under tension. It needs to be stronger."]
-     :requirements #{:flexible}
-     :event/choices [{
-       :hotkey :space
-       :name "continue"
-       :choice/one-of [
-         (mod-damage -5 -3)]
-       :choice/events [{
-         :description "How do you want to try to to fix it?"
-         :event/choices [{
-           :choice/id :choice.id/flexible-find-replacement
-           :hotkey \a
-           :name "find replacement"
-          }{
-           :choice/id :choice.id/flexible-change-design
-           :hotkey \b
-           :name "change design"
-          }{
-           :choice/id :choice.id/flexible-use-anyway
-           :hotkey \c
-           :name "use anyway"}]}]}]}
+      ; Flexible
+      {:event/id :event.id/flexible
+       :description ["The part you are working with is too ridged You need a more supple part to move on."
+                     "The part you are using is not strong enough under tension. It needs to be stronger."]
+       :requirements #{:flexible}
+       :event/choices [{
+         :hotkey :space
+         :name "continue"
+         :choice/one-of [
+           (mod-damage -5 -3)]
+         :choice/events [{
+           :description "How do you want to try to to fix it?"
+           :event/choices [{
+             :choice/id :choice.id/flexible-find-replacement
+             :hotkey \a
+             :name "find replacement"
+            }{
+             :choice/id :choice.id/flexible-change-design
+             :hotkey \b
+             :name "change design"
+            }{
+             :choice/id :choice.id/flexible-use-anyway
+             :hotkey \c
+             :name "use anyway"}]}]}]}
 
-    ; Flexible - find replacement - complication
-    {:event/id :event.id/flexible-find-replacement-complication
-     :description ["Your search for a replacement flexible item fails. You cannot find the flexible item you need."]
-     :requirements #{:choice.id/flexible-find-replacement}
-     :event/choices [{
-       :hotkey :space
-       :name "continue"
-       :choice/one-of [
-         (mod-hunger -10 -5)
-         (mod-thirst -10 -5)]
-      }]}
+      ; Flexible - find replacement - complication
+      {:event/id :event.id/flexible-find-replacement-complication
+       :description ["Your search for a replacement flexible item fails. You cannot find the flexible item you need."]
+       :requirements #{:choice.id/flexible-find-replacement}
+       :event/choices [{
+         :hotkey :space
+         :name "continue"
+         :choice/one-of [
+           (mod-hunger -10 -5)
+           (mod-thirst -10 -5)]
+        }]}
 
-    ; Handled
-    {:event/id :event.id/handled
-     :description ["The handle you are designing keeps coming off. You need to find a way to secure it."
-                   "The handle you are making has burns. You need to fix it."]
-     :requirements #{:handled}
-     :event/choices [{
-       :hotkey :space
-       :name "continue"
-       :choice/one-of [
-         (mod-damage -5 -3)]
-       :choice/events [{
-         :description "How do you want to try to to fix it?"
-         :event/choices [{
-           :choice/id :choice.id/handled-find-replacement
-           :hotkey \a
-           :name "find replacement"
-          }{
-           :choice/id :choice.id/handled-change-design
-           :hotkey \b
-           :name "change design"
-          }{
-           :choice/id :choice.id/handled-use-anyway
-           :hotkey \c
-           :name "use anyway"}]}]}]}
+      ; Handled
+      {:event/id :event.id/handled
+       :description ["The handle you are designing keeps coming off. You need to find a way to secure it."
+                     "The handle you are making has burns. You need to fix it."]
+       :requirements #{:handled}
+       :event/choices [{
+         :hotkey :space
+         :name "continue"
+         :choice/one-of [
+           (mod-damage -5 -3)]
+         :choice/events [{
+           :description "How do you want to try to to fix it?"
+           :event/choices [{
+             :choice/id :choice.id/handled-find-replacement
+             :hotkey \a
+             :name "find replacement"
+            }{
+             :choice/id :choice.id/handled-change-design
+             :hotkey \b
+             :name "change design"
+            }{
+             :choice/id :choice.id/handled-use-anyway
+             :hotkey \c
+             :name "use anyway"}]}]}]}
 
-    ; Handled - find replacement - complication
-    {:event/id :event.id/handled-find-replacement-complication
-     :description ["Your search for a replacement handled item fails. You cannot find the handled item you need."]
-     :requirements #{:choice.id/handled-find-replacement}
-     :event/choices [{
-       :hotkey :space
-       :name "continue"
-       :choice/one-of [
-         (mod-hunger -10 -5)
-         (mod-thirst -10 -5)]
-      }]}
+      ; Handled - find replacement - complication
+      {:event/id :event.id/handled-find-replacement-complication
+       :description ["Your search for a replacement handled item fails. You cannot find the handled item you need."]
+       :requirements #{:choice.id/handled-find-replacement}
+       :event/choices [{
+         :hotkey :space
+         :name "continue"
+         :choice/one-of [
+           (mod-hunger -10 -5)
+           (mod-thirst -10 -5)]
+        }]}
 
-    ; Ranged
-    {:event/id :event.id/ranged
-     :description ["The prototype isn't accurate enough. You keep missing the target."
-                   "The prototype you are making doesn't have enough range .You need to make it reach farther."]
-     :requirements #{:ranged}
-     :event/choices [{
-       :hotkey :space
-       :name "continue"
-       :choice/one-of [
-         (mod-damage -5 -3)]
-       :choice/events [{
-         :description "How do you want to try to to fix it?"
-         :event/choices [{
-           :choice/id :choice.id/ranged-find-replacement
-           :hotkey \a
-           :name "find replacement"
-          }{
-           :choice/id :choice.id/ranged-change-design
-           :hotkey \b
-           :name "change design"
-          }{
-           :choice/id :choice.id/ranged-use-anyway
-           :hotkey \c
-           :name "use anyway"}]}]}]}
+      ; Ranged
+      {:event/id :event.id/ranged
+       :description ["The prototype isn't accurate enough. You keep missing the target."
+                     "The prototype you are making doesn't have enough range .You need to make it reach farther."]
+       :requirements #{:ranged}
+       :event/choices [{
+         :hotkey :space
+         :name "continue"
+         :choice/one-of [
+           (mod-damage -5 -3)]
+         :choice/events [{
+           :description "How do you want to try to to fix it?"
+           :event/choices [{
+             :choice/id :choice.id/ranged-find-replacement
+             :hotkey \a
+             :name "find replacement"
+            }{
+             :choice/id :choice.id/ranged-change-design
+             :hotkey \b
+             :name "change design"
+            }{
+             :choice/id :choice.id/ranged-use-anyway
+             :hotkey \c
+             :name "use anyway"}]}]}]}
 
-    ; Ranged - find replacement - complication
-    {:event/id :event.id/ranged-find-replacement-complication
-     :description ["Your search for a replacement ranged item fails. You cannot find the ranged item you need."]
-     :requirements #{:choice.id/ranged-find-replacement}
-     :event/choices [{
-       :hotkey :space
-       :name "continue"
-       :choice/one-of [
-         (mod-hunger -10 -5)
-         (mod-thirst -10 -5)]
-      }]}
+      ; Ranged - find replacement - complication
+      {:event/id :event.id/ranged-find-replacement-complication
+       :description ["Your search for a replacement ranged item fails. You cannot find the ranged item you need."]
+       :requirements #{:choice.id/ranged-find-replacement}
+       :event/choices [{
+         :hotkey :space
+         :name "continue"
+         :choice/one-of [
+           (mod-hunger -10 -5)
+           (mod-thirst -10 -5)]
+        }]}
 
-    ; Change Type
-    {:event/id :event.id/change-type
-     :description ["The design change took a wrong turn. You find yourself making something completely different."]
-     :requirements #{:choice.id/wooden-change-design
-                     :choice.id/edged-change-design}
-     :event/choices (let [types (get recipe :recipe/types)]
-       (log/info "change-type" types)
-       (map (fn [recipe-type]
-         (log/info "recipe-type" recipe-type)
-         (cond
-           (contact-type? recipe-type)
-             (let [contact-type (other-contact-type recipe-type)]
-               (get contact-choices contact-type))
-           (wield-type? recipe-type)
-             (let [wield-type (other-wield-type recipe-type)]
-               (get wield-choices wield-type))))
-         types))}
+      ; Change Type
+      {:event/id :event.id/change-type
+       :description ["The design change took a wrong turn. You find yourself making something completely different."]
+       :requirements #{:choice.id/wooden-change-design
+                       :choice.id/edged-change-design}
+       :event/choices (let [types (get recipe :recipe/types)]
+         (log/info "change-type" types)
+         (map (fn [recipe-type]
+           (log/info "recipe-type" recipe-type)
+           (cond
+             (contact-type? recipe-type)
+               (let [contact-type (other-contact-type recipe-type)]
+                 (get contact-choices contact-type))
+             (wield-type? recipe-type)
+               (let [wield-type (other-wield-type recipe-type)]
+                 (get wield-choices wield-type))))
+           types))}
 
-    ; Wooden handle complications
-    #_{:event/id :wooden-handle
-     :description ["Handle burns!"
-                   "Handle uneven!"
-                   "Handle popping out!"]
-     :requirements #{:handle :wooden}
-     :event/choices [{
-       :hotkey :space
-       :name "continue"
-       :choice/one-of [
-         (mod-thirst 11 21)]}]}
+      ; Wooden handle complications
+      #_{:event/id :wooden-handle
+       :description ["Handle burns!"
+                     "Handle uneven!"
+                     "Handle popping out!"]
+       :requirements #{:handle :wooden}
+       :event/choices [{
+         :hotkey :space
+         :name "continue"
+         :choice/one-of [
+           (mod-thirst 11 21)]}]}
 
-    ; Special Boomerange Complications
-    #_{:event/id :boomerang
-     :description "Not bent enough!"
-     :requirements #{:boomerang}
-     :event/choices [{
-       :hotkey :space
-       :name "continue"
-       :choice/one-of [
-         (mod-thirst 11 21)]}]}
+      ; Special Boomerange Complications
+      #_{:event/id :boomerang
+       :description "Not bent enough!"
+       :requirements #{:boomerang}
+       :event/choices [{
+         :hotkey :space
+         :name "continue"
+         :choice/one-of [
+           (mod-thirst 11 21)]}]}
 
-    ; Splinter
-    #_{:event/id :splinter
-     :description ["Ouch! What was that? It's a splinter in your hand."
-                   "Oof! A splinter wedged its way into your finger."]
-     :requirements #{:wooden}
-     :event/choices [{
-       :hotkey :space
-       :name "continue"
-       :choice/one-of [
-         (mod-thirst 11 21)]}]}
+      ; Splinter
+      #_{:event/id :splinter
+       :description ["Ouch! What was that? It's a splinter in your hand."
+                     "Oof! A splinter wedged its way into your finger."]
+       :requirements #{:wooden}
+       :event/choices [{
+         :hotkey :space
+         :name "continue"
+         :choice/one-of [
+           (mod-thirst 11 21)]}]}
 
-    ; Wooden joints
-    #_{:event/id :weak-joinery
-     :description "Weak joinery!"
-     :requirements #{:wooden}
-     :event/choices [{
-       :hotkey :space
-       :name "continue"
-       :choice/one-of [
-         (mod-thirst 11 21)]}]}
+      ; Wooden joints
+      #_{:event/id :weak-joinery
+       :description "Weak joinery!"
+       :requirements #{:wooden}
+       :event/choices [{
+         :hotkey :space
+         :name "continue"
+         :choice/one-of [
+           (mod-thirst 11 21)]}]}
 
-    ; Poisonous material
-    #_{:event/id :allergic
-     :description ["Poisonous material!"
-                   "Allergic to material!"]
-     :requirements #{:wooden}
-     :event/choices [{
-       :hotkey :space
-       :name "continue"
-       :choice/one-of [
-         (mod-thirst 11 21)]}]}
+      ; Poisonous material
+      #_{:event/id :allergic
+       :description ["Poisonous material!"
+                     "Allergic to material!"]
+       :requirements #{:wooden}
+       :event/choices [{
+         :hotkey :space
+         :name "continue"
+         :choice/one-of [
+           (mod-thirst 11 21)]}]}
 
-    ; Hunger
-    {:event/id :hunger
-     :description ["You feel so hungry you can't think straight."
-                   "Your rumbling stomach distracts you from your task."]
-     :requirements #{:player.state/hungry}
-     :event/choices [{
-       :hotkey :space
-       :name "continue"
-       :choice/one-of [
-         (mod-wtl -10 -5)]}]}
+      ; Hunger
+      {:event/id :hunger
+       :description ["You feel so hungry you can't think straight."
+                     "Your rumbling stomach distracts you from your task."]
+       :requirements #{:player.state/hungry}
+       :event/choices [{
+         :hotkey :space
+         :name "continue"
+         :choice/one-of [
+           (mod-wtl -10 -5)]}]}
 
-    ; Thirst
-    #_{:event/id :thirst
-     :description "Distracted by thirst!"
-     :event/choices [{
-       :hotkey :space
-       :name "continue"
-       :choice/one-of [
-         (mod-thirst 11 21)]}]}
+      ; Thirst
+      #_{:event/id :thirst
+       :description "Distracted by thirst!"
+       :event/choices [{
+         :hotkey :space
+         :name "continue"
+         :choice/one-of [
+           (mod-thirst 11 21)]}]}
 
-    ; Low light
-    #_{:event/id :low-light
-     :description "Low light!"
-     :event/choices [{
-       :hotkey :space
-       :name "continue"
-       :choice/one-of [
-         (mod-thirst 11 21)]}]}
+      ; Low light
+      #_{:event/id :low-light
+       :description "Low light!"
+       :event/choices [{
+         :hotkey :space
+         :name "continue"
+         :choice/one-of [
+           (mod-thirst 11 21)]}]}
 
-    ; Sound
-    #_{:event/id :sound
-     :description ["Interrupted by sound!"
-                   "Loud work environment!"]
-     :event/choices [{
-       :hotkey :space
-       :name "continue"
-       :choice/one-of [
-         (mod-thirst 11 21)]}]}
+      ; Sound
+      #_{:event/id :sound
+       :description ["Interrupted by sound!"
+                     "Loud work environment!"]
+       :event/choices [{
+         :hotkey :space
+         :name "continue"
+         :choice/one-of [
+           (mod-thirst 11 21)]}]}
 
-    ; Empty prototype -----------------
-    #_{:title ""
-     :description ""
-     :event/choices [{
-       :hotkey :space
-       :name "continue"
-       :choice/one-of [
-         (mod-thirst 11 21)]}]}
+      ; Empty prototype -----------------
+      #_{:title ""
+       :description ""
+       :event/choices [{
+         :hotkey :space
+         :name "continue"
+         :choice/one-of [
+           (mod-thirst 11 21)]}]}
 
-    ; Spider
-    #_{:event/id :spider
-     :description "You notice a spider on your leg."
-     :event/choices [
-       {:hotkey \a
-        :name "slap it"
-        :choice/events [
-          {:description "You pull you hand back and the spider runs up your leg."
-           :event/choices [
-             {:hotkey :space
-              :name "attack"
-              :choice/events [
-                {:description "You hit the spider and your thigh."
-                 :choice/one-of [(mod-hp 5 7)]}]}]}
-           {:description "Before you can hit it the spider sinks its fangs into your leg."
-            :choice/one-of [(mod-hp 5 7)]}
-           {:description "You slap the spider. There is not enough meat to eat."}]}
-       {:hotkey \b
-        :name "brush it off"
-        :choice/events [
-          {:description "You brush the spider off and it disappears into the ground."}
-          {:description "As you brush off the spider thousands of spider babies pour onto your leg"
-           :event/choices [
-             {:hotkey \a
-              :name "just give up and die"
-              :choice/one-of [(mod-hp 10 50)]}
-             {:hotkey \b
-              :name "slap all of them"
+      ; Spider
+      #_{:event/id :spider
+       :description "You notice a spider on your leg."
+       :event/choices [
+         {:hotkey \a
+          :name "slap it"
+          :choice/events [
+            {:description "You pull you hand back and the spider runs up your leg."
+             :event/choices [
+               {:hotkey :space
+                :name "attack"
+                :choice/events [
+                  {:description "You hit the spider and your thigh."
+                   :choice/one-of [(mod-hp 5 7)]}]}]}
+             {:description "Before you can hit it the spider sinks its fangs into your leg."
               :choice/one-of [(mod-hp 5 7)]}
-             {:hotkey \c
-              :name "roll on the ground"}]}]}]}])
+             {:description "You slap the spider. There is not enough meat to eat."}]}
+         {:hotkey \b
+          :name "brush it off"
+          :choice/events [
+            {:description "You brush the spider off and it disappears into the ground."}
+            {:description "As you brush off the spider thousands of spider babies pour onto your leg"
+             :event/choices [
+               {:hotkey \a
+                :name "just give up and die"
+                :choice/one-of [(mod-hp 10 50)]}
+               {:hotkey \b
+                :name "slap all of them"
+                :choice/one-of [(mod-hp 5 7)]}
+               {:hotkey \c
+                :name "roll on the ground"}]}]}]}]
+    []))
 
 
 ;;  :event/id
@@ -841,22 +842,29 @@
 
 (defn remedies
   [state recipe]
-  (let [debuffs (filter negative-effect? (get recipe :effects))
-        _ (log/info "remedies debuffs" debuffs)
-        choices (map (fn [effect hotkey]
-                        (log/info "remedy effect" effect hotkey)
-                        {:hotkey hotkey
-                         :name (str "fix " (rcmp/full-name effect))
-                         :choice/one-of [(mod-remove-effect effect)]})
-                    debuffs
-                    [\a \b \c])]
-    (log/info "remedy choices" (vec choices))
+  ; Find debuffs which have not been remedied
+  (let [debuffs (->> recipe
+                  :effects
+                  (filter negative-effect?)
+                  (remove
+                    (fn [effect]
+                      (and
+                        (satisfies? rcmp/ModCause effect)
+                        (contains?
+                          (-> recipe :event.complication.item/id)
+                          (-> effect rcmp/cause :item/id))))))]
+    (log/info "remedies debuffs" debuffs)
     ; slowdown
     ; push through
-    (if (not-empty choices)
+    (if-let [debuff (rand-nth debuffs)]
       [{:title "Remedy"
         :description "You think you can fix a problem with this item." 
-        :event/choices choices}]
+        :event/choices [
+          {:hotkey \a
+           :name (str "fix " (rcmp/full-name debuff))
+           :choice/one-of [(mod-remove-effect debuff)]}
+          {:name "skip"
+           :hotkey :space}]}]
       [])))
 
 (defn gen-remedy [state recipe]
@@ -937,244 +945,246 @@
                      (mod-accuracy -5 -1)
                      (mod-damage -6 -2)
                      (mod-durability -6 -2)]))]
-    [
-    #_{:title "Increased Accuracy"
-     :description "A truly fortuitous event!. You find a way to make your weapon more accurate."
-     :event/choices [{
-       :hotkey :space
-       :name "continue"
-       :choice/one-of [(mod-accuracy 1 2)]}]}
+    (if-let [item (rand-unused-item recipe "event.enhancement.item")]
+      [
+        {:title "Increased Accuracy"
+         :description [(format "The %s you %s was %s. This weapon is going to be a lot more accurate."
+                         (:name item)
+                         (rand-nth ["found" "used"])
+                         (rand-nth ["great" "perfect" "amazing" "awesome"]))]
+         :event/choices [{
+           :hotkey :space
+           :name "continue"
+           :event.complication.item/id (get item :item/id)
+           :choice/one-of [(mod-accuracy 1 2)]}]}
 
-    (when-let [item (rand-unused-item recipe)]
-      {:title "Increased Damage"
-       :description [#_"With great care, you make the weapon much more powerful"
-                     (format "The %s you %s was %s. This weapon is going to do a lot more damage."
-                       (:name item)
-                       (rand-nth ["found" "used"])
-                       (rand-nth ["great" "perfect" "amazing" "awesome"]))]
-       :event/choices [{
-         :hotkey :space
-         :name "continue"
-         :event-item/id (get item :item/id)
-         :choice/one-of [(mod-damage 1 2)]}]})
-
-    ; wooden - find replacement
-    {:description "In a flash of insight, you decide you can cannibalize another item for parts."
-     :requirements #{:choice.id/wooden-find-replacement
-                     :choice.id/edged-find-replacement}
-     :event/choices
-       (let [wooden-inventory (take 2 (shuffle (filter rcrafting/wooden (ri/player-inventory state))))
-             choices (map (fn [item]
-                            {:hotkey (get item :hotkey)
-                             :name (get item :name)
-                             :choice/one-of [(mod-dec-inventory (get item :hotkey))]
-                             :choice/events [{
-                               :description "Select a buff to bring along."
-                               :event/choices (let [choices (map (fn [buff hotkey]
-                                                                   {:hotkey hotkey
-                                                                    :name (rcmp/full-name buff)
-                                                                    :choice/one-of [buff]})
-                                                               (get item :effects))]
-                                                (concat choices [{:name "no buffs - skip"
-                                                                  :hotkey :space}]))}]})
-                          wooden-inventory)]
-         (if (empty? choices)
-           [{:name "no items - skip"
+          {:title "Increased Damage"
+           :description [(format "The %s you %s was %s. This weapon is going to do a lot more damage."
+                           (:name item)
+                           (rand-nth ["found" "used"])
+                           (rand-nth ["great" "perfect" "amazing" "awesome"]))]
+           :event/choices [{
              :hotkey :space
-             :effects [debuff-mod]}]
-           choices))}
+             :name "continue"
+             :event.complication.item/id (get item :item/id)
+             :choice/one-of [(mod-damage 1 2)]}]}
 
-    ; wooden - find-replacement 
-    {:description "You can turn this into a fire hardened weapon if you find a fire."
-     :requirements #{:choice.id/wooden-find-replacement}
-     :event/choices [
-         {:name "Use fire"
-          :hotkey :enter
-          :requirements {:adjacent-to-fire true}
-          :effects [(mod-firehardened)]}
-         {:name "skip"
-          :hotkey :space
-          :effects [debuff-mod]}]}
+        ; wooden - find replacement
+        {:description "In a flash of insight, you decide you can cannibalize another item for parts."
+         :requirements #{:choice.id/wooden-find-replacement
+                         :choice.id/edged-find-replacement}
+         :event/choices
+           (let [wooden-inventory (take 2 (shuffle (filter rcrafting/wooden (ri/player-inventory state))))
+                 choices (map (fn [item]
+                                {:hotkey (get item :hotkey)
+                                 :name (get item :name)
+                                 :choice/one-of [(mod-dec-inventory (get item :hotkey))]
+                                 :choice/events [{
+                                   :description "Select a buff to bring along."
+                                   :event/choices (let [choices (map (fn [buff hotkey]
+                                                                       {:hotkey hotkey
+                                                                        :name (rcmp/full-name buff)
+                                                                        :choice/one-of [buff]})
+                                                                   (get item :effects))]
+                                                    (concat choices [{:name "no buffs - skip"
+                                                                      :hotkey :space}]))}]})
+                              wooden-inventory)]
+             (if (empty? choices)
+               [{:name "no items - skip"
+                 :hotkey :space
+                 :effects [debuff-mod]}]
+               choices))}
 
-    ; wooden - change design
-    {:description "You mull the design in your mind."
-     :requirements #{:choice.id/wooden-change-design}
-     :event/choices [
-         {:name "continue"
-          :hotkey :space
-          :choice/events [{
-            :description "Yes, you can change this to include a piercing component."
-            :event/choices [{
-              :name "continue"
+        ; wooden - find-replacement 
+        {:description "You can turn this into a fire hardened weapon if you find a fire."
+         :requirements #{:choice.id/wooden-find-replacement}
+         :event/choices [
+             {:name "Use fire"
+              :hotkey :enter
+              :requirements {:adjacent-to-fire true}
+              :effects [(mod-firehardened)]}
+             {:name "skip"
               :hotkey :space
-              :effects [(mod-piercing 0.1 0.3)]}]}]}]}
+              :effects [debuff-mod]}]}
 
-    ; dimensional - find-replacement 
-    {:description "You can use parts from another item to fix this."
-     :requirements #{:choice.id/dimensional-find-replacement}
-     :event/choices
-       (let [inventory (take 2 (shuffle (ri/player-inventory state)))
-             choices (map (fn [item]
-                            {:hotkey (get item :hotkey)
-                             :name (get item :name)
-                             :choice/one-of [(mod-dec-inventory (get item :hotkey))]
-                             :choice/events [{
-                               :description "Select an effect to copy"
-                               :event/choices (let [choices (map (fn [effect hotkey]
-                                                                   {:hotkey hotkey
-                                                                    :name (rcmp/full-name effect)
-                                                                    :choice/one-of [effect]})
-                                                               (get item :effects))]
-                                                (concat choices [{:name "no buffs - skip"
-                                                                  :hotkey :space}]))}]})
-                          inventory)]
-         (if (empty? choices)
-           [{:name "no applicable items - skip"
-             :hotkey :space
-             :effects [debuff-mod]}]
-           choices))}
-
-    ; dimensional - change design
-    {:description "You mull the design in your mind. Examining shapes and interconnections."
-     :requirements #{:choice.id/dimensional-change-design}
-     :event/choices [
-         {:name "continue"
-          :hotkey :space
-          :choice/events [{
-            :description "Yes, you can change this to make this weapon much more durable."
-            :event/choices [{
-              :name "continue"
+        ; wooden - change design
+        {:description "You mull the design in your mind."
+         :requirements #{:choice.id/wooden-change-design}
+         :event/choices [
+             {:name "continue"
               :hotkey :space
-              :effects [(mod-durability 5 10)]}]}]}]}
+              :choice/events [{
+                :description "Yes, you can change this to include a piercing component."
+                :event/choices [{
+                  :name "continue"
+                  :hotkey :space
+                  :effects [(mod-piercing 0.1 0.3)]}]}]}]}
 
-    ; edged - find-replacement - cannibalize
-    {:description "You can use parts from another edged item to fix this."
-     :requirements #{:choice.id/edged-find-replacement}
-     :event/choices
-       (let [inventory (take 2 (shuffle (filter rcrafting/edged (ri/player-inventory state))))
-             choices (map (fn [item]
-                            {:hotkey (get item :hotkey)
-                             :name (get item :name)
-                             :choice/one-of [(mod-dec-inventory (get item :hotkey))]
-                             :choice/events [{
-                               :description "Select an effect to copy"
-                               :event/choices (let [choices (map (fn [effect hotkey]
-                                                                   {:hotkey hotkey
-                                                                    :name (rcmp/full-name effect)
-                                                                    :choice/one-of [effect]})
-                                                               (get item :effects))]
-                                                (concat choices [{:name "no buffs - skip"
-                                                                  :hotkey :space}]))}]})
-                          inventory)]
-         (if (empty? choices)
-           [{:name "no applicable items - skip"
-             :hotkey :space
-             :effects [debuff-mod]}]
-           choices))}
+        ; dimensional - find-replacement 
+        {:description "You can use parts from another item to fix this."
+         :requirements #{:choice.id/dimensional-find-replacement}
+         :event/choices
+           (let [inventory (take 2 (shuffle (ri/player-inventory state)))
+                 choices (map (fn [item]
+                                {:hotkey (get item :hotkey)
+                                 :name (get item :name)
+                                 :choice/one-of [(mod-dec-inventory (get item :hotkey))]
+                                 :choice/events [{
+                                   :description "Select an effect to copy"
+                                   :event/choices (let [choices (map (fn [effect hotkey]
+                                                                       {:hotkey hotkey
+                                                                        :name (rcmp/full-name effect)
+                                                                        :choice/one-of [effect]})
+                                                                   (get item :effects))]
+                                                    (concat choices [{:name "no buffs - skip"
+                                                                      :hotkey :space}]))}]})
+                              inventory)]
+             (if (empty? choices)
+               [{:name "no applicable items - skip"
+                 :hotkey :space
+                 :effects [debuff-mod]}]
+               choices))}
 
-    ; edged - change design - dismembering
-    {:description "You think about how to make the edge sharper."
-     :requirements #{:choice.id/edged-change-design}
-     :event/choices [
-         {:name "continue"
-          :hotkey :space
-          :choice/events [{
-            :description "In a flash of insight you understand how to make the edge so sharp it can dismember limbs."
-            :event/choices [{
-              :name "continue"
+        ; dimensional - change design
+        {:description "You mull the design in your mind. Examining shapes and interconnections."
+         :requirements #{:choice.id/dimensional-change-design}
+         :event/choices [
+             {:name "continue"
               :hotkey :space
-              :effects [(mod-dismembering 0.1 0.5)]}]}]}]}
+              :choice/events [{
+                :description "Yes, you can change this to make this weapon much more durable."
+                :event/choices [{
+                  :name "continue"
+                  :hotkey :space
+                  :effects [(mod-durability 5 10)]}]}]}]}
 
-    ; flexible - find-replacement - cannibalize
-    {:description "You can use parts from another flexible item to fix this."
-     :requirements #{:choice.id/flexible-find-replacement}
-     :event/choices
-       (let [inventory (take 2 (shuffle (filter rcrafting/flexible (ri/player-inventory state))))
-             choices (map (fn [item]
-                            {:hotkey (get item :hotkey)
-                             :name (get item :name)
-                             :choice/one-of [(mod-dec-inventory (get item :hotkey))]
-                             :choice/events [{
-                               :description "Select an effect to copy"
-                               :event/choices (let [choices (map (fn [effect hotkey]
-                                                                   {:hotkey hotkey
-                                                                    :name (rcmp/full-name effect)
-                                                                    :choice/one-of [effect]})
-                                                               (get item :effects))]
-                                                (concat choices [{:name "no buffs - skip"
-                                                                  :hotkey :space}]))}]})
-                          inventory)]
-         (if (empty? choices)
-           [{:name "no applicable items - skip"
-             :hotkey :space
-             :effects [debuff-mod]}]
-           choices))}
+        ; edged - find-replacement - cannibalize
+        {:description "You can use parts from another edged item to fix this."
+         :requirements #{:choice.id/edged-find-replacement}
+         :event/choices
+           (let [inventory (take 2 (shuffle (filter rcrafting/edged (ri/player-inventory state))))
+                 choices (map (fn [item]
+                                {:hotkey (get item :hotkey)
+                                 :name (get item :name)
+                                 :choice/one-of [(mod-dec-inventory (get item :hotkey))]
+                                 :choice/events [{
+                                   :description "Select an effect to copy"
+                                   :event/choices (let [choices (map (fn [effect hotkey]
+                                                                       {:hotkey hotkey
+                                                                        :name (rcmp/full-name effect)
+                                                                        :choice/one-of [effect]})
+                                                                   (get item :effects))]
+                                                    (concat choices [{:name "no buffs - skip"
+                                                                      :hotkey :space}]))}]})
+                              inventory)]
+             (if (empty? choices)
+               [{:name "no applicable items - skip"
+                 :hotkey :space
+                 :effects [debuff-mod]}]
+               choices))}
 
-    ; flexible - change design - stunning
-    {:description "You think about how to make the flex flexier"
-     :requirements #{:choice.id/flexible-change-design}
-     :event/choices [
-         {:name "continue"
-          :hotkey :space
-          :choice/events [{
-            :description "In a flash of insight you understand how to make it so flexible it can stun opponents."
-            :event/choices [{
-              :name "continue"
+        ; edged - change design - dismembering
+        {:description "You think about how to make the edge sharper."
+         :requirements #{:choice.id/edged-change-design}
+         :event/choices [
+             {:name "continue"
               :hotkey :space
-              :effects [(mod-stunning 0.1 0.5)]}]}]}]}
+              :choice/events [{
+                :description "In a flash of insight you understand how to make the edge so sharp it can dismember limbs."
+                :event/choices [{
+                  :name "continue"
+                  :hotkey :space
+                  :effects [(mod-dismembering 0.1 0.5)]}]}]}]}
 
-    ; handled - find-replacement - cannibalize
-    {:description "You can use parts from another handled item to fix this."
-     :requirements #{:choice.id/handled-find-replacement}
-     :event/choices
-       (let [inventory (take 2 (shuffle (filter rcrafting/handled? (ri/player-inventory state))))
-             choices (map (fn [item]
-                            {:hotkey (get item :hotkey)
-                             :name (get item :name)
-                             :choice/one-of [(mod-dec-inventory (get item :hotkey))]
-                             :choice/events [{
-                               :description "Select an effect to copy"
-                               :event/choices (let [choices (map (fn [effect hotkey]
-                                                                   {:hotkey hotkey
-                                                                    :name (rcmp/full-name effect)
-                                                                    :choice/one-of [effect]})
-                                                               (get item :effects))]
-                                                (concat choices [{:name "no buffs - skip"
-                                                                  :hotkey :space}]))}]})
-                          inventory)]
-         (if (empty? choices)
-           [{:name "no applicable items - skip"
-             :hotkey :space
-             :effects [debuff-mod]}]
-           choices))}
+        ; flexible - find-replacement - cannibalize
+        {:description "You can use parts from another flexible item to fix this."
+         :requirements #{:choice.id/flexible-find-replacement}
+         :event/choices
+           (let [inventory (take 2 (shuffle (filter rcrafting/flexible (ri/player-inventory state))))
+                 choices (map (fn [item]
+                                {:hotkey (get item :hotkey)
+                                 :name (get item :name)
+                                 :choice/one-of [(mod-dec-inventory (get item :hotkey))]
+                                 :choice/events [{
+                                   :description "Select an effect to copy"
+                                   :event/choices (let [choices (map (fn [effect hotkey]
+                                                                       {:hotkey hotkey
+                                                                        :name (rcmp/full-name effect)
+                                                                        :choice/one-of [effect]})
+                                                                   (get item :effects))]
+                                                    (concat choices [{:name "no buffs - skip"
+                                                                      :hotkey :space}]))}]})
+                              inventory)]
+             (if (empty? choices)
+               [{:name "no applicable items - skip"
+                 :hotkey :space
+                 :effects [debuff-mod]}]
+               choices))}
 
-    ; handled - change design - knockback
-    {:description "You think about how to improve the handle."
-     :requirements #{:choice.id/handled-change-design}
-     :event/choices [
-         {:name "continue"
-          :hotkey :space
-          :choice/events [{
-            :description "In a flash of insight you understand how to make the handle easier to grip."
-            :event/choices [{
-              :name "continue"
+        ; flexible - change design - stunning
+        {:description "You think about how to make the flex flexier"
+         :requirements #{:choice.id/flexible-change-design}
+         :event/choices [
+             {:name "continue"
               :hotkey :space
-              :effects [(mod-knockback 0.1 0.5)]}]}]}]}
+              :choice/events [{
+                :description "In a flash of insight you understand how to make it so flexible it can stun opponents."
+                :event/choices [{
+                  :name "continue"
+                  :hotkey :space
+                  :effects [(mod-stunning 0.1 0.5)]}]}]}]}
 
-    ; mental - perseverence
-    {:description "You think about how to much you've struggeled so far and how far you have come."
-     :requirements #{:choice.id/handled-change-design}
-     :event/choices [
-         {:name "continue"
-          :hotkey :space
-          :choice/events [{
-            :description "You start to feel better about your chances of survival."
-            :event/choices [{
-              :name "continue"
+        ; handled - find-replacement - cannibalize
+        {:description "You can use parts from another handled item to fix this."
+         :requirements #{:choice.id/handled-find-replacement}
+         :event/choices
+           (let [inventory (take 2 (shuffle (filter rcrafting/handled? (ri/player-inventory state))))
+                 choices (map (fn [item]
+                                {:hotkey (get item :hotkey)
+                                 :name (get item :name)
+                                 :choice/one-of [(mod-dec-inventory (get item :hotkey))]
+                                 :choice/events [{
+                                   :description "Select an effect to copy"
+                                   :event/choices (let [choices (map (fn [effect hotkey]
+                                                                       {:hotkey hotkey
+                                                                        :name (rcmp/full-name effect)
+                                                                        :choice/one-of [effect]})
+                                                                   (get item :effects))]
+                                                    (concat choices [{:name "no buffs - skip"
+                                                                      :hotkey :space}]))}]})
+                              inventory)]
+             (if (empty? choices)
+               [{:name "no applicable items - skip"
+                 :hotkey :space
+                 :effects [debuff-mod]}]
+               choices))}
+
+        ; handled - change design - knockback
+        {:description "You think about how to improve the handle."
+         :requirements #{:choice.id/handled-change-design}
+         :event/choices [
+             {:name "continue"
               :hotkey :space
-              :effects [(mod-wtl 1 5)]}]}]}]}
+              :choice/events [{
+                :description "In a flash of insight you understand how to make the handle easier to grip."
+                :event/choices [{
+                  :name "continue"
+                  :hotkey :space
+                  :effects [(mod-knockback 0.1 0.5)]}]}]}]}
 
-]))
+        ; mental - perseverence
+        {:description "You think about how to much you've struggeled so far and how far you have come."
+         :requirements #{:choice.id/handled-change-design}
+         :event/choices [
+             {:name "continue"
+              :hotkey :space
+              :choice/events [{
+                :description "You start to feel better about your chances of survival."
+                :event/choices [{
+                  :name "continue"
+                  :hotkey :space
+                  :effects [(mod-wtl 1 5)]}]}]}]}]
+       [])))
 
 (defn gen-enhancement [state recipe]
   (gen-event state recipe

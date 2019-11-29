@@ -111,9 +111,9 @@
                 [:text {} [""]]
                 [:view {} [
                   [ruicommon/MultiSelect {:items [{:name "Weapon" :hotkey \w}
-                                                  {:name "Trap" :hotkey \t}
-                                                  {:name "Food" :hotkey \f}
-                                                  {:name "Signal" :hotkey \s}
+                                                  #_{:name "Trap" :hotkey \t}
+                                                  #_{:name "Food" :hotkey \f}
+                                                  #_{:name "Signal" :hotkey \s}
                                                   {:name "Survival" :hotkey \v}]}]]]]])))
 
 (zc/def-component Recipes

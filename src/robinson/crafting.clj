@@ -762,6 +762,31 @@
   [recipe]
   (-> recipe :recipe/types get-recipe-by-types :recipe/requirements))
 
+(defn craft-recipe
+  "Perform the recipe."
+  [state recipe]
+  (let [exhaust-hotkeys (->> (get-in recipe [:recipe/requirements])
+                          ; remove 'each-of
+                          rest
+                          ; add slot indexes
+                          (map-indexed vector)
+                          ; remove tool clauses
+                          (remove (fn [[_ clause]] (contains? #{'tool} clause)))
+                          ; find which items ids are in remaining slots
+                          (map (fn [[slot _]] (get (slot->item state slot) :hotkey))))
+        add          (get-in recipe [:recipe/add])
+        effects      (get recipe :effects [])
+        state (as-> state state
+                  (add-by-ids state add effects (get recipe :place :inventory))
+                  ; exhaust non-tool slot items
+                  (exhaust-by-hotkeys state exhaust-hotkeys)
+                  #_(rp/player-update-hunger state (fn [current-hunger] (min (+ hunger current-hunger)
+                                                                           (rp/player-max-hunger state))))
+                  #_(rp/player-update-thirst state (fn [current-thirst] (min (+ hunger current-thirst)
+                                                                           (rp/player-max-thirst state))))
+                  (reduce rp/update-crafted state (map (fn [id] {:id id}) add)))]
+    state))
+
 (defn save-recipe
   [state]
   {:post [(not (nil? %))]}
@@ -781,7 +806,8 @@
                                  (merge recipe-blueprint)
                                  (assoc 
                                    :name (recipe-name recipe))))
-      (rw/assoc-current-state :recipes))))
+      (craft-recipe recipe)
+      (rw/assoc-current-state :normal))))
 
 (defn fill-event
   [event recipe]
@@ -905,7 +931,9 @@
                                                                 :items
                                                                 ; ids of items "used" in events
                                                                 ; so that items don't get contradictory events
-                                                                :event-item/id
+                                                                :event.complication.item/id
+                                                                :event.enhancemnt.item/id
+                                                                :event.remedy.item/id
                                                                 :done
                                                                 :event/id
                                                                 :choice/id])
@@ -970,31 +998,6 @@
           :hotkey :space
           :name "continue"
           :choice/events [:gen-material]}]}))
-
-(defn craft-recipe
-  "Perform the recipe."
-  [state recipe]
-  (let [exhaust-hotkeys (->> (get-in recipe [:recipe/requirements])
-                          ; remove 'each-of
-                          rest
-                          ; add slot indexes
-                          (map-indexed vector)
-                          ; remove tool clauses
-                          (remove (fn [[_ clause]] (contains? #{'tool} clause)))
-                          ; find which items ids are in remaining slots
-                          (map (fn [[slot _]] (get (slot->item state slot) :hotkey))))
-        add          (get-in recipe [:recipe/add])
-        effects      (get recipe :effects [])
-        state (as-> state state
-                  (add-by-ids state add effects (get recipe :place :inventory))
-                  ; exhaust non-tool slot items
-                  (exhaust-by-hotkeys state exhaust-hotkeys)
-                  #_(rp/player-update-hunger state (fn [current-hunger] (min (+ hunger current-hunger)
-                                                                           (rp/player-max-hunger state))))
-                  #_(rp/player-update-thirst state (fn [current-thirst] (min (+ hunger current-thirst)
-                                                                           (rp/player-max-thirst state))))
-                  (reduce rp/update-crafted state (map (fn [id] {:id id}) add)))]
-    state))
 
 (defn player-recipes [state]
   (let [empty-recipe {:name "Empty" :alt "----" :empty true}

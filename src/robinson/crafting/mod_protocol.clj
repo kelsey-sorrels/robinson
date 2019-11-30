@@ -10,6 +10,10 @@
 (defprotocol ModQuantifiable
   (amount [this]))
 
+(defn quantifiable?
+  [x]
+  (satisfies? ModQuantifiable x))
+
 (defprotocol ModImmediate)
 (defprotocol ModNormative
   (utility [this]))

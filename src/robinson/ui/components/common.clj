@@ -40,7 +40,7 @@
     :default
       (str hotkey)))
 
-(zc/def-component HotkeyLabel
+#_(zc/def-component HotkeyLabel
   [this]
   (let [{:keys [hotkey sep label style]} (zc/props this)
         {:keys [hover] :or {hover false}} (zc/state this)
@@ -53,15 +53,15 @@
       [:view {:on-click (fn [{:keys [target game-state]}]
                                 (ru/update-state game-state hotkey))
               :on-mouse-enter (fn [{:keys [target game-state]}]
-                                (binding [zc/*current-owner* owner]
+                                ;(binding [zc/*current-owner* owner]
                                   (log/info (log/info "HotkeyLabelEnter" hotkey (-> target second :zaffre/layout)))
                                   (zc/set-state! this {:hover true}))
-                                game-state)
+                                ;game-state)
               :on-mouse-leave (fn [{:keys [target game-state]}]
-                                (binding [zc/*current-owner* owner]
+                                ;(binding [zc/*current-owner* owner]
                                   (log/info (log/info "HotkeyLabelLeave" hotkey (-> target second :zaffre/layout)))
                                   (zc/set-state! this {:hover false}))
-                                game-state)
+                                ;game-state)
               :style (merge
                        {:display :flex
                         :flex-direction :row}
@@ -72,6 +72,42 @@
         [:text {} [(or sep "-")]]
         [:text {#_#_:style {:color (if hover black white)
                         :background-color (if hover white black)}} [label]]]])))
+
+(def HotkeyLabel
+  (let [white (rcolor/color->rgb :white)
+        black (rcolor/color->rgb :black)]
+  (zc/create-react-class {
+    :display-name "HotkeyLabel"
+    :get-initial-state (fn []
+      {:hover false})
+    :get-default-props (fn input-get-default-props [] {
+      :on-click (fn [this e]
+                  (let [{:keys [hotkey target game-state]} (zc/props this)]
+                    (ru/update-state game-state hotkey)))
+      :on-mouse-enter (fn [this e]
+                        (let [{:keys [hotkey target]} (zc/props this)]
+                          (log/info (log/info "HotkeyLabelEnter" hotkey (-> target second :zaffre/layout)))
+                          (zc/set-state! this {:hover true})))
+      :on-mouse-leave (fn [this e]
+                        (let [{:keys [hotkey target]} (zc/props this)]
+                            (log/info (log/info "HotkeyLabelLeave" hotkey (-> target second :zaffre/layout)))
+                            (zc/set-state! this {:hover false})))})
+    :render 
+      (fn [this]
+        (let [{:keys [hotkey sep label style]} (zc/props this)
+              {:keys [hover] :or {hover false}} (zc/state this)
+              hotkey-str (hotkey->str hotkey)]
+          (zc/csx 
+            [:view {:style (merge
+                             {:display :flex
+                              :flex-direction :row}
+                             style)} [
+              (if hover
+                (zc/csx [InverseHighlight {} [(or hotkey-str "")]])
+                (zc/csx [Highlight {} [(or hotkey-str "")]]))
+              [:text {} [(or sep "-")]]
+              [:text {#_#_:style {:color (if hover black white)
+                              :background-color (if hover white black)}} [label]]]])))})))
   
 (zc/def-component Cursor
   [this]
@@ -156,7 +192,7 @@
 
 (zc/def-component MultiSelectItem
   [this]
-  (let [{:keys [style hotkey selected count name utility wielded wielded-ranged worn alt disabled effects] :as props} (zc/props this)
+  (let [{:keys [style hotkey selected count name utility wielded wielded-ranged worn detail disabled effects] :as props} (zc/props this)
         hotkey-str (str (or (hotkey->str hotkey) ""))
         count-str (when count (format "%dx " (int count)))
         {:keys [hover] :or {hover false}} (zc/state this)
@@ -196,10 +232,6 @@
             (when count-str
               (zc/csx [:text {} [count-str]]))
             [:text {} [(or name "unknown")]]
-            [:view {:style {:display :flex
-                            :flex-direction :row
-                            :margin-left 1
-                            :margin-right 1}} (concat (attributes props) (effect-elems effects))]
             (when utility
               (zc/csx [:text {:style {:margin-left 1}} [(format "(%d%%)" (int utility))]]))
             [:text {} [(cond
@@ -211,9 +243,16 @@
                 "(worn)"
               :else
                 "")]]]]
-          (when alt
-            (zc/csx [:text {:style {:color (rcolor/color->rgb :gray)}}
-                           [(str alt)]]))]]]])))
+          (when detail
+            (if (string? detail)
+              (zc/csx [:text {:style {:color (rcolor/color->rgb :gray)}}
+                             [(str detail)]])
+              (zc/csx 
+                [:view {:style {:display :flex
+                                :flex-direction :row
+                                :margin-left 1
+                                :margin-right 1}} (concat (attributes props) (effect-elems effects))])
+  ))]]]])))
 
 (zc/def-component MultiSelect
   [this]

@@ -907,12 +907,15 @@
                         :event/type :event-type/material
                         :event/choices 
                           (concat
-                            (map (fn [recipe hotkey]
-                                   (log/info "recipe choice" recipe)
-                                   {:hotkey hotkey
-                                    :name (rcrafting/recipe-name recipe false)
-                                    :recipe/types (get recipe :recipe/types)
-                                    :choice/events [{:description (str "You wrap up the " (rcrafting/recipe-name recipe false) ".")}]})
+                            (map (fn [valid-recipe hotkey]
+                                   (log/info "recipe choice" valid-recipe)
+                                   (let [recipe-name (rcrafting/recipe-name valid-recipe false)]
+                                     {:hotkey hotkey
+                                      :name recipe-name
+                                      :recipe/name recipe-name
+                                      :recipe/types (get valid-recipe :recipe/types)
+                                      :choice/events [{
+                                        :description (str "You wrap up the " recipe-name ".")}]}))
                                    valid-recipes
                                    [\a \b \c \d \e \f \g])
                             (if (< (->> recipe
@@ -1021,7 +1024,7 @@
                   :effects [(mod-piercing 0.1 0.3)]}]}]}]}
 
         ; dimensional - find-replacement 
-        {:description "You can use parts from another item to fix this."
+        #_{:description "You can use parts from another item to fix this."
          :requirements #{:choice.id/dimensional-find-replacement}
          :event/choices
            (let [inventory (take 2 (shuffle (ri/player-inventory state)))
@@ -1059,7 +1062,7 @@
                   :effects [(mod-durability 5 10)]}]}]}]}
 
         ; edged - find-replacement - cannibalize
-        {:description "You can use parts from another edged item to fix this."
+        #_{:description "You can use parts from another edged item to fix this."
          :requirements #{:choice.id/edged-find-replacement}
          :event/choices
            (let [inventory (take 2 (shuffle (filter rcrafting/edged (ri/player-inventory state))))
@@ -1097,7 +1100,7 @@
                   :effects [(mod-dismembering 0.1 0.5)]}]}]}]}
 
         ; flexible - find-replacement - cannibalize
-        {:description "You can use parts from another flexible item to fix this."
+        #_{:description "You can use parts from another flexible item to fix this."
          :requirements #{:choice.id/flexible-find-replacement}
          :event/choices
            (let [inventory (take 2 (shuffle (filter rcrafting/flexible (ri/player-inventory state))))
@@ -1135,7 +1138,7 @@
                   :effects [(mod-stunning 0.1 0.5)]}]}]}]}
 
         ; handled - find-replacement - cannibalize
-        {:description "You can use parts from another handled item to fix this."
+        #_{:description "You can use parts from another handled item to fix this."
          :requirements #{:choice.id/handled-find-replacement}
          :event/choices
            (let [inventory (take 2 (shuffle (filter rcrafting/handled? (ri/player-inventory state))))

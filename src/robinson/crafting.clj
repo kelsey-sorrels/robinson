@@ -568,6 +568,7 @@
 
 (defn item-satisfies-requirement-clause?
   [item clause]
+  (log/info "item" item "clause" clause)
   (cond
     (fn? clause)
       (clause item)
@@ -586,18 +587,27 @@
     (contains? #{'tool} (first clause))
       (item-satisfies-requirement-clause? item (second clause))
     (= (first clause) not)
-      (not ((second clause) item))))
+      (not ((second clause) item))
+    (keyword? (first clause))
+      (= (second clause) (get item (first clause)))))
 
 (defn item-satisfies-any-clause?
-  [item]
+  [item recipe]
+  (log/info "item-satisfies-any-clause?" item)
+  (log/info "item-satisfies-any-clause?" (get recipe :recipe/requirements))
   (some
     (partial item-satisfies-requirement-clause? item)
-    (mapcat (fn [recipe] (-> recipe :recipe/requirements rest))
-            recipes)))
+    (-> recipe :recipe/requirements rest)))
+
+(defn item-satisfies-any-recipe-clause?
+  [item]
+  (some
+    (partial item-satisfies-any-clause? item)
+    recipes))
 
 (defn inventory-crafting-components
   [state]
-  (filter item-satisfies-any-clause? (ri/player-inventory state)))
+  (filter item-satisfies-any-recipe-clause? (ri/player-inventory state)))
 
 (defn slot->item [state slot]
   (let [selected-recipe-hotkey (get-in state [:world :selected-recipe-hotkey])
@@ -729,9 +739,8 @@
   (-> recipe :recipe/types get-recipe-by-types :recipe/requirements))
 
 (defn dominate-item
-  [recipe]
-  (let [requirements (recipe-requirements recipe)]
-    (->> recipe :items (sort-by :mass) last)))
+  [items]
+  (->> items (sort-by :mass) last))
 
 (defn fancy-name
   [recipe]
@@ -740,25 +749,23 @@
                           -3 ["insufficient" "inferior" "ramshackle"]
                           -2 ["senseless" "shoddy" "lousy"]
                           -1 ["weak" "junky" "trashy"]
-                          0 [""]
                           2 ["sweet" "humane"]
                           3 ["kindly" "polished"]
                           1 ["undue" "unconscionable"]
                           4 ["overpowered" "flawless" "masterwork"]
                           5 ["godly"]}
         dominate-effect (->> recipe :effects (filter rcmp/quantifiable?) (sort-by rcmp/amount) last)
-        adj (if dominate-effect
+        adj (when dominate-effect
               (let [adjs (get qualitative-adjs (rcmp/amount dominate-effect) ["normal"])]
-                (nth adjs (mod (hash recipe) (count adjs))))
-            "")
-        dom-item (dominate-item recipe)
+                (nth adjs (mod (hash recipe) (count adjs)))))
+        dom-item (get recipe :recipe/dominate-item)
         name (-> recipe
                :recipe/types
                get-recipe-by-types
                :recipe/id
                ig/id->name)]
 
-    (log/info name)
+    ;(log/info name)
     (str (if adj
            (str adj " ")
            "")
@@ -772,7 +779,7 @@
    (recipe-name recipe true))
   ([recipe show-progress]
     (let [types (get recipe :recipe/types)]
-      (log/info "recipe-name" types)
+      ;(log/info "recipe-name" types)
       (str
         (if (and show-progress (in-progress? recipe))
           "In-progress " 
@@ -823,6 +830,30 @@
                   (reduce rp/update-crafted state (map (fn [id] {:id id}) add)))]
     state))
 
+(defn requirements-based-on-dominate-item
+  "Returns a requirements where one of the clauses has been replaced with a specific item requirement based
+   on the dominate item in the recipe."
+  [item requirements]
+  (log/info "requirements-based-on-dominate-item" item requirements)
+  (log/info (->> requirements
+              ; add index
+              (map-indexed vector)
+              vec))
+             
+  (let [idx (->> requirements
+              ; add index
+              (map-indexed vector)
+              ; remove the 'each symbol at the head
+              rest
+              ; filter where item satisfies the clause (keeping [index clause] strucuture
+              (filter (comp (partial item-satisfies-requirement-clause? item) second))
+              ; random [index clause]
+              rand-nth
+              ; extract index of clause to replace
+              first)]
+    ; replace clause with
+    (assoc requirements idx [:item/id (get item :item/id)])))
+                 
 (defn save-recipe
   [state]
   {:post [(not (nil? %))]}
@@ -834,12 +865,19 @@
         _ (log/info recipe)
         recipe-blueprint (-> recipe
                            :recipe/types
-                           get-recipe-by-types)]
-    (log/info recipe-blueprint)
+                           get-recipe-by-types)
+        merged-recipe (-> recipe
+                        (merge recipe-blueprint)
+                        ; change name from set to string
+                        (update :recipe/name first)
+                        ; replace random requirement clause with dominate item
+                        (update :recipe/requirements
+                                (partial requirements-based-on-dominate-item
+                                         (get recipe :recipe/dominate-item))))]
+    (log/info (dissoc merged-recipe :recipe/events))
     (-> state
       (update-in [:world :recipes] assoc
-        selected-recipe-hotkey (-> recipe
-                                 (merge recipe-blueprint)))
+        selected-recipe-hotkey merged-recipe)
       (craft-recipe recipe)
       (rw/assoc-current-state :normal))))
 
@@ -963,6 +1001,7 @@
                                                                 :recipe/types
                                                                 ; procgen name of item
                                                                 :recipe/name
+                                                                :recipe/dominate-item
                                                                 :effects
                                                                 :items
                                                                 :event/id
@@ -1019,7 +1058,7 @@
   (let [selected-recipe-hotkey (get-in state [:world :selected-recipe-hotkey])
         recipe (get-in state [:world :recipes selected-recipe-hotkey])
         new-state (resolve-choice state recipe-ns recipe keyin)]
-    (log/info "current-recipe" (current-recipe new-state))
+    #_(log/info "current-recipe" (current-recipe new-state))
     new-state))
 
 (defn init [state recipe-ns recipe]

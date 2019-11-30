@@ -5,7 +5,7 @@
 
 (let [item-ids (->> ig/items
                  (filter
-                   rcrafting/item-satisfies-any-clause?)
+                   rcrafting/item-satisfies-any-recipe-clause?)
                  (map :item/id))
       rat (mg/id->monster :rat)
       rat-corpse (ig/gen-corpse rat)

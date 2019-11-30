@@ -652,12 +652,12 @@
       (rw/assoc-cell state x y :type id)))
   
 (defn- place-drop
-  [state id effects]
+  [state id effects name]
   (let [[x y] (rp/player-xy state)]
-    (rw/conj-cell-items state x y (ig/id->item id))))
+    (rw/conj-cell-items state x y (assoc (ig/id->item id) :name name))))
 
 (defn- place-inventory
-  [state id effects]
+  [state id effects name]
   (log/info "placing item with id" id "in inventory")
   (let [item (ig/id->item id)
         _ (log/info item)
@@ -665,20 +665,20 @@
                                (if (satisfies? rcmp/ModItemOnCreate effect)
                                  (rcmp/item-on-create effect item)
                                  item))
-                             item
+                             (assoc item :name name)
                              (get item :effects))]
     (ri/add-to-inventory state [updated-item])))
 
 (defn- add-by-ids
-  [state ids effects place]
+  [state ids effects place name]
   (reduce (fn [state id]
             (case place
               :cell-type
-                (place-cell-type state id effects)
+                (place-cell-type state id effects name)
               :drop
-                (place-drop state id effects)
+                (place-drop state id effects name)
               :inventory
-                (place-inventory state id effects)))
+                (place-inventory state id effects name)))
           state
           ids))
   
@@ -724,11 +724,55 @@
   (and (some? recipe)
        (not (complete? recipe))))
 
+(defn recipe-requirements
+  [recipe]
+  (-> recipe :recipe/types get-recipe-by-types :recipe/requirements))
+
+(defn dominate-item
+  [recipe]
+  (let [requirements (recipe-requirements recipe)]
+    (->> recipe :items (sort-by :mass) last)))
+
+(defn fancy-name
+  [recipe]
+  (let [qualitative-adjs {-5 ["crappiest"]
+                          -4 ["abridged" "defective" "shoddy" "makeshift"]
+                          -3 ["insufficient" "inferior" "ramshackle"]
+                          -2 ["senseless" "shoddy" "lousy"]
+                          -1 ["weak" "junky" "trashy"]
+                          0 [""]
+                          2 ["sweet" "humane"]
+                          3 ["kindly" "polished"]
+                          1 ["undue" "unconscionable"]
+                          4 ["overpowered" "flawless" "masterwork"]
+                          5 ["godly"]}
+        dominate-effect (->> recipe :effects (filter rcmp/quantifiable?) (sort-by rcmp/amount) last)
+        adj (if dominate-effect
+              (let [adjs (get qualitative-adjs (rcmp/amount dominate-effect) ["normal"])]
+                (nth adjs (mod (hash recipe) (count adjs))))
+            "")
+        dom-item (dominate-item recipe)
+        name (-> recipe
+               :recipe/types
+               get-recipe-by-types
+               :recipe/id
+               ig/id->name)]
+
+    (log/info name)
+    (str (if adj
+           (str adj " ")
+           "")
+          (if dominate-item
+            (str (get dom-item :name) " ")
+            "")
+          name)))
+  
 (defn recipe-name
   ([recipe]
    (recipe-name recipe true))
   ([recipe show-progress]
     (let [types (get recipe :recipe/types)]
+      (log/info "recipe-name" types)
       (str
         (if (and show-progress (in-progress? recipe))
           "In-progress " 
@@ -736,11 +780,7 @@
         (case (count types)
           0 (name (get recipe :recipe/id "unknown"))
           1 (-> types first name)
-          2 (-> recipe
-              :recipe/types
-              get-recipe-by-types
-              :recipe/id
-              ig/id->name))))))
+          2 (fancy-name recipe))))))
 
 (defn merge-effects
   [effects]
@@ -758,10 +798,6 @@
                            (rcmp/short-name (reduce rcmp/merge effects)))))]
     (clojure.string/join " " merged-effects)))
 
-(defn recipe-requirements
-  [recipe]
-  (-> recipe :recipe/types get-recipe-by-types :recipe/requirements))
-
 (defn craft-recipe
   "Perform the recipe."
   [state recipe]
@@ -777,7 +813,7 @@
         add          (get-in recipe [:recipe/add])
         effects      (get recipe :effects [])
         state (as-> state state
-                  (add-by-ids state add effects (get recipe :place :inventory))
+                  (add-by-ids state add effects (get recipe :place :inventory) (get recipe :recipe/name))
                   ; exhaust non-tool slot items
                   (exhaust-by-hotkeys state exhaust-hotkeys)
                   #_(rp/player-update-hunger state (fn [current-hunger] (min (+ hunger current-hunger)
@@ -803,9 +839,7 @@
     (-> state
       (update-in [:world :recipes] assoc
         selected-recipe-hotkey (-> recipe
-                                 (merge recipe-blueprint)
-                                 (assoc 
-                                   :name (recipe-name recipe))))
+                                 (merge recipe-blueprint)))
       (craft-recipe recipe)
       (rw/assoc-current-state :normal))))
 
@@ -877,7 +911,6 @@
                              [:event-type/material]
                            (not (contains? (recipe-event-types recipe) :event-type/complication))
                              [:event-type/random
-                              :event-type/player
                               :event-type/complication
                               :event-type/enhancement]
                            :else
@@ -926,16 +959,19 @@
                                       (if (coll? v)
                                         [k v]
                                         [k #{v}]))
-                                    (merge (select-keys choice [:recipe/types
+                                    (merge (select-keys choice [:recipe/id
+                                                                :recipe/types
+                                                                ; procgen name of item
+                                                                :recipe/name
                                                                 :effects
                                                                 :items
+                                                                :event/id
                                                                 ; ids of items "used" in events
                                                                 ; so that items don't get contradictory events
                                                                 :event.complication.item/id
                                                                 :event.enhancemnt.item/id
                                                                 :event.remedy.item/id
                                                                 :done
-                                                                :event/id
                                                                 :choice/id])
                                            (select-keys current-stage [:gen]))))
               _ (log/info "results" results)
@@ -1000,17 +1036,17 @@
           :choice/events [:gen-material]}]}))
 
 (defn player-recipes [state]
-  (let [empty-recipe {:name "Empty" :alt "----" :empty true}
+  (let [empty-recipe {:name "Empty" :detail "----" :empty true}
         base-recipes (map (fn [[hotkey recipe]]
                              #_(log/info (dissoc recipe :img :graph))
                              #_(log/info (recipe-short-desc recipe))
                              (assoc recipe :hotkey hotkey
                                            :name (if (get recipe :empty)
                                                    "Empty"
-                                                   (recipe-name recipe))
-                                           :alt (if (get recipe :empty)
-                                                  "----"
-                                                  (recipe-short-desc recipe))
+                                                   (get recipe :recipe/name))
+                                           :detail (if (or (get recipe :empty) (empty? (get recipe :effects)))
+                                                     "----"
+                                                     true)
                                            :effects (merge-effects (get recipe :effects))))
                           (merge
                             {\a empty-recipe
@@ -1026,7 +1062,7 @@
                                   (-> recipe
                                     (assoc :done true
                                            :hotkey hotkey
-                                           :alt "----")
+                                           :detail "----")
                                     ; break into separate step so that recipe-name can take into account :done true
                                     (as-> recipe
                                       (assoc recipe

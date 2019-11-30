@@ -134,9 +134,13 @@
   (let [{:keys [title names]} (zc/props this)]
     (zc/csx [:view {} (cons
       (zc/csx [:text {} [title]])
-      (if (seq names)
-        (map (fn [n] (zc/csx [:text {} [n]])) names)
-        [(zc/csx [:text {} ["None"]])]))])))
+      (cond
+        (coll? names)
+          (map (fn [n] (zc/csx [:text {} [(str n)]])) names)
+        (string? names)
+          [(zc/csx [:text {} [(str names)]])]
+        :else
+          [(zc/csx [:text {} ["None"]])]))])))
 
 (defn attribute-icon
   ([s color]
@@ -231,7 +235,7 @@
                           :align-items :flex-start}} [
             (when count-str
               (zc/csx [:text {} [count-str]]))
-            [:text {} [(or name "unknown")]]
+            [:text {} [(or (str name) "unknown")]]
             (when utility
               (zc/csx [:text {:style {:margin-left 1}} [(format "(%d%%)" (int utility))]]))
             [:text {} [(cond

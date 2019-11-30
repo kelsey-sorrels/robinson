@@ -2157,7 +2157,7 @@
   (let [recipe (rcrafting/current-recipe state)
         recipe-type (get recipe :type)
         _ (log/info "Recipe type" recipe-type)
-        _ (log/info "Recipe"  recipe)
+        #_ (log/info "Recipe"  recipe)
         recipe-ns (case recipe-type
                         :weapon 'robinson.crafting.weapon-gen
                         :survival 'robinson.crafting.survival-gen

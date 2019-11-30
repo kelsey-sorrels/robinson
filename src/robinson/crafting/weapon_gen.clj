@@ -69,6 +69,15 @@
   [wield-type]
   (with-meta #{wield-type} {:merge 'replace-wield}))
 
+(defn replace
+  [old-x new-x]
+  new-x)
+
+(defn merge-replace
+  [x]
+  (with-meta x {:merge 'replace}))
+  
+
 (def contact-choices
   {:blunt
      {:name "Blunt"
@@ -909,11 +918,22 @@
                           (concat
                             (map (fn [valid-recipe hotkey]
                                    (log/info "recipe choice" valid-recipe)
-                                   (let [recipe-name (rcrafting/recipe-name valid-recipe false)]
+                                   (log/info "recipe items" (conj (get recipe :items #{}) item))
+                                   (let [choice-name (rcrafting/recipe-name valid-recipe false)
+                                         dominate-item (rcrafting/dominate-item
+                                                         (filter #(rcrafting/item-satisfies-any-clause? %1 valid-recipe)
+                                                                 (conj (get recipe :items #{}) item)))
+                                         recipe-name (rcrafting/recipe-name (-> valid-recipe
+                                                                              (merge recipe)
+                                                                              (assoc :recipe/dominate-item dominate-item)
+                                                                              (update :items (conj item)))
+                                                                             false)]
+                                     (log/info "dominate item" dominate-item)
                                      {:hotkey hotkey
-                                      :name recipe-name
+                                      :name choice-name
                                       :recipe/name recipe-name
                                       :recipe/types (get valid-recipe :recipe/types)
+                                      :recipe/dominate-item dominate-item
                                       :choice/events [{
                                         :description (str "You wrap up the " recipe-name ".")}]}))
                                    valid-recipes

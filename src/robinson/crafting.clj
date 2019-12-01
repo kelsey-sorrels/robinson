@@ -568,7 +568,6 @@
 
 (defn item-satisfies-requirement-clause?
   [item clause]
-  (log/info "item" item "clause" clause)
   (cond
     (fn? clause)
       (clause item)
@@ -736,7 +735,7 @@
 
 (defn recipe-requirements
   [recipe]
-  (-> recipe :recipe/types get-recipe-by-types :recipe/requirements))
+  (-> recipe :recipe/requirements))
 
 (defn dominate-item
   [items]
@@ -840,6 +839,14 @@
               (map-indexed vector)
               vec))
              
+  (log/info (->> requirements
+              ; add index
+              (map-indexed vector)
+              rest
+              ; filter where item satisfies the clause (keeping [index clause] strucuture
+              (filter (comp (partial item-satisfies-requirement-clause? item) second))
+              vec))
+             
   (let [idx (->> requirements
               ; add index
               (map-indexed vector)
@@ -851,6 +858,7 @@
               rand-nth
               ; extract index of clause to replace
               first)]
+    (log/info "idx" idx)
     ; replace clause with
     (assoc requirements idx [:item/id (get item :item/id)])))
                  

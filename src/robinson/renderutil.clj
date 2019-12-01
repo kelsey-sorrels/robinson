@@ -78,6 +78,7 @@
    :human-skull      [\☻ :white :black]
    :gong             [\&]
    :stone-tablet     [\&]
+   :robe             [\[]
    :codex            [\&]})
 
 (defn item->char

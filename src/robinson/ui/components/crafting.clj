@@ -79,7 +79,7 @@
   (fn RequirementsTreeFn
     [this]
     (let [{:keys [game-state requirements slot slot-item slot-selected]} (zc/props this)]
-      (if (coll? requirements)
+      (if (and (coll? requirements) (-> requirements first keyword? not))
         (let [head-requirements (first requirements)
               rest-requirements (rest requirements)]
           (zc/csx
@@ -162,7 +162,9 @@
                               :slot slot
                               :slot-item slot-item
                               :slot-selected slot-selected
-                              :text (str requirements)
+                              :text (if (coll? requirements)
+                                      (str (second requirements))
+                                      (str requirements))
                               :style {:left 1}}])))))
     "RequirementsTree"))
 

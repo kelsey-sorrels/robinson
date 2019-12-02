@@ -297,7 +297,7 @@
       :recipe/add-recipe #{:blowdart}
       :recipe/requirements '[each-of
                               [and tube-like
-                                high-weight]]}
+                                low-weight]]}
       ; flexible
      {:recipe/id  :garrote
       :recipe/category :weapon
@@ -743,14 +743,14 @@
 
 (defn fancy-name
   [recipe]
-  (let [qualitative-adjs {-5 ["crappiest"]
-                          -4 ["abridged" "defective" "shoddy" "makeshift"]
-                          -3 ["insufficient" "inferior" "ramshackle"]
-                          -2 ["senseless" "shoddy" "lousy"]
-                          -1 ["weak" "junky" "trashy"]
-                          2 ["sweet" "humane"]
-                          3 ["kindly" "polished"]
-                          1 ["undue" "unconscionable"]
+  (let [qualitative-adjs {-5 ["awful"]
+                          -4 ["defective" "makeshift" "shoddy" "slapdash"]
+                          -3 ["inferior" "cumbersome" "ramshackle"]
+                          -2 ["flimsy" "lousy" "shoddy"]
+                          -1 ["awkward" "junky" "weak"]
+                          1 ["average" "decent" "okay"]
+                          2 ["balanced" "fine" "well made"]
+                          3 ["excellent" "polished" "superior"]
                           4 ["overpowered" "flawless" "masterwork"]
                           5 ["godly"]}
         dominate-effect (->> recipe :effects (filter rcmp/quantifiable?) (sort-by rcmp/amount) last)
@@ -778,14 +778,14 @@
    (recipe-name recipe true))
   ([recipe show-progress]
     (let [types (get recipe :recipe/types)]
-      ;(log/info "recipe-name" types)
+      ;(log/info "recipe-name" (get recipe :type) types)
       (str
         (if (and show-progress (in-progress? recipe))
-          "In-progress " 
+          "In progress " 
           "")
         (case (count types)
-          0 (name (get recipe :recipe/id "unknown"))
-          1 (-> types first name)
+          0 (-> recipe :type name)
+          1 (-> recipe :type name)
           2 (fancy-name recipe))))))
 
 (defn merge-effects
@@ -867,10 +867,11 @@
   {:post [(not (nil? %))]}
   (log/info "Saving recipe")
   (log/info (type (get-in state [:world :recipes])))
-  (log/info (vec (get-in state [:world :recipes])))
+  #_(log/info (vec (get-in state [:world :recipes])))
   (let [recipe (current-recipe state)
         selected-recipe-hotkey (get-in state [:world :selected-recipe-hotkey])
-        _ (log/info recipe)
+        _ (log/info "dominate-item" (get recipe :recipe/dominate-item))
+        #_ (log/info recipe)
         recipe-blueprint (-> recipe
                            :recipe/types
                            get-recipe-by-types)
@@ -1074,6 +1075,7 @@
    :post [(not (nil? %))]}
   (assoc-current-recipe
       state
+      :name (recipe-name recipe)
       :events []
       :current-stage {
         :description (str "You begin crafting a " (name (get recipe :type)) ". You'll need to start with an item.")
@@ -1090,7 +1092,7 @@
                              (assoc recipe :hotkey hotkey
                                            :name (if (get recipe :empty)
                                                    "Empty"
-                                                   (get recipe :recipe/name))
+                                                   (get recipe :recipe/name (recipe-name recipe)))
                                            :detail (if (or (get recipe :empty) (empty? (get recipe :effects)))
                                                      "----"
                                                      true)

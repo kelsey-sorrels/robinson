@@ -23,7 +23,7 @@
   (let [{:keys [recipe]} (zc/props this)]
     (zc/csx
       [:view {:style {:width 20}} [
-        [ruicommon/TitledList {:title "Type:" :names (get recipe :recipe/name)}]
+        [ruicommon/TitledList {:title "Type:" :names (get recipe :recipe/name )}]
         [:text {} [""]]
         [ruicommon/TitledList {:title "Attributes:" :names (map rcrafting/full-name (get recipe :effects))}]
         [:text {} [""]]

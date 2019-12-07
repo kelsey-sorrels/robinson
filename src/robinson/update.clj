@@ -2101,6 +2101,17 @@
         (rw/assoc-current-state state :select-recipe-type)))
     state))
 
+(defn new-recipe [state]
+  (let [selected-recipe-hotkey (get-in state [:world :selected-recipe-hotkey])]
+    (if (and (contains? #{\a \b \c} selected-recipe-hotkey)
+             (-> state rcrafting/current-recipe nil?))
+      (-> state
+        (update-in [:world :recipes]
+          dissoc selected-recipe-hotkey)
+        transition-select-recipe-type)
+      state)))
+
+
 (defn replace-recipe [state]
   (let [selected-recipe-hotkey (get-in state [:world :selected-recipe-hotkey])]
     (if (contains? #{\a \b \c} selected-recipe-hotkey)
@@ -2163,7 +2174,15 @@
                         :survival 'robinson.crafting.survival-gen
                     #_#_:trap rc-trap-gen
                     #_#_:food rc-food-gen)]
-    (rcrafting/update state recipe-ns keyin)))
+    (case keyin
+      :up (rcrafting/update-current-stage state :start-index (fn [i] (max (dec (or i 0)) 0)))
+      :down (let [num-choices (-> state rcrafting/current-stage :event/choices count)]
+                    (rcrafting/update-current-stage
+                      state
+                      :start-index
+                      (fn [i]
+                        (min (inc (or i 0)) (- num-choices 8)))))
+      (rcrafting/update state recipe-ns keyin))))
 
 (defn craft
   "Use a recipe to make an item."
@@ -3665,7 +3684,7 @@
                            \b          [(partial select-recipe \b) rw/current-state false]
                            \c          [(partial select-recipe \c) rw/current-state false]
                            \m          [transition-make-recipe rw/current-state false]
-                           \n          [transition-select-recipe-type rw/current-state false]
+                           \n          [new-recipe             rw/current-state false]
                            \r          [replace-recipe         rw/current-state false]
                            :escape     [identity               :normal          false]}
                :select-recipe-type

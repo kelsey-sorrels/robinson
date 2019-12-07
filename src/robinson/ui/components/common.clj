@@ -12,6 +12,10 @@
             [tinter.core :as tinter]
             [loom.graph :as lg]))
  
+(def up-arrow-char    "\u2191")
+(def down-arrow-char  "\u2193")
+(def cursor-char      "\u2592")
+ 
 (zc/def-component Highlight
   [this]
   (let [{:keys [style children]} (zc/props this)]
@@ -126,7 +130,7 @@
         (zc/csx [:view {} [
                   [:text {:style (merge pos-style
                                   {:color color
-                                   :background-color background-color})} ["\u2592"]]]]))
+                                   :background-color background-color})} [cursor-char]]]]))
       (zc/csx [:view {:style {:width 1}}]))))
 
 (zc/def-component TitledList

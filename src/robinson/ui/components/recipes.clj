@@ -8,6 +8,7 @@
             [robinson.player :as rp]
             [robinson.inventory :as ri]
             [robinson.itemgen :as ig]
+            [robinson.color :as rcolor]
             [taoensso.timbre :as log]
             [zaffre.components :as zc]
             [zaffre.components.ui :as zcui]
@@ -25,9 +26,11 @@
       [:view {:style {:width 20}} [
         [ruicommon/TitledList {:title "Type:" :names (get recipe :recipe/name )}]
         [:text {} [""]]
-        [ruicommon/TitledList {:title "Attributes:" :names (map rcrafting/full-name (get recipe :effects))}]
-        [:text {} [""]]
-        [ruicommon/TitledList {:title "Materials:" :names (map :name (get recipe :items))}]]])))
+        [ruicommon/TitledList {:title "Attributes:" :names (if-let [effects (get recipe :effects)]
+                                                             (map rcrafting/full-name effects)
+                                                             ["None"])}]
+        #_[:text {} [""]]
+        #_[ruicommon/TitledList {:title "Materials:" :names (map :name (get recipe :items))}]]])))
 
 (zc/def-component SelectRecipeNode
   [this]
@@ -38,35 +41,80 @@
         y (rcrg/node-y layers n)]
     (zc/csx [ruicommon/Cursor {:pos {:x (- x 0) :y (- y 13)}}])))
 
-(zc/def-component RecipeChoice
+(zc/def-component VScrollBar
   [this]
-  (let [{:keys [game-state recipe]} (zc/props this)
+  (let [{:keys [height num-items pos]} (zc/props this)]
+    (zc/csx [:view {:style {:display :flex
+                            :flex-direction :column
+                            :width 1
+                            :justify-content :space-between
+                            :background-color (rcolor/color->rgb :dark-gray)
+                            :height "100%"}} [
+      [:view {} [
+        [:text {:style {:color (rcolor/color->rgb :highlight)}} [ruicommon/up-arrow-char]]]]
+      [:view {:style {:height (- height 2)
+                      :background-color (rcolor/color->rgb :darker-gray)}} [
+        [:text {:style {:color (rcolor/color->rgb :dark-gray)
+                        :top (int (/ (* pos height) (dec num-items)))}} [ruicommon/cursor-char]]]]
+      [:view {} [
+        [:text {:style {:color (rcolor/color->rgb :highlight)}} [ruicommon/down-arrow-char]]]]]])))
+
+
+(zc/def-component ScrollBar
+  [this]
+  (let [{:keys [width height num-items pos orientation]} (zc/props this)]
+    (case orientation
+      :vertical
+        (zc/csx [VScrollBar {:height height :num-items num-items :pos pos}])
+      ; TODO: max HScrollBar
+      #_#_:horizontal
+        (zc/csx [HScrollBar {:width width :num-items num-items :pos pos}]))))
+
+(zc/def-component RecipeChoices
+  [this]
+  (let [{:keys [game-state recipe max-items]} (zc/props this)
         current-stage (get recipe :current-stage)
         choices (get current-stage :event/choices [{:name "continue" :hotkey :space}])
-        done (some (fn [choice] (get choice :done)) choices)]
+        done (some (fn [choice] (get choice :done)) choices)
+        start-index (get current-stage :start-index 0)
+        max-items (or max-items 8)
+        start-index (min start-index (- (count choices) max-items))
+        items (take max-items (drop start-index choices))
+        show-scroll (< (count items) (count choices))]
     (zc/csx
       [:view {:style {:display :flex
                       :align-items :center
-                      :width 25 :margin-left 5 :margin-right 5}} [
+                      :width 26 :margin-left 5 :margin-right 5}} [
         [:text {} [(get current-stage :title "")]]
         [:text {} [""]]
         (if done
           (zc/csx [RecipeTotal {:recipe recipe}])
           (zc/csx [:text {} [(str (get current-stage :description ""))]]))
-        [ruicommon/MultiSelect {
-          :style {}
-          :title ""
-          :items (map (fn [item]
-                        (-> item
-                           (cond->
-                             (keyword (get item :hotkey))
-                               (update :hotkey name))
-                           (cond->
-                             (get-in item [:material :amount])
-                               (assoc :count (get-in item [:material :amount])))
-                           (assoc :disabled
-                             (not (rcrafting/choice-requirements-satisfied? game-state item)))))
-                      choices)}]]])))
+        [:view {:style {:display :flex
+                        :flex-direction :row
+                        :align-items :center
+                        :width 25
+                        :margin-top 3
+                        :margin-left 5
+                        :margin-right 5}} [
+          [ruicommon/MultiSelect {
+            :style {:width 20}
+            :items (map (fn [item]
+                          (-> item
+                             (cond->
+                               (keyword (get item :hotkey))
+                                 (update :hotkey name))
+                             (cond->
+                               (get-in item [:material :amount])
+                                 (assoc :count (get-in item [:material :amount])))
+                             (assoc :disabled
+                               (not (rcrafting/choice-requirements-satisfied? game-state item)))))
+                        items)}]
+          (when show-scroll
+            (zc/csx [ScrollBar {:orientation :vertical
+                                :height (count items)
+                                :num-items (count choices)
+                                :pos start-index}]))]]]])))
 
 (zc/def-component CraftInProgressRecipe
   [this]
@@ -82,7 +130,8 @@
                                 :left 1}} [
                   (zc/csx [:img {:width 9 :height 13} (get recipe :img)])
                   [SelectRecipeNode {:recipe recipe}]]]
-                [RecipeChoice {:game-state game-state :recipe recipe}]
+                [RecipeChoices {:game-state game-state
+                                :recipe recipe}]
                 [RecipeTotal {:recipe recipe}]]]]])))
 
 

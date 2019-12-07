@@ -1066,8 +1066,6 @@
         log-idx          (get-in game-state [:world :log-idx] 0)
         current-logs     (rlog/current-logs game-state)
         num-logs         (count current-logs)
-        up-arrow-char    "\u2191"
-        down-arrow-char  "\u2193"
         msg-above?       (< log-idx (dec num-logs))
         msg-below?       (pos? log-idx)
         up-arrow-color   (if msg-above?
@@ -1092,7 +1090,7 @@
                         [:text {} ["-"]]
                         [:text {:style {:color up-arrow-color
                                         :background-color (zcolor/with-alpha (rcolor/color->rgb :black) 242)}}
-                               [up-arrow-char]]]])
+                               [ruicommon/up-arrow-char]]]])
               (zc/csx [:text {} ["   "]]))
             (if msg-below?
               (zc/csx [:text {} [
@@ -1100,7 +1098,7 @@
                         [:text {} ["-"]]
                         [:text {:style {:color down-arrow-color
                                         :background-color (zcolor/with-alpha (rcolor/color->rgb :black) 242)}}
-                               [down-arrow-char]]]])
+                               [ruicommon/down-arrow-char]]]])
               (zc/csx [:text {} ["   "]]))
             (if (get message :text)
               (zc/csx [:text {:style {:color (rcolor/color->rgb (get message :color))

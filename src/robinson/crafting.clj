@@ -30,6 +30,18 @@
     (update-in state [:world :recipes selected-recipe-hotkey]
       (fn [recipe] (apply f recipe xs)))))
 
+(defn current-stage [state]
+  (-> state
+    current-recipe
+    :current-stage))
+
+(defn update-current-stage
+  [state k f & xs]
+  (update-current-recipe
+    state
+    (fn [recipe]
+      (apply update-in recipe [:current-stage k] f xs))))
+
 (defn recipe-event-types [recipe]
   (->> (get recipe :events)
     (map :event/type)
@@ -338,6 +350,8 @@
                                    stick-like]
                               feather]}
      {:recipe/id  :blowdart
+      :name "blowdart"
+      :type :weapon
       :recipe/category :ammunition
       :recipe/types #{}
       :recipe/example-item-requirements #{:bamboo :stick}
@@ -676,6 +690,7 @@
                                  item))
                              (assoc item :name name)
                              (get item :effects))]
+    (log/info "add-to-inventory" updated-item)
     (ri/add-to-inventory state [updated-item])))
 
 (defn- add-by-ids
@@ -778,7 +793,7 @@
    (recipe-name recipe true))
   ([recipe show-progress]
     (let [types (get recipe :recipe/types)]
-      ;(log/info "recipe-name" (get recipe :type) types)
+      (log/info "recipe-name" (get recipe :recipe/id) (get recipe :type) types)
       (str
         (if (and show-progress (in-progress? recipe))
           "In progress " 
@@ -807,7 +822,10 @@
 (defn craft-recipe
   "Perform the recipe."
   [state recipe]
-  (let [exhaust-hotkeys (->> (get-in recipe [:recipe/requirements])
+  {:pre [(some? recipe)]}
+  (log/info "crafting recipe" (get recipe :recipe/id))
+  (log/info recipe)
+  (let [exhaust-hotkeys (->> (get recipe :recipe/requirements)
                           ; remove 'each-of
                           rest
                           ; add slot indexes
@@ -816,8 +834,9 @@
                           (remove (fn [[_ clause]] (contains? #{'tool} clause)))
                           ; find which items ids are in remaining slots
                           (map (fn [[slot _]] (get (slot->item state slot) :hotkey))))
-        add          (get-in recipe [:recipe/add])
+        add          (get recipe :recipe/add)
         effects      (get recipe :effects [])
+        _ (log/info "add" add)
         state (as-> state state
                   (add-by-ids state add effects (get recipe :place :inventory) (get recipe :recipe/name))
                   ; exhaust non-tool slot items
@@ -869,6 +888,7 @@
   (log/info (type (get-in state [:world :recipes])))
   #_(log/info (vec (get-in state [:world :recipes])))
   (let [recipe (current-recipe state)
+        _ (assert (some? recipe))
         selected-recipe-hotkey (get-in state [:world :selected-recipe-hotkey])
         _ (log/info "dominate-item" (get recipe :recipe/dominate-item))
         #_ (log/info recipe)
@@ -887,7 +907,7 @@
     (-> state
       (update-in [:world :recipes] assoc
         selected-recipe-hotkey merged-recipe)
-      (craft-recipe recipe)
+      (craft-recipe merged-recipe)
       (rw/assoc-current-state :normal))))
 
 (defn fill-event

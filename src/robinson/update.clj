@@ -2093,7 +2093,8 @@
 (defn transition-select-recipe-type [state]
   (if (contains? #{\a \b \c} (get-in state [:world :selected-recipe-hotkey]))
     (let [current-recipe-in-progress (-> state rcrafting/current-recipe rcrafting/in-progress?)]
-      (log/info "current-recipe-in-progress" current-recipe-in-progress)
+      (log/info "current-recipe-in-progress" current-recipe-in-progress (-> state rcrafting/current-recipe :done))
+      (log/info "current-recipe" (rcrafting/current-recipe state))
       (if current-recipe-in-progress
         ; current-recipe is in progress, continue
         (rw/assoc-current-state state :in-progress-recipe)
@@ -2101,20 +2102,22 @@
         (rw/assoc-current-state state :select-recipe-type)))
     state))
 
-(defn new-recipe [state]
-  (let [selected-recipe-hotkey (get-in state [:world :selected-recipe-hotkey])]
+(defn new-or-continue-recipe [state]
+  (let [selected-recipe-hotkey (get-in state [:world :selected-recipe-hotkey])
+        recipe (rcrafting/current-recipe state)]
     (if (and (contains? #{\a \b \c} selected-recipe-hotkey)
-             (-> state rcrafting/current-recipe nil?))
-      (-> state
-        (update-in [:world :recipes]
-          dissoc selected-recipe-hotkey)
-        transition-select-recipe-type)
-      state)))
+             ; new recipe
+             (or (nil? recipe)
+                 ; or continue in-progress recipe
+                 (rcrafting/in-progress? recipe)))
+        (transition-select-recipe-type state)
+        state)))
 
 
 (defn replace-recipe [state]
   (let [selected-recipe-hotkey (get-in state [:world :selected-recipe-hotkey])]
-    (if (contains? #{\a \b \c} selected-recipe-hotkey)
+    (if (and (contains? #{\a \b \c} selected-recipe-hotkey)
+             (-> state rcrafting/current-recipe rcrafting/complete?))
       (-> state
         (update-in [:world :recipes]
           dissoc selected-recipe-hotkey)
@@ -3684,7 +3687,7 @@
                            \b          [(partial select-recipe \b) rw/current-state false]
                            \c          [(partial select-recipe \c) rw/current-state false]
                            \m          [transition-make-recipe rw/current-state false]
-                           \n          [new-recipe             rw/current-state false]
+                           \n          [new-or-continue-recipe rw/current-state false]
                            \r          [replace-recipe         rw/current-state false]
                            :escape     [identity               :normal          false]}
                :select-recipe-type

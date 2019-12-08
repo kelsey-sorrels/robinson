@@ -196,7 +196,10 @@
                   [:view {} [
                     [ruicommon/TitledList {:title "Type:" :names [recipe-name]}]
                     [:text {} [""]]
-                    [ruicommon/TitledList {:title "Attributes:" :names (map rcrafting/full-name (get recipe :effects))}]]]
+                    [ruicommon/TitledList {:title "Attributes:" :names (let [effects (get recipe :effects)]
+                                                                         (if (not-empty effects)
+                                                                           (map rcrafting/full-name effects)
+                                                                           ["None"]))}]]]
                   [Requirements {:game-state game-state :requirements requirements :items items}]
                   [:view {:style {}} [
                     [:text {} ["Inventory"]]

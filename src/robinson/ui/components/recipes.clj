@@ -26,9 +26,10 @@
       [:view {:style {:width 20}} [
         [ruicommon/TitledList {:title "Type:" :names (get recipe :recipe/name )}]
         [:text {} [""]]
-        [ruicommon/TitledList {:title "Attributes:" :names (if-let [effects (get recipe :effects)]
-                                                             (map rcrafting/full-name effects)
-                                                             ["None"])}]
+        [ruicommon/TitledList {:title "Attributes:" :names (let [effects (get recipe :effects)]
+                                                             (if (not-empty effects)
+                                                               (map rcrafting/full-name effects)
+                                                               ["None"]))}]
         #_[:text {} [""]]
         #_[ruicommon/TitledList {:title "Materials:" :names (map :name (get recipe :items))}]]])))
 

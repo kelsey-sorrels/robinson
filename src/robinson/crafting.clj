@@ -792,8 +792,9 @@
   ([recipe]
    (recipe-name recipe true))
   ([recipe show-progress]
+    {:post [string?]}
     (let [types (get recipe :recipe/types)]
-      (log/info "recipe-name" (get recipe :recipe/id) (get recipe :type) types)
+      #_(log/info "recipe-name" (count types) (get recipe :recipe/id) (get recipe :type) types (and show-progress (in-progress? recipe)))
       (str
         (if (and show-progress (in-progress? recipe))
           "In progress " 
@@ -821,32 +822,36 @@
 
 (defn craft-recipe
   "Perform the recipe."
-  [state recipe]
-  {:pre [(some? recipe)]}
-  (log/info "crafting recipe" (get recipe :recipe/id))
-  (log/info recipe)
-  (let [exhaust-hotkeys (->> (get recipe :recipe/requirements)
-                          ; remove 'each-of
-                          rest
-                          ; add slot indexes
-                          (map-indexed vector)
-                          ; remove tool clauses
-                          (remove (fn [[_ clause]] (contains? #{'tool} clause)))
-                          ; find which items ids are in remaining slots
-                          (map (fn [[slot _]] (get (slot->item state slot) :hotkey))))
-        add          (get recipe :recipe/add)
-        effects      (get recipe :effects [])
-        _ (log/info "add" add)
-        state (as-> state state
-                  (add-by-ids state add effects (get recipe :place :inventory) (get recipe :recipe/name))
-                  ; exhaust non-tool slot items
-                  (exhaust-by-hotkeys state exhaust-hotkeys)
-                  #_(rp/player-update-hunger state (fn [current-hunger] (min (+ hunger current-hunger)
-                                                                           (rp/player-max-hunger state))))
-                  #_(rp/player-update-thirst state (fn [current-thirst] (min (+ hunger current-thirst)
-                                                                           (rp/player-max-thirst state))))
-                  (reduce rp/update-crafted state (map (fn [id] {:id id}) add)))]
-    state))
+  ([state recipe]
+    (craft-recipe state recipe true))
+  ([state recipe exhaust]
+    {:pre [(some? recipe)]}
+    (log/info "crafting recipe" (get recipe :recipe/id))
+    (log/info recipe)
+    (let [exhaust-hotkeys (->> (get recipe :recipe/requirements)
+                            ; remove 'each-of
+                            rest
+                            ; add slot indexes
+                            (map-indexed vector)
+                            ; remove tool clauses
+                            (remove (fn [[_ clause]] (contains? #{'tool} clause)))
+                            ; find which items ids are in remaining slots
+                            (map (fn [[slot _]] (get (slot->item state slot) :hotkey))))
+          add          (get recipe :recipe/add)
+          effects      (get recipe :effects [])
+          _ (log/info "add" add)
+          state (as-> state state
+                    (add-by-ids state add effects (get recipe :place :inventory) (get recipe :recipe/name))
+                    ; exhaust non-tool slot items
+                    (if exhaust
+                      (exhaust-by-hotkeys state exhaust-hotkeys)
+                      state)
+                    #_(rp/player-update-hunger state (fn [current-hunger] (min (+ hunger current-hunger)
+                                                                             (rp/player-max-hunger state))))
+                    #_(rp/player-update-thirst state (fn [current-thirst] (min (+ hunger current-thirst)
+                                                                             (rp/player-max-thirst state))))
+                    (reduce rp/update-crafted state (map (fn [id] {:id id}) add)))]
+      state)))
 
 (defn requirements-based-on-dominate-item
   "Returns a requirements where one of the clauses has been replaced with a specific item requirement based
@@ -907,7 +912,7 @@
     (-> state
       (update-in [:world :recipes] assoc
         selected-recipe-hotkey merged-recipe)
-      (craft-recipe merged-recipe)
+      (craft-recipe merged-recipe false)
       (rw/assoc-current-state :normal))))
 
 (defn fill-event
@@ -1112,7 +1117,8 @@
                              (assoc recipe :hotkey hotkey
                                            :name (if (get recipe :empty)
                                                    "Empty"
-                                                   (get recipe :recipe/name (recipe-name recipe)))
+                                                   (let [name (get recipe :recipe/name (recipe-name recipe))]
+                                                     (if (set? name) (first name) name)))
                                            :detail (if (or (get recipe :empty) (empty? (get recipe :effects)))
                                                      "----"
                                                      true)

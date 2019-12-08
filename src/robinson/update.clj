@@ -3547,7 +3547,8 @@
                            :up-right   [move-cursor-up-right   :describe        false]
                            :down-left  [move-cursor-down-left  :describe        false]
                            :down-right [move-cursor-down-right :describe        false]
-                           :else       [free-cursor            :normal          false]}
+                           :else       [pass-state             rw/current-state false]
+                           :escape     [free-cursor            :normal          false]}
                :quests    {:escape     [identity               :normal          false]}
                :describe-inventory
                           {:escape     [identity               :normal          false]

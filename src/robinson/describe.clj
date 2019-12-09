@@ -185,12 +185,12 @@
                 (describe-items items)
                 harvest-msg)
       npc
-        (format "There is %s, on %s.%s"
+        (format "There is %s on %s.%s"
                 (describe-npc npc)
                 (describe-cell-type cell)
                 harvest-msg)
       (seq items)
-        (format "On the %s, there %s %s.%s"
+        (format "On the %s there %s %s.%s"
                 (str (describe-cell-type cell))
                 (str (if (> (count items) 1)
                   "are"

@@ -3514,12 +3514,7 @@
                            \/          [scroll-log-up          :normal          false]
                            \*          [scroll-log-down        :normal          false]
                            \R          [repeat-commands        rw/current-state false]
-                           \0          [identity :debug-eval false]
-                          :f9          [(fn [state]
-                                          (-> state
-                                            (rc/append-log "Development mode: on")
-                                            (assoc-in [:world :dev-mode] true)))
-                                                               :normal          false]
+                          :f9          [identity :debug-eval false]
                           :f12         [(fn [state]
                                           (rf/send-report state)
                                           state)

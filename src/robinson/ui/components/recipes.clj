@@ -3,7 +3,6 @@
             [robinson.ui.components.common :as ruicommon]
             [robinson.crafting :as rcrafting]
             [robinson.crafting.mod-protocol :as rcmp]
-            [robinson.crafting.recipe-gen :as rcrg]
             [robinson.crafting.weapon-gen :as rcwg]
             [robinson.player :as rp]
             [robinson.inventory :as ri]
@@ -32,15 +31,6 @@
                                                                ["None"]))}]
         #_[:text {} [""]]
         #_[ruicommon/TitledList {:title "Materials:" :names (map :name (get recipe :items))}]]])))
-
-(zc/def-component SelectRecipeNode
-  [this]
-  (let [{:keys [recipe]} (zc/props this)
-        n (get recipe :current-node)
-        layers (get recipe :layers)
-        x (rcrg/node-x layers n)
-        y (rcrg/node-y layers n)]
-    (zc/csx [ruicommon/Cursor {:pos {:x (- x 0) :y (- y 13)}}])))
 
 (zc/def-component VScrollBar
   [this]
@@ -126,11 +116,6 @@
               [:text {:style {:left 30 :bottom 1}} ["| New Recipe |"]]
               [:view {:style {:display :flex
                               :flex-direction :row}} [
-                #_[:view {:style {:width 9 :height 13
-                                :margin-right 5
-                                :left 1}} [
-                  (zc/csx [:img {:width 9 :height 13} (get recipe :img)])
-                  [SelectRecipeNode {:recipe recipe}]]]
                 [RecipeChoices {:game-state game-state
                                 :recipe recipe}]
                 [RecipeTotal {:recipe recipe}]]]]])))

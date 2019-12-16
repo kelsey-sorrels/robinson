@@ -27,7 +27,6 @@
             [robinson.npc :as rnpc]
             [robinson.combat :as rcombat]
             [robinson.crafting :as rcrafting]
-            [robinson.crafting.recipe-gen :as rrecipe-gen]
             [robinson.crafting.weapon-gen :as rc-weapon-gen]
             #_[robinson.crafting.survival-gen :as rc-survival-gen]
             [robinson.worldgen :as rworldgen]

@@ -23,7 +23,7 @@
             [robinson.fx.boomerang-item :as rfxboomerang]
             [clojure.core.async :as async :refer [go go-loop]]
             #_[clojure.tools.nrepl.server :as nreplserver]
-            [clj-async-profiler.core :as prof]
+            #_[clj-async-profiler.core :as prof]
             [dk.salza.liq.core :as liq-core]
             [dk.salza.liq.editor :as le]
             [dk.salza.liq.apps.findfileapp :as liq-findfileapp]

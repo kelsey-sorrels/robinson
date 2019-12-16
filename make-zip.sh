@@ -16,18 +16,18 @@ do
 done
 
 declare -A PLATFORMS
-PLATFORMS[linux-x64]='openjdk-11.0.1_linux-x64_bin.tar.gz'
-PLATFORMS[osx-x64]='openjdk-11.0.1_osx-x64_bin.tar.gz'
-PLATFORMS[windows-x64]='openjdk-11.0.1_windows-x64_bin.zip'
+PLATFORMS[linux-x64]='openjdk-14-ea+26_linux-x64_bin.tar.gz'
+PLATFORMS[osx-x64]='openjdk-14-ea+26_osx-x64_bin.tar.gz'
+PLATFORMS[windows-x64]='openjdk-14-ea+26_windows-x64_bin.zip'
 
 declare -A JAVA_HOMES
-JAVA_HOMES[linux-x64]='jvms/linux-x64/jdk-11.0.1/'
-JAVA_HOMES[osx-x64]='jvms/osx-x64/jdk-11.0.1.jdk/Contents/Home/'
-JAVA_HOMES[windows-x64]='jvms/windows-x64/jdk-11.0.1/'
+JAVA_HOMES[linux-x64]='jvms/linux-x64/jdk-14/'
+JAVA_HOMES[osx-x64]='jvms/osx-x64/jdk-14.jdk/Contents/Home/'
+JAVA_HOMES[windows-x64]='jvms/windows-x64/jdk-14/'
 
 #clean
-rm target/robinson-*.zip
-#rm -rf target/robinson-*
+find target -name 'robinson-*.zip' -delete
+rm -rf target/robinson-*
 
 function upload() {
     local file_path=$1
@@ -158,32 +158,30 @@ function package()
 }
 
 
-PACKR_URL='https://oss.sonatype.org/content/repositories/snapshots/com/badlogicgames/packr/packr/2.1-SNAPSHOT/packr-2.1-20180720.193219-11-jar-with-dependencies.jar'
-
 if [[ $LEINUBERJAR == 1 ]]; then
 
 
-    mkdir "jvms"
+    mkdir -p "jvms"
     # Download jdks
     for PLATFORM in "${!PLATFORMS[@]}"; do
         echo $PLATFORM
         FILENAME=${PLATFORMS[$PLATFORM]}
-        mkdir -p "jvms/$PLATFORM"
-        URL="https://download.java.net/java/GA/jdk11/13/GPL/$FILENAME"
+        URL="https://download.java.net/java/early_access/jdk14/26/GPL/$FILENAME"
         # Download jdk
-        wget $URL -nc -O "jvms/$PLATFORM/$FILENAME"
+        wget $URL -nc -O "jvms/$FILENAME"
         # Decompress jdk
         if [[ -d "jvms/$PLATFORM" ]];
         then
             echo "jvm: $PLATFORM already exists. Skipping decompress."
         else
+            mkdir -p "jvms/$PLATFORM"
             if [[ "$FILENAME" == *"tar"* ]];
             then
                 echo "Untar-ing $FILENAME"
-                tar xvf "jvms/$PLATFORM/$FILENAME" --directory "jvms/$PLATFORM"
+                tar xvf "jvms/$FILENAME" --directory "jvms/$PLATFORM"
             else
                 echo "Unzipping $FILENAME"
-                unzip -o "jvms/$PLATFORM/$FILENAME" -d "jvms/$PLATFORM"
+                unzip -o "jvms/$FILENAME" -d "jvms/$PLATFORM"
             fi
         fi
         

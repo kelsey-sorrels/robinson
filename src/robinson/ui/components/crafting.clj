@@ -3,7 +3,6 @@
             [robinson.ui.components.common :as ruicommon]
             [robinson.crafting :as rcrafting]
             [robinson.crafting.mod-protocol :as rcmp]
-            [robinson.crafting.recipe-gen :as rcrg]
             [robinson.crafting.weapon-gen :as rcwg]
             [robinson.player :as rp]
             [robinson.inventory :as ri]

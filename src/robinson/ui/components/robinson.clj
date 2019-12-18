@@ -940,7 +940,7 @@
 (zc/def-component QuitPrompt
   [this]
   (let [{:keys [game-state]} (zc/props this)]
-    (zc/csx [zcui/Popup {} [
+    (zc/csx [zcui/Popup {:style {:top -6}} [
               [:view {:style {:display :flex
                               :flex-direction :row}} [
                 [:text {} ["Quit? ["]]
@@ -1371,6 +1371,8 @@
 		[:group {:id :app} [
 		  [:layer {:id :ui} [
 			[:view {:style {:position :absolute
+                            :width 80
+                            :height 24
 							:top 3
 							:left 35}} [
 			  [:text {} ["Configure"]]
@@ -1390,6 +1392,8 @@
 		[:group {:id :app} [
 		  [:layer {:id :ui} [
 			[:view {:style {:position :absolute
+                            :width 80
+                            :height 24
 							:top 3
 							:left 35}} [
 			  [:text {} ["Configure Font"]]
@@ -1424,6 +1428,8 @@
 		[:group {:id :app} [
 		  [:layer {:id :ui} [
 			[:view {:style {:position :absolute
+                            :width 80
+                            :height 24
 							:top 3
 							:left 35}} [
 			  [:text {} ["Create Font"]]]]

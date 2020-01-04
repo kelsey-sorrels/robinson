@@ -125,6 +125,10 @@
   [state id]
   (get (inventory-id-freqs state) id 0))
 
+(defn inventory-contains?
+  [state id]
+  (<  0 (inventory-id->count state id)))
+
 (defn remove-from-inventory
   "Removes item with `hotkey` from player's inventory freeing hotkeys as necessary. Effectively destroys the item."
   [state hotkey]

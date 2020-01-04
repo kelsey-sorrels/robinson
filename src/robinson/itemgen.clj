@@ -149,6 +149,12 @@
   [item]
   (id-is-clothes? (get item :item/id)))
 
+(defn is-wearable?
+  [item]
+  (let [properties (get item :properties #{})]
+    (and (contains? properties :flexible)
+         (contains? properties :planar))))
+
 (defn id-can-stun?
   [id]
   (contains? #{:yellow-fruit :tarp} id))
@@ -281,7 +287,7 @@
        {:item/id  :flint-blade             :name  "flint blade"                :name-plural "flint blades"}
        {:item/id  :flint-axe-blade         :name  "flint axe blade"            :name-plural "flint axe blades"}
        {:item/id  :rope                    :name  "rope"                       :name-plural "ropes"
-        :fuel 10 :properties #{:flexible}}
+        :fuel 10 :tensile-strength 20 :properties #{:flexible}}
        {:item/id  :bamboo                  :name  "bamboo"                     :name-plural "bamboo"
         :properties #{:tube-like :stick-like}}
        {:item/id  :obsidian-spear          :name  "obsidian spear"             :name-plural "obsidian spears"
@@ -369,9 +375,10 @@
        {:item/id  :ale                     :name "bottle of ale"               :name-plural "bottles of ale"
         :thirst 50}
        {:item/id  :pirate-clothes          :name "pirate clothes"              :name-plural "pirate clothes"
-        :utility 100 :toughness 0.2 :properties #{:tensile :flexible :planar}}
+        :utility 100 :toughness 0.2 :tensile-strength 15 :properties #{:flexible :planar}}
        {:item/id  :navy-uniform            :name "navy uniform"                :name-plural "navy uniforms"
-        :utility 100 :toughness 0.2 :properties #{:tensile :flexible :planar}}
+        :utility 100 :toughness 0.2 :tensile-strength 15 :properties #{:flexible :planar}}
+       {:item/id  :ointment                :name "ointment"                    :name-plural "ointments"}
        ;; ruined temple items
        {:item/id  :jewlery                 :name "jewlery"                     :name-plural "jewelery"}
        {:item/id  :statue                  :name "statue"                      :name-plural "statues"}
@@ -380,7 +387,7 @@
        {:item/id  :stone-tablet            :name "stone tablet"                :name-plural "stone tablets"}
        {:item/id  :codex                   :name "codex"                       :name-plural "codices"}
        {:item/id  :robe                    :name "robe"                        :name-plural "robes"
-        :fuel 20 :properties #{:tensile :flexible :planar}}
+        :fuel 20 :tensile-strength 12 :properties #{:flexible :planar}}
        {:item/id  :ritual-knife            :name "ritualistic knife"           :name-plural "ritualistic knives"
         :attack :ritualistic-knife
         :properties #{:handled}
@@ -389,7 +396,7 @@
         :attack :ancient-spear :utility 20 :ammunition-id :ancient-spear}
        {:item/id  :blowdart                :name "blowdart"                    :name-plural "blowdarts"
         :fuel 10}
-       {:item/id  :cure                    :name "cure"                        :name-plural "cures"}])
+       {:item/id  :herbs                   :name "herbs"                        :name-plural "herbs"}])
 
 (def items item-data)
 

@@ -63,6 +63,7 @@
                                         :statue
                                         :human-skull
                                         :gong
+                                        :herb
                                         :stone-tablet
                                         :codex
                                         :oil

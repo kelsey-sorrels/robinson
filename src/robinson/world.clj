@@ -324,16 +324,16 @@
   "Decreases the count of an item in the player's cell."
   [state id]
   (let [[cell x y] (player-cellxy state)
-        item       (first (filter #(= id (get % :id)) (get cell :items)))
+        item       (first (filter #(= id (get % :item/id)) (get cell :items)))
         item-count (get item :count 1)]
     (cond
       (zero? item-count)
         state
       (= 1 item-count)
-        (update-cell-items state x y (fn [items] (remove #(= id (get % :id)) items)))
+        (update-cell-items state x y (fn [items] (remove #(= id (get % :item/id)) items)))
       :else
         (update-cell-items state x y (fn [items] (map (fn [item]
-                                                        (if (= id (get item :id))
+                                                        (if (= id (get item :item/id))
                                                           (update item :count dec)
                                                           item))))))))
 
@@ -746,7 +746,7 @@
 (defn player-mounted-on-raft?
   [state]
   (and (get-in state [:world :player :mounted] false)
-       (contains? (set (map :id (get (first (player-cellxy state)) :items []))) :raft)))
+       (contains? (set (map :item/id (get (first (player-cellxy state)) :items []))) :raft)))
 
 
 (defn inventory-and-player-cell-items

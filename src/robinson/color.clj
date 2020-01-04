@@ -40,7 +40,8 @@
    :fushia            (zcolor/color 211 0 148)
    :light-brown       (zcolor/color 216 196 116)
    :beige             (zcolor/color 200 180 100)
-   :dark-beige        (zcolor/color 124 97 45)})
+   :dark-beige        (zcolor/color 124 97 45)
+   :transparent       (zcolor/with-alpha (zcolor/color 0 0 0) 0)})
 
 (defn limit-channel
   ([v]

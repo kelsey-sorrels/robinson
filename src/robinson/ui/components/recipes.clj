@@ -3,7 +3,6 @@
             [robinson.ui.components.common :as ruicommon]
             [robinson.crafting :as rcrafting]
             [robinson.crafting.mod-protocol :as rcmp]
-            [robinson.crafting.weapon-gen :as rcwg]
             [robinson.player :as rp]
             [robinson.inventory :as ri]
             [robinson.itemgen :as ig]
@@ -23,14 +22,20 @@
   (let [{:keys [recipe]} (zc/props this)]
     (zc/csx
       [:view {:style {:width 20}} [
-        [ruicommon/TitledList {:title "Type:" :names (get recipe :recipe/name )}]
+        [ruicommon/TitledList {:title "Type:" :names (or (get recipe :recipe/name)
+                                                         (str (get recipe :type))
+                                                         (get recipe :name))}]
         [:text {} [""]]
         [ruicommon/TitledList {:title "Attributes:" :names (let [effects (get recipe :effects)]
                                                              (if (not-empty effects)
                                                                (map rcrafting/full-name effects)
                                                                ["None"]))}]
-        #_[:text {} [""]]
-        #_[ruicommon/TitledList {:title "Materials:" :names (map :name (get recipe :items))}]]])))
+        (when (= (get recipe :type) :boat)
+          ;(log/info (get recipe :$/items))
+          (zc/csx [:view {} [ 
+            [:text {} [""]]
+            [ruicommon/TitledList {:title "Materials:" :names (map (fn [[item n]] (str (get item :name) " (" n ")"))
+                                                                   (get recipe :$/items))}]]]))]])))
 
 (zc/def-component VScrollBar
   [this]
@@ -90,6 +95,7 @@
                         :margin-right 5}} [
           [ruicommon/MultiSelect {
             :style {:width 20}
+            :game-state game-state
             :items (map (fn [item]
                           (-> item
                              (cond->
@@ -113,7 +119,7 @@
         recipe (rcrafting/current-recipe game-state)]
     (zc/csx [zcui/Popup {:style {:margin-top 3
                                  :height 20}} [
-              [:text {:style {:left 30 :bottom 1}} ["| New Recipe |"]]
+              [:text {:style {:left 22 :bottom 1}} ["| New Recipe |"]]
               [:view {:style {:display :flex
                               :flex-direction :row}} [
                 [RecipeChoices {:game-state game-state
@@ -146,10 +152,11 @@
                 [:text {} [""]]
                 [:view {} [
                   [ruicommon/MultiSelect {:items [{:name "Weapon" :hotkey \w}
+                                                  {:name "Boat" :hotkey \b}
                                                   #_{:name "Trap" :hotkey \t}
                                                   #_{:name "Food" :hotkey \f}
                                                   #_{:name "Signal" :hotkey \s}
-                                                  {:name "Survival" :hotkey \v}]}]]]]])))
+                                                  #_{:name "Survival" :hotkey \v}]}]]]]])))
 
 (zc/def-component Recipes
   [this]

@@ -103,6 +103,7 @@
                                      :fork
                                      :spoon
                                      :rag
+                                     :ointment
                                      :knife
                                      :rope]))]
     (case (get item :type)

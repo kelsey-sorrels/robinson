@@ -28,7 +28,7 @@
             [robinson.combat :as rcombat]
             [robinson.crafting :as rcrafting]
             [robinson.crafting.weapon-gen :as rc-weapon-gen]
-            #_[robinson.crafting.survival-gen :as rc-survival-gen]
+            [robinson.crafting.boat-gen :as rc-boat-gen]
             [robinson.worldgen :as rworldgen]
             [robinson.lineofsight :as rlos]
             [robinson.renderutil :as rutil]
@@ -2132,7 +2132,7 @@
       (let [_ (log/info "Generating recipe")
             recipe-ns (case recipe-type
                         :weapon 'robinson.crafting.weapon-gen
-                        :survival 'robinson.crafting.survival-gen
+                        :boat 'robinson.crafting.boat-gen
                         #_#_:trap rc-trap-gen
                         #_#_:food rc-food-gen)
             _ (log/info "recipe-ns" recipe-ns)
@@ -2147,6 +2147,10 @@
 (defn select-recipe-type-weapon
   [state]
   (craft-new-recipe state :weapon))
+  
+(defn select-recipe-type-boat
+  [state]
+  (craft-new-recipe state :boat))
   
 (defn select-recipe-type-trap
   [state]
@@ -2173,7 +2177,7 @@
         #_ (log/info "Recipe"  recipe)
         recipe-ns (case recipe-type
                         :weapon 'robinson.crafting.weapon-gen
-                        :survival 'robinson.crafting.survival-gen
+                        :boat 'robinson.crafting.boat-gen
                     #_#_:trap rc-trap-gen
                     #_#_:food rc-food-gen)]
     (case keyin
@@ -3519,7 +3523,8 @@
                                           state)
                                                                :normal          false]
                            :escape     [identity               :quit?           false]}
-               :debug-eval {:else [debug-input rw/current-state false]}
+               :debug-eval {:f4        [identity               :normal          false]
+                            :else [debug-input rw/current-state false]}
                :direction-select
                           {:escape     [identity               :normal          false]
                            :else       [do-selected-direction  rw/current-state false]}
@@ -3687,10 +3692,11 @@
                            :escape     [identity               :normal          false]}
                :select-recipe-type
                           {\w          [select-recipe-type-weapon :in-progress-recipe false]
-                           \t          [select-recipe-type-trap   :in-progress-recipe  false]
-                           \f          [select-recipe-type-food   :in-progress-recipe false]
-                           \s          [select-recipe-type-signal :in-progress-recipe false]
-                           \v          [select-recipe-type-survival :in-progress-recipe false]
+                           \b          [select-recipe-type-boat   :in-progress-recipe  false]
+                           ;\t          [select-recipe-type-trap   :in-progress-recipe  false]
+                           ;\f          [select-recipe-type-food   :in-progress-recipe false]
+                           ;\s          [select-recipe-type-signal :in-progress-recipe false]
+                           ;\v          [select-recipe-type-survival :in-progress-recipe false]
                            :escape     [identity               :recipes         false]}
                :in-progress-recipe
                           {:escape     [identity               :recipes           false]

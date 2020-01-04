@@ -1,6 +1,11 @@
 (ns robinson.crafting.mod
-  (:require [robinson.crafting.mod-protocol :as rcmp]
+  (:require [robinson.common :as rc]
+            [robinson.world :as rw]
+            [robinson.player :as rp]
+            [robinson.crafting.mod-protocol :as rcmp]
             [robinson.inventory :as ri]
+            [robinson.npc :as rnpc]
+            [robinson.monstergen :as rmg]
             [taoensso.timbre :as log]))
 
 (defn adj-val [v amount]
@@ -104,6 +109,16 @@
   (player-dec-inventory-immediate [this state]
     (ri/dec-item-count state k)))
 
+(defmod-type dec-inventory-by-item-id
+  :tag true
+  rcmp/ModImmediate
+  rcmp/ModPlayerDecInventoryImmediate
+  (player-dec-inventory-immediate [this state]
+    (some->> k
+      (ri/inventory-id->item state)
+      :hotkey
+      (ri/dec-item-count state))))
+
 (defmod-type remove-effect
   :tag true
   rcmp/ModImmediate
@@ -166,13 +181,27 @@
     (when (contains? (ancestors h tag) v)
       mod)))
 
-(defn apply-mods
-  [actor mods protocol & args]
-  (let [m (first (keys (get protocol :method-map)))]
-    (reduce (fn [actor mod]
-              (if (satisfies? protocol mod)
-                (apply (-> m name symbol resolve) mod args)
-                actor))
-            actor
-            mods)))
+(defmod-type assoc-current-state-immediate
+  :tag true
+  rcmp/ModImmediate
+  rcmp/ModStateImmediate
+  (state-immediate [this state]
+    (assoc-in state [:world :current-state] k)))
+
+(defmod-type add-npc-immediate
+  :tag true
+  rcmp/ModImmediate
+  rcmp/ModStateImmediate
+  (state-immediate [this state]
+    (let [monster (rmg/id->monster k)]
+      (rnpc/add-npc state monster
+        (->> state
+             rp/player-pos
+             rw/adjacent-xys-ext
+             (remove (fn [[x y]] (rw/collide? state x y {:include-npcs? true
+                                                         :collide-player? true
+                                                         :collide-water? false})))
+             rand-nth
+             (apply rc/xy->pos))))))
+ 
 

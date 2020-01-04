@@ -15,5 +15,5 @@
     (concat [rat-corpse
              rat-bones
              rat-hide]
-          (map ig/gen-item item-ids))))
+          (map (fn [id] (assoc (ig/gen-item id) :count 50)) item-ids))))
 

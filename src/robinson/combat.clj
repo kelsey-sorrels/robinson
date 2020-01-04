@@ -7,7 +7,6 @@
             [robinson.inventory :as ri]
             [robinson.npc :as rnpc]
             [robinson.itemgen :as ig]
-            [robinson.crafting.mod :as rcmod]
             [robinson.crafting.mod-protocol :as rcmp]
             [robinson.monstergen :as mg]
             [robinson.math :as rmath]
@@ -516,7 +515,7 @@
         {defender-x :x defender-y :y} (get defender :pos)
         hp                   (get defender :hp)
         hit                  (is-hit? state attacker defender attack-type)
-        defender             (rcmod/apply-mods
+        defender             (rcmp/apply-mods
                                defender
                                (get attack-item :effects)
                                rcmp/ModDefenderOnAttackTemp
@@ -526,7 +525,7 @@
                                  state
                                  defender
                                  (fn [_]
-                                   (rcmod/apply-mods
+                                   (rcmp/apply-mods
                                      defender
                                      (get attack-item :effects)
                                      rcmp/ModDefenderOnAttack

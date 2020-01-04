@@ -84,7 +84,7 @@
     :display-name "HotkeyLabel"
     :get-initial-state (fn []
       {:hover false})
-    :get-default-props (fn input-get-default-props [] {
+    :get-default-props (fn hotkey-label-get-default-props [] {
       :on-click (fn [this e]
                   (let [{:keys [hotkey target game-state]} (zc/props this)]
                     (ru/update-state game-state hotkey)))
@@ -204,6 +204,7 @@
         hotkey-str (str (or (hotkey->str hotkey) ""))
         count-str (when count (format "%dx " (int count)))
         {:keys [hover] :or {hover false}} (zc/state this)
+        gray (rcolor/color->rgb :gray)
         owner zc/*current-owner*]
     (zc/csx 
       [:view {:on-click (fn [{:keys [target game-state]}]
@@ -222,9 +223,11 @@
                       :display :flex
                       :flex-direction :row
                       :align-items :flex-start}} [
-        (if hover
-          (zc/csx [InverseHighlight {} [(or hotkey-str "")]])
-          (zc/csx [Highlight {} [(or hotkey-str "")]]))
+        (if disabled
+          (zc/csx [:text {:style {:color gray}} [(or hotkey-str "")]])
+          (if hover
+            (zc/csx [InverseHighlight {} [(or hotkey-str "")]])
+            (zc/csx [Highlight {} [(or hotkey-str "")]])))
         [:text {} [(format "%c"
                      (if hotkey
                        (if selected
@@ -264,19 +267,25 @@
 
 (zc/def-component MultiSelect
   [this]
-  (let [{:keys [style]} (zc/props this)
+  (let [{:keys [style game-state]} (zc/props this)
         default-props {:selected-hotkeys []
                        :items []
                        :disable? (fn [_] false)}
         {:keys [title selected-hotkeys items disable?]} (merge default-props (zc/props this))
         children (map (fn [item]
-                        (let [hotkey (get item :hotkey)]
+                        (let [hotkey (get item :hotkey)
+                              pred (get item :pred)
+                              enabled (if (and pred game-state)
+                                          (let [f (ns-resolve *ns* pred)]
+                                            (f game-state))
+                                        true)]
                           (zc/csx [:view {:style {:color (rcolor/color->rgb (if (or (not (disable? item))
                                                                                     (get item :applicable))
                                                                               :white
                                                                               :light-gray))}} [
                                       [MultiSelectItem (merge item
-                                                              {:selected (contains? (set selected-hotkeys) hotkey)}) ]]])))
+                                                              {:selected (contains? (set selected-hotkeys) hotkey)
+                                                               :disabled (not enabled)})]]])))
                       items)]
     (zc/csx [:view {:style (merge {:display :flex
                                    :flex-direction :column

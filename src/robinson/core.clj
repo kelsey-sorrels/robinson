@@ -16,7 +16,7 @@
             [clojure.core.async :as async :refer [go go-loop]]
             [clojure.stacktrace :refer [print-stack-trace]]
             [taoensso.timbre :as log])
-     (:gen-class))
+  (:gen-class))
 
 (def width 55)
 (def height 40)

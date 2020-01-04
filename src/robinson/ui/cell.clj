@@ -355,13 +355,13 @@
             (< current-time (or (:bloodied cell) 0))
             (case render-path
               :chest :dark-beige
-              :raft :beige
+              :raft :brown
               :item (rutil/item->fg   (first cell-items))
               :default (cell->color cell current-time)))
             ; bg
             (case render-path
               :chest :black
-              :raft :brown
+              :raft :dark-brown
               :item :black
               :default :black))
         (cond-> (not in-view?)

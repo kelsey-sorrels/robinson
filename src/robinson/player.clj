@@ -3,7 +3,6 @@
   (:require [robinson.common :as rc]
             [robinson.characterevents :as ce]
             [robinson.dynamiccharacterproperties :as dcp]
-            [robinson.crafting.mod :as rcmod]
             [robinson.crafting.mod-protocol :as rcmp]
             [taoensso.timbre :as log]
             [robinson.random :as rr]
@@ -57,7 +56,7 @@
         defender nil]
     (->
       player
-      (rcmod/apply-mods
+      (rcmp/apply-mods
         (-> player
           (attack-item attack-type)
           :effects)

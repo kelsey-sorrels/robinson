@@ -5,8 +5,8 @@
             [robinson.player :as rp]
             [robinson.inventory :as ri]
             [robinson.crafting :as rcrafting]
-            [robinson.crafting.mod :as rcmod]
             [robinson.crafting.mod-protocol :as rcmp]
+            [robinson.crafting.effects :as rce]
             [robinson.itemgen :as rig]
             [taoensso.timbre :as log]))
 
@@ -146,107 +146,6 @@
     :else
       ((rand-nth [gen-question-contact gen-question-wield]) state)))
 
-;; Weapon mods
-(defn mod-accuracy
-  [low high & [cause]]
-  (let [n (rr/uniform-int low high)]
-    (rcmod/adj-item-on-create "accuracy" "acc" :accuracy n :cause cause)))
-
-(defn mod-damage
-  [low high & [cause]]
-  (let [n (rr/uniform-int low high)]
-    (rcmod/adj-item-on-create "damage" "dmg" :damage n :cause cause)))
-
-(defn mod-durability
-  [low high & [cause]]
-  (let [n (rr/uniform-int low high)]
-    (rcmod/adj-item-on-create "durability" "dbl" :durability n :cause cause)))
-
-; Reduces opponent toughness
-(defn mod-piercing
-  [low high]
-  (let [n (rr/uniform-int low high)]
-    (rcmod/adj-defender-on-attack-temp "piercing" "prc" :toughness n)))
-
-; Increase attackers speed
-(defn mod-haste
-  [low high]
-  (let [n (rr/uniform-int low high)]
-    (rcmod/adj-attacker-on-attack-temp "haste" :speed n)))
-
-; chance of scaring monster
-(defn mod-scare-monster
-  [low high]
-  (let [n (rr/uniform-double low high)]
-    (rcmod/tag-defender-on-attack "scare" "scr" :scared n)))
-
-; chance of stunning monster
-(defn mod-stunning
-  [low high]
-  (let [n (rr/uniform-double low high)]
-    (rcmod/tag-defender-on-attack "stun" "stn" :stunned n)))
-
-; chance of dismembering monster
-(defn mod-dismembering
-  [low high]
-  (let [n (rr/uniform-double low high)]
-    (rcmod/tag-defender-on-attack "dismember" "dsm" :dismembered n)))
-
-; fire hardened
-(defn mod-firehardened
-  []
-  (rcmod/adj-item-on-create "fire hardened" "frhd" :durability 10))
-
-; chance of wounding monster
-(defn mod-bleeding
-  [low high]
-  (let [n (rr/uniform-double low high)]
-    (rcmod/tag-defender-on-attack "bleeding" "bld" :bleeding n)))
-
-; chance of knockback
-(defn mod-knockback
-  [low high]
-  (let [n (rr/uniform-double low high)]
-    (rcmod/tag-defender-on-attack "knockback" "knb" :knockbacked n)))
-
-; serrated
-(defn mod-serrated
-  []
-  (rcmod/adj-item-on-create "serrated" "srr" :damage 10))
-
-; condition mod based on opponent attributes
-#_(defn mod-conditioned-heirarchy
-  [id mod]
-    (->ModWeapon "conditioned" :conditioned {:id id :mod mod}))
-
-;; Creation mods
-(defn mod-hp [low high]
-  (let [n (rr/uniform-int low high)]
-    (rcmod/adj-player-immediate "health" "hp" :hp n)))
-
-(defn mod-hunger [low high]
-  (let [n (rr/uniform-int low high)]
-    (rcmod/adj-player-immediate "hunger" "hun" :hunger n)))
-
-(defn mod-thirst [low high]
-  (let [n (rr/uniform-int low high)]
-    (rcmod/adj-player-immediate "thirst" "thr" :thirst n)))
-
-(defn mod-wtl [low high]
-  (let [n (rr/uniform-int low high)]
-    (rcmod/adj-player-immediate "wtl" "wtl" :wtl n)))
-
-(defn mod-wound [dmg-low dmg-high time-low time-high]
-  (let [dmg (rr/uniform-int dmg-low dmg-high)
-        t (rr/uniform-int time-low time-high)]
-    (rcmod/conj-player-immediate "wound" "wnd" :wounds {:dmg dmg :time t})))
-
-(defn mod-dec-inventory [hotkey]
-  (rcmod/dec-inventory-by-hotkey "" "" hotkey nil))
-
-(defn mod-remove-effect [effect]
-  (rcmod/remove-effect "" "" effect nil))
-
 (defn rand-unused-item
   [recipe ns]
   (let [id (keyword ns "id")]
@@ -286,29 +185,29 @@
           :event.complication.item/id (get item :item/id)
           :choice/events [
             {:description "You give up after spending hours looking for the right materials."
-              :choice/one-of [(mod-thirst -10 -5)
-                               (mod-hunger -10 -5)
-                               (mod-wtl -10 -5)]}
+              :choice/one-of [(rce/mod-thirst -10 -5)
+                              (rce/mod-hunger -10 -5)
+                              (rce/mod-wtl -10 -5)]}
             {:description "You spend hours looking for the right material."
-             :choice/one-of [(mod-wtl 5 7)
-                              (mod-thirst -10 -5)
-                              (mod-hunger -10 -5)]}
+             :choice/one-of [(rce/mod-wtl 5 7)
+                             (rce/mod-thirst -10 -5)
+                             (rce/mod-hunger -10 -5)]}
             {:description "After hours of searching, you find the right material."
-             :choice/one-of [(mod-wtl 5 7)
-                              (mod-thirst -10 -5)
-                              (mod-hunger -10 -5)]}]}
+             :choice/one-of [(rce/mod-wtl 5 7)
+                             (rce/mod-thirst -10 -5)
+                             (rce/mod-hunger -10 -5)]}]}
          {:hotkey \b
           :name "Give up"
           :event.complication.item/id (get item :item/id)
           :choice/events [
             {:description "You learn to make do without the right parts."
              :choice/one-of [
-               (mod-durability -3 -1)
-               (mod-wtl -10 -5)]}
+               (rce/mod-durability -3 -1)
+               (rce/mod-wtl -10 -5)]}
             {:description "You stop and take a break. After a few minutes inspiration strikes."
              :choice/one-of [
-               (mod-durability 1 3)
-               (mod-wtl 1 5)]}]}]}
+               (rce/mod-durability 1 3)
+               (rce/mod-wtl 1 5)]}]}]}
 
       ; Bodily Limit
       #_{:event/id :body-constraint
@@ -317,7 +216,7 @@
          :hotkey :space
          :name "continue"
          :choice/one-of [
-           (mod-thirst 11 21)]}]}
+           (rce/mod-thirst 11 21)]}]}
 
       ; Edged
       #_{:event/id :edged
@@ -329,7 +228,7 @@
          :hotkey :space
          :name "continue"
          :choice/one-of [
-           (mod-damage -7 -3)]}]}
+           (rce/mod-damage -7 -3)]}]}
 
       ; Too much or too little in size, shape, weight
       #_{:event/id :physical-property
@@ -343,7 +242,7 @@
          :hotkey :space
          :name "continue"
          :choice/one-of [
-           (mod-thirst 11 21)]}]}
+           (rce/mod-thirst 11 21)]}]}
 
       ; Handled weapon complications
       #_{:event/id :handle
@@ -353,7 +252,7 @@
          :hotkey :space
          :name "continue"
          :choice/one-of [
-           (mod-thirst 11 21)]}]}
+           (rce/mod-thirst 11 21)]}]}
 
       ; Flexible weapon complications
       #_{:event/id :flexibe
@@ -363,7 +262,7 @@
          :hotkey :space
          :name "continue"
          :choice/one-of [
-           (mod-thirst 11 21)]}]}
+           (rce/mod-thirst 11 21)]}]}
 
       ; Wooden
       {:event/id :event.id/wooden
@@ -379,9 +278,9 @@
          :hotkey :space
          :name "continue"
          :choice/one-of [
-           (mod-durability -3 -1)
-           (mod-damage -3 -1)
-           (mod-accuracy -3 -1)]
+           (rce/mod-durability -3 -1)
+           (rce/mod-damage -3 -1)
+           (rce/mod-accuracy -3 -1)]
          :choice/events [{
            :description "You try to find a way to fix it."
            :event/choices [{
@@ -405,8 +304,8 @@
          :hotkey :space
          :name "continue"
          :choice/one-of [
-           (mod-hunger -10 -5)
-           (mod-thirst -10 -5)]
+           (rce/mod-hunger -10 -5)
+           (rce/mod-thirst -10 -5)]
         }]}
 
       ; Dimensional
@@ -422,9 +321,9 @@
          :hotkey :space
          :name "continue"
          :choice/one-of [
-           (mod-durability -3 -1 item)
-           (mod-damage -3 -1 item )
-           (mod-accuracy -3 -1 item)]
+           (rce/mod-durability -3 -1 item)
+           (rce/mod-damage -3 -1 item )
+           (rce/mod-accuracy -3 -1 item)]
          :choice/events [{
            :description "How do you want to try to to fix it?"
            :event/choices [{
@@ -448,8 +347,8 @@
          :hotkey :space
          :name "continue"
          :choice/one-of [
-           (mod-hunger -10 -5)
-           (mod-thirst -10 -5)]
+           (rce/mod-hunger -10 -5)
+           (rce/mod-thirst -10 -5)]
         }]}
 
       ; Edged
@@ -461,7 +360,7 @@
          :hotkey :space
          :name "continue"
          :choice/one-of [
-           (mod-damage -5 -3)]
+           (rce/mod-damage -5 -3)]
          :choice/events [{
            :description "How do you want to try to to fix it?"
            :event/choices [{
@@ -485,8 +384,8 @@
          :hotkey :space
          :name "continue"
          :choice/one-of [
-           (mod-hunger -10 -5)
-           (mod-thirst -10 -5)]
+           (rce/mod-hunger -10 -5)
+           (rce/mod-thirst -10 -5)]
         }]}
 
       ; Flexible
@@ -498,7 +397,7 @@
          :hotkey :space
          :name "continue"
          :choice/one-of [
-           (mod-damage -5 -3)]
+           (rce/mod-damage -5 -3)]
          :choice/events [{
            :description "How do you want to try to to fix it?"
            :event/choices [{
@@ -522,8 +421,8 @@
          :hotkey :space
          :name "continue"
          :choice/one-of [
-           (mod-hunger -10 -5)
-           (mod-thirst -10 -5)]
+           (rce/mod-hunger -10 -5)
+           (rce/mod-thirst -10 -5)]
         }]}
 
       ; Handled
@@ -535,7 +434,7 @@
          :hotkey :space
          :name "continue"
          :choice/one-of [
-           (mod-damage -5 -3)]
+           (rce/mod-damage -5 -3)]
          :choice/events [{
            :description "How do you want to try to to fix it?"
            :event/choices [{
@@ -559,8 +458,8 @@
          :hotkey :space
          :name "continue"
          :choice/one-of [
-           (mod-hunger -10 -5)
-           (mod-thirst -10 -5)]
+           (rce/mod-hunger -10 -5)
+           (rce/mod-thirst -10 -5)]
         }]}
 
       ; Ranged
@@ -572,7 +471,7 @@
          :hotkey :space
          :name "continue"
          :choice/one-of [
-           (mod-damage -5 -3)]
+           (rce/mod-damage -5 -3)]
          :choice/events [{
            :description "How do you want to try to to fix it?"
            :event/choices [{
@@ -596,8 +495,8 @@
          :hotkey :space
          :name "continue"
          :choice/one-of [
-           (mod-hunger -10 -5)
-           (mod-thirst -10 -5)]
+           (rce/mod-hunger -10 -5)
+           (rce/mod-thirst -10 -5)]
         }]}
 
       ; Change Type
@@ -628,7 +527,7 @@
          :hotkey :space
          :name "continue"
          :choice/one-of [
-           (mod-thirst 11 21)]}]}
+           (rce/mod-thirst 11 21)]}]}
 
       ; Special Boomerange Complications
       #_{:event/id :boomerang
@@ -638,7 +537,7 @@
          :hotkey :space
          :name "continue"
          :choice/one-of [
-           (mod-thirst 11 21)]}]}
+           (rce/mod-thirst 11 21)]}]}
 
       ; Splinter
       #_{:event/id :splinter
@@ -649,7 +548,7 @@
          :hotkey :space
          :name "continue"
          :choice/one-of [
-           (mod-thirst 11 21)]}]}
+           (rce/mod-thirst 11 21)]}]}
 
       ; Wooden joints
       #_{:event/id :weak-joinery
@@ -659,7 +558,7 @@
          :hotkey :space
          :name "continue"
          :choice/one-of [
-           (mod-thirst 11 21)]}]}
+           (rce/mod-thirst 11 21)]}]}
 
       ; Poisonous material
       #_{:event/id :allergic
@@ -670,7 +569,7 @@
          :hotkey :space
          :name "continue"
          :choice/one-of [
-           (mod-thirst 11 21)]}]}
+           (rce/mod-thirst 11 21)]}]}
 
       ; Hunger
       {:event/id :hunger
@@ -681,7 +580,7 @@
          :hotkey :space
          :name "continue"
          :choice/one-of [
-           (mod-wtl -10 -5)]}]}
+           (rce/mod-wtl -10 -5)]}]}
 
       ; Thirst
       #_{:event/id :thirst
@@ -690,7 +589,7 @@
          :hotkey :space
          :name "continue"
          :choice/one-of [
-           (mod-thirst 11 21)]}]}
+           (rce/mod-thirst 11 21)]}]}
 
       ; Low light
       #_{:event/id :low-light
@@ -699,7 +598,7 @@
          :hotkey :space
          :name "continue"
          :choice/one-of [
-           (mod-thirst 11 21)]}]}
+           (rce/mod-thirst 11 21)]}]}
 
       ; Sound
       #_{:event/id :sound
@@ -709,7 +608,7 @@
          :hotkey :space
          :name "continue"
          :choice/one-of [
-           (mod-thirst 11 21)]}]}
+           (rce/mod-thirst 11 21)]}]}
 
       ; Empty prototype -----------------
       #_{:title ""
@@ -718,7 +617,7 @@
          :hotkey :space
          :name "continue"
          :choice/one-of [
-           (mod-thirst 11 21)]}]}
+           (rce/mod-thirst 11 21)]}]}
 
       ; Spider
       #_{:event/id :spider
@@ -733,9 +632,9 @@
                 :name "attack"
                 :choice/events [
                   {:description "You hit the spider and your thigh."
-                   :choice/one-of [(mod-hp 5 7)]}]}]}
+                   :choice/one-of [(rce/mod-hp 5 7)]}]}]}
              {:description "Before you can hit it the spider sinks its fangs into your leg."
-              :choice/one-of [(mod-hp 5 7)]}
+              :choice/one-of [(rce/mod-hp 5 7)]}
              {:description "You slap the spider. There is not enough meat to eat."}]}
          {:hotkey \b
           :name "brush it off"
@@ -745,10 +644,10 @@
              :event/choices [
                {:hotkey \a
                 :name "just give up and die"
-                :choice/one-of [(mod-hp 10 50)]}
+                :choice/one-of [(rce/mod-hp 10 50)]}
                {:hotkey \b
                 :name "slap all of them"
-                :choice/one-of [(mod-hp 5 7)]}
+                :choice/one-of [(rce/mod-hp 5 7)]}
                {:hotkey \c
                 :name "roll on the ground"}]}]}]}]
     []))
@@ -871,7 +770,7 @@
         :event/choices [
           {:hotkey \a
            :name (str "fix " (rcmp/full-name debuff))
-           :choice/one-of [(mod-remove-effect debuff)]}
+           :choice/one-of [(rce/mod-remove-effect debuff)]}
           {:name "skip"
            :hotkey :space}]}]
       [])))
@@ -892,22 +791,22 @@
                       "unknown")
         _ (log/info "items:" items "item-id:" item-id "item-name:" item-name)
         buff-mod (first (shuffle [
-                     (mod-accuracy 1 5)
-                     (mod-damage 1 4)
-                     (mod-durability 1 5)
-                     (mod-stunning 0.1 0.5)
-                     (mod-dismembering 0.1 0.5)
-                     (mod-bleeding 0.1 0.5)
-                     (mod-knockback 0.1 0.5)]))
+                     (rce/mod-accuracy 1 5)
+                     (rce/mod-damage 1 4)
+                     (rce/mod-durability 1 5)
+                     (rce/mod-stunning 0.1 0.5)
+                     (rce/mod-dismembering 0.1 0.5)
+                     (rce/mod-bleeding 0.1 0.5)
+                     (rce/mod-knockback 0.1 0.5)]))
         debuff-mod (first (shuffle [
-                     (mod-accuracy -5 -1)
-                     (mod-damage -6 -2)
-                     (mod-durability -6 -2)]))
+                     (rce/mod-accuracy -5 -1)
+                     (rce/mod-damage -6 -2)
+                     (rce/mod-durability -6 -2)]))
         _ (log/info "buff-mod" buff-mod)
         choices (map (fn [item]
                   (let [choice {:hotkey (get item :hotkey)
                                 :name (get item :name)
-                                :choice/one-of [(mod-dec-inventory (get item :hotkey))]
+                                :choice/one-of [(rce/mod-dec-inventory (get item :hotkey))]
                                 :items #{item}}]
                     (if-let [valid-recipes (not-empty (rcrafting/valid-recipes (conj (get recipe :items) item)
                                                                     (rcrafting/get-recipes-by-category :weapon)))]
@@ -965,9 +864,9 @@
 (defn enhancements
   [state recipe]
   (let [debuff-mod (first (shuffle [
-                     (mod-accuracy -5 -1)
-                     (mod-damage -6 -2)
-                     (mod-durability -6 -2)]))]
+                     (rce/mod-accuracy -5 -1)
+                     (rce/mod-damage -6 -2)
+                     (rce/mod-durability -6 -2)]))]
     (if-let [item (rand-unused-item recipe "event.enhancement.item")]
       [
         {:title "Increased Accuracy"
@@ -979,7 +878,7 @@
            :hotkey :space
            :name "continue"
            :event.complication.item/id (get item :item/id)
-           :choice/one-of [(mod-accuracy 1 2)]}]}
+           :choice/one-of [(rce/mod-accuracy 1 2)]}]}
 
           {:title "Increased Damage"
            :description [(format "The %s you %s was %s. This weapon is going to do a lot more damage."
@@ -990,7 +889,7 @@
              :hotkey :space
              :name "continue"
              :event.complication.item/id (get item :item/id)
-             :choice/one-of [(mod-damage 1 2)]}]}
+             :choice/one-of [(rce/mod-damage 1 2)]}]}
 
         ; wooden - find replacement
         {:description "In a flash of insight, you decide you can cannibalize another item for parts."
@@ -1001,7 +900,7 @@
                  choices (map (fn [item]
                                 {:hotkey (get item :hotkey)
                                  :name (get item :name)
-                                 :choice/one-of [(mod-dec-inventory (get item :hotkey))]
+                                 :choice/one-of [(rce/mod-dec-inventory (get item :hotkey))]
                                  :choice/events [{
                                    :description "Select a buff to bring along."
                                    :event/choices (let [choices (map (fn [buff hotkey]
@@ -1025,7 +924,7 @@
              {:name "Use fire"
               :hotkey :enter
               :requirements {:adjacent-to-fire true}
-              :effects [(mod-firehardened)]}
+              :effects [(rce/mod-firehardened)]}
              {:name "skip"
               :hotkey :space
               :effects [debuff-mod]}]}
@@ -1041,7 +940,7 @@
                 :event/choices [{
                   :name "continue"
                   :hotkey :space
-                  :effects [(mod-piercing 0.1 0.3)]}]}]}]}
+                  :effects [(rce/mod-piercing 0.1 0.3)]}]}]}]}
 
         ; dimensional - find-replacement 
         #_{:description "You can use parts from another item to fix this."
@@ -1051,7 +950,7 @@
                  choices (map (fn [item]
                                 {:hotkey (get item :hotkey)
                                  :name (get item :name)
-                                 :choice/one-of [(mod-dec-inventory (get item :hotkey))]
+                                 :choice/one-of [(rce/mod-dec-inventory (get item :hotkey))]
                                  :choice/events [{
                                    :description "Select an effect to copy"
                                    :event/choices (let [choices (map (fn [effect hotkey]
@@ -1079,7 +978,7 @@
                 :event/choices [{
                   :name "continue"
                   :hotkey :space
-                  :effects [(mod-durability 5 10)]}]}]}]}
+                  :effects [(rce/mod-durability 5 10)]}]}]}]}
 
         ; edged - find-replacement - cannibalize
         #_{:description "You can use parts from another edged item to fix this."
@@ -1089,7 +988,7 @@
                  choices (map (fn [item]
                                 {:hotkey (get item :hotkey)
                                  :name (get item :name)
-                                 :choice/one-of [(mod-dec-inventory (get item :hotkey))]
+                                 :choice/one-of [(rce/mod-dec-inventory (get item :hotkey))]
                                  :choice/events [{
                                    :description "Select an effect to copy"
                                    :event/choices (let [choices (map (fn [effect hotkey]
@@ -1117,7 +1016,7 @@
                 :event/choices [{
                   :name "continue"
                   :hotkey :space
-                  :effects [(mod-dismembering 0.1 0.5)]}]}]}]}
+                  :effects [(rce/mod-dismembering 0.1 0.5)]}]}]}]}
 
         ; flexible - find-replacement - cannibalize
         #_{:description "You can use parts from another flexible item to fix this."
@@ -1127,7 +1026,7 @@
                  choices (map (fn [item]
                                 {:hotkey (get item :hotkey)
                                  :name (get item :name)
-                                 :choice/one-of [(mod-dec-inventory (get item :hotkey))]
+                                 :choice/one-of [(rce/mod-dec-inventory (get item :hotkey))]
                                  :choice/events [{
                                    :description "Select an effect to copy"
                                    :event/choices (let [choices (map (fn [effect hotkey]
@@ -1155,7 +1054,7 @@
                 :event/choices [{
                   :name "continue"
                   :hotkey :space
-                  :effects [(mod-stunning 0.1 0.5)]}]}]}]}
+                  :effects [(rce/mod-stunning 0.1 0.5)]}]}]}]}
 
         ; handled - find-replacement - cannibalize
         #_{:description "You can use parts from another handled item to fix this."
@@ -1165,7 +1064,7 @@
                  choices (map (fn [item]
                                 {:hotkey (get item :hotkey)
                                  :name (get item :name)
-                                 :choice/one-of [(mod-dec-inventory (get item :hotkey))]
+                                 :choice/one-of [(rce/mod-dec-inventory (get item :hotkey))]
                                  :choice/events [{
                                    :description "Select an effect to copy"
                                    :event/choices (let [choices (map (fn [effect hotkey]
@@ -1193,7 +1092,7 @@
                 :event/choices [{
                   :name "continue"
                   :hotkey :space
-                  :effects [(mod-knockback 0.1 0.5)]}]}]}]}
+                  :effects [(rce/mod-knockback 0.1 0.5)]}]}]}]}
 
         ; mental - perseverence
         {:description "You think about how to much you've struggeled so far and how far you have come."
@@ -1206,7 +1105,7 @@
                 :event/choices [{
                   :name "continue"
                   :hotkey :space
-                  :effects [(mod-wtl 1 5)]}]}]}]}]
+                  :effects [(rce/mod-wtl 1 5)]}]}]}]}]
        [])))
 
 (defn gen-enhancement [state recipe]
@@ -1227,7 +1126,7 @@
        :hotkey :space
        :name "continue"
        :choice/one-of [
-         (mod-wtl -10 -5)]
+         (rce/mod-wtl -10 -5)]
        :choice/events [{
          :description "You try to find a way to deal with these feelings."
          :event/choices [{
@@ -1251,7 +1150,7 @@
        :hotkey :space
        :name "continue"
        :choice/one-of [
-         (mod-wtl -10 -5)
+         (rce/mod-wtl -10 -5)
       ]}]}
 
     ; Mental - optimism - complication
@@ -1262,7 +1161,7 @@
        :hotkey :space
        :name "continue"
        :choice/one-of [
-         (mod-wtl -10 -5)
+         (rce/mod-wtl -10 -5)
       ]}]}
 
     ; Mental - self-control - complication
@@ -1273,7 +1172,7 @@
        :hotkey :space
        :name "continue"
        :choice/one-of [
-         (mod-thirst -10 -5)
+         (rce/mod-thirst -10 -5)
       ]}]}
 
     ; Mental - persevere - complication
@@ -1284,16 +1183,24 @@
        :hotkey :space
        :name "continue"
        :choice/one-of [
-         (mod-wtl -10 -5)
+         (rce/mod-wtl -10 -5)
       ]}]}]]
   (gen-event state recipe
     :event-type/player
     player-events)))
 
 (defn gen-random [state recipe]
-  ((rand-nth [gen-complication
-              gen-material
-              gen-remedy
-              gen-enhancement
-              gen-player])
-    state recipe))
+  ; first event? Do start event
+  (if (empty? (get recipe :events))
+    {
+      :description (str "You begin crafting a " (name (get recipe :type)) ". You'll need to start with an item.")
+      :event/choices [{
+        :hotkey :space
+        :name "continue"
+        :choice/events [:gen-material]}]}
+    ((rand-nth [gen-complication
+                gen-material
+                gen-remedy
+                gen-enhancement
+                gen-player])
+      state recipe)))

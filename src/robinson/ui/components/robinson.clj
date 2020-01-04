@@ -5,7 +5,6 @@
             [robinson.random :as rr]
             [robinson.math :as rmath]
             [robinson.color :as rcolor]
-            [robinson.renderutil :as rutil]
             [robinson.catmull-rom :as rcr]
             [robinson.scores :as rs]
             [robinson.startgame :as sg]
@@ -409,9 +408,10 @@
                            [(zc/csx [:text {:style {:position :absolute
                                                     :top (- (:y player-pos) vy)
                                                     :left (- (:x player-pos) vx)
+                                                    :mix-blend-mode (if player-on-raft? :lighten :normal)
                                                     :color (rcolor/color->rgb (if player-bloodied :dark-red :white))
                                                     :background-color (rcolor/color->rgb (if player-on-raft?
-                                                                                            :brown
+                                                                                            :transparent
                                                                                             :black))}}
                                            ["@"]])]
                            npcs)])))
@@ -1017,7 +1017,7 @@
                                 (map-indexed vector line))))
                  (vec (repeat (* 60 20) {:c \space :fg [0 0 0 0] :bg [0 0 0 228]}))
                  (last dsp)))]
-    (zc/csx [zcui/Popup {:style {:top -9}} [
+    (zc/csx [zcui/Popup {:style {:top -5}} [
               [:view {} [
                   [:img {:width 60 :height 20} l]]]]])))
 
@@ -1204,7 +1204,7 @@
               [CharactersInViewport {:npcs visible-npcs
                                      :player-pos (rp/player-pos game-state)
                                      :player-bloodied (get player :bloodied)
-                                     :player-on-raft? (contains? (set (map :id (get (first (player-cellxy game-state)) :items))) :raft)
+                                     :player-on-raft? (contains? (set (map :item/id (get (first (player-cellxy game-state)) :items))) :raft)
                                      :vx vx
                                      :vy vy
                                      :current-time current-time

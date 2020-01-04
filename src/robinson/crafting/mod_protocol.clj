@@ -29,6 +29,9 @@
   [x]
   (satisfies? ModNormative x))
 
+(defprotocol ModStateImmediate
+  (state-immediate [this state]))
+
 (defprotocol ModPlayerImmediate
   (player-immediate [this player]))
 
@@ -63,3 +66,12 @@
   ; returns mod when applies, otherwise nil
   (when-triggered [this h id v]))
 
+(defn apply-mods
+  [actor mods protocol & args]
+  (let [m (first (keys (get protocol :method-map)))]
+    (reduce (fn [actor mod]
+              (if (satisfies? protocol mod)
+                (apply (-> m name symbol resolve) mod args)
+                actor))
+            actor
+            mods)))

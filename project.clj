@@ -33,7 +33,7 @@
                  [rockpick "0.1.0"]
                  [aaron-santos/tinter "0.1.1"]
                  [aaron-santos/clj-tiny-astar "0.1.1"]
-                 [zaffre "0.4.0-b7"]
+                 [zaffre "0.4.0-b8"]
                  [alandipert/enduro "1.2.0"]
                  [dorothy "0.0.7"]
                  [com.taoensso/nippy "2.14.0"]
@@ -113,10 +113,13 @@
   :launch4j-config-file "dev-resources/config.xml"
   :jvm-opts [
              "-Djdk.attach.allowAttachSelf"
-             "-Xverify:none"
+             "-XX:+UnlockExperimentalVMOptions"
              "-XX:+UnlockDiagnosticVMOptions"
              "-XX:+DebugNonSafepoints"
              "-XX:-OmitStackTraceInFastThrow"
+             ;"-XX:+UseShenandoahGC"
+             ;"-XX:+UseZGC"
+             ;"-Xlog:gc"
              "-XX:MaxGCPauseMillis=20"
              "-Dhttps.protocols=TLSv1"
 ])

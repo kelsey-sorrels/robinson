@@ -1653,7 +1653,7 @@
                                                           (format "%dx " (get item :count))
                                                           "")
                                                         (item :name))]]))
-                    (get player :inventory))]]]
+                    (take 12 (get player :inventory)))]]]
                 [:text {} [""]]
                 [:view {:style {:left 10}} [
                   [:text {} [[:text {} ["Play again? ["]]
@@ -1783,7 +1783,7 @@
                                                  fg (rcolor/color->rgb (if (= player-name (get (rp/get-player game-state) :name))
                                                                          :highlight
                                                                          :white))]
-                                             {:s (format "%-2d.%-20s (%-5d points)" (inc index) player-name points)
+                                             {:s (format "*%2d %-20s (%5d points)" (inc index) player-name points)
                                               :fg fg
                                               :bg (rcolor/color->rgb :black)})
                                              {:s "..."

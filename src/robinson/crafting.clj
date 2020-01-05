@@ -16,6 +16,11 @@
   (let [selected-recipe-hotkey (get-in state [:world :selected-recipe-hotkey])]
     (get-in state [:world :recipes selected-recipe-hotkey])))
 
+(defn remove-current-recipe
+  [state]
+  (let [selected-recipe-hotkey (get-in state [:world :selected-recipe-hotkey])]
+    (update-in state [:world :recipes] dissoc selected-recipe-hotkey)))
+
 (defn assoc-current-recipe [state & kvs]
   {:pre [(not (nil? state))]
    :post [(not (nil? %))]}
@@ -1108,33 +1113,37 @@
           (assert (not (nil? state-with-results)))
           (log/info "next-state" (rw/current-state state-with-results))
           ; done with recipe?
-          (if (contains? choice :done)
-            (save-recipe state-with-results)
-            ; if choice has a events pick one,
-            (if (not-empty (get choice :choice/events))
-              ; find next event
-              (let [next-event (rand-nth (get choice :choice/events))]
-                (log/info "next-event" next-event)
-                (assoc-current-recipe
-                  state-with-results
-                  :current-stage
-                  ; fill in event defaults
-                  (fill-event 
-                    (if (keyword? next-event)
-                      (let [event-fn (ns-resolve recipe-ns (-> next-event name symbol))]
-                        (log/info "resolved" recipe-ns next-event "to" event-fn)
-                        (event-fn state recipe))
-                      next-event)
-                    recipe)))
-              ; else the choice has no events, then the next step is to move to the next node
-              ; gen event for next node and advance to it
-              (let [next-node (rand-event state-with-results recipe-ns (current-recipe state-with-results))
-                    recipe (current-recipe state-with-results)]
-                (assoc recipe
-                  :recipe/example-item-properties (get-example-item-properties-by-types (get recipe :recipe/types)))
-                (update-current-recipe
-                  next-node
-                  update :events conj (get recipe :current-stage))))))
+          (cond
+            (contains? choice :done)
+              (save-recipe state-with-results)
+            (contains? choice :abort)
+              (remove-current-recipe state-with-results)
+            :else
+              ; if choice has a events pick one,
+              (if (not-empty (get choice :choice/events))
+                ; find next event
+                (let [next-event (rand-nth (get choice :choice/events))]
+                  (log/info "next-event" next-event)
+                  (assoc-current-recipe
+                    state-with-results
+                    :current-stage
+                    ; fill in event defaults
+                    (fill-event 
+                      (if (keyword? next-event)
+                        (let [event-fn (ns-resolve recipe-ns (-> next-event name symbol))]
+                          (log/info "resolved" recipe-ns next-event "to" event-fn)
+                          (event-fn state recipe))
+                        next-event)
+                      recipe)))
+                ; else the choice has no events, then the next step is to move to the next node
+                ; gen event for next node and advance to it
+                (let [next-node (rand-event state-with-results recipe-ns (current-recipe state-with-results))
+                      recipe (current-recipe state-with-results)]
+                  (assoc recipe
+                    :recipe/example-item-properties (get-example-item-properties-by-types (get recipe :recipe/types)))
+                  (update-current-recipe
+                    next-node
+                    update :events conj (get recipe :current-stage))))))
         state)
       state)))
 

@@ -75,13 +75,19 @@
 
 (defn start
   [state recipe]
-  {:event/id :start
-   :description ["The sea calls to you. You lay out your items and start crafting."]
-   :event/choices (raft-choices
-                    false
-                    (ri/inventory-id->count state :log)
-                    (ri/inventory-id->count state :rope)
-                    (ri/inventory-id->count state :stick))})
+  (if (-> state rw/player-cellxy first :type rw/type->water?)
+    {:event/id :start
+     :description ["The sea calls to you. You lay out your items and start crafting."]
+     :event/choices (raft-choices
+                      false
+                      (ri/inventory-id->count state :log)
+                      (ri/inventory-id->count state :rope)
+                      (ri/inventory-id->count state :stick))}
+    {:description ["This is going to work a lot better in water. Try moving to water first."]
+     :event/choices [
+       {:name "back"
+        :effects [(rce/assoc-current-state-immediate :normal)]
+        :abort true}]}))
 
 (defn next-item
   [state recipe]

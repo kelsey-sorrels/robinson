@@ -2,6 +2,7 @@
   (:require [robinson.common :as rc]
             [robinson.world :as rw]
             [robinson.player :as rp]
+            [robinson.inventory :as ri]
             [robinson.crafting.mod-protocol :as rcmp]
             [robinson.inventory :as ri]
             [robinson.npc :as rnpc]
@@ -187,6 +188,13 @@
   rcmp/ModStateImmediate
   (state-immediate [this state]
     (assoc-in state [:world :current-state] k)))
+
+(defmod-type assoc-in-inventory-item-immediate
+  rcmp/ModImmediate
+  rcmp/ModStateImmediate
+  (state-immediate [this state]
+    (ri/update-inventory-item-by-id state k assoc n true)))
+
 
 (defmod-type add-npc-immediate
   :tag true

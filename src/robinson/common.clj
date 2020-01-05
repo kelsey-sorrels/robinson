@@ -247,12 +247,12 @@
                         (some f coll))) m ks nil))
 
 (defn update-in-matching
-  [m ks p f]
+  [m ks p f & args]
   (if (fn? p)
     (map-in m ks (fn [e] (if (p e)
-                           (f e)
+                           (apply f e args)
                            e)))
-    (update-in-matching m ks (partial = p) f)))
+    (apply update-in-matching m ks (partial = p) f args)))
 
 
 (defn dissoc-in

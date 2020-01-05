@@ -138,6 +138,7 @@
             samples points #_(take-nth 2 points)
             n       (rn/create-noise (rr/create-random seed))
             #_#__ (log/info "find-starting-pos samples" (vec samples))]
+        ; endpoint contains ocean so somewhere there is a transition to land. find it.
         (if (= :ocean (apply sample-island n (last samples)))
           (let [spans (partition-by (fn [[x y]]
                                       (let [s (sample-island n x y)
@@ -169,7 +170,7 @@
             _ (log/info "seed" seed "starting-pos" starting-pos "max-x" max-x "max-y" max-y)
             player-angle (Math/atan2 x y)
             _            (log/info "player-angle" player-angle)
-            angle        (- player-angle 0.03 angle-offset)
+            angle        (- player-angle 0.05 angle-offset)
             radius       (min max-x max-y)
             [x y]        [(* radius (Math/cos angle))
                           (* radius (Math/sin angle))]

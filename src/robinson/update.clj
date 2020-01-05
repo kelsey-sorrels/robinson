@@ -2429,7 +2429,7 @@
                   dwtl       (if (and (rw/is-night? state)
                                       (not-any? #( (get % :type) :fire)
                                                 (rw/cells-in-range-of-player state 3)))
-                               (+ dwtl 0.5)
+                               (+ dwtl 0.3)
                                dwtl)
                   ;; if it is night and the player is not wearing clothes, things are extra tough.
                   dwtl       (if (and (rw/is-night? state)

@@ -268,7 +268,7 @@
   (case (get npc :race)
     :rat             \r
     :spider          \S
-    :scorpion        \u03C2 ;;ς
+    :scorpion        \u00E7 ;;ς
     :snake           \u00A7 ;;§
     :bat             \B
     :boar            \b

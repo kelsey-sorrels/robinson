@@ -144,13 +144,13 @@
 
 (defn update-inventory-item
   "Apply the fn f to inventory items where `(pred item)` is true."
-  [state pred f]
-  (rc/update-in-matching state [:world :player :inventory] pred f))
+  [state pred f & args]
+  (apply rc/update-in-matching state [:world :player :inventory] pred f args))
 
 (defn update-inventory-item-by-id
   "Apply the fn f to inventory item identified by id."
-  [state id f]
-  (update-inventory-item state (fn [item] (= (get item :item/id) id)) f))
+  [state id f & args]
+  (apply update-inventory-item state (fn [item] (= (get item :item/id) id)) f args))
 
 (defn update-worn-item-utility
   [state f]

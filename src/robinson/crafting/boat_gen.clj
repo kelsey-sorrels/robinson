@@ -374,9 +374,9 @@
 (defn sunburn
   [state recipe]
   (log/info (-> state rp/get-player))
-  (if (-> state rp/get-player (contains? :wear))
+  (if-let [worn-item (rp/worn-item state)]
     {:event/id :sunburn-protection
-     :description [(str "The sun's rays fail to penetrate the " (-> state rp/get-player :wear first :name) " you are wearing.")]
+     :description [(str "The sun's rays fail to penetrate the " (get worn-item :name) " you are wearing.")]
      :event/choices [continue-choice]}
     {:event/id :sunburn
      :description ["The suns harsh rays beat down on your back and shoulders. You'll sunburn soon."]

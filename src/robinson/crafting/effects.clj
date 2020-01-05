@@ -118,8 +118,8 @@
 (defn mod-remove-effect [effect]
   (rcmod/remove-effect "" "" effect nil))
 
-(defn mod-wear-clothes [item]
-  (rcmod/conj-player-immediate "wear" "wear" :wear item))
+(defn mod-wear-clothes [hotkey]
+  (rcmod/assoc-in-inventory-item-immediate "wear" "wear" hotkey :worn))
 
 (defn assoc-current-state-immediate [state-name]
   (rcmod/assoc-current-state-immediate (name state-name) (name state-name) state-name nil))

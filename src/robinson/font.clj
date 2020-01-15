@@ -8,7 +8,7 @@
   (log/info "make-font-fn" font)
   (case (get font :type :ttf)
     :ttf
-      (zfont/->TTFFont
+      (zfont/ttf-font
         (rfs/cwd-path
           (get font (case platform
                       :linux   :linux-font
@@ -18,14 +18,15 @@
         (get font :font-size)
         true #_(get font :transparent))
     :cp437
-      (zfont/->CP437Font
+      (zfont/scale
+        (zfont/cp-437
           (let [{:keys [url path]} font]
             (if url
               url
               (rfs/cwd-path path)))
           (get font :alpha-channel :green)
-          (get font :scale 1)
-          true #_(get font :transparent))))
+          true #_(get font :transparent))
+        (get font :scale 1))))
 
 (defn current-font
   [state]

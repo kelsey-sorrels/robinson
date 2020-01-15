@@ -26,8 +26,7 @@
             [alandipert.enduro :as enduro]
             [taoensso.nippy :as nippy]
             [clojure.pprint :refer :all])
-     (:import [java.io DataInputStream DataOutputStream]
-              [zaffre.font TTFFont]))
+     (:import [java.io DataInputStream DataOutputStream]))
 
 
 ;TODO: refer timbre to set this.

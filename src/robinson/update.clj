@@ -1372,6 +1372,7 @@
 (defn action-select
   [state]
   (let [directions (directions-to-actions state)]
+    (log/info directions)
     (cond
       (empty? directions)
         (-> state
@@ -1455,7 +1456,8 @@
             :open
               (open-door state direction)
             :close
-              (close-door state direction)))
+              (close-door state direction)
+            (rw/assoc-current-state state :normal)))
         ;; let the player choose the action
         (-> state
           (assoc-in [:world :action-select]
@@ -1464,8 +1466,10 @@
                          (get directions direction)
                          rc/hotkeys))
           (rw/assoc-current-state :action-select)))
-      ;; player chose an invalid direction, keep waiting
-      state)))
+      ;; player chose an invalid direction, reset
+      (-> state
+        (rc/ui-hint "You choose not to.")
+        (rw/assoc-current-state :normal)))))
         
   
 (defn do-selected-action

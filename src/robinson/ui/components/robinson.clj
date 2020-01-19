@@ -1068,7 +1068,6 @@
                            (if (not-empty logs)
                              logs
                              (let [log (into {} (rlog/last-log game-state))]
-                               (log/info "ll" log)
                                (when (< current-time (+ (get log :time 0) 5))
                                  [log]))))
         num-logs         (count current-logs)
@@ -1085,9 +1084,6 @@
                            (nth (reverse current-logs) log-idx))
         darken-factor    (/ 1 (inc (- current-time (get message :time 0))))
         log-color        (rcolor/darken-rgb (rcolor/color->rgb (get message :color :gray)) darken-factor)]
-    (log/info "darken-factor" darken-factor)
-    (log/info "current-time" current-time)
-    (log/info message)
     (zc/csx
         [:view {:style {:position :absolute
                         :top 0 :left 0

@@ -124,7 +124,11 @@ function package()
     cp LICENSE $target_path
     cp README.md $target_path
     cp PRIVACY.md $target_path
-    cp -R config $target_path
+    mkdir -p $target_path/config/fonts
+    cp config/*.edn $target_path/config/
+    cp config/*.clj $target_path/config/
+    cp config/fonts/boxy-16.edn $target_path/config/fonts/
+    cp config/fonts/boxy-24.edn $target_path/config/fonts/
     cp -R data   $target_path
     cp -R fonts  $target_path
     cp -R images $target_path

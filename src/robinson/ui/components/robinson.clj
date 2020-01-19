@@ -1064,7 +1064,13 @@
   (let [{:keys [game-state]} (zc/props this)
         current-time     (rw/get-time game-state)
         log-idx          (get-in game-state [:world :log-idx] 0)
-        current-logs     (rlog/current-logs game-state)
+        current-logs     (let [logs (rlog/current-logs game-state)]
+                           (if (not-empty logs)
+                             logs
+                             (let [log (into {} (rlog/last-log game-state))]
+                               (log/info "ll" log)
+                               (when (< current-time (+ (get log :time 0) 5))
+                                 [log]))))
         num-logs         (count current-logs)
         msg-above?       (< log-idx (dec num-logs))
         msg-below?       (pos? log-idx)
@@ -1077,8 +1083,11 @@
         message          (if (zero? num-logs)
                            {:message "" :time 0 :color :black} 
                            (nth (reverse current-logs) log-idx))
-        darken-factor    (inc  (* (/ -1 5) (- current-time (message :time))))
-        log-color        (rcolor/darken-rgb (rcolor/color->rgb (get message :color)) darken-factor)]
+        darken-factor    (/ 1 (inc (- current-time (get message :time 0))))
+        log-color        (rcolor/darken-rgb (rcolor/color->rgb (get message :color :gray)) darken-factor)]
+    (log/info "darken-factor" darken-factor)
+    (log/info "current-time" current-time)
+    (log/info message)
     (zc/csx
         [:view {:style {:position :absolute
                         :top 0 :left 0
@@ -1101,7 +1110,7 @@
                                [ruicommon/down-arrow-char]]]])
               (zc/csx [:text {} ["   "]]))
             (if (get message :text)
-              (zc/csx [:text {:style {:color (rcolor/color->rgb (get message :color))
+              (zc/csx [:text {:style {:color log-color
                                       :background-color (zcolor/with-alpha (rcolor/color->rgb :black) 242)}}
                              [(str (get message :text))]])
               (zc/csx [:text {} [""]]))]]]])))

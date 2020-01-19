@@ -1348,13 +1348,15 @@
     [:terminal {} [
       [:group {:id :app} [
         [:layer {:id :map} [
-          [zcui/Image {:src (rfs/cwd-path "images/robinson-mainmenu.jpg")}]]]
+          [zcui/Image {:src (rfs/cwd-path "images/background-0a.png")}]]]
         [:layer {:id :ui} [
           [:view {:style {:position :absolute
-                          :width 80
-                          :height 24
+                          :width 21
+                          :height 6
                           :top 18
-                          :left 30}} [
+                          :left 30
+                          :border 1
+                          :background-color [0 0 0 218]}} [
             [:view {:style {:display :flex
                             :flex-direction :row}} [
               [:text {} ["Press "]]

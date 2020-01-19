@@ -33,7 +33,7 @@
                  [rockpick "0.1.0"]
                  [aaron-santos/tinter "0.1.1"]
                  [aaron-santos/clj-tiny-astar "0.1.1"]
-                 [zaffre "0.4.0-b8"]
+                 [zaffre "0.4.0-b9"]
                  [alandipert/enduro "1.2.0"]
                  [dorothy "0.0.7"]
                  [com.taoensso/nippy "2.14.0"]

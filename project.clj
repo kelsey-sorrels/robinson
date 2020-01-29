@@ -1,4 +1,4 @@
-(defproject robinson "0.4.0a1-SNAPSHOT"
+(defproject robinson "0.4.0b1-SNAPSHOT"
   :description "robinson"
   :plugins      [[lein-bikeshed "0.1.8"]
                  [lein-deps-tree "0.1.2"]
@@ -33,7 +33,7 @@
                  [rockpick "0.1.0"]
                  [aaron-santos/tinter "0.1.1"]
                  [aaron-santos/clj-tiny-astar "0.1.1"]
-                 [zaffre "0.4.0-b9"]
+                 [zaffre "0.4.0-b10"]
                  [alandipert/enduro "1.2.0"]
                  [dorothy "0.0.7"]
                  [com.taoensso/nippy "2.14.0"]

@@ -1633,7 +1633,7 @@
                          cause-of-death
                          (cond
                            (<= hp 0)             "massive injuries"
-                           (> hunger max-hunger) "literall starving to death"
+                           (> hunger max-hunger) "literally starving to death"
                            (> thirst max-thirst) "not drinking enough water"
                            (<= will-to-live 0)   "just giving up on life"
                            :else                 "mysterious causes"))]

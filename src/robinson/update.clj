@@ -67,14 +67,14 @@
 (defn translate-directions
   [keyin]
   (case keyin
-    (\h :numpad4) :left
-    (\j :numpad2) :down
-    (\k :numpad8) :up
-    (\l :numpad6) :right
-    (\y :numpad7) :up-left
-    (\u :numpad9) :up-right
-    (\b :numpad1) :down-left
-    (\n :numpad3) :down-right
+    (\h \H :numpad4) :left
+    (\j \J :numpad2) :down
+    (\k \K :numpad8) :up
+    (\l \L :numpad6) :right
+    (\y \Y :numpad7) :up-left
+    (\u \U :numpad9) :up-right
+    (\b \B :numpad1) :down-left
+    (\n \N :numpad3) :down-right
     keyin))
 
 (defn next-font
@@ -323,7 +323,9 @@
   [state x y]
   {:pre  [(not (nil? state))]
    :post [(not (nil? %))]}
-  (rw/assoc-cell state x y :type :dirt))
+  (-> state
+    (rw/assoc-cell x y :type :dirt)
+    (rw/update-cell x y (fn [cell] (dissoc cell :harvestable)))))
 
 (defn pick-up-gold
   "Vacuums up gold from the floor into player's inventory."
@@ -493,12 +495,6 @@
             (if (seq items)
               (rdesc/search state)
               state)))
-      ;; Hack down destroyable cells.
-      (rw/type->destroyable? (get target-cell :type))
-        (-> state
-          (destroy-cell target-x target-y)
-          (rw/assoc-current-state :normal)
-          rc/inc-time)
       ;; collided with a wall or door, nothing to be done.
       :else
         state)))
@@ -542,6 +538,67 @@
   "moves the player one space down and right provided he/she is able."
   [state]
   (move state :down-right))
+
+(defn action
+  "Perform action adjacent to the player provided her/she is able. Else do combat. Else swap positions
+   with party member. Else hack something down."
+  [state direction]
+  {:pre  [(contains? #{:left :right :up :down :up-left :up-right :down-left :down-right} direction)
+          (not (nil? state))
+          (vector? (get-in state [:world :npcs]))]
+   :post [(vector? (get-in % [:world :npcs]))]}
+  (let [player-x (-> state :world :player :pos :x)
+        player-y (-> state :world :player :pos :y)
+        [target-x
+         target-y] (rw/player-adjacent-xy state direction)
+        target-cell (rw/get-cell state target-x target-y)]
+     ;; Hack down destroyable cells.
+     (if (rw/type->destroyable? (get target-cell :type))
+       (-> state
+         (destroy-cell target-x target-y)
+         (rw/assoc-current-state :normal)
+         rc/inc-time)
+        state)))
+
+(defn action-left
+  "performs actions to the player one space to the left provided he/she is able."
+  [state]
+  (action state :left))
+
+(defn action-right
+  "performs actions to the player one space to the right provided he/she is able."
+  [state]
+  (action state :right))
+
+(defn action-up
+  "performs actions to the player one space up provided he/she is able."
+  [state]
+  (action state :up))
+
+(defn action-down
+  "performs actions to the player one space down provided he/she is able."
+  [state]
+  (action state :down))
+
+(defn action-up-left
+  "performs actions to the player one space to the left and up provided he/she is able."
+  [state]
+  (action state :up-left))
+
+(defn action-up-right
+  "performs actions to the player one space to the right and up provided he/she is able."
+  [state]
+  (action state :up-right))
+
+(defn action-down-left
+  "performs actions to the player one space down and left provided he/she is able."
+  [state]
+  (action state :down-left))
+
+(defn action-down-right
+  "performs actions to the player one space down and right provided he/she is able."
+  [state]
+  (action state :down-right))
 
 (defn use-stairs-island->generated
   [state dest-place-id dest-x dest-y]
@@ -3492,6 +3549,14 @@
                            :up-right   [move-up-right          rw/current-state false]
                            :down-left  [move-down-left         rw/current-state false]
                            :down-right [move-down-right        rw/current-state false]
+                           :shift+left       [action-left       rw/current-state false]
+                           :shift+down       [action-down       rw/current-state false]
+                           :shift+up         [action-up         rw/current-state false]
+                           :shift+right      [action-right      rw/current-state false]
+                           :shift+up-left    [action-up-left    rw/current-state false]
+                           :shift+up-right   [action-up-right   rw/current-state false]
+                           :shift+down-left  [action-down-left  rw/current-state false]
+                           :shift+down-right [action-down-right rw/current-state false]
                            \>          [use-stairs             :normal          true]
                            \<          [use-stairs             :normal          false]
                            :space      [action-select          rw/current-state false]
@@ -3511,9 +3576,9 @@
                            \Q          [identity               :quests          false]
                            \M          [toggle-mount           :normal          false]
                            \P          [next-party-member      :normal          false]
-                           \z          [identity               :recipes         true]
+                           \C          [identity               :recipes         true]
                            \v          [identity               :abilities       false]
-                           \g          [identity               :player-stats    false]
+                           \@          [identity               :player-stats    false]
                            \t          [identity               :throw-inventory false]
                            \T          [identity               :talk            true]
                            \m          [identity               :log             false]
@@ -3850,6 +3915,20 @@
         (assoc :advance-time false)))
     state))
 
+(defn add-mods
+  [keyin keymods]
+  (log/info "keymods" keymods)
+  (if (char? keyin)
+    keyin
+    (let [mod-names (->> keymods
+                      (filter second)
+                      (mapv (comp name first)))]
+      (->> (conj mod-names (name keyin))
+        (interpose "+")
+        (apply str)
+        keyword))))
+
+
 (defn update-state
   "Use the stage transtion table defined above to call the appropriate
    transition function and assign the appropriate final state value.
@@ -3868,12 +3947,19 @@
    * Update place's discovered cells with new visibility calculations
   
    * Increment the current time"
-  [state keyin]
+  [state keyin keymods]
   (let [current-state (get-in state [:world :current-state])
         table         (get state-transition-table current-state)
         keyin         (if (contains? translate-direction-states current-state)
-                        (translate-directions keyin)
-                        keyin)]
+                        (-> keyin
+                          translate-directions
+                          (add-mods keymods))
+                        keyin)
+        keyin (get {\space :space} keyin keyin)]
+    (log/info "keyin" keyin)
+    (log/info "keyin" (type keyin))
+    (log/info "keyin" (contains? #{\space} keyin))
+    (log/info "keyin" (get {\space :space} keyin))
     ;(log/debug "current-state" current-state)
     (if (and (or (contains? table keyin) (contains? table :else))
              (not (contains? modifier-keys keyin)))

@@ -2,6 +2,7 @@
 (ns robinson.events
   (:require 
             [robinson.actors :as ractors]
+            [robinson.error :as re]
             [robinson.update :as rupdate]
             [taoensso.timbre :as log]
             [clojure.core.async :as async :refer [go go-loop]]))
@@ -18,10 +19,12 @@
           ; no more actors 
           ; tick mobs/bookkeeping
           (if (get state :advance-time)
-            (do
+            (try
               (log/info "advancing time")
               ; advance time, and stream the results into state-chan
-              (async/pipe (stream (rupdate/update-advance-time state)) state-chan))
+              (async/pipe (stream (rupdate/update-advance-time state)) state-chan)
+              (catch Exception e
+                (re/log-exception state e)))
             (do
               ; stop streaming
               (log/info "closing  state-chan")

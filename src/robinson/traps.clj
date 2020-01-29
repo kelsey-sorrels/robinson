@@ -41,7 +41,17 @@
   (get-dexterity [this state]
     (get this :dexterity))
   (get-toughness [this state]
+    (get this :toughness))
+  (get-attack-speed [this state attack-type]
+    (get this :speed))
+  (get-attack-strength [this state attack-type]
+    (get this :strength))
+  (get-attack-dexterity [this state attack-type]
+    (get this :dexterity))
+  (get-attack-toughness [this state attack-type]
     (get this :toughness)))
+ 
+
 
 (defn conj-trap-in-current-place
   [state trap]

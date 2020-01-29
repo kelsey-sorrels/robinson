@@ -173,7 +173,7 @@
         npc         (npc-at-xy state x y)
         items       (get cell :items)
         harvest-msg (if (get cell :harvestable false)
-                      " You can harvest(<color fg=\"highlight\" bg=\"white\">x</color>) from this place."
+                      " (harvestable)"
                       "")]
 
     (cond

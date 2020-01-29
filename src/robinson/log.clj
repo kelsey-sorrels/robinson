@@ -14,6 +14,10 @@
   (let [current-time (rw/get-time state)]
     (filter #(<= current-time (get % :time)) (get-in state [:world :log]))))
 
+(defn last-log
+  [state]
+  (last (get-in state [:world :log])))
+
 
 
 

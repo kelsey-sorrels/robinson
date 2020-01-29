@@ -2,6 +2,7 @@
   (:require 
             [robinson.common :as rc]
             [robinson.random :as rr]
+            [robinson.error :as re]
             [robinson.world :as rw]
             [robinson.worldgen :as rwgen]
             [robinson.dialog :as rdiag]
@@ -88,7 +89,7 @@
    the state using the player's input and return the new state. Save the
    world too, in case the  game is interrupted. Then we can load it next
    time we start up."
-  [state keyin]
+  [state keyin keymods]
   {:pre  [(or (char? keyin)
               (keyword? keyin)
               (map? keyin))
@@ -100,13 +101,14 @@
       (rm/log-time "tick"
         (let [update-state-fn (resolve 'robinson.update/update-state)
               _ (log/info "update-state-fn" update-state-fn)
-              new-state       (rm/log-time "update-state" (update-state-fn state keyin))]
+              new-state       (rm/log-time "update-state" (update-state-fn state keyin keymods))]
           (when new-state
             (save-state new-state))
           ;(async/thread (spit "save/world.edn" (with-out-str (pprint (new-state :world)))))
           new-state))
          (catch Exception e
            (do
+             (re/log-exception state e)
              (log/error "Caught exception" e)
              (.printStackTrace e)
              (st/print-stack-trace e)

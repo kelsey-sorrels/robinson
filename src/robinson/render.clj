@@ -1,17 +1,19 @@
 ;; Functions for rendering state to screen
 (ns robinson.render
   (:require 
+            [robinson.error :as re]
+            [robinson.ui.updater :as ruu]
+            [robinson.ui.components.robinson :as ruic]
             [taoensso.timbre :as log]
             [zaffre.terminal :as zt]
             [zaffre.components :as zc]
             [zaffre.components.events :as zce]
             [zaffre.components.render :as zcr]
-            [robinson.ui.updater :as ruu]
-            [robinson.ui.components.robinson :as ruic]
             [clojure.stacktrace :as st]))
 
 (defn render [terminal state last-dom]
-  (binding [zc/*updater* ruu/updater]
+  (binding [zc/*updater* ruu/updater
+            zcr/*on-error* (partial re/log-exception state)]
     (try
       (let [ui (zc/csx [ruic/Robinson {:game-state state}])
             dom (zcr/render-into-container
@@ -24,6 +26,7 @@
         dom)
        (catch Throwable t
          (do
+           (re/log-exception state t)
            (log/error "Caught exception" t)
            (.printStackTrace t)
            (st/print-stack-trace t)

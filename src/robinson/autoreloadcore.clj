@@ -119,7 +119,10 @@
   []
   ; start with initial state from setup-fn
   (let [frames (atom 0)
-        show-frames (atom true)]
+        show-frames (atom true)
+        mods (atom {:shift false
+                    :alt false
+                    :control false})]
     (reset! render-fn (resolve 'robinson.render/render))
     (reset! setup-fn (resolve 'robinson.main/setup))
     (reset! tick-fn (resolve 'robinson.main/tick))
@@ -155,7 +158,7 @@
                                                 (async/>!! done-chan true)
                                                 (System/exit 0))
                                             (when (contains? #{:loading :connecting :sleep} (rw/current-state new-state))
-                                              (reset! state-ref (@tick-fn new-state :advance)))))
+                                              (reset! state-ref (@tick-fn new-state :advance @mods)))))
                                                
             (reset! state-ref state)
             (zt/do-frame terminal 0
@@ -177,7 +180,7 @@
                 (when keyin
                   (log/info "Core current-state" (rw/current-state state))
                   (log/info "Core got key" keyin)
-                  (let [new-state (@tick-fn (assoc @state-ref :screen terminal) keyin)
+                  (let [new-state (@tick-fn (assoc @state-ref :screen terminal) keyin @mods)
                         state-stream (revents/stream new-state)]
                     (reset! show-frames true)
                     (doseq [state (revents/chan-seq state-stream)]
@@ -190,6 +193,25 @@
                    (print-stack-trace ex)
                    (reset! show-frames false)
                    state))))
+			  (zevents/add-event-listener terminal :keydown
+				(fn [new-key]
+				  (println "keydown" new-key)
+				  (when (contains? #{:lshift :rshift} new-key)
+					(swap! mods merge {:shift true}))
+				  (when (contains? #{:lcontrol :rcontrol} new-key)
+					(swap! mods merge {:control true}))
+				  (when (contains? #{:lalt :ralt} new-key)
+					(swap! mods merge {:alt true}))))
+			  (zevents/add-event-listener terminal :keyup
+				(fn [new-key]
+				(println "keyup" new-key)
+				  (when (contains? #{:lshift :rshift} new-key)
+					(swap! mods merge {:shift false}))
+				  (when (contains? #{:lcontrol :rcontrol} new-key)
+					(swap! mods merge {:control false}))
+				  (when (contains? #{:lalt :ralt} new-key)
+					(swap! mods merge {:alt false}))))
+ 
               (zevents/add-event-listener terminal :close (fn [keyin] (log/info "received :close") (System/exit 0)))
               (zevents/add-event-listener terminal :font-change (fn [{:keys [character-width
                                                                              character-height]}]
@@ -203,7 +225,7 @@
             (zevents/add-event-listener terminal :drag-and-drop
               (fn [{:keys [names]}]
                 (log/info "received :drag-and-drop")
-                (let [new-state (@tick-fn (assoc @state-ref :screen terminal) {:drag-and-drop names})]
+                (let [new-state (@tick-fn (assoc @state-ref :screen terminal) {:drag-and-drop names} @mods)]
                     (reset! state-ref new-state))))
             (zevents/add-event-listener terminal :click
               (fn [{:keys [button col row group-id]}]

@@ -575,7 +575,7 @@
 
 (defn type->destroyable?
   [t]
-  (contains? #{:palisade} t))
+  (contains? #{:chest :palisade :tree :bamboo :palm-tree :fruit-tree :tall-grass} t))
 
 (defn type->intertidal?
   [t]

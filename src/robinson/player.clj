@@ -196,7 +196,7 @@
     ;inventory
     inventory
     ;dexterity
-    1
+    5
     ;speed
     1
     ;size

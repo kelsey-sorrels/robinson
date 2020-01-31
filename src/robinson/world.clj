@@ -314,7 +314,7 @@
     (assoc-cell-items state x y items)))
 
 (defn player-cellxy
-  "Retrieve the cell at which the player is located."
+  "Retrieve the cell at which the player is located along with the x and y coordinates."
   [state]
   (let [x (-> state :world :player :pos :x)
         y (-> state :world :player :pos :y)]
@@ -322,8 +322,8 @@
 
 (defn dec-cell-item-count
   "Decreases the count of an item in the player's cell."
-  [state id]
-  (let [[cell x y] (player-cellxy state)
+  [state x y id]
+  (let [cell       (get-cell state x y)
         item       (first (filter #(= id (get % :item/id)) (get cell :items)))
         item-count (get item :count 1)]
     (cond
@@ -563,7 +563,7 @@
 
 (defn type->flammable?
   [t]
-  (contains? #{:tree :palm-tree :fruit-tree :bamboo :tall-grass :short-grass :campfire} t))
+  (contains? #{:tree :palm-tree :fruit-tree :bamboo :tall-grass :short-grass :campfire :log} t))
 
 (defn type->on-fire?
   [t]
@@ -575,7 +575,13 @@
 
 (defn type->destroyable?
   [t]
-  (contains? #{:chest :palisade :tree :bamboo :palm-tree :fruit-tree :tall-grass} t))
+  (contains? #{:chest
+               :palisade
+               :tree
+               :bamboo
+               :palm-tree
+               :fruit-tree
+               :tall-grass} t))
 
 (defn type->intertidal?
   [t]

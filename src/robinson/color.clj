@@ -77,17 +77,21 @@
   (map-colors max rgba1 rgba2))
 
 (defn min-rgb [rgba]
-  (min (min (zcolor/red rgba) (zcolor/green rgba)) (zcolor/blue rgba)))
+  (min (min (long (zcolor/red rgba))
+            (long (zcolor/green rgba)))
+       (long (zcolor/blue rgba))))
 
 (defn max-rgb [rgba]
-  (max (max (zcolor/red rgba) (zcolor/green rgba)) (zcolor/blue rgba)))
+  (max (max (long (zcolor/red rgba))
+            (long (zcolor/green rgba)))
+        (long (zcolor/blue rgba))))
 
 (def min-mono (zcolor/const-color 6 6 11))
 (defn rgb->mono
   [rgba]
-  (let [hi-rgb (int (max-rgb rgba))
-        lo-rgb (int (min-rgb rgba))
-        avg (int (/  (+ hi-rgb lo-rgb) (int 2)))]
+  (let [hi-rgb (long (max-rgb rgba))
+        lo-rgb (long (min-rgb rgba))
+        avg (long (bit-shift-right  (+ hi-rgb lo-rgb) 1))]
    (max-color (zcolor/color avg avg avg)
               min-mono)))
 
@@ -96,7 +100,7 @@
     (color->rgb color 255))
   ([color alpha]
   {:post [(integer? %)]}
-  (zcolor/with-alpha (color color-to-rgb-map color) alpha)))
+  (zcolor/with-alpha (color color-to-rgb-map) alpha)))
 
 (def min-dark (zcolor/const-color 5 5 7))
 (defn darken-rgb

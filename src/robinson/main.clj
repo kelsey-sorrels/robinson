@@ -203,6 +203,7 @@
                             :layers [
                               :map
                               :features
+                              :ceiling
                               #_:fx
                               :shading
                               :ui]

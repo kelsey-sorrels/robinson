@@ -68,7 +68,8 @@
          target-y] (rw/player-adjacent-xy state direction)
         target-cell   (rw/get-cell state target-x target-y)]
     (cond
-      (rw/type->flammable? (get target-cell :type))
+      (or (rw/type->flammable? (get target-cell :type))
+        (some (fn [item] (rw/type->flammable? (get item :item/id))) (get target-cell :items)))
       (-> state
         (rc/append-log (format "You light the %s." (clojure.string/replace (name (get target-cell :type))
                                                                                             #"-"
@@ -288,6 +289,39 @@
 (defn apply-locator-beacon [state item] state)
 (defn apply-signal-mirror [state item] state)
 
+(defn apply-tarp [state item]
+  (let [xys (cons
+              (rp/player-xy state)
+              (rw/adjacent-xys-ext (rp/player-pos state)))]
+  (reduce (fn [state [[x y] item-type]]
+            (rw/conj-cell-items
+              state x y
+              (assoc 
+                (ig/id->item :tarp-hung)
+                :tarp-type item-type
+                :sibling-xys xys)))
+    (ri/dec-item-count state (get item :hotkey))
+    (map vector
+      xys
+      [:tarp-hung-mid
+       :tarp-hung
+       :tarp-hung
+       :tarp-hung-mid
+       :tarp-hung-mid
+       :tarp-hung-corner
+       :tarp-hung-corner
+       :tarp-hung-corner
+       :tarp-hung-corner]))))
+
+(defn apply-log [state item]
+  (let [[x y] (rp/player-xy state)]
+    (-> state
+      (ri/dec-item-count (get item :hotkey))
+      (rw/assoc-cell
+        x y
+        :type :palisade
+        :prev-type (-> state (rw/get-cell x y) :type)))))
+
 (defn apply-item [state translate-directions keyin]
   {:pre  [(not (nil? state))]
    :post [(not (nil? %))]}
@@ -353,6 +387,16 @@
       [ig/id-is-fruit?  \b         ] (-> state
                                        (apply-fruit-to-tongue item)
                                        (rw/assoc-current-state :normal))
+
+      [:tarp            :*         ] (-> state
+                                       (apply-tarp item)
+                                       (rw/assoc-current-state :normal)) 
+      [:bamboo          :*         ] (-> state
+                                       (apply-log item)
+                                       (rw/assoc-current-state :normal)) 
+      [:log             :*         ] (-> state
+                                       (apply-log item)
+                                       (rw/assoc-current-state :normal)) 
 
       [#{:red-frog-corpse
          :orange-frog-corpse

@@ -52,6 +52,7 @@
             [robinson.ui.components.crafting :as ruicrafting]
             [robinson.ui.components.recipes :as ruirecipes]
             [zaffre.terminal :as zat]
+            [zaffre.glterminal :as zgl]
             [zaffre.color :as zcolor]
             [zaffre.components :as zc]
             [zaffre.components.ui :as zcui]
@@ -261,6 +262,17 @@
                    (map-indexed (fn [y line]
                              (map-indexed (fn [x cell]
                                (ruc/render-cell cell x y t current-time font-type))
+                               line))
+                           cells)])))
+
+(zc/def-component Ceiling
+  [this]
+  (let [{:keys [cells current-time font-type]} (zc/props this)
+        t (mod (/ (System/currentTimeMillis) 4000) 10000)]
+    (zc/csx [:img {:width 80 :height 23}
+                   (map-indexed (fn [y line]
+                             (map-indexed (fn [x cell]
+                               (ruc/render-ceiling-cell cell x y t current-time font-type))
                                line))
                            cells)])))
 
@@ -1225,6 +1237,8 @@
             [FX {:vx vx
                  :vy vy
                  :fx (rfx/fx game-state)}]]]
+          [:layer {:id :ceiling} [
+              [Ceiling {:cells cells :current-time current-time :font-type font-type}]]]
           [:layer {:id :shading} [
             [:view {:style {:top 0 :left 0}} [
               [ShadeImg {:cells cells :current-time current-time

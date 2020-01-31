@@ -1,5 +1,6 @@
 ;; Utility functions and functions for manipulating state
 (ns robinson.random
+  (:require [clojure.string])
   (:refer-clojure :exclude [mask rand-nth]))
 
 
@@ -116,6 +117,10 @@
  ([lo hi] {:pre [(< lo hi)]} (+ lo (* (next-double! *rnd*) (- hi lo))))
  ([rnd lo hi] {:pre [(< lo hi)]} (+ lo (* (next-double! rnd) (- hi lo)))))
 
+(defn rand-bool
+ ([] (rand-bool 0.5))
+ ([threshold] (> (uniform-double) threshold)))
+
 (defn- swap [v i1 i2]
   (assoc v i2 (nth v i1) i1 (nth v i2)))
 
@@ -153,3 +158,17 @@
                                 [[] 0] m)
              n          (uniform-double rnd 0 a)]
          (second (last (remove (fn [[wn _]] (> wn n)) wm)))))))
+
+(defn die
+ [expr]
+ (let [[n-str d-str] (clojure.string/split expr #"d")]
+   (try
+     (let [n (Integer/parseInt n-str)
+           d (Integer/parseInt d-str)]
+       (->> n
+         (repeat 1)
+         (map (fn [_] (inc (rand-nth (range d)))))
+         (reduce +)))
+     (catch Throwable t
+       nil))))
+   

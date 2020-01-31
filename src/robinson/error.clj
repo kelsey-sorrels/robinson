@@ -16,15 +16,18 @@
 
 (defn write-exception
   [state e h]
-  (let [log-path (str "log/" h ".log")
-        save-path (str "log/" h ".edn")]
-    (with-open [o (io/output-stream save-path)]
-      (nippy/freeze-to-out! (DataOutputStream. o) (get state :world)))
-    (with-open [o (io/writer (io/output-stream log-path))]
-      (binding [*out* o]
-        (log/error (str e))
-        (st/print-stack-trace e)
-        (st/print-cause-trace e)))))
+  (try
+    (let [log-path (str "log/" h ".log")
+          save-path (str "log/" h ".edn")]
+      (with-open [o (io/output-stream save-path)]
+        (nippy/freeze-to-out! (DataOutputStream. o) (get state :world)))
+      (with-open [o (io/writer (io/output-stream log-path))]
+        (binding [*out* o]
+          (log/error (str e))
+          (st/print-stack-trace e)
+          (st/print-cause-trace e))))
+    (catch Throwable t
+      (log/error t))))
 
 (defn log-exception
   [state e]

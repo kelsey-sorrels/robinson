@@ -198,7 +198,7 @@
                             (dcp/get-attack-toughness defender state attack-type))
         target-value     (/ 1 (inc (rmath/exp (/ (- defender-stat attacker-stat) 4))))]
     (log/info "hit target value"  target-value)
-    (> (rr/uniform-double 0.2 1.0) target-value)))
+    (> (rr/uniform-double 0.2 1.7) target-value)))
 
 (defmethod is-hit? :ranged
   [state attacker defender attack-type]

@@ -8,6 +8,7 @@
             [robinson.noise :as rnoise]
             [robinson.traps :as rt]
             [zaffre.color :as zcolor]
+            [zaffre.glterminal :as zgl]
             [clojure.core.match :refer [match]]))
 
 (set! *warn-on-reflection* true)
@@ -52,11 +53,12 @@
   ([wx wy t string fg]
     (fill-put-string-color-style-defaults wx wy t string fg :black))
   ([wx wy t string fg bg]
-   (let [new-fg (rcolor/color->rgb (if (has-palette? fg)
-                                     (cell-type->color wx wy t fg)
-                                     fg))
+   (let [new-fg (cond-> (if (has-palette? fg)
+                         (cell-type->color wx wy t fg)
+                         fg)
+                  (not (integer? fg)) rcolor/color->rgb)
          bg     (rcolor/color->rgb bg)]
-     {:c string :fg new-fg :bg bg})))
+     (zgl/make-terminal-character string new-fg bg))))
 
 (def cell-type->cp437-character {:locker \▌
                                  :fire \≀
@@ -317,13 +319,42 @@
      :white))
 
 (def empty-cell
-  {:c \  :fg (zcolor/color 0 0 0 0) :bg (zcolor/color 0 0 0 0)})
+  (zgl/make-terminal-character
+    \ 
+    (zcolor/color 0 0 0 0)
+    (zcolor/color 0 0 0 0)))
+
+(defn ceiling-item?
+  [item]
+  (contains? #{:tarp-hung} (:item/id item)))
+
+(defn translate-item-id
+  [item]
+  (let [item-id (item :item/id)
+        translated-item-id (case item-id
+                             :tarp-hung
+                               (let [t (item :tarp-type)]
+                                 (if (= t :tarp-hung-corner)
+                                   :tarp-corner
+                                   t))
+                             item-id)]
+  (assoc item :item/id translated-item-id)))
+
+(defn translate-ceiling-item-id
+  [item]
+  (let [item-id (item :item/id)
+        translated-item-id (case item-id
+                             :tarp-hung
+                               (item :tarp-type)
+                             item-id)]
+    (assoc item :item/id translated-item-id)))
 
 (defn render-cell [cell wx wy t current-time font-type]
   {:post [(fn [c] (log/info c) (char? (:c c)))
           (integer? (:fg %))
           (integer? (:bg %))]}
   (let [cell-items (:items cell)
+        floor-items (remove ceiling-item? cell-items)
         in-view? (= current-time (or (:discovered cell) 0))
         has-been-discovered? (> (or (:discovered cell) 0) 1)
         harvestable? (contains? cell :harvestable)
@@ -333,11 +364,14 @@
                       (cond
                         (contains? #{:chest :artifact-chest} (:type cell))
                             :chest
-                          (some (fn [item] (= (:item/id item) :raft)) cell-items)
-                            :raft
+                        (some (fn [item] (= (:item/id item) :raft)) cell-items)
+                          :raft
+                        (and (some ceiling-item? cell-items)
+                             (not (some (fn [item] (= (:tarp-type item) :tarp-hung-corner)) cell-items)))
                           :default
-                            :item)
-                        :default)]
+                        :default
+                          :item)
+                      :default)]
     (if (or in-view? has-been-discovered?)
       (->
         (fill-put-string-color-style-defaults
@@ -346,7 +380,10 @@
           (case render-path
             :chest \■ 
             :raft \░
-            :item (rutil/item->char (first cell-items))
+            :item (-> cell-items
+                    first
+                    translate-item-id
+                    rutil/item->char)
             :default ((case font-type
                       :ttf   cell->unicode-character
                       :cp437 cell->cp437-character) cell))
@@ -356,7 +393,10 @@
             (case render-path
               :chest :dark-beige
               :raft :brown
-              :item (rutil/item->fg   (first cell-items))
+              :item (-> cell-items
+                    first
+                    translate-item-id
+                    rutil/item->fg)
               :default (cell->color cell current-time)))
             ; bg
             (case render-path
@@ -367,10 +407,54 @@
         (cond-> (not in-view?)
            (as-> c-fg-bg
              (let [{:keys [c fg bg]} c-fg-bg]
-               {:c c :fg (rcolor/rgb->mono fg) :bg (rcolor/rgb->mono bg)})))
+               (zgl/make-terminal-character
+                 c
+                 (rcolor/rgb->mono fg)
+                 (rcolor/rgb->mono bg)))))
         (cond-> (and in-view? harvestable?)
            (as-> c-fg-bg
              (let [{:keys [c fg bg]} c-fg-bg]
                {:c c :fg bg :bg fg}))))
       empty-cell)))
 
+(defn render-ceiling-cell [cell wx wy t current-time font-type]
+  {:post [(fn [c] (log/info c) (char? (:c c)))
+          (integer? (:fg %))
+          (integer? (:bg %))]}
+  (let [ceiling-items (filter ceiling-item? (:items cell))
+        in-view? (= current-time (or (:discovered cell) 0))
+        has-been-discovered? (> (or (:discovered cell) 0) 1)]
+    ;(log/info ceiling-item cell-items)
+    (if (and
+          (or in-view? has-been-discovered?)
+          (not-empty ceiling-items))
+          (->
+            (assoc
+              (fill-put-string-color-style-defaults
+                wx wy t
+                ; char
+                (-> ceiling-items
+                  first
+                  translate-ceiling-item-id
+                  rutil/item->char )
+                ; fg
+                (rcolor/color->rgb
+                  (rcolor/color-bloodied-char 
+                    (< current-time (or (:bloodied cell) 0))
+                    (-> ceiling-items
+                      first
+                      translate-ceiling-item-id
+                      (rutil/item->fg)))
+                  128)
+                  ; bg
+                  :black)
+               :blend-mode
+                 :screen)
+            (cond-> (not in-view?)
+               (as-> c-fg-bg
+                 (let [{:keys [c fg bg]} c-fg-bg]
+                   (zgl/make-terminal-character
+                     c
+                     (rcolor/rgb->mono fg)
+                     (rcolor/rgb->mono bg))))))
+          empty-cell)))

@@ -1,6 +1,7 @@
 ;; Functions for rendering state to screen
 (ns robinson.render
   (:require 
+            [robinson.random :as rr]
             [robinson.error :as re]
             [robinson.ui.updater :as ruu]
             [robinson.ui.components.robinson :as ruic]

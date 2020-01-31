@@ -31,6 +31,7 @@
             [robinson.crafting.boat-gen :as rc-boat-gen]
             [robinson.worldgen :as rworldgen]
             [robinson.lineofsight :as rlos]
+            [robinson.color :as rcolor]
             [robinson.renderutil :as rutil]
             [robinson.fx :as rfx]
             [robinson.feedback :as rf]
@@ -323,9 +324,44 @@
   [state x y]
   {:pre  [(not (nil? state))]
    :post [(not (nil? %))]}
-  (-> state
-    (rw/assoc-cell x y :type :dirt)
-    (rw/update-cell x y (fn [cell] (dissoc cell :harvestable)))))
+  (log/info (rw/get-cell-type state x y))
+  (let [destroy? (rr/rand-bool (if (-> state
+                                      rp/get-player 
+                                      rp/wielded-item
+                                      ig/is-sharp?)
+                                  0.2
+                                  0.4))
+        cell (rw/get-cell state x y)
+        cell-type (get cell :type)
+        cell-type-name (rdesc/describe-cell-type cell)
+        drop-item? (or (get cell :harvestable)
+                       (rr/rand-bool 0.50))
+        drop-item (ig/id->item
+                    (case cell-type
+                      :tree :log
+                      :bamboo :bamboo
+                      :palm-tree :log
+                      :tall-grass :plant-fiber
+                      nil))]
+    (if destroy?
+      (-> state
+        (rw/assoc-cell x y :type :dirt)
+        (rw/update-cell x y (fn [cell] (dissoc cell :harvestable)))
+        (rp/player-update-thirst + 3)
+        (rp/player-update-hunger + 3)
+        (rc/append-log (str "You destory the " cell-type-name))
+        (cond->
+          (and drop-item? drop-item)
+          (rw/conj-cell-items x y drop-item))
+        (cond->
+          (and drop-item? drop-item)
+          (rfx/conj-effect :blip
+            (rc/xy->pos x y)
+            (rutil/item->char drop-item)
+            (rcolor/color->rgb :black)
+            (rutil/item->char drop-item)
+            2)))
+      (rc/append-log state (str "You fail to destory the " cell-type-name)))))
 
 (defn pick-up-gold
   "Vacuums up gold from the floor into player's inventory."
@@ -479,7 +515,7 @@
       (and (not (rw/collide-in-water? state target-x target-y))
            (rw/player-mounted-on-raft? state))
         (as-> state state
-          (rw/dec-cell-item-count state :raft)
+          (rw/dec-cell-item-count state player-x player-y :raft)
           (rw/conj-cell-items state target-x target-y (ig/id->item :raft))
           (if (not (rv/xy-in-safe-zone? state target-x target-y))
             (move-outside-safe-zone state direction)
@@ -844,6 +880,23 @@
   [state]
   (close-door state :down))
 
+(defn fixup-tarp
+  [items]
+  (map (fn [item]
+    (log/info "fixing up" item)
+    (if (= (item :item/id) :tarp-hung)
+      ; merge so that id, name, name-plural are all copied
+      (merge item (ig/id->item :tarp))
+      item))
+    items))
+
+(defn remove-tarpmates
+  [state tarp-item]
+  (reduce (fn [state [x y]]
+    (rw/dec-cell-item-count state x y :tarp-hung))
+    state
+    (tarp-item :sibling-xys)))
+
 (defn pick-up
   "Move the items identified by `:selected-hotkeys`,
    remove them from the player's cell and put them in
@@ -880,6 +933,8 @@
                                ;; if just one item, then auto select it and not-selected is empty
                                []
                                (vec (divided-items :not-selected)))
+          selected-tarp      (first (filter (fn [item] (= (item :item/id) :tarp-hung))
+                                     selected-items))
           remaining-hotkeys  (vec (remove #(some (partial = %) (map :hotkey selected-items)) remaining-hotkeys))]
       (log/info "divided-items" divided-items)
       (log/info "selected-items" selected-items)
@@ -888,9 +943,11 @@
         (let [new-state (-> state
                           (rc/append-log "You pick up:")
                           ;; dup the item into inventory with hotkey
-                          (ri/add-to-inventory selected-items)
+                          (ri/add-to-inventory (fixup-tarp selected-items))
                           ;; remove the item from cell
                           (rw/assoc-cell-items x y not-selected-items)
+                          (cond-> selected-tarp
+                            (remove-tarpmates selected-tarp))
                           ;; reset selected-hotkeys
                           (assoc-in [:world :selected-hotkeys] #{}))]
           (if (= (count items) 1)
@@ -962,15 +1019,19 @@
                                                   (fn [_ hotkey] hotkey)
                                                   remaining-hotkeys
                                                   (map :hotkey items)))
+          selected-tarp      (first (filter  (fn [item] (= (item :item/id) :tarp-hung))
+                                     selected-items))
           remaining-hotkeys  (vec (remove #(some (partial = %) (map :hotkey selected-items)) remaining-hotkeys))]
       (log/debug "selected-items" selected-items)
       (if (seq selected-items)
         (let [new-state (-> state
                           (rc/append-log "You pick up:")
                           ;; dup the item into inventory with hotkey
-                          (ri/add-to-inventory selected-items)
+                          (ri/add-to-inventory (fixup-tarp selected-items))
                           ;; remove the item from cell
                           (rw/assoc-cell-items x y [])
+                          (cond-> selected-tarp
+                            (remove-tarpmates selected-tarp))
                           ;;;; hotkey is no longer available
                           (assoc-in [:world :remaining-hotkeys]
                               remaining-hotkeys))]
@@ -1111,6 +1172,18 @@
                 (-> state
                   (rw/assoc-current-state :apply-item-normal)
                   (rc/ui-hint "Pick a direction to use the saw."))
+              (= id :tarp)
+                (-> state
+                  (rai/apply-tarp item)
+                  (rw/assoc-current-state :apply-item-normal))
+              (= id :log)
+                (-> state
+                  (rai/apply-log item)
+                  (rw/assoc-current-state :apply-item-normal))
+              (= id :bamboo)
+                (-> state
+                  (rai/apply-log item)
+                  (rw/assoc-current-state :apply-item-normal))
               (= id :flint-axe)
                 (-> state
                   (rw/assoc-current-state :apply-item-normal)
@@ -1709,36 +1782,37 @@
   (log/info "poisoned fruit" (get-in state [:world :fruit :poisonous]))
   (log/info (rw/inventory-and-player-cell-hotkey->item state keyin))
   (if-let [item (rw/inventory-and-player-cell-hotkey->item state keyin)]
-    (-> state
-      (rc/append-log (format "The %s tastes %s." (lower-case (get item :name))
-                                              (rr/rand-nth ["great" "foul" "greasy" "delicious" "burnt" "sweet" "salty"])))
-      (rp/update-eaten item)
-      ;; reduce hunger
-      (update-in [:world :player :hunger]
-        (fn [hunger]
-          (let [new-hunger (- hunger (item :hunger))]
-            (max 0 new-hunger))))
-      (as-> state
-        (if (contains? (set (map :hotkey (ri/player-inventory state))) keyin)
-          ;; remove the item from inventory
-          (ri/dec-item-count state keyin)
-          ;; remove the item from the current-cell
-          (rw/dec-cell-item-count state (get item :item/id)))
-        (if (= (get item :item/id) :coconut-empty)
-          (ri/add-to-inventory state [(ig/gen-item :coconut-shell)])
-          state))
-      ;; if the item was a poisonous fruit, set a poisoned timebomb
-      (as-> state
-        (if (and (ig/is-fruit? item)
-                 (contains? (set (get-in state [:world :fruit :poisonous])) (get item :item/id)))
-          (do
-            (log/info "Ate poisoned fruit." item)
-            (assoc-in state
-                      [:world :player :poisoned-time]
-                      (apply min (remove nil?
-                                         [(get-in state [:world :player :poisoned-time])
-                                          (+ (rw/get-time state) (rr/uniform-int 100 200))]))))
-          state)))
+    (let [[x y] (rp/player-xy state)]
+      (-> state
+        (rc/append-log (format "The %s tastes %s." (lower-case (get item :name))
+                                                (rr/rand-nth ["great" "foul" "greasy" "delicious" "burnt" "sweet" "salty"])))
+        (rp/update-eaten item)
+        ;; reduce hunger
+        (update-in [:world :player :hunger]
+          (fn [hunger]
+            (let [new-hunger (- hunger (item :hunger))]
+              (max 0 new-hunger))))
+        (as-> state
+          (if (contains? (set (map :hotkey (ri/player-inventory state))) keyin)
+            ;; remove the item from inventory
+            (ri/dec-item-count state keyin)
+            ;; remove the item from the current-cell
+            (rw/dec-cell-item-count state (get item :item/id)))
+          (if (= (get item :item/id) :coconut-empty)
+            (ri/add-to-inventory state [(ig/gen-item :coconut-shell)])
+            state))
+        ;; if the item was a poisonous fruit, set a poisoned timebomb
+        (as-> state
+          (if (and (ig/is-fruit? item)
+                   (contains? (set (get-in state [:world :fruit :poisonous])) (get item :item/id)))
+            (do
+              (log/info "Ate poisoned fruit." item)
+              (assoc-in state
+                        [:world :player :poisoned-time]
+                        (apply min (remove nil?
+                                           [(get-in state [:world :player :poisoned-time])
+                                            (+ (rw/get-time state) (rr/uniform-int 100 200))]))))
+            state))))
     state))
 
 (defn init-cursor

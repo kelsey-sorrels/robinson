@@ -19,12 +19,15 @@
           ; no more actors 
           ; tick mobs/bookkeeping
           (if (get state :advance-time)
-            (try
+            (do
               (log/info "advancing time")
               ; advance time, and stream the results into state-chan
-              (async/pipe (stream (rupdate/update-advance-time state)) state-chan)
-              (catch Exception e
-                (re/log-exception state e)))
+              (async/pipe
+                 (stream
+                   (try
+                     (rupdate/update-advance-time state)
+                     (catch Exception e
+                       (re/log-exception state e)))) state-chan))
             (do
               ; stop streaming
               (log/info "closing  state-chan")

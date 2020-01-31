@@ -469,29 +469,53 @@
   (update-in state [:world :player :level] inc))
 
 (defn player-update-hp
-  [state f]
+  [state f & more]
   {:post [(<= 0 (player-hp %) (player-max-hp %))]}
-  (update-in state [:world :player :hp] f))
+  (update-in state [:world :player :hp]
+    (fn [hp]
+      (rc/bound 
+        0
+        (apply f hp more)
+        (player-max-hp state)))))
 
 (defn player-update-wtl
-  [state f]
+  [state f & more]
   {:post [(<= (player-wtl %) (player-max-wtl %))]}
-  (update-in state [:world :player :will-to-live] f))
+  (update-in state [:world :player :will-to-live]
+    (fn [wtl]
+      (rc/bound 
+        0
+        (apply f wtl more)
+        (player-max-wtl state)))))
 
 (defn player-update-hunger
-  [state f]
+  [state f & more]
   {:post [(<= 0 (player-hunger %) (player-max-hunger %))]}
-  (update-in state [:world :player :hunger] f))
+  (update-in state [:world :player :hunger]
+    (fn [hunger]
+      (rc/bound
+        0
+        (apply f hunger more)
+        (player-max-hunger state)))))
 
 (defn player-update-thirst
-  [state f]
+  [state f & more]
   {:post [(<= 0 (player-thirst %) (player-max-thirst %))]}
-  (update-in state [:world :player :thirst] f))
+  (update-in state [:world :player :thirst]
+    (fn [thirst]
+      (rc/bound
+        0
+        (apply f thirst more)
+        (player-max-thirst state)))))
 
 (defn player-update-xp
-  [state f]
+  [state f & more]
   {:post [(<= 0 (player-xp %))]}
-  (update-in state [:world :player :xp] f))
+  (update-in state [:world :player :xp]
+    (fn [xp]
+      (max
+        0
+        (apply f xp more)))))
 
 (defn update-npc-attacked
   [state npc attack]

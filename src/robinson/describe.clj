@@ -38,6 +38,7 @@
            :mountain               "a mountain"
            :shallow-water          "shallow water"
            :swamp                  "swamp"
+           :fire                   "a fire"
            :lava                   "a lava flow"
            :freshwater-hole        (if (> (get cell :water 0) 10)
                                      "a hole full of water"

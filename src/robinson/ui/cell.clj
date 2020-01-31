@@ -61,7 +61,7 @@
      (zgl/make-terminal-character string new-fg bg))))
 
 (def cell-type->cp437-character {:locker \▌
-                                 :fire \≀
+                                 :fire \▲
                                  :hammock-h \-
                                  :shallow-water \~
                                  :horizontal-wall-alt \°
@@ -184,6 +184,8 @@
      :dune        \u1d16 ;; ᴖ
      :rocky-shore \u1d16 ;; ᴖ
      :bamboo      \u01c1 ;; ∥ 
+     :fire        \u2240 ;; ≀
+
      (cell->cp437-character cell)))
 
 

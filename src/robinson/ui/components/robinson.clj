@@ -235,8 +235,8 @@
   [state items]
   (let [identified (get-in state [:world :fruit :identified])
         poisonous  (get-in state [:world :fruit :poisonous])]
-    (map (fn [item] (if (contains? identified (get item :id))
-                      (if (contains? poisonous (get item :id))
+    (map (fn [item] (if (contains? identified (get item :item/id))
+                      (if (contains? poisonous (get item :item/id))
                         (assoc item :name (format "%s (poisonous)" (get item :name))
                                     :name-plural (format "%s (poisonous)" (get item :name-plural)))
                         (assoc item :name (format "%s (safe)" (get item :name))
@@ -261,9 +261,7 @@
     (zc/csx [:img {:width 80 :height 23}
                    (map-indexed (fn [y line]
                              (map-indexed (fn [x cell]
-                               (if-let [cell (ruc/render-cell cell x y t current-time font-type)]
-                                 cell
-                                 (assert false (str "Nil cell" cell x y t))))
+                               (ruc/render-cell cell x y t current-time font-type))
                                line))
                            cells)])))
 

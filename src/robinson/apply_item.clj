@@ -8,6 +8,9 @@
             [robinson.inventory :as ri]
             [robinson.itemgen  :as ig]
             [robinson.monstergen :as mg]
+            [robinson.crafting :as rcrafting]
+            [robinson.describe :as rdesc]
+            [robinson.popover :as rpop]
             robinson.macros
             [robinson.macros :as rm]
             [taoensso.timbre :as log]))
@@ -31,9 +34,23 @@
     (rw/assoc-cell state x y :type
       (rr/rand-nth [:freshwater-hole :saltwater-hole :dry-hole]))))
 
+(defn apply-fishing-line-and-hook
+  [state item]
+  (if (rcrafting/stick-like item)
+    (let [fishing-pole-item (ig/id->item :fishing-pole)]
+      (-> state
+        (ri/dec-item-count (get item :hotkey))
+        (ri/dec-item-count (-> state get-apply-item :hotkey))
+        (ri/add-to-inventory [fishing-pole-item])
+        (rc/append-log (format "Created %s." (name (get item :item/id))))))
+    (rc/append-log state (format "You're not able to combine these items." (name (get item :item/id))))))
+
+  
+
 (defn apply-fishing-pole
   "Start fishing for something."
   [state direction]
+  (log/info "apply fishing pole" direction)
   (let [[target-x
          target-y] (rw/player-adjacent-xy state direction)
         target-cell   (rw/get-cell state target-x target-y)
@@ -44,22 +61,22 @@
                         :down  :fishing-down)]
     (if (rw/type->water? (get target-cell :type))
       (-> state
-        (rc/append-log "You start fishing.")
+        (rc/append-log "You start fishing. Press . to wait for a fish.")
         (rw/assoc-current-state new-state))
-      (rc/append-log state "You can't fish here."))))
+      (-> state
+        (rc/ui-hint (str "You can't fish in " (rdesc/describe-cell-type target-cell) ". Try water."))))))
 
 (defn do-fishing
   "Fish somewhere."
   [state]
-  (let [p (rr/uniform-int 0 50)]
-    ;; chance of catching a fish
-    (cond
-      (= p 0)
-      ;; catch a fish
-      (ri/add-to-inventory state [(ig/gen-corpse (mg/gen-random-monster 1 :water))])
-      :else
-      state)))
-
+  ;; chance of catching a fish
+  (if (rr/rand-bool 0.95)
+    ;; catch a fish
+    (let [corpse (ig/gen-corpse (mg/gen-random-monster 1 :water))]
+      (-> state
+        (ri/add-to-inventory [corpse])
+        (rpop/show-popover (str "You catch a " (-> corpse :alive-name name) "!"))))
+    state))
 
 (defn start-fire
   "Light something on fire, creating chaos."
@@ -134,6 +151,7 @@
                                      (assoc :items (concat (get cell :items)
                                                          (repeat (rr/uniform-int 1 2) (ig/gen-item :log))))))))
       state)))
+
 (defn apply-plant-guide
   "Apply a plant-guide to the inventory item."
   [state item]
@@ -330,6 +348,11 @@
     (log/info "apply-item" [item keyin])
     (log/info "is-direction?" ((comp rc/is-direction? translate-directions) keyin))
     (rm/first-vec-match [(get item :item/id) keyin]
+      [:fishing-line-and-hook     :*         ] (if-let [item (ri/inventory-hotkey->item state keyin)]
+                                       (-> state
+                                         (apply-fishing-line-and-hook item)
+                                         (rw/assoc-current-state  :normal))
+                                       state)
       [:fishing-pole    trans->dir?] (apply-fishing-pole state (translate-directions keyin))
       [:match           trans->dir?] (-> state
                                        (apply-match keyin (translate-directions keyin))
@@ -397,7 +420,6 @@
       [:log             :*         ] (-> state
                                        (apply-log item)
                                        (rw/assoc-current-state :normal)) 
-
       [#{:red-frog-corpse
          :orange-frog-corpse
          :yellow-frog-corpse

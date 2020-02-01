@@ -16,6 +16,7 @@
    :weight      (:size npc)
    :name        (format "%s corpse" (name (get npc :race)))
    :name-plural (format "%s corpses" (name (get npc :race)))
+   :alive-name (get npc :race)
    ;; food=log((size+1)/10000)+15
    :hunger      (+ (Math/log10 (/ (inc (get npc :size)) 1000)) 15)})
 

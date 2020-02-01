@@ -529,24 +529,30 @@
 
 (zc/def-component FishingPole
   [this]
-  (let [{:keys [game-state vx vy]} (zc/props this)]
+  (let [{:keys [game-state vx vy]} (zc/props this)
+        fg (rcolor/color->rgb :brown)]
+    ;(log/info "Fishing pole" (current-state game-state))
     ;; if character is fishing, draw pole
     (condp = (current-state game-state)
       :fishing-left
-        (zc/csx [CharacterFx {:fx {:ch "\\" :pos (rc/sub-pos (rp/player-pos game-state)
-                                                             (rc/direction->offset-pos :left))}
+        (zc/csx [CharacterFx {:fx {:ch "\\" :pos (rc/add-pos (rp/player-pos game-state)
+                                                             (rc/direction->offset-pos :left))
+                                   :color fg}
                                :vx vx :vy vy}])
       :fishing-right
-        (zc/csx [CharacterFx {:fx {:ch "/" :pos (rc/sub-pos (rp/player-pos game-state)
-                                                             (rc/direction->offset-pos :right))}
+        (zc/csx [CharacterFx {:fx {:ch "/" :pos (rc/add-pos (rp/player-pos game-state)
+                                                             (rc/direction->offset-pos :right))
+                                   :color fg}
                                :vx vx :vy vy}])
       :fishing-up
-        (zc/csx [CharacterFx {:fx {:ch "/" :pos (rc/sub-pos (rp/player-pos game-state)
-                                                             (rc/direction->offset-pos :up))}
+        (zc/csx [CharacterFx {:fx {:ch "|" :pos (rc/add-pos (rp/player-pos game-state)
+                                                             (rc/direction->offset-pos :up))
+                                   :color fg}
                                :vx vx :vy vy}])
       :fishing-down
-        (zc/csx [CharacterFx {:fx {:ch "\\" :pos (rc/sub-pos (rp/player-pos game-state)
-                                                             (rc/direction->offset-pos :down))}
+        (zc/csx [CharacterFx {:fx {:ch "\\" :pos (rc/add-pos (rp/player-pos game-state)
+                                                             (rc/direction->offset-pos :down))
+                                   :color fg}
                                :vx vx :vy vy}])
       (zc/csx [:view {}]))))
 
@@ -897,9 +903,9 @@
 (zc/def-component ContinuePopover
   [this]
   (let [{:keys [message]} (zc/props this)]
-    (zc/csx [zcui/Popup {} [
+    (zc/csx [zcui/Popup {:style {:top -5}} [
               [:text {} [message]]
-              [:text {} [
+              [:view {:style {:flex-direction :row}} [
                 [:text {} ["Press "]]
                 [ruicommon/Highlight {} ["space "]]
                 [:text {} ["to continue."]]]]]])))
@@ -1233,7 +1239,9 @@
                       :vx vx
                       :vy vy
                       :current-time current-time}]]]
-            [FishingPole {:game-state game-state}]
+            [FishingPole {:game-state game-state
+                          :vx vx
+                          :vy vy}]
             [FX {:vx vx
                  :vy vy
                  :fx (rfx/fx game-state)}]]]

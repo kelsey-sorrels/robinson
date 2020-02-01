@@ -67,6 +67,7 @@
 
 (defn translate-directions
   [keyin]
+  (log/info "translate-directions" keyin)
   (case keyin
     (\h \H :numpad4) :left
     (\j \J :numpad2) :down
@@ -1135,6 +1136,10 @@
                 (apply-bandage state keyin)
               (= id :lantern)
                 (apply-lantern state)
+              (= id :fishing-line-and-hook)
+                (-> state
+                  (rw/assoc-current-state :apply-item-inventory)
+                  (rc/ui-hint "Pick an item to combine with."))
               (= id :fishing-pole)
                 (-> state
                   (rw/assoc-current-state :apply-item-normal)

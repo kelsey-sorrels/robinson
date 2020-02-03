@@ -25,10 +25,10 @@
    :bandage         [\&]
    :saw             [\,]
    :tarp            [\,]
-   :tarp-corner     [\| :brown] 
-   :tarp-hung       [\▓ :blue]
-   :tarp-hung-mid   [\▓ :brilliant-blue]
-   :tarp-hung-corner [\▓ :blue]
+   :tarp-corner     [\| :brown :transparent :screen] 
+   :tarp-hung       [\▓ :blue :transparent :screen]
+   :tarp-hung-mid   [\▓ :brilliant-blue :transparent :screen]
+   :tarp-hung-corner [\▓ :blue :transparent]
    :spellbook       [\+]
    :scroll          [\?]
    :rock            [\*]
@@ -50,7 +50,7 @@
    :grass           [\/ :green  :black]
    :rope            [\, :green  :black]
    :log             [\/ :brown  :black #{:bold}]
-   :bedroll         [\_ :white :black]
+   :bedroll         [\▓ :dark-green :dark-beige]
    :$               [\$  :yellow :black #{:bold}]
    :amulet          [\" :blue   :black #{:bold}]
    :food            [\%]
@@ -100,3 +100,17 @@
                                        (item :item/id)))]
     (or (second item-char-fg-bg)
         :white)))
+
+(defn item->bg
+  [item]
+  (let [[_ _ bg _] (get items (or (item :type)
+                                       (item :item/id)))]
+    (or bg
+        :transparent)))
+
+(defn item->blend-mode
+  [item]
+  (let [[_ _ _ blend-mode](get items (or (item :type)
+                                         (item :item/id)))]
+    (or blend-mode
+        :normal)))

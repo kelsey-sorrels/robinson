@@ -559,7 +559,7 @@
 
 (defn type->water?
   [t]
-  (contains? #{:water :surf} t))
+  (contains? #{:water :surf :swamp} t))
 
 (defn type->flammable?
   [t]

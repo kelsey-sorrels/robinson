@@ -787,3 +787,7 @@
         (rc/append-log "You feel like you can take on anything"))
       (rc/append-log state "You don't have the mental will to endure pain."))))
 
+(defn assoc-bloodied
+  [state bloodied]
+  (assoc-in state [:world :player :bloodied] bloodied))
+

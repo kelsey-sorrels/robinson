@@ -332,6 +332,7 @@
        {:item/id  :tarp                    :name  "tarp"                       :name-plural "tarps"}
        {:item/id  :tarp-hung               :name  "tarp (hung)"                :name-plural "tarps (hung)"}
        {:item/id  :saw                     :name  "saw"                        :name-plural "saws"
+        :attack :knife :roundness 0.02
         :utility 100 :properties #{:edged :handled}}
        {:item/id  :glass-bottle            :name  "glass bottle"               :name-plural "glass-bottles"}
        {:item/id  :paper                   :name  "paper"                      :name-plural "pages of paper"}

@@ -396,7 +396,8 @@
 
 (zc/def-component CharactersInViewport
   [this]
-  (let [{:keys [npcs player-pos player-bloodied player-on-raft? vx vy current-time font-type]} (zc/props this)]
+  (let [{:keys [npcs player-pos player-bloodied player-on-raft? player-on-bedroll?
+                vx vy current-time font-type]} (zc/props this)]
     (zc/csx [:view {:style {:position :absolute
                             :top 0
                             :left 0}}
@@ -420,9 +421,12 @@
                            [(zc/csx [:text {:style {:position :absolute
                                                     :top (- (:y player-pos) vy)
                                                     :left (- (:x player-pos) vx)
-                                                    :mix-blend-mode (if player-on-raft? :lighten :normal)
+                                                    :mix-blend-mode (if (or player-on-raft?
+                                                                            player-on-bedroll?)
+                                                                      :lighten :normal)
                                                     :color (rcolor/color->rgb (if player-bloodied :dark-red :white))
-                                                    :background-color (rcolor/color->rgb (if player-on-raft?
+                                                    :background-color (rcolor/color->rgb (if (or player-on-raft?
+                                                                                                 player-on-bedroll?)
                                                                                             :transparent
                                                                                             :black))}}
                                            ["@"]])]
@@ -902,9 +906,11 @@
 
 (zc/def-component ContinuePopover
   [this]
-  (let [{:keys [message]} (zc/props this)]
+  (let [{:keys [message children]} (zc/props this)]
     (zc/csx [zcui/Popup {:style {:top -5}} [
-              [:text {} [message]]
+              (if message
+                (zc/csx [:text {} [message]])
+                (zc/csx [:view {} children]))
               [:view {:style {:flex-direction :row}} [
                 [:text {} ["Press "]]
                 [ruicommon/Highlight {} ["space "]]
@@ -927,6 +933,21 @@
   (let [{:keys [game-state]} (zc/props this)
         rescue-mode (rendgame/rescue-mode game-state)]
     (zc/csx [ContinuePopover {:message (format "A passing %s spots you." rescue-mode)}])))
+
+(zc/def-component DreamText
+  [this]
+  (let [{:keys [game-state]} (zc/props this)
+        {:keys [hours
+                description
+                player-on-bedroll?
+                player-under-tarp?]} (get-in game-state [:world :dream])]
+    (zc/csx [ContinuePopover {} [
+      [:text {} [(format "You sleep for %d hours." hours)]]
+      [:text {} [description]]
+      (when player-on-bedroll?
+        (zc/csx [:text {} ["You slept on a bedroll and feel great."]]))
+      (when player-under-tarp?
+        (zc/csx [:text {} ["You slept in a shelter and feel great."]]))]])))
 
 (zc/def-component DeadText
   [this]
@@ -1069,6 +1090,7 @@
       :start-text           (zc/csx [StartText {:game-state game-state}])
       :popover              (zc/csx [ContinuePopover {:message (rpop/get-popover-message game-state)}])
       :quaff-popover        (zc/csx [YesNoPopover {:message (rpop/get-popover-message game-state)}])
+      :dream                (zc/csx [DreamText {:game-state game-state}])
       :dead                 (zc/csx [DeadText {:game-state game-state}])
       :rescued              (zc/csx [RescuedPopover {:game-state game-state}])
       :quit?                (zc/csx [QuitPrompt {:game-state game-state}])
@@ -1228,6 +1250,7 @@
                                      :player-pos (rp/player-pos game-state)
                                      :player-bloodied (get player :bloodied)
                                      :player-on-raft? (contains? (set (map :item/id (get (first (player-cellxy game-state)) :items))) :raft)
+                                     :player-on-bedroll? (contains? (set (map :item/id (get (first (player-cellxy game-state)) :items))) :bedroll)
                                      :vx vx
                                      :vy vy
                                      :current-time current-time

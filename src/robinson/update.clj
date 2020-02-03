@@ -326,12 +326,17 @@
   {:pre  [(not (nil? state))]
    :post [(not (nil? %))]}
   (log/info (rw/get-cell-type state x y))
-  (let [destroy? (rr/rand-bool (if (-> state
-                                      rp/get-player 
-                                      rp/wielded-item
-                                      ig/is-sharp?)
-                                  0.2
-                                  0.4))
+  (let [wielded-item (-> state
+                       rp/get-player 
+                       rp/wielded-item)
+        is-saw? (= (wielded-item :item/id) :saw)
+        destroy? (rr/rand-bool (cond
+                                 is-saw?
+                                    0.01
+                                 (ig/is-sharp? rp/wielded-item)
+                                    0.2
+                                 :else
+                                    0.4))
         cell (rw/get-cell state x y)
         cell-type (get cell :type)
         cell-type-name (rdesc/describe-cell-type cell)
@@ -348,8 +353,8 @@
       (-> state
         (rw/assoc-cell x y :type :dirt)
         (rw/update-cell x y (fn [cell] (dissoc cell :harvestable)))
-        (rp/player-update-thirst + 3)
-        (rp/player-update-hunger + 3)
+        (rp/player-update-thirst + (if is-saw? 1 3))
+        (rp/player-update-hunger + (if is-saw? 1 3))
         (rc/append-log (str "You destory the " cell-type-name))
         (cond->
           (and drop-item? drop-item)
@@ -489,6 +494,10 @@
                 (rw/assoc-current-state state :normal))
               (assoc-in state [:world :player :pos :x] target-x)
               (assoc-in state [:world :player :pos :y] target-y)
+              ; clear bloody status when moving into water
+              (if (rw/type->water? (get target-cell :type))
+                (rp/assoc-bloodied state false)
+                state)
               (if (rp/player-status-contains? state :trap-sense)
                 (sense-traps state 0.5)
                 (sense-traps state 0.1))
@@ -1189,6 +1198,10 @@
                 (-> state
                   (rai/apply-log item)
                   (rw/assoc-current-state :apply-item-normal))
+              (= id :bedroll)
+                (-> state
+                  (rai/apply-bedroll item)
+                  (rw/assoc-current-state :normal))
               (= id :flint-axe)
                 (-> state
                   (rw/assoc-current-state :apply-item-normal)
@@ -1732,6 +1745,8 @@
 
 (defn quaff-inventory
   [state keyin]
+  (log/info "remaining-hotkeys" (get-in state [:world :remaining-hotkeys]))
+
   (if-let [item (ri/inventory-hotkey->item state keyin)]
     (-> state
       (rc/append-log (format "The %s tastes %s." (lower-case (get item :name))
@@ -1743,7 +1758,7 @@
           (let [new-thirst (- thirst (item :thirst))]
             (max 0 new-thirst))))
       ;; remove the item from inventory
-      (ri/remove-from-inventory (get item :item/id))
+      (ri/remove-from-inventory keyin)
       (as-> state
         (case (get item :item/id)
           :coconut (ri/add-to-inventory state [(ig/gen-item :coconut-empty)])
@@ -1772,12 +1787,36 @@
                               (assoc-in player [:hp] (+ (get player :hp) 0.05))
                               player)))))
 
+(defn start-sleep
+  [state]
+  (let [d (rlos/sight-distance state)]
+    (if (> d 4)
+      (rc/ui-hint state "You can't sleep yet. Try again when it is dark.")
+      (-> state
+        (assoc-in [:world :sleep-start-time] (rw/get-time state))
+        (rw/assoc-current-state :sleep)))))
+
 (defn do-sleep
   "Sleep."
   [state keyin]
-  (let [d (rlos/sight-distance state)]
+  (let [d (rlos/sight-distance state)
+        item-ids (->> state rw/player-cellxy first :items (map :item/id) set)
+        player-under-tarp? (contains? item-ids :tarp-hung)
+        player-on-bedroll? (contains? item-ids :bedroll)]
     (if (> d 4)
-      (rw/assoc-current-state state :normal)
+      (-> state
+        (cond->
+          (or player-on-bedroll?
+              player-under-tarp?)
+          (rp/player-update-wtl
+            (fn [will-to-live] (rp/player-max-wtl state))))
+        (update-in [:world :dream]
+          assoc
+          :hours 8
+          :player-on-bedroll? player-on-bedroll?
+          :player-under-tarp? player-under-tarp?
+          :description "you dreamt")
+        (rw/assoc-current-state :dream))
       (do-rest state))))
 
 (defn eat
@@ -3648,7 +3687,7 @@
                            \x          [smart-harvest          rw/current-state false]
                            \a          [identity               :apply           false]
                            \;          [init-cursor            :describe        false]
-                           \S          [identity               :sleep           false]
+                           \S          [start-sleep            rw/current-state false]
                            \s          [(comp find-traps
                                               rdesc/search)    :normal          true]
                            ;\S          [rdesc/extended-search  :normal          true]
@@ -3863,6 +3902,7 @@
                           {\.          [rai/do-fishing         rw/current-state true]
                            :else       [pass-state             :normal          false]}
                :sleep     {:else       [do-sleep               rw/current-state true]}
+               :dream     {:space      [identity               :normal false]}
                :gain-level
                           {:escape     [identity               :normal          false]
                            :else       [choose-ability         rw/current-state false]}

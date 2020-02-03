@@ -340,6 +340,13 @@
         :type :palisade
         :prev-type (-> state (rw/get-cell x y) :type)))))
 
+(defn apply-bedroll
+  [state item]
+  (let [[x y] (rp/player-xy state)]
+    (-> state
+      (ri/dec-item-count (get item :hotkey))
+      (rw/conj-cell-items x y item))))
+
 (defn apply-item [state translate-directions keyin]
   {:pre  [(not (nil? state))]
    :post [(not (nil? %))]}
@@ -419,6 +426,9 @@
                                        (rw/assoc-current-state :normal)) 
       [:log             :*         ] (-> state
                                        (apply-log item)
+                                       (rw/assoc-current-state :normal)) 
+      [:bedroll         :*         ] (-> state
+                                       (apply-bedroll item)
                                        (rw/assoc-current-state :normal)) 
       [#{:red-frog-corpse
          :orange-frog-corpse

@@ -404,7 +404,10 @@
             (case render-path
               :chest :black
               :raft :dark-brown
-              :item :black
+              :item (-> cell-items
+                      first
+                      translate-item-id
+                      rutil/item->bg)
               :default :black))
         (cond-> (not in-view?)
            (as-> c-fg-bg
@@ -449,9 +452,15 @@
                       (rutil/item->fg)))
                   128)
                   ; bg
-                  :black)
+                  (-> ceiling-items
+                    first
+                    translate-ceiling-item-id
+                    (rutil/item->fg)))
                :blend-mode
-                 :screen)
+                 (-> ceiling-items
+                    first
+                    translate-ceiling-item-id
+                    (rutil/item->blend-mode)))
             (cond-> (not in-view?)
                (as-> c-fg-bg
                  (let [{:keys [c fg bg]} c-fg-bg]

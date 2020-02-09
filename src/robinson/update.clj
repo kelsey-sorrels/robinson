@@ -1206,11 +1206,11 @@
               (= id :log)
                 (-> state
                   (rai/apply-log item)
-                  (rw/assoc-current-state :apply-item-normal))
+                  (rw/assoc-current-state :normal))
               (= id :bamboo)
                 (-> state
                   (rai/apply-log item)
-                  (rw/assoc-current-state :apply-item-normal))
+                  (rw/assoc-current-state :normal))
               (= id :bedroll)
                 (-> state
                   (rai/apply-bedroll item)

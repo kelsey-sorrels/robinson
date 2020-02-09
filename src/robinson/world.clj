@@ -807,7 +807,7 @@
     (letfn [(gen-vxys [] (set
                            (for [[vy line] (map-indexed vector cells)
                                  [vx cell] (map-indexed vector line)
-                                 :when (= (cell :type) :campfire)]
+                                 :when (= (get cell :type) :campfire)]
                              [vx vy])))]
       (if-let [[cached-time vxys] @campfire-cache]
         (if (= cached-time t)

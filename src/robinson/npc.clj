@@ -321,38 +321,42 @@
                                                        (rc/append-log "The hermet crab pokes out of its shell."))
                                                     state))
 ;; Rat
-(defmethod mg/do-on-death :rat [npc state] (cond
-                                             (zero? (rr/uniform-int 8))
-                                               ;; spawn an additional rat
-                                               (-> state
-                                                 (add-npc (mg/gen-monster :rat)
-                                                          (->> (rw/adjacent-xys-ext (get npc :pos))
-                                                               (remove (fn [[x y]] (rw/collide? state x y {:include-npcs? true
-                                                                                                           :collide-player? true
-                                                                                                           :collide-water? false})))
-                                                               rand-nth
-                                                               (apply rc/xy->pos)))
-                                                 (rc/append-log "The rat swarm intensified."))
-                                             (zero? (rr/uniform-int 10))
-                                               ;; spawn an additional 2 rats
-                                               (-> state
-                                                 (add-npc (mg/gen-monster :rat)
-                                                          (->> (rw/adjacent-xys-ext (get npc :pos))
-                                                               (remove (fn [[x y]] (rw/collide? state x y {:include-npcs? true
-                                                                                                           :collide-player? true
-                                                                                                           :collide-water? false})))
-                                                               rand-nth
-                                                               (apply rc/xy->pos)))
-                                                 (add-npc (mg/gen-monster :rat)
-                                                          (->> (rw/adjacent-xys-ext (get npc :pos))
-                                                               (remove (fn [[x y]] (rw/collide? state x y {:include-npcs? true
-                                                                                                           :collide-player? true
-                                                                                                           :collide-water? false})))
-                                                               rand-nth
-                                                               (apply rc/xy->pos)))
-                                                 (rc/append-log "The rat swarm intensified."))
-                                             :else
-                                                state))
+(defmethod mg/do-on-death :rat [npc state]
+  (cond
+    (zero? (rr/uniform-int 8))
+      ;; spawn an additional rat
+      (let [candidate-xys (->> (rw/adjacent-xys-ext (get npc :pos))
+                               (remove (fn [[x y]] (rw/collide? state x y {:include-npcs? true
+                                                                           :collide-player? true
+                                                                           :collide-water? false}))))]
+        (if (not-empty candidate-xys)
+          (-> state
+            (add-npc (mg/gen-monster :rat)
+                     (->> candidate-xys
+                          rand-nth
+                          (apply rc/xy->pos)))
+            (rc/append-log "The rat swarm intensified."))
+          state))
+    (zero? (rr/uniform-int 10))
+      ;; spawn an additional 2 rats
+      (-> state
+        (add-npc (mg/gen-monster :rat)
+                 (->> (rw/adjacent-xys-ext (get npc :pos))
+                      (remove (fn [[x y]] (rw/collide? state x y {:include-npcs? true
+                                                                  :collide-player? true
+                                                                  :collide-water? false})))
+                      rand-nth
+                      (apply rc/xy->pos)))
+        (add-npc (mg/gen-monster :rat)
+                 (->> (rw/adjacent-xys-ext (get npc :pos))
+                      (remove (fn [[x y]] (rw/collide? state x y {:include-npcs? true
+                                                                  :collide-player? true
+                                                                  :collide-water? false})))
+                      rand-nth
+                      (apply rc/xy->pos)))
+        (rc/append-log "The rat swarm intensified."))
+    :else
+       state))
                                                
 ;; Bird
 ;; Colored Frogs

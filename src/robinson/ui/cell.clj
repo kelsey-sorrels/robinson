@@ -438,7 +438,7 @@
   {:post [(fn [c] (log/info c) (char? (:c c)))
           (integer? (:fg %))
           (integer? (:bg %))]}
-  (let [campfire? (= (cell :type) :campfire)
+  (let [campfire? (= (get cell :type) :campfire)
         ceiling-items (filter ceiling-item? (:items cell))
         in-view? (= current-time (or (:discovered cell) 0))
         has-been-discovered? (> (or (:discovered cell) 0) 1)]

@@ -3324,6 +3324,30 @@
        (rnpc/add-npc state monster x y))
       state)))
  
+; Define fire attacker as a trap
+(def fire-attacker
+  (rt/->Trap
+	; type
+	:fire
+	; race
+	:trap
+	; name
+	"fire"
+	; name-plural
+	"fires"
+	; speed
+	50
+	; size
+	50
+	; strength
+	50
+	; dexterity
+	10
+	; toughness
+	50
+	; attacks
+	#{:fire}))
+
 (defn update-npcs
   "Move all npcs in the current place using `move-npc`."
   [state]
@@ -3343,15 +3367,24 @@
                     (let [npc-keys (rnpc/npc->keys state npc)
                           ;; add speed value to energy.
                           ;_ (trace "adding speed to" (select-keys npc [:race :place :pos :speed :energy]))
-;                         ;; if the player is slowed, add twice as much energy to the npcs
+                          ;; if the player is slowed, add twice as much energy to the npcs
                           state (update-in state (conj npc-keys :energy) (partial + (* (if slow-player? 2 1)
                                                                                        (get npc :speed))))]
-                      ;; adjacent hostile npcs attack player.
-                      (if (and (contains? (get npc :status) :hostile)
+                      (-> state
+                        (cond->
+                          ;; adjacent hostile npcs attack player.
+                          (and (contains? (get npc :status) :hostile)
                                (rw/adjacent-to-player? state (get npc :pos)))
-                        (let [_ (log/info "npc attacker" npc)]
-                          (rcombat/attack state npc-keys [:world :player]))
-                        state))
+                            (rcombat/attack npc-keys [:world :player]))
+                        (cond->
+                          (< 2 (->> npc
+                                 :pos
+                                 rw/adjacent-xys
+                                 (map (fn [[x y]]
+                                   (get (rw/get-cell state x y) :type)))
+                                 (filter rw/type->on-fire?)
+                                 count))
+                            (rcombat/attack fire-attacker npc-keys))))
                     state))
                 state
                 (rnpc/npcs-in-viewport state))]

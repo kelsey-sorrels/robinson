@@ -184,7 +184,10 @@
               [:*     :human   :poisonous-gas :*        :hit]  "The noxious gas enters your body."
               [:trap  :*       :poisonous-gas :*        :dead] (format "The poisonous gas suffocates the %s killing it." defender-name)
               [:trap  :*       :poisonous-gas :*        :miss] (format "The poisonous gas waffs over the %s." defender-name)
-              [:trap  :*       :poisonous-gas :*        :hit] (format "The poisonous gas enters the %s's body." defender-name)
+              [:trap  :*       :poisonous-gas :*        :hit] (format "The fire engulfs the the %s" defender-name)
+              [:trap  :*       :fire          :*        :dead] (format "The fire consumes the %s killing it." defender-name)
+              [:trap  :*       :fire          :*        :miss] (format "The fire darts at the %s." defender-name)
+              [:trap  :*       :fire          :*        :hit] (format "The poisonous gas enters the %s's body." defender-name)
               [:*     :*       :*             :*        :*  ]  (assert false (format "Missing combat message %s %s %s %s %s." attacker-race defender-race attack defender-body-part damage-type)))]
      (log/debug "attack message" msg)
      msg))

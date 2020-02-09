@@ -167,6 +167,8 @@
         :fuel 100 :utility 100 :weight 2 :properties #{:stick-like :handled} :item/materials #{:wood}}
        {:item/id  :log                     :name  "log"                        :name-plural "logs"
         :fuel 500 :weight 20 :properties #{:stick-like} :item/materials #{:wood}}
+       {:item/id  :door                     :name  "door"                        :name-plural "door"
+        :fuel 500 :weight 20 :item/materials #{:wood}}
        {:item/id  :sharpened-stick         :name  "sharpened stick"            :name-plural "sharpened sticks"
         :attack :spear :fuel 100 :utility 100 :properties #{:stick-like} :item/materials #{:wood}}
        {:item/id  :arrow                   :name  "arrow"                      :name-plural "arrows"

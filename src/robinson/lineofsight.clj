@@ -322,6 +322,7 @@
   #{:vertical-wall
     :horizontal-wall
     :close-door
+    :palisade
     :tree
     :mountain
     :bamboo

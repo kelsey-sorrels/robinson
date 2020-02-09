@@ -581,7 +581,9 @@
                :bamboo
                :palm-tree
                :fruit-tree
-               :tall-grass} t))
+               :tall-grass
+               :open-door
+               :close-door} t))
 
 (defn type->intertidal?
   [t]
@@ -790,3 +792,28 @@
   [state]
   (not (is-night? state)))
 
+(defn campfire-vxys
+  ([cells]
+    (campfire-vxys cells 0 (atom nil)))
+  ([cells t campfire-cache]
+    (letfn [(gen-vxys [] (set
+                           (for [[vy line] (map-indexed vector cells)
+                                 [vx cell] (map-indexed vector line)
+                                 :when (= (cell :type) :campfire)]
+                             [vx vy])))]
+      (if-let [[cached-time vxys] @campfire-cache]
+        (if (= cached-time t)
+          vxys
+          (let [vxys (gen-vxys)]
+            (reset! campfire-cache [t vxys])
+            vxys))
+        (let [vxys (gen-vxys)]
+            (reset! campfire-cache [t vxys])
+            vxys)))))
+
+(defn campfire-xys
+  [state cells]
+  (->> cells
+    campfire-vxys
+    (map (fn [[x y]] (rv/screen-xy->world-xy state x y)))
+    set))

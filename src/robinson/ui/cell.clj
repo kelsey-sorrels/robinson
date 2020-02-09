@@ -15,6 +15,7 @@
 
 (def cell-type-palette
   {:fire                   [:red :orange]
+   :campfire               [:red :orange :yellow]
    :water                  [:blue :dark-blue]
    :surf                   [:white :sea-foam :blue-green]
    :shallow-water          [:white :sea-foam :blue-green :blue-green]
@@ -28,7 +29,11 @@
 (def palette-noise (rnoise/create-noise))
 (defn cell-type->color
   [wx wy t cell-type]
-  (let [r (rnoise/noise3d palette-noise wx wy t)
+  (let [r (rnoise/noise3d palette-noise wx wy
+            (* t
+              (if (contains? #{:fire :campfire} cell-type)
+                16
+                1)))
         palette (cell-type-palette cell-type)
         start-idx (int (* r (count palette)))
         end-idx (mod (inc start-idx) (count palette))
@@ -39,7 +44,7 @@
 
 (defn has-palette?
   [cell-type]
-  (contains? #{:fire :water 
+  (contains? #{:fire :campfire :water 
                :surf :shallow-water 
                :swamp :lava 
                :bamboo-water-collector :solar-still 
@@ -53,12 +58,14 @@
   ([wx wy t string fg]
     (fill-put-string-color-style-defaults wx wy t string fg :black))
   ([wx wy t string fg bg]
+    (fill-put-string-color-style-defaults wx wy t string fg bg :normal))
+  ([wx wy t string fg bg blend-mode]
    (let [new-fg (cond-> (if (has-palette? fg)
                          (cell-type->color wx wy t fg)
                          fg)
                   (not (integer? fg)) rcolor/color->rgb)
-         bg     (rcolor/color->rgb bg)]
-     (zgl/make-terminal-character string new-fg bg))))
+         bg     (if (integer? bg) bg (rcolor/color->rgb bg))]
+     (zgl/make-terminal-character string new-fg bg blend-mode))))
 
 (def cell-type->cp437-character {:locker \▌
                                  :fire \▲
@@ -81,7 +88,8 @@
                                  :sand \.
                                  :canon-truck-2 \▀
                                  :white-corridor \#
-                                 :campfire \^
+                                 :campfire \▲
+                                 :campfire-base \#
                                  :rocky-shore \∩
                                  :horizontal-wall \═
                                  :canon \║
@@ -198,6 +206,10 @@
      :fire            (if (= (:discovered cell) current-time)
                          :fire
                          :red)
+     :campfire        (if (= (:discovered cell) current-time)
+                         :campfire
+                         :red)
+     :campfire-base   :brown
      :water           (if (= (:discovered cell) current-time)
                          :water
                          :blue)
@@ -227,7 +239,6 @@
      :ramada          :beige
      :tarp-shelter    :blue
      :lean-to         :light-green
-     :campfire        :brown
      :bamboo-water-collector
                       (if (< 10 (get cell :water 0))
                         :bamboo-water-collector
@@ -356,6 +367,7 @@
           (integer? (:fg %))
           (integer? (:bg %))]}
   (let [cell-items (:items cell)
+        cell (update cell :type (fn [type] (if (= type :campfire) :campfire-base type)))
         floor-items (remove ceiling-item? cell-items)
         in-view? (= current-time (or (:discovered cell) 0))
         has-been-discovered? (> (or (:discovered cell) 0) 1)
@@ -426,13 +438,28 @@
   {:post [(fn [c] (log/info c) (char? (:c c)))
           (integer? (:fg %))
           (integer? (:bg %))]}
-  (let [ceiling-items (filter ceiling-item? (:items cell))
+  (let [campfire? (= (cell :type) :campfire)
+        ceiling-items (filter ceiling-item? (:items cell))
         in-view? (= current-time (or (:discovered cell) 0))
         has-been-discovered? (> (or (:discovered cell) 0) 1)]
     ;(log/info ceiling-item cell-items)
-    (if (and
-          (or in-view? has-been-discovered?)
-          (not-empty ceiling-items))
+    (if (and in-view? has-been-discovered?)
+      (cond
+        campfire?
+          (assoc
+          (fill-put-string-color-style-defaults
+            wx wy t
+            ; char
+            ((case font-type
+              :ttf   cell->unicode-character
+              :cp437 cell->cp437-character) cell)
+            ; fg
+            (cell-type->color
+              wx wy t :campfire)
+            ; bg
+            (zcolor/color 0 0 0 0))
+            :blend-mode :screen)
+        (not-empty ceiling-items)
           (->
             (assoc
               (fill-put-string-color-style-defaults
@@ -468,4 +495,6 @@
                      c
                      (rcolor/rgb->mono fg)
                      (rcolor/rgb->mono bg))))))
-          empty-cell)))
+        :else
+          empty-cell)
+      empty-cell)))

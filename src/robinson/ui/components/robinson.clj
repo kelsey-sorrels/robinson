@@ -579,31 +579,74 @@
   [cell-type]
   (contains? #{:fire :lava} cell-type))
 
+(defn render-light
+  [x y distance]
+  (let [r1 (rnoise/noise3d palette-noise x y (mod (/ (System/currentTimeMillis) 800) 10000))
+        r2 (rnoise/noise3d palette-noise x y (mod (/ (System/currentTimeMillis) 200) 10000))
+        r (max 0 (min 1 (+ 0.3 (* 0.6 r1) (* 0.3 r2))))
+        a (max 0 (min 1 (+ 0.1 (* 1.1 (Math/log (+ 0.0 (* 2.0 r)))) (/ 4 (+ 8 distance)))))]
+          ;(log/info r)
+          ;(log/info a)
+          (zcolor/color
+            (unchecked-byte (* r (/ 64 (+ 64 distance)) 255))
+            (unchecked-byte (* r (/ 32 (+ 32 distance)) 204))
+            (unchecked-byte (* r 124))
+            (unchecked-byte (* a 255)))))
+
+(def night-color
+  (zcolor/color 12 12 22 25))
+
+(def black
+  (zcolor/color 0 0 0 128))
+
 (defn render-lighting [cell distance sight-distance lantern-on]
   (if (light-producing? (get cell :type))
-    (zcolor/color 0 0 0 0)
+    black
     (if lantern-on
-      (let [r1 (rnoise/noise3d palette-noise 0 0 (mod (/ (System/currentTimeMillis) 1000) 10000))
-            r2 (rnoise/noise3d palette-noise 0 0 (mod (/ (System/currentTimeMillis) 100) 10000))
-            r (max 0 (min 1 (+ 0.4 (* 0.5 r1) (* 0.1 r2))))]
-        (zcolor/color
-          (unchecked-byte (* r 255))
-          (unchecked-byte (* r 204))
-          (unchecked-byte (* r 124))
-          (unchecked-byte (min 255 (* 255 (/ distance (+ 1 (* r sight-distance))))))))
+      (render-light 0 0 sight-distance)
       (rcolor/lighting sight-distance))))
+
+(def campfire-cache
+  (atom nil))
+
+(defn xys-in-player-range
+  [player-pos xys]
+  (filter (fn [[x y]]
+            (rc/farther-than?
+              player-pos
+              (rc/xy->pos x y)
+              10))
+    xys))
+
+(defn render-campfire
+  [x y campfire-vxys]
+  (let [visible (remove (fn [[cx cy]]
+                          (rc/farther-than?
+                            (rc/xy->pos x y)
+                            (rc/xy->pos cx cy)
+                            10))
+                  campfire-vxys)]
+    (if (not-empty visible)
+      (let [[[cx cy] d] (rc/nearest x y campfire-vxys)]
+        (if (< d 2.5)
+          (render-light cx cy d)
+          night-color))
+      night-color)))
 
 (zc/def-component ShadeImg
   [this]
-  (let [{:keys [cells current-time player-screen-pos sight-distance lantern-on]} (zc/props this)]
-    (zc/csx [:img {:width 80 :height 23 :style {:mix-blend-mode :multiply}}
-                  (map-indexed (fn [y line]
-                            (map-indexed (fn [x cell]
+  (let [{:keys [cells current-time player-screen-pos sight-distance lantern-on]} (zc/props this)
+        c-vxys (rw/campfire-vxys cells current-time campfire-cache)]
+    (zc/csx [:img {:width 80 :height 23 :style {:mix-blend-mode :soft-light}}
+                  (map-indexed (fn [vy line]
+                            (map-indexed (fn [vx cell]
                               (if (= (or (if cell (:discovered cell) false) 0) current-time)
-                                (let [distance-from-player (rc/distance player-screen-pos (rc/xy->pos x y))]
-                                  {:c \space :fg [0 0 0 0]
-                                   :bg (render-lighting cell distance-from-player sight-distance lantern-on)})
-                                {:c \space :fg [0 0 0 0] :bg [0 0 0 128]}))
+                                (let [distance-from-player (rc/distance player-screen-pos (rc/xy->pos vx vy))]
+                                  {:c \space :fg (long 0)
+                                   :bg (rcolor/max-color
+                                         (render-lighting cell distance-from-player sight-distance lantern-on)
+                                         (render-campfire vx vy c-vxys))})
+                                {:c \space :fg (long 0) :bg [0 0 0 128]}))
                               line))
                           cells)])))
 

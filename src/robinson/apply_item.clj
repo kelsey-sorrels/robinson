@@ -83,7 +83,8 @@
   [state direction]
   (let [[target-x
          target-y] (rw/player-adjacent-xy state direction)
-        target-cell   (rw/get-cell state target-x target-y)]
+        target-cell (rw/get-cell state target-x target-y)
+        contains-log? (contains? (set (map :item/id (get target-cell :items))) :log)]
     (cond
       (or (rw/type->flammable? (get target-cell :type))
         (some (fn [item] (rw/type->flammable? (get item :item/id))) (get target-cell :items)))
@@ -91,10 +92,15 @@
         (rc/append-log (format "You light the %s." (clojure.string/replace (name (get target-cell :type))
                                                                                             #"-"
                                                                                             " ")))
-        (rw/assoc-cell target-x target-y :type :fire :fuel (if (= (get target-cell :type)
-                                                               :campfire)
-                                                          (rr/uniform-int 500 600)
-                                                          (rr/uniform-int 100 300))))
+        (cond-> contains-log?
+          (rw/dec-cell-item-count target-x target-y :log))
+        (rw/assoc-cell target-x target-y
+          :type (if contains-log?
+                  :campfire
+                  :fire)
+          :fuel (if contains-log?
+                  (rr/uniform-int 100 200)
+                  (rr/uniform-int 10 20))))
       :else
       (rc/append-log state "You don't think that is flammable."))))
 
@@ -340,6 +346,15 @@
         :type :palisade
         :prev-type (-> state (rw/get-cell x y) :type)))))
 
+(defn apply-door [state item]
+  (let [[x y] (rp/player-xy state)]
+    (-> state
+      (ri/dec-item-count (get item :hotkey))
+      (rw/assoc-cell
+        x y
+        :type :close-door
+        :prev-type (-> state (rw/get-cell x y) :type)))))
+
 (defn apply-bedroll
   [state item]
   (let [[x y] (rp/player-xy state)]
@@ -351,9 +366,9 @@
   {:pre  [(not (nil? state))]
    :post [(not (nil? %))]}
   (let [item (get-apply-item state)
-        trans->dir? (comp rc/is-direction? translate-directions)]
+        trans->dir? (comp rc/is-direction-ext? translate-directions)]
     (log/info "apply-item" [item keyin])
-    (log/info "is-direction?" ((comp rc/is-direction? translate-directions) keyin))
+    (log/info "is-direction?" ((comp rc/is-direction-ext? translate-directions) keyin))
     (rm/first-vec-match [(get item :item/id) keyin]
       [:fishing-line-and-hook     :*         ] (if-let [item (ri/inventory-hotkey->item state keyin)]
                                        (-> state
@@ -427,6 +442,9 @@
       [:log             :*         ] (-> state
                                        (apply-log item)
                                        (rw/assoc-current-state :normal)) 
+      [:door            :*         ] (-> state
+                                       (apply-door item)
+                                       (rw/assoc-current-state :normal)) 
       [:bedroll         :*         ] (-> state
                                        (apply-bedroll item)
                                        (rw/assoc-current-state :normal)) 
@@ -442,8 +460,8 @@
                                         (rw/assoc-current-state  :normal))
                                       state)
       [:*              :*         ] (do
-                                      (log/info 
+                                      (log/info "Could not apply item")
                                       (-> state
                                         (rc/ui-hint "You're not sure how to apply it to that.")
-                                        (rw/assoc-current-state :normal)))))))
+                                        (rw/assoc-current-state :normal))))))
 

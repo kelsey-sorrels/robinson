@@ -11,7 +11,7 @@
    :ship-light-brown  (zcolor/color 131 88 32)
    :ship-dark-brown   (zcolor/color 33 25 15)
    ;;:black           (zcolor/color 0 0 0]
-   :black             (zcolor/color 6 6 11)
+   :black             (zcolor/color 6 6 19)
    :white             (zcolor/color 255 255 255)
    :gray              (zcolor/color 128 128 128)
    :dark-gray         (zcolor/color 64 64 64)
@@ -119,17 +119,25 @@
 (defn lerp-rgb [initial-rgb final-rgb n]
   (map-colors #(unchecked-byte (int (lerp %1 %2 n))) initial-rgb final-rgb))
 
+(def night-rgb
+  (zcolor/color
+    (byte (/ 255 2))
+    (byte (/ 255 2))
+    (byte (/ 255 3))
+    127))
+
+(def day-rgb
+  (zcolor/color 255 255 255 0)) 
+
 (defn lighting
   [sight-distance]
-  (let [night-rgb (zcolor/color (byte (/ 255 2)) (byte (/ 255 2)) (byte (/ 255 3)) 255)
-        day-rgb   (zcolor/color 255 255 255 0)]
-    (cond
-      (<= sight-distance 4)
-        night-rgb
-      (<= sight-distance 7)
-        (lerp-rgb night-rgb day-rgb (/ (- sight-distance 4) (- 7 4)))
-      :else
-        day-rgb)))
+  (cond
+    (<= sight-distance 4)
+      night-rgb
+    (<= sight-distance 7)
+      (lerp-rgb night-rgb day-rgb (/ (- sight-distance 4) (- 7 4)))
+    :else
+      day-rgb))
 
 (defn night-tint
   [rgb d]

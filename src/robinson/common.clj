@@ -86,6 +86,30 @@
     true
     (> (distance-sq (xy->pos x1 y1) (xy->pos x2 y2)) (* l l)))))
   
+(defn nearest
+  [x y [xy & xys]]
+  (let [pos (xy->pos x y)]
+    (loop [[tx ty :as xy] xy
+            d (distance-sq
+                pos
+                (apply xy->pos xy))
+            xys xys]
+      (if-let [[nx ny :as nxy] (first xys)]
+        (let [nd (distance-sq
+                   pos
+                   (xy->pos nx ny))]
+          (if (< nd d)
+            (recur nxy nd (next xys))
+            (recur xy d (next xys))))
+        [[tx ty] (Math/sqrt d)]))))
+
+(defn xy-in-range?
+  "Any of the xys close enough (< d) to x y?"
+  [x y d xys]
+  (let [pos (xy->pos x y)]
+    (some (fn [[x y]] (not (farther-than? pos (xy->pos x y) d)))
+      xys)))
+ 
 (defn find-point-relation [width height [start-x start-y] [end-x end-y]]
   "  top
     \\    /
@@ -412,3 +436,11 @@
 (defn system-time-millis []
   (System/currentTimeMillis))
 
+(defn turns-to-time
+  [t]
+  (let [mins (* t 4.18)
+        hours (quot mins 60)
+        mins-rem (rem mins 60)]
+    {:hours (int hours)
+     :mins (int mins)
+     :mins-rem (int mins-rem)}))

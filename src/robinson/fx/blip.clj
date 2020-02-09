@@ -33,6 +33,7 @@
         ttl (or ttl 1)
         actor (->BlipActor ttl (rfx/fx-ks fx-id))]
     (log/info "created BlipActor " ttl (rfx/fx-ks fx-id))
+    (log/info (rfx/character-fx ch pos fg bg))
     (-> state
       ; create a character fx
       (rfx/conj-fx (rfx/character-fx ch pos fg bg) fx-id)

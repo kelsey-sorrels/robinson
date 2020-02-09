@@ -39,6 +39,7 @@
            :shallow-water          "shallow water"
            :swamp                  "swamp"
            :fire                   "a fire"
+           :campfire               (str "a campfire (" (-> cell :fuel rc/turns-to-time :hours) " hours remaining)")
            :lava                   "a lava flow"
            :freshwater-hole        (if (> (get cell :water 0) 10)
                                      "a hole full of water"

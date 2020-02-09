@@ -329,7 +329,7 @@
   (let [wielded-item (-> state
                        rp/get-player 
                        rp/wielded-item)
-        is-saw? (= (wielded-item :item/id) :saw)
+        is-saw? (= (get wielded-item :item/id) :saw)
         destroy? (rr/rand-bool (cond
                                  is-saw?
                                     0.01
@@ -348,10 +348,12 @@
                       :bamboo :bamboo
                       :palm-tree :log
                       :tall-grass :plant-fiber
+                      :close-door :door
+                      :open-door :door
                       nil))]
     (if destroy?
       (-> state
-        (rw/assoc-cell x y :type :dirt)
+        (rw/assoc-cell x y :type (get cell :prev-type :dirt))
         (rw/update-cell x y (fn [cell] (dissoc cell :harvestable)))
         (rp/player-update-thirst + (if is-saw? 1 3))
         (rp/player-update-hunger + (if is-saw? 1 3))
@@ -364,10 +366,17 @@
           (rfx/conj-effect :blip
             (rc/xy->pos x y)
             (rutil/item->char drop-item)
-            (rcolor/color->rgb :black)
-            (rutil/item->char drop-item)
+            (rcolor/color->rgb (rutil/item->bg drop-item))
+            (rcolor/color->rgb (rutil/item->fg drop-item))
             2)))
-      (rc/append-log state (str "You fail to destory the " cell-type-name)))))
+      (-> state
+        (rc/append-log (str "You fail to destory the " cell-type-name))
+        (rfx/conj-effect :blip
+                    (rc/xy->pos x y)
+                    \/
+                    (rcolor/color->rgb :blue)
+                    (rcolor/color->rgb :transparent)
+                    2)))))
 
 (defn pick-up-gold
   "Vacuums up gold from the floor into player's inventory."
@@ -1162,6 +1171,10 @@
                 (-> state
                   (rw/assoc-current-state :apply-item-normal)
                   (rc/ui-hint "Pick a direction to use the match."))
+              (= id :door)
+                (-> state
+                  (rw/assoc-current-state :apply-item-normal)
+                  (rc/ui-hint "Pick a direction to place the door."))
               (= id :fire-plough)
                 (-> state
                   (rw/assoc-current-state :apply-item-normal)
@@ -2953,12 +2966,13 @@
           ;_                      (log/debug "move-to-target npc" npc "target" target)
           npc-pos                (get npc :pos)
           npc-pos-vec            [(npc-pos :x) (npc-pos :y)]
+          _ (log/info "npc" npc npc-pos-vec)
           threshold              (get npc :range-threshold)
           npc-can-move-in-water  (mg/can-move-in-water? (get npc :race))
           npc-can-move-on-land   (mg/can-move-on-land? (get npc :race))
-        
           player                 (-> state :world :player)
           player-pos-vec         [(-> player :pos :x) (-> player :pos :y)]
+          _ (log/info "player" player-pos-vec)
           width                  (get-in state [:world :width])
           height                 (get-in state [:world :height])
           bounds                 (vec (mapcat (fn [t] (map (partial + t) npc-pos-vec)) [(- threshold) threshold]))
@@ -2968,7 +2982,12 @@
                                                       (or (get (rw/get-cell state x y) :type) :unknown))))
           npc-xys                (set (map (fn [npc] (rc/pos->xy (get npc :pos)))
                                            (rnpc/npcs-in-viewport state)))
-      
+
+          cells                  (rv/cells-in-viewport state)
+          campfire-xys           (rw/campfire-xys state cells)
+          light-traversable?     (fn light-traversable? [[x y]]
+                                   (or (rw/is-day? state)
+                                       (not (rc/xy-in-range? x y 2.9 campfire-xys))))
           water-traversable?     (fn water-traversable? [[x y]]
                                    (or (= [x y] npc-pos-vec)
                                        (and (not (rc/farther-than? npc-pos {:x x :y y} threshold))
@@ -3000,12 +3019,20 @@
                                    (and npc-can-move-in-water
                                         npc-can-move-on-land)
                                    (fn [xy]
-                                     (or (water-traversable? xy)
-                                         (land-traversable? xy)))
+                                     (and
+                                       (light-traversable? xy)
+                                       (or (water-traversable? xy)
+                                           (land-traversable? xy))))
                                    npc-can-move-in-water
-                                     water-traversable?
+                                     (fn [xy]
+                                       (and
+                                         (light-traversable? xy)
+                                         (water-traversable? xy)))
                                    npc-can-move-on-land
-                                     land-traversable?)
+                                     (fn [xy]
+                                       (and
+                                         (light-traversable? xy)
+                                         (land-traversable? xy))))
           path                   (try
                                    (log/debug "a* params" bounds traversable? npc-pos-vec (rc/pos->xy target))
                                    (clj-tiny-astar.path/a* bounds traversable? npc-pos-vec (rc/pos->xy target))

@@ -1069,22 +1069,32 @@
         inventory-hotkeys (map #(% :hotkey) items)
         item-index (.indexOf inventory-hotkeys keyin)]
     (if (and (>= item-index 0) (< item-index (count items)))
-      (let [item (nth items item-index)
-            new-state (-> state
-              (rc/append-log (format "You let the %s fall to the ground" (lower-case (get item :name "unknown"))))
-              ;; dup the item into cell
-              (rw/conj-cell-items x y (dissoc item :wielded :wielded-ranged))
-              ;; remove the item from inventory
-              (assoc-in [:world :player :inventory]
-               (vec (concat (subvec items 0 item-index)
-                            (subvec items (inc item-index) (count items))))))]
-              ;;;; hotkey is now  available
-              ;(assoc-in [:world :remaining-hotkeys]
-              ;  (vec (concat (subvec remaining-hotkeys 0 item-index)
-              ;               (subvec remaining-hotkeys (inc item-index) (count remaining-hotkeys))))))]
-        (log/debug "dropping at:" x y "item with index" item-index "item" item)
-        (log/debug "new-state" new-state)
-        new-state)
+      (let [item (nth items item-index)]
+        (if (and (= (get player-cell :type) :campfire)
+                 (ig/flammable? item))
+          ; on campfire and item is flammable - burn it!
+          (-> state
+            ;; remove the item from inventory
+            (assoc-in [:world :player :inventory]
+             (vec (concat (subvec items 0 item-index)
+                          (subvec items (inc item-index) (count items)))))
+            (rw/update-player-cell update :fuel + (get item :fuel 0)))
+          ; regular drop - put item on ground
+          (let [new-state (-> state
+                  (rc/append-log (format "You let the %s fall to the ground" (lower-case (get item :name "unknown"))))
+                  ;; dup the item into cell
+                  (rw/conj-cell-items x y (dissoc item :wielded :wielded-ranged))
+                  ;; remove the item from inventory
+                  (assoc-in [:world :player :inventory]
+                   (vec (concat (subvec items 0 item-index)
+                                (subvec items (inc item-index) (count items))))))]
+                  ;;;; hotkey is now  available
+                  ;(assoc-in [:world :remaining-hotkeys]
+                  ;  (vec (concat (subvec remaining-hotkeys 0 item-index)
+                  ;               (subvec remaining-hotkeys (inc item-index) (count remaining-hotkeys))))))]
+            (log/debug "dropping at:" x y "item with index" item-index "item" item)
+            (log/debug "new-state" new-state)
+            new-state)))
         state)))
 
 (defn apply-bandage
@@ -2953,8 +2963,7 @@
   [state]
   (update state :privary-scroll (comp (partial min 100) inc)))
 
-(defn
-  move-to-target
+(defn move-to-target
   "Move `npc` one space closer to the target position if there is a path
    from the npc to the target. Returns the moved npc and not the updated state.
    `target` is a map with the keys `:x` and `:y`."
@@ -2985,9 +2994,18 @@
 
           cells                  (rv/cells-in-viewport state)
           campfire-xys           (rw/campfire-xys state cells)
+          lantern-on             (when-let [lantern (ri/inventory-id->item state :lantern)]
+                                    (= (get lantern :state :off) :on))
           light-traversable?     (fn light-traversable? [[x y]]
-                                   (or (rw/is-day? state)
-                                       (not (rc/xy-in-range? x y 2.9 campfire-xys))))
+                                   (let [near-campfire          (rc/xy-in-range? x y 2.9 campfire-xys)]
+                                     (or
+                                       ; day is always traversable
+                                       (rw/is-day? state)
+                                       (not (or
+                                         ; not in range of campfire is traversable
+                                         near-campfire
+                                         ; not in range of player if lantern is on
+                                         lantern-on)))))
           water-traversable?     (fn water-traversable? [[x y]]
                                    (or (= [x y] npc-pos-vec)
                                        (and (not (rc/farther-than? npc-pos {:x x :y y} threshold))
@@ -3243,14 +3261,23 @@
   (let [policy      (get npc :movement-policy)
         temperament (get npc :temperament)
         pos         (-> state :world :player :pos)
+        lantern-on             (when-let [lantern (ri/inventory-id->item state :lantern)]
+                                  (= (get lantern :state :off) :on))
+        lantern-active (and
+                         (rw/is-night? state)
+                         lantern-on)
+
         ;; modify movement policy as dictated by day or night
         policy      (cond
+                      lantern-active
+                        :hide-from-player-in-range-or-random 
                       (or
                         (and (= temperament :hostile-during-day)
                              (rw/is-day? state))
-                        (and (= temperament :hostile-at-day)
+                        (and (= temperament :hostile-at-night)
                              (rw/is-night? state)))
                       :follow-player-in-range-or-random
+               
                       :else
                       policy)
         navigable-types (if (mg/can-move-in-water? (get npc :race))

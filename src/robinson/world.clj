@@ -194,13 +194,21 @@
           [ax ay]  (rv/place-id->anchor-xy state place-id)
           [x y]    [(- x ax) (- y ay)]]
       (update-cell state place-id x y f)))
-  ([state place-id x y f]
+  ([state place-id x y f & more]
     (log/info "update-cell" (format "place-id[%s] y[%d] x[%d]" (str place-id) y x))
-    (update-in state [:world :places place-id :cells y x] f)))
+    (apply update-in state [:world :places place-id :cells y x] f more)))
 
 (defn update-player-cell
-  [state f]
-  (update-cell state (rp/player-pos state) f))
+  [state f & more]
+    (let [[px py] (rp/player-xy state)
+          place-id (rv/xy->place-id state px py)
+          [ax ay]  (rv/place-id->anchor-xy state place-id)
+          [x y]    [(- px ax) (- py ay)]]
+      (apply update-cell
+       state
+       place-id
+       x y
+       f more)))
 
 (defn assoc-cell-fn
   [state ks v]

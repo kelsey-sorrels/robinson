@@ -499,6 +499,10 @@
 (defn fruit-text-id->fruit-id [text-id]
   (keyword (clojure.string/replace (name text-id) #"-poisonous|-safe" "")))
 
+(defn flammable?
+  [item]
+  (contains? item :fuel))
+
 (defn -main
   "Generate five random items and display them."
   [& args]

@@ -1565,6 +1565,126 @@
     :down-left  \↙
     :down-right \↘))
 
+(def quaff-popover-message
+  "This water is not potable. Are you sure?")
+
+(defn quaff-only-adjacent-cell
+  "Drink all adjacent cells."
+  [state]
+  (let [[state water] 
+        (reduce (fn [[state water] [x y]]
+                  (log/info "testing cell for water:" (rw/get-cell state x y))
+                  (if (contains? (rw/get-cell state x y) :water)
+                    [(rw/update-cell state x y (fn [cell] (assoc cell :water 0))) (+ water (get (rw/get-cell state x y) :water 0))]
+                    [state water]))
+                [state 0]
+                (rw/player-adjacent-xys-ext state))]
+    (log/info "player-adj-xys" (rw/player-adjacent-xys state))
+    (-> state
+      (update-in [:world :player :thirst] (fn [thirst] (min 0 (- thirst water))))
+      (rc/append-log "You drink deeply from the water."))))
+  
+(defn quaff-cell-at-pos
+  ([state]
+  (-> state
+    (update-in [:world :player :thirst] (fn [thirst] (min 0 (- thirst 10))))
+    (rp/player-update-hp (fn [hp] (max (- hp 1) 0)))
+    (rw/assoc-current-state :normal)))
+  ([state {x :x y :y}]
+  (if-let [water (get (rw/get-cell state x y) :water)]
+    (do (log/info "Drinking potable water")
+    (-> state
+      (rw/assoc-cell state x y :water 0)
+      (update-in [:world :player :thirst] (fn [thirst] (min 0 (- thirst water))))
+      (rw/assoc-current-state :normal)))
+    (do (log/info "Drinking nonpotable water")
+    (-> state
+      (assoc-in [:world :popover-message] quaff-popover-message)
+      (assoc-in [:world :quaff-pos] (rc/xy->pos x y))
+      (rw/assoc-current-state :quaff-popover))))))
+
+(defn quaff-up
+  [state]
+  (quaff-cell-at-pos state (rw/player-adjacent-pos state :up)))
+
+(defn quaff-down
+  [state]
+  (quaff-cell-at-pos state (rw/player-adjacent-pos state :down)))
+
+(defn quaff-left
+  [state]
+  (quaff-cell-at-pos state (rw/player-adjacent-pos state :left)))
+
+(defn quaff-right
+  [state]
+  (quaff-cell-at-pos state (rw/player-adjacent-pos state :right)))
+
+(defn quaff-inventory
+  [state keyin]
+  (log/info "remaining-hotkeys" (get-in state [:world :remaining-hotkeys]))
+
+  (if-let [item (ri/inventory-hotkey->item state keyin)]
+    (-> state
+      (rc/append-log (format "The %s tastes %s." (lower-case (get item :name))
+                                              (rr/rand-nth ["great" "foul" "greasy" "delicious" "burnt" "sweet" "salty"])))
+      (rp/update-eaten item)
+      ;; reduce thirst
+      (update-in [:world :player :thirst]
+        (fn [thirst]
+          (let [new-thirst (- thirst (item :thirst))]
+            (max 0 new-thirst))))
+      ;; remove the item from inventory
+      (ri/remove-from-inventory keyin)
+      (as-> state
+        (case (get item :item/id)
+          :coconut (ri/add-to-inventory state [(ig/gen-item :coconut-empty)])
+          state)))
+     state))
+(defn quaff-select
+  "Select the next state depending on what quaffable items are available."
+  [state]
+  (let [num-adjacent-quaffable-cells (count
+                                       (filter (fn [cell] (and (not (nil? cell))
+                                                               (contains? #{:freshwater-hole :saltwater-hole :spring} (get cell :type))
+                                                               (> (get cell :water 100) 10)))
+                                               (rw/player-adjacent-cells-ext state)))
+        num-adjacent-dangerous-quaffable-cells
+                                     (count
+                                       (filter (fn [cell] (and (not (nil? cell))
+                                                               (contains? #{:water
+                                                                            :surf
+                                                                            :ocean
+                                                                            :shallow-water
+                                                                            :swamp}
+                                                                          (get cell :type))))
+                                               (rw/player-adjacent-cells-ext state)))
+        _ (log/info "player-adj-cells" (rw/player-adjacent-cells state))
+        quaffable-inventory-item? (some (fn [item] (contains? item :thirst)) (ri/player-inventory state))]
+    (cond
+      (and (or (pos? num-adjacent-quaffable-cells)
+               (pos? num-adjacent-dangerous-quaffable-cells))
+           quaffable-inventory-item?)
+        (rw/assoc-current-state state :quaff-adj-or-inv)
+      (and (= num-adjacent-quaffable-cells 1)
+           (zero? num-adjacent-dangerous-quaffable-cells))
+        (quaff-only-adjacent-cell state)
+      (and (= num-adjacent-dangerous-quaffable-cells 1)
+           (zero? num-adjacent-quaffable-cells))
+        (-> state
+          (assoc-in [:world :popover-message] quaff-popover-message)
+          (rw/assoc-current-state :quaff-popover))
+      (or (> num-adjacent-quaffable-cells 1)
+          (> num-adjacent-dangerous-quaffable-cells 1))
+        (-> state
+          (rw/assoc-current-state :quaff-adj)
+          (rc/ui-hint "Pick a direction to drink."))
+      quaffable-inventory-item?
+        (rw/assoc-current-state state :quaff-inventory)
+      :else
+        (-> state
+          (rc/ui-hint "There is nothing to drink.")
+          (rw/assoc-current-state :normal)))))
+
 (defn action-select
   [state]
   (let [directions (directions-to-actions state)]
@@ -1671,7 +1791,6 @@
         (rc/ui-hint "You choose not to.")
         (rw/assoc-current-state :normal)))))
         
-  
 (defn do-selected-action
   [state keyin]
   (log/info "action-select" (vec (get-in state [:world :action-select])))
@@ -1695,129 +1814,15 @@
       :close
         (if (contains? action :direction)
           (close-door state (get action :direction))
-          (smart-close state))))
+          (smart-close state))
+      :quaff
+        (if (contains? action :direction)
+          (quaff-only-adjacent-cell state)
+          (quaff-only-adjacent-cell state))
+      :stairs
+        (use-stairs state)))
     state))
 
-(defn quaff-only-adjacent-cell
-  "Drink all adjacent cells."
-  [state]
-  (let [[state water] 
-        (reduce (fn [[state water] [x y]]
-                  (log/info "testing cell for water:" (rw/get-cell state x y))
-                  (if (contains? (rw/get-cell state x y) :water)
-                    [(rw/update-cell state x y (fn [cell] (assoc cell :water 0))) (+ water (get (rw/get-cell state x y) :water 0))]
-                    [state water]))
-                [state 0]
-                (rw/player-adjacent-xys-ext state))]
-    (log/info "player-adj-xys" (rw/player-adjacent-xys state))
-    (-> state
-      (update-in [:world :player :thirst] (fn [thirst] (min 0 (- thirst water))))
-      (rc/append-log "You drink deeply from the water."))))
-
-(def quaff-popover-message
-  "This water is not potable. Are you sure?")
-
-(defn quaff-select
-  "Select the next state depending on what quaffable items are available."
-  [state]
-  (let [num-adjacent-quaffable-cells (count
-                                       (filter (fn [cell] (and (not (nil? cell))
-                                                               (contains? #{:freshwater-hole :saltwater-hole :spring} (get cell :type))
-                                                               (> (get cell :water 100) 10)))
-                                               (rw/player-adjacent-cells-ext state)))
-        num-adjacent-dangerous-quaffable-cells
-                                     (count
-                                       (filter (fn [cell] (and (not (nil? cell))
-                                                               (contains? #{:water
-                                                                            :surf
-                                                                            :ocean
-                                                                            :shallow-water
-                                                                            :swamp}
-                                                                          (get cell :type))))
-                                               (rw/player-adjacent-cells-ext state)))
-        _ (log/info "player-adj-cells" (rw/player-adjacent-cells state))
-        quaffable-inventory-item? (some (fn [item] (contains? item :thirst)) (ri/player-inventory state))]
-    (cond
-      (and (or (pos? num-adjacent-quaffable-cells)
-               (pos? num-adjacent-dangerous-quaffable-cells))
-           quaffable-inventory-item?)
-        (rw/assoc-current-state state :quaff-adj-or-inv)
-      (and (= num-adjacent-quaffable-cells 1)
-           (zero? num-adjacent-dangerous-quaffable-cells))
-        (quaff-only-adjacent-cell state)
-      (and (= num-adjacent-dangerous-quaffable-cells 1)
-           (zero? num-adjacent-quaffable-cells))
-        (-> state
-          (assoc-in [:world :popover-message] quaff-popover-message)
-          (rw/assoc-current-state :quaff-popover))
-      (or (> num-adjacent-quaffable-cells 1)
-          (> num-adjacent-dangerous-quaffable-cells 1))
-        (-> state
-          (rw/assoc-current-state :quaff-adj)
-          (rc/ui-hint "Pick a direction to drink."))
-      quaffable-inventory-item?
-        (rw/assoc-current-state state :quaff-inventory)
-      :else
-        (-> state
-          (rc/ui-hint "There is nothing to drink.")
-          (rw/assoc-current-state :normal)))))
-
-(defn quaff-cell-at-pos
-  ([state]
-  (-> state
-    (update-in [:world :player :thirst] (fn [thirst] (min 0 (- thirst 10))))
-    (rp/player-update-hp (fn [hp] (max (- hp 1) 0)))
-    (rw/assoc-current-state :normal)))
-  ([state {x :x y :y}]
-  (if-let [water (get (rw/get-cell state x y) :water)]
-    (do (log/info "Drinking potable water")
-    (-> state
-      (rw/assoc-cell state x y :water 0)
-      (update-in [:world :player :thirst] (fn [thirst] (min 0 (- thirst water))))
-      (rw/assoc-current-state :normal)))
-    (do (log/info "Drinking nonpotable water")
-    (-> state
-      (assoc-in [:world :popover-message] quaff-popover-message)
-      (assoc-in [:world :quaff-pos] (rc/xy->pos x y))
-      (rw/assoc-current-state :quaff-popover))))))
-
-(defn quaff-up
-  [state]
-  (quaff-cell-at-pos state (rw/player-adjacent-pos state :up)))
-
-(defn quaff-down
-  [state]
-  (quaff-cell-at-pos state (rw/player-adjacent-pos state :down)))
-
-(defn quaff-left
-  [state]
-  (quaff-cell-at-pos state (rw/player-adjacent-pos state :left)))
-
-(defn quaff-right
-  [state]
-  (quaff-cell-at-pos state (rw/player-adjacent-pos state :right)))
-
-(defn quaff-inventory
-  [state keyin]
-  (log/info "remaining-hotkeys" (get-in state [:world :remaining-hotkeys]))
-
-  (if-let [item (ri/inventory-hotkey->item state keyin)]
-    (-> state
-      (rc/append-log (format "The %s tastes %s." (lower-case (get item :name))
-                                              (rr/rand-nth ["great" "foul" "greasy" "delicious" "burnt" "sweet" "salty"])))
-      (rp/update-eaten item)
-      ;; reduce thirst
-      (update-in [:world :player :thirst]
-        (fn [thirst]
-          (let [new-thirst (- thirst (item :thirst))]
-            (max 0 new-thirst))))
-      ;; remove the item from inventory
-      (ri/remove-from-inventory keyin)
-      (as-> state
-        (case (get item :item/id)
-          :coconut (ri/add-to-inventory state [(ig/gen-item :coconut-empty)])
-          state)))
-     state))
      
 (defn do-rest
   "NOP action. Player's hp increases a little."

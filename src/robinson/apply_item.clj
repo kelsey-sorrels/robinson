@@ -317,25 +317,30 @@
   (let [xys (cons
               (rp/player-xy state)
               (rw/adjacent-xys-ext (rp/player-pos state)))]
-  (reduce (fn [state [[x y] item-type]]
-            (rw/conj-cell-items
-              state x y
-              (assoc 
-                (ig/id->item :tarp-hung)
-                :tarp-type item-type
-                :sibling-xys xys)))
-    (ri/dec-item-count state (get item :hotkey))
-    (map vector
-      xys
-      [:tarp-hung-mid
-       :tarp-hung
-       :tarp-hung
-       :tarp-hung-mid
-       :tarp-hung-mid
-       :tarp-hung-corner
-       :tarp-hung-corner
-       :tarp-hung-corner
-       :tarp-hung-corner]))))
+  (if (every? (fn [[x y]]
+                (not (rw/collide? state x y {:collide-player? false
+                                             :include-npcs? false})))
+              xys)
+    (reduce (fn [state [[x y] item-type]]
+              (rw/conj-cell-items
+                state x y
+                (assoc 
+                  (ig/id->item :tarp-hung)
+                  :tarp-type item-type
+                  :sibling-xys xys)))
+      (ri/dec-item-count state (get item :hotkey))
+      (map vector
+        xys
+        [:tarp-hung-mid
+         :tarp-hung
+         :tarp-hung
+         :tarp-hung-mid
+         :tarp-hung-mid
+         :tarp-hung-corner
+         :tarp-hung-corner
+         :tarp-hung-corner
+         :tarp-hung-corner]))
+    (rc/ui-hint state "You need more open space to set up the tarp."))))
 
 (defn apply-log [state item]
   (let [[x y] (rp/player-xy state)]

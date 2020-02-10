@@ -41,6 +41,7 @@
            :fire                   "a fire"
            :campfire               (str "a campfire (" (-> cell :fuel rc/turns-to-time :hours) " hours remaining)")
            :lava                   "a lava flow"
+           :spring                 "a fresh water spring"
            :freshwater-hole        (if (> (get cell :water 0) 10)
                                      "a hole full of water"
                                      "an empty hole")

@@ -767,8 +767,7 @@
   {:post [(not (nil? %))]}
   (let [[player-cell x y] (rw/player-cellxy state)
         src-place-id     (rw/current-place-id state)]
-    (log/info "player-cell" player-cell "x" x "y" y "src-place-id" (or src-place-id "nil"))
-    (if (contains? #{:down-stairs :up-stairs} (get player-cell :type))
+    (if (rw/player-on-stairs? state)
       (let [dest-place-id  (get player-cell :dest-place-id)
             dest-type      (get player-cell :dest-type)
             dest-pos       (get player-cell :dest-pos)
@@ -790,29 +789,30 @@
                   "dest-pos" (or dest-pos "nil")
                   "gen-args" (or gen-args "nil"))
         (log/info "src-kind" src-kind "dest-kind" dest-kind)
-        (cond
-          ;; island->generated
-          (and (= src-kind :island)
-               (= dest-kind :generated))
-            (use-stairs-island->generated state dest-place-id (get dest-pos :x) (get dest-pos :y))
-          ;; island->ungenerated
-          (and (= src-kind :island)
-               (= dest-kind :ungenerated))
-            (use-stairs-island->ungenerated state x y dest-type gen-args)
-          ;; generated->island
-          (and (= src-kind :generated)
-               (= dest-kind :island))
-            (use-stairs-generated->island state (get dest-pos :x) (get dest-pos :y))
-          ;; generated->generated
-          (and (= src-kind :generated)
-               (= dest-kind :generated))
-            (use-stairs-generated->generated state dest-place-id (get dest-pos :x) (get dest-pos :y))
-          ;; generated->ungenerated
-          (and (= src-kind :generated)
-               (= dest-kind :ungenerated))
-            (use-stairs-generated->ungenerated state src-place-id x y dest-type gen-args)
-          :else
-            (assert "Invalid combination of values")))
+        (let [state (cond
+                      ;; island->generated
+                      (and (= src-kind :island)
+                           (= dest-kind :generated))
+                        (use-stairs-island->generated state dest-place-id (get dest-pos :x) (get dest-pos :y))
+                      ;; island->ungenerated
+                      (and (= src-kind :island)
+                           (= dest-kind :ungenerated))
+                        (use-stairs-island->ungenerated state x y dest-type gen-args)
+                      ;; generated->island
+                      (and (= src-kind :generated)
+                           (= dest-kind :island))
+                        (use-stairs-generated->island state (get dest-pos :x) (get dest-pos :y))
+                      ;; generated->generated
+                      (and (= src-kind :generated)
+                           (= dest-kind :generated))
+                        (use-stairs-generated->generated state dest-place-id (get dest-pos :x) (get dest-pos :y))
+                      ;; generated->ungenerated
+                      (and (= src-kind :generated)
+                           (= dest-kind :ungenerated))
+                        (use-stairs-generated->ungenerated state src-place-id x y dest-type gen-args)
+                      :else
+                        (assert "Invalid combination of values"))]
+          (assoc state :advance-time true)))
       (rc/ui-hint state "No stairs here."))))
 
 (defn open-door
@@ -1470,6 +1470,17 @@
                (map (fn [direction]
                       [(rw/player-adjacent-cell state direction) direction])
                     rc/directions-ext))))
+
+(defn quaff-directions
+  [state]
+  (->> rc/directions-ext
+     (map (fn [direction]
+            [(rw/player-adjacent-cell state direction) direction]))
+     (filter (fn [[cell direction]]
+               (log/info "cell" cell "direction" direction)
+               (rw/type->water? (get cell :type))))
+    (map second)))
+
 (defn smart-close
   [state]
   ;; If there is just one adjacent thing to close, just close it. Otherwise enter close mode.
@@ -1496,6 +1507,10 @@
         _ (log/info "open-directions" (vec open-directions))
         close-directions (closeable-directions state)
         _ (log/info "close-directions" (vec close-directions))
+        quaff-directions (quaff-directions state)
+        _ (log/info "quaff-directions" (vec quaff-directions))
+        stairs-directions (if (rw/player-on-stairs? state) [:center] [])
+        _ (log/info "player-on-stairs?" stairs-directions)
         actions (as-> [] actions
                   (if (seq pickup-directions)
                     (conj actions {:state-id :pickup
@@ -1512,6 +1527,14 @@
                   (if (seq close-directions)
                     (conj actions {:state-id :close
                                    :name "Close"})
+                    actions)
+                  (if (seq quaff-directions)
+                    (conj actions {:state-id :quaff
+                                   :name "Quaff"}
+                    actions))
+                  (if stairs-directions
+                    (conj actions {:state-id :stairs
+                                   :name "Stairs"})
                     actions))
         ;; direction->#{set of actions}
         directions (reduce-kv (fn [directions action action-directions]
@@ -1520,7 +1543,9 @@
                            {:pickup  pickup-directions
                             :harvest harvest-directions
                             :open    open-directions
-                            :close   close-directions})]
+                            :close   close-directions
+                            :quaff   quaff-directions
+                            :stairs  stairs-directions})]
       (log/info "num pickup-directions" (count pickup-directions)
                 "num harvest-directions" (count harvest-directions)
                 "num open-directions" (count open-directions)
@@ -1561,7 +1586,11 @@
           :open
             (smart-open state)
           :close
-            (smart-close state))
+            (smart-close state)
+          :quaff
+            (quaff-select state)
+          :stairs
+            (use-stairs state))
       ;; only one direction but multiple actions?
       (= (count directions) 1)
         ;; let the player choose the action
@@ -1681,7 +1710,9 @@
                 [state 0]
                 (rw/player-adjacent-xys-ext state))]
     (log/info "player-adj-xys" (rw/player-adjacent-xys state))
-    (update-in state [:world :player :thirst] (fn [thirst] (min 0 (- thirst water))))))
+    (-> state
+      (update-in [:world :player :thirst] (fn [thirst] (min 0 (- thirst water))))
+      (rc/append-log "You drink deeply from the water."))))
 
 (def quaff-popover-message
   "This water is not potable. Are you sure?")
@@ -1691,8 +1722,8 @@
   [state]
   (let [num-adjacent-quaffable-cells (count
                                        (filter (fn [cell] (and (not (nil? cell))
-                                                               (contains? #{:freshwater-hole :saltwater-hole} (get cell :type))
-                                                               (> (get cell :water) 10)))
+                                                               (contains? #{:freshwater-hole :saltwater-hole :spring} (get cell :type))
+                                                               (> (get cell :water 100) 10)))
                                                (rw/player-adjacent-cells-ext state)))
         num-adjacent-dangerous-quaffable-cells
                                      (count
@@ -3763,7 +3794,7 @@
                            :shift+down-left  [action-down-left  rw/current-state false]
                            :shift+down-right [action-down-right rw/current-state false]
                            \>          [use-stairs             :normal          true]
-                           \<          [use-stairs             :normal          false]
+                           \<          [use-stairs             :normal          true]
                            :space      [action-select          rw/current-state false]
                            \q          [quaff-select           rw/current-state false]
                            \w          [identity               :wield           false]

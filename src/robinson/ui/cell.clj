@@ -21,6 +21,7 @@
    :shallow-water          [:white :sea-foam :blue-green :blue-green]
    :swamp                  [:white :sea-foam :blue-green]
    :lava                   [:red :orange :yellow]
+   :spring                 [:blue :sea-foam :brilliant-blue :blue-green]
    :bamboo-water-collector [:blue :light-blue :dark-blue]
    :solar-still            [:blue :light-blue :dark-blue]
    :freshwater-hole        [:blue :light-blue :dark-blue]
@@ -31,9 +32,13 @@
   [wx wy t cell-type]
   (let [r (rnoise/noise3d palette-noise wx wy
             (* t
-              (if (contains? #{:fire :campfire} cell-type)
-                16
-                1)))
+              (cond
+                (contains? #{:fire :campfire} cell-type)
+                  16
+                (= :spring cell-type)
+                  2
+                :else
+                  1)))
         palette (cell-type-palette cell-type)
         start-idx (int (* r (count palette)))
         end-idx (mod (inc start-idx) (count palette))
@@ -47,6 +52,7 @@
   (contains? #{:fire :campfire :water 
                :surf :shallow-water 
                :swamp :lava 
+               :spring
                :bamboo-water-collector :solar-still 
                :freshwater-hole :saltwater-hole} cell-type))
 
@@ -101,6 +107,7 @@
                                  :white-bottom-left-1 \╚
                                  :deck \·
                                  :lava \~
+                                 :spring \⌠
                                  :canon-truck-1 \▄
                                  :moss-bottom-right-2 \◙
                                  :moss-bottom-left-1 \╚
@@ -224,6 +231,9 @@
                          :light-blue)
      :lava            (if (= (:discovered cell) current-time)
                          :lava
+                         :light-blue)
+     :spring          (if (= (:discovered cell) current-time)
+                         :spring
                          :light-blue)
      :mountain        :gray
      :sand            :beige

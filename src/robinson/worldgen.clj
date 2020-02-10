@@ -268,17 +268,21 @@
                                               {:type :fruit-tree :fruit-type (rr/rand-nth [:red-fruit :orange-fruit :yellow-fruit
                                                                                            :green-fruit :blue-fruit :purple-fruit
                                                                                            :white-fruit :black-fruit])}]))
-                           :heavy-forest  (if (< t 0.1)
-                                            (rr/rand-nth [
-                                              {:type :tall-grass}
-                                              {:type :tree}
-                                              {:type :fruit-tree :fruit-type (rr/rand-nth [:red-fruit :orange-fruit :yellow-fruit
-                                                                                           :green-fruit :blue-fruit :purple-fruit
-                                                                                           :white-fruit :black-fruit])}])
-                                            (rr/rand-nth [
-                                              {:type :tall-grass}
-                                              {:type :short-grass}
-                                              {:type :gravel}]))
+                           :heavy-forest  (cond 
+                                            (< t 0.01)
+                                              {:type :spring}
+                                            (< t 0.1)
+                                              (rr/rand-nth [
+                                                {:type :tall-grass}
+                                                {:type :tree}
+                                                {:type :fruit-tree :fruit-type (rr/rand-nth [:red-fruit :orange-fruit :yellow-fruit
+                                                                                             :green-fruit :blue-fruit :purple-fruit
+                                                                                             :white-fruit :black-fruit])}])
+                                            :else
+                                              (rr/rand-nth [
+                                                {:type :tall-grass}
+                                                {:type :short-grass}
+                                                {:type :gravel}]))
                            :light-forest  (if (< t 0.1)
                                             (rr/rand-nth [
                                               {:type :tall-grass}

@@ -567,7 +567,7 @@
 
 (defn type->water?
   [t]
-  (contains? #{:water :surf :swamp} t))
+  (contains? #{:water :surf :swamp :spring} t))
 
 (defn type->flammable?
   [t]
@@ -825,3 +825,9 @@
     campfire-vxys
     (map (fn [[x y]] (rv/screen-xy->world-xy state x y)))
     set))
+
+(defn player-on-stairs?
+  [state]
+  (let [[player-cell x y] (player-cellxy state)]
+    (contains? #{:down-stairs :up-stairs} (get player-cell :type))))
+ 

@@ -345,8 +345,8 @@
                                           defender
                                           (case attack-type
                                             :melee attack
-                                            :ranged (get ranged-weapon :id (get ranged-weapon :item/id))
-                                            :thrown-item (get thrown-item :id (get thrown-item :item/id))
+                                            :ranged (get ranged-weapon :item/id (get ranged-weapon :item/id))
+                                            :thrown-item (get thrown-item :item/id (get thrown-item :item/id))
                                             (assert false (format "Unknown attack type %s" (name attack-type))))
                                           defender-body-part
                                           (if hit
@@ -407,7 +407,7 @@
             ;; some thrown items can stun npcs
             (if (and hit
                      (or
-                       (ig/id-can-stun? (get attack-item :id))
+                       (ig/id-can-stun? (get attack-item :item/id))
                        (< (rr/next-float! rr/*rnd*) (get attack-item :stunned 0))))
               (->
                 state

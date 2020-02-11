@@ -108,6 +108,7 @@
     (log/info (keys state))
     (log/info fonts)
     (when-not (= new-font (get (rc/get-settings state) :font))
+      (log/info font)
       ;; send new settings to screen
       (zat/alter-group-font! screen :app
         (partial rfont/make-font-fn font))

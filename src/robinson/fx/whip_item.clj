@@ -80,6 +80,8 @@
                 (ractors/remove-actor this)
                 (rc/dissoc-in fx-ks)))
             (handle-npc [state npc]
+              (log/info "handle-npc" npc)
+              (log/info "npc-keys" (rnpc/npc->keys state npc))
               (if hit-npc
                 state
                 (-> state

@@ -1414,7 +1414,6 @@
   [state]
   (map second
        (filter (fn [[cell direction]]
-                 (log/info "cell" cell "direction" direction)
                  (get cell :harvestable))
                (map (fn [direction]
                       [(rw/player-adjacent-cell state direction) direction])
@@ -1440,7 +1439,6 @@
   [state]
   (map second
        (filter (fn [[cell direction]]
-                 (log/info "cell" cell "direction" direction)
                  (contains? #{:close-door} (get cell :type)))
                (map (fn [direction]
                       [(rw/player-adjacent-cell state direction) direction])
@@ -1466,7 +1464,6 @@
   [state]
   (map second
        (filter (fn [[cell direction]]
-                 (log/info "cell" cell "direction" direction)
                  (contains? #{:open-door} (get cell :type)))
                (map (fn [direction]
                       [(rw/player-adjacent-cell state direction) direction])
@@ -1478,7 +1475,6 @@
      (map (fn [direction]
             [(rw/player-adjacent-cell state direction) direction]))
      (filter (fn [[cell direction]]
-               (log/info "cell" cell "direction" direction)
                (rw/type->water? (get cell :type))))
     (map second)))
 
@@ -1648,7 +1644,7 @@
                                        (filter (fn [cell] (and (not (nil? cell))
                                                                (contains? #{:freshwater-hole :saltwater-hole :spring} (get cell :type))
                                                                (> (get cell :water 100) 10)))
-                                               (rw/player-adjacent-cells-ext state)))
+                                               (rw/player-adjacent-cells-ext state :include-center)))
         num-adjacent-dangerous-quaffable-cells
                                      (count
                                        (filter (fn [cell] (and (not (nil? cell))
@@ -1658,7 +1654,7 @@
                                                                             :shallow-water
                                                                             :swamp}
                                                                           (get cell :type))))
-                                               (rw/player-adjacent-cells-ext state)))
+                                               (rw/player-adjacent-cells-ext state :include-center)))
         _ (log/info "player-adj-cells" (rw/player-adjacent-cells state))
         quaffable-inventory-item? (some (fn [item] (contains? item :thirst)) (ri/player-inventory state))]
     (cond
@@ -2870,7 +2866,7 @@
   (rp/player-update-hp state
     (fn [hp]
       (if (>= (count (filter #(= (get % :type) :fire)
-                             (rw/player-adjacent-cells-ext state)))
+                             (rw/player-adjacent-cells-ext state :include-center)))
               3)
         (dec hp)
         hp))))

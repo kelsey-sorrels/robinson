@@ -90,6 +90,7 @@
   "Find the keys required to lookup the npc.
    npc and (get-in state (npc->path state npc)) refer to the same npc."
   [state npc]
+  ; FIXME: lookup npcs in all loaded places
   (if-let [place-id (rw/current-place-id state)]
     [:world :places place-id :npcs (index-of-npc (get-in state [:world :places place-id :npcs]) npc)]
     [:world :npcs (index-of-npc (get-in state [:world :npcs]) npc)]))

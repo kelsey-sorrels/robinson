@@ -718,34 +718,38 @@
             (recur [cell x y] (first xs) (rest xs)))))))
 
 (defn player-adjacent-xys
-  [state]
+  [state & options]
   (let [[x y] (rp/player-xy state)]
-    [[(dec x) y]
-     [(inc x) y]
-     [x (dec y)]
-     [x (inc y)]]))
+    (concat
+      (if (contains? (set options) :include-center) [[x y]] [])
+      [[(dec x) y]
+       [(inc x) y]
+       [x (dec y)]
+       [x (inc y)]])))
 
 (defn player-adjacent-xys-ext
-  [state]
+  [state & options]
   (let [[x y] (rp/player-xy state)]
-    [[(dec x) y]
-     [(inc x) y]
-     [x (dec y)]
-     [x (inc y)]
-     [(dec x) (dec y)]
-     [(inc x) (inc y)]
-     [(inc x) (dec y)]
-     [(dec x) (inc y)]]))
+    (concat
+      (if (contains? (set options) :include-center) [[x y]] [])
+      [[(dec x) y]
+       [(inc x) y]
+       [x (dec y)]
+       [x (inc y)]
+       [(dec x) (dec y)]
+       [(inc x) (inc y)]
+       [(inc x) (dec y)]
+       [(dec x) (inc y)]])))
 
 (defn player-adjacent-cells
   "Return a collection of cells adjacent to the player. Does not include diagonals."
-  [state]
-  (map (fn [[x y]] (get-cell state x y)) (player-adjacent-xys state)))
+  [state & options]
+  (map (fn [[x y]] (get-cell state x y)) (apply player-adjacent-xys state options)))
 
 (defn player-adjacent-cells-ext
   "Return a collection of cells adjacent to the player. Includes diagonals."
-  [state]
-  (map (fn [[x y]] (get-cell state x y)) (player-adjacent-xys-ext state)))
+  [state & options]
+  (map (fn [[x y]] (get-cell state x y)) (apply player-adjacent-xys-ext state options)))
 
 (defn cells-in-range-of-player
   "Return a collection of cells with within `distance` from the player."

@@ -806,20 +806,19 @@
                  (+ 3 (* 3 (count abilities)))
                  4)]  
     (zc/csx [zcui/Popup {:style {:top -5
-                                 :color (rcolor/color->rgb :black)
+                                 :border-style :single
+                                 :padding 1
                                  :background-color (rcolor/color->rgb :black)}} [
-                (if (seq abilities)
+                (if (not-empty abilities)
                   (zc/csx [ruicommon/MultiSelect {:title "Choose Action"
                                         :items
                                           (concat
                                             (mapcat
                                               (fn [ability]
                                                 [{:name (get ability :name)
-                                                  :hotkey (get ability :hotkey)}
-                                                 {:name (get ability :description "")}
-                                                 {:name ""}])
+                                                  :hotkey (get ability :hotkey)}])
                                               abilities)
-                                            [{:name ""}
+                                            [{:name " "}
                                              {:name "Select hotkey or press Esc to exit."}])}])
                     (zc/csx
                       [:view {} [

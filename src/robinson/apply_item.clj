@@ -13,7 +13,9 @@
             [robinson.popover :as rpop]
             robinson.macros
             [robinson.macros :as rm]
+            [clojure.core.strint :as i]
             [taoensso.timbre :as log]))
+            
 
 (defn assoc-apply-item
   [state item]
@@ -158,6 +160,15 @@
                                                          (repeat (rr/uniform-int 1 2) (ig/gen-item :log))))))))
       state)))
 
+(defn plant-guide-success
+  [state item]
+  (let [result (if (contains? (get-in state [:world :fruit :poisonous]) (get item :item/id)) "poisonous" "safe to eat")]
+    (str
+      "The plant guide is worn at the edges and its pages pliable from heavy use. "
+      "You flip through the pages looking at the illustrations. A ha! "
+      (i/<< "On page ~(+ (rand-int 1000) 10) you spot a match. ")
+      (i/<< "The ~(get item :name) is definitely ~{result}. Good to know."))))
+
 (defn apply-plant-guide
   "Apply a plant-guide to the inventory item."
   [state item]
@@ -166,8 +177,11 @@
   (if (ig/is-fruit? item)
     (-> state
       (rc/conj-in [:world :fruit :identified] (get item :item/id))
-      (rc/append-log (format "Identified %s." (name (get item :item/id)))))
-    (rc/append-log state (format "You're not able to identify the %s." (name (get item :item/id))))))
+      (rc/append-log (format "Identified %s." (name (get item :item/id))))
+      (rpop/show-popover (plant-guide-success state item)))
+    (->
+      (rc/append-log state (format "You're not able to identify the %s. Try a fruit?" (name (get item :item/id))))
+      (rw/assoc-current-state  :normal))))
 
 
 (defn apply-flint
@@ -394,9 +408,7 @@
                                        (apply-bow-drill (translate-directions keyin))
                                        (rw/assoc-current-state :normal))
       [:plant-guide     :*         ] (if-let [item (ri/inventory-hotkey->item state keyin)]
-                                       (-> state
-                                         (apply-plant-guide item)
-                                         (rw/assoc-current-state  :normal))
+                                       (apply-plant-guide state item)
                                        state)
       [:stick           \>         ] (-> state
                                        (dig-hole)

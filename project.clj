@@ -15,6 +15,7 @@
                  [org.clojure/core.cache "0.8.2"]
                  [org.clojure/core.match "0.3.0"]
                  [org.clojure/core.memoize "0.8.2"]
+                 [org.clojure/core.incubator "0.1.4"]
                  [org.clojure/tools.nrepl "0.2.13"]
                  [org.clojure/tools.reader "1.3.2"]
                  [org.clojure/data.generators "0.1.2"]

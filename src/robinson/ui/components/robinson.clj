@@ -907,11 +907,11 @@
 
 (zc/def-component Eat
   [this]
-  (let [{:keys [game-state]} (zc/props this)]
+  (let [{:keys [game-state]} (zc/props this)
+        player-items (filter #(contains? % :hunger) (inventory-and-player-cell-items game-state))]
     (zc/csx [RightPane {} [
              [ruicommon/MultiSelect {:title "Eat Inventory"
-                           :items (filter #(contains? % :hunger)
-                                         (inventory-and-player-cell-items game-state))}]]])))
+                                     :items (translate-identified-items game-state player-items)}]]])))
 
 (zc/def-component Quests
   [this]

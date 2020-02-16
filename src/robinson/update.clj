@@ -1882,7 +1882,9 @@
   (log/info "poisoned fruit" (get-in state [:world :fruit :poisonous]))
   (log/info (rw/inventory-and-player-cell-hotkey->item state keyin))
   (if-let [item (rw/inventory-and-player-cell-hotkey->item state keyin)]
-    (let [[x y] (rp/player-xy state)]
+    (let [[x y] (rp/player-xy state)
+          unknown-fruit (and (ig/is-fruit? item)
+                             (not (contains? (get-in state [:world :fruit :identified]) (get item :item/id))))]
       (-> state
         (rc/append-log (format "The %s tastes %s." (lower-case (get item :name))
                                                 (rr/rand-nth ["great" "foul" "greasy" "delicious" "burnt" "sweet" "salty"])))
@@ -1901,6 +1903,8 @@
           (if (= (get item :item/id) :coconut-empty)
             (ri/add-to-inventory state [(ig/gen-item :coconut-shell)])
             state))
+        (cond-> unknown-fruit
+            (rpop/show-popover "You decide to eat the unknown fruit. Good luck."))
         ;; if the item was a poisonous fruit, set a poisoned timebomb
         (as-> state
           (if (and (ig/is-fruit? item)
@@ -1912,7 +1916,9 @@
                         (apply min (remove nil?
                                            [(get-in state [:world :player :poisoned-time])
                                             (+ (rw/get-time state) (rr/uniform-int 100 200))]))))
-            state))))
+            state))
+        (cond-> (not unknown-fruit)
+          (rw/assoc-current-state :normal))))
     state))
 
 (defn init-cursor
@@ -3908,7 +3914,7 @@
                                                                                 false]
                            :enter      [pick-up                :normal          true]}
                :eat       {:escape     [identity               :normal          false]
-                           :else       [eat                    :normal          true]}
+                           :else       [eat                    rw/current-state true]}
                :quaff-adj-or-inv
                           {\i          [identity               :quaff-inv       false]
                            :left       [quaff-left             rw/current-state true]

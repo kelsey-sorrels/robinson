@@ -53,6 +53,10 @@
                               "robinson-tools.worldgen"
                               "robinson-tools.devtools"} (str ns-sym)))
         (log/info "Reloading namespace:" ns-sym)
+        ; call on-reload if it exists for the ns
+        (when-not (=  ns-sym 'robinson.core)
+          (when-let [on-reload (ns-resolve ns-sym 'on-reload)]
+            (on-reload)))
         (require ns-sym :reload)
         (reset! render-fn (resolve 'robinson.render/render))
         (reset! setup-fn (resolve 'robinson.main/setup))

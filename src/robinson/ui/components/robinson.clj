@@ -33,6 +33,7 @@
             [robinson.endgame :as rendgame :refer [gen-end-madlib]]
             [robinson.fx :as rfx]
             [robinson.fx.boomerang-item :as rfx-boomerang-item]
+            [robinson.fx.rain :as rfx-rain]
             [robinson.crafting :as rcrafting]
             [robinson.itemgen :refer [can-be-wielded?
                                       can-be-wielded-for-ranged-combat?
@@ -265,16 +266,51 @@
                                line))
                            cells)])))
 
+(def rain-rate (atom 0.92))
+(def rain-speed (atom 33))
+(def rain-state (atom (repeat 24 (repeat 80 nil))))
+(def stop-rain (atom false))
+(def rain-routine
+  (go-loop []
+    (swap! rain-state rfx-rain/step-rain 80 24 @rain-rate)
+    (async/<! (async/timeout @rain-speed))
+    (when-not @stop-rain
+      (recur))))
+
+;; called when ns is reloaded
+(defn on-reload []
+  (log/info "closing" rain-routine)
+  (reset! stop-rain true))
+
 (zc/def-component Ceiling
   [this]
   (let [{:keys [cells current-time font-type]} (zc/props this)
-        t (mod (/ (System/currentTimeMillis) 4000) 10000)]
+        visible-vxys (for [[vy line] (map-indexed vector cells)
+                           [vx cell] (map-indexed vector line)
+                           :when (= (:discovered cell) current-time)] [vx vy])
+        ; x->max-y
+        max-ys (->> visible-vxys
+                 (group-by first)
+                 (map (fn [[x xys]] [x (->> xys (map second) (reduce max))]))
+                 (into {}))
+        tms (System/currentTimeMillis)
+        t (mod (/ tms 4000) 10000)]
     (zc/csx [:img {:width 80 :height 23}
-                   (map-indexed (fn [y line]
-                             (map-indexed (fn [x cell]
-                               (ruc/render-ceiling-cell cell x y t current-time font-type))
-                               line))
-                           cells)])))
+                   (map (fn [y line rain-line]
+                             (map (fn [x cell rain-cell]
+                               (let [rain (when rain-cell
+                                            (rfx-rain/render-rain-cell rain-cell))
+                                     rain (when rain 
+                                              (if-let [max-y (get max-ys x)]
+                                                (if (< y max-y)
+                                                  rain
+                                                  (assoc rain :fg (rcolor/color->rgb :gray)))
+                                                (assoc rain :fg (rcolor/color->rgb :gray))))]
+                                 (if rain
+                                   rain
+                                   (ruc/render-ceiling-cell cell x y t current-time font-type))))
+                               (range) line rain-line))
+                           (range) cells @rain-state)])))
 
 (defn npc->cp437-character [npc]
   (case (get npc :race)

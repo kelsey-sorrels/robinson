@@ -34,6 +34,7 @@
             [robinson.color :as rcolor]
             [robinson.renderutil :as rutil]
             [robinson.fx :as rfx]
+            [robinson.fx.rain :as rfx-rain]
             [robinson.feedback :as rf]
             robinson.macros
             [robinson.macros :as rm]
@@ -1849,6 +1850,7 @@
     (if (> d 4)
       (rc/ui-hint state "You can't sleep yet. Try again when it is dark.")
       (-> state
+        (assoc-in [:world :weather] (rr/rand-nth [:clear :clear :rain]))
         (assoc-in [:world :sleep-start-time] (rw/get-time state))
         (rw/assoc-current-state :sleep)))))
 
@@ -2320,6 +2322,14 @@
             (rnpc/transfer-items-from-player-to-npc (get npc :id) (partial = item))))
         state)))
 
+(defn transition-recipes
+  [state]
+  (let [npcs-in-range    (rnpc/visible-npcs state)]
+    (if (not-empty npcs-in-range)
+      (rc/ui-hint state "Cannot craft when creatures are nearby.")
+      (rw/assoc-current-state state :recipes))))
+  
+
 (defn select-recipe [keyin state]
   (assoc-in state [:world :selected-recipe-hotkey] keyin))
 
@@ -2656,7 +2666,10 @@
   [state]
   (let [[cell _ _] (rw/player-cellxy state)
         bedroll?   (contains? (set (map :item/id (get cell :items []))) :bedroll)
-        in-water?  (contains? #{:ocean :surf :shallow-water} (get cell :type))]
+        in-water?  (contains? #{:ocean :surf :shallow-water} (get cell :type))
+        rain-rate  (if (and (= (get-in state [:world :weather] :celar) :rain)
+                            (not (rw/in-dungeon? state)))
+                     0 (rfx-rain/rain-rate (rw/get-time state)))]
     (if (= (rw/current-state state) :sleep)
       (if bedroll?
         (rp/player-update-wtl state
@@ -2668,7 +2681,7 @@
             (let [dwtl       0.0 ;; you've been on the island. It sucks and you want to get off.
                   ;; if it is night and the player is not within range of a fire, things are extra tough.
                   dwtl       (if (and (rw/is-night? state)
-                                      (not-any? #( (get % :type) :fire)
+                                      (not-any? #(contains? #{:campfire :fire} (get % :type) :fire)
                                                 (rw/cells-in-range-of-player state 3)))
                                (+ dwtl 0.3)
                                dwtl)
@@ -2681,6 +2694,18 @@
                   dwtl       (+ dwtl
                                 (if in-water?
                                   0.1
+                                  0))
+                  ; raining?
+                  dwtl       (+ dwtl
+                                ; raining in overworld and not under tarp?
+                                (if (and (not (rw/in-dungeon? state))
+                                         (not (contains? (->> state
+                                                rw/current-cell-items
+                                                (map :item/id)
+                                                set)
+                                                :tarp-hung))
+                                         (= (get-in state [:world :weather]) :rain))
+                                  (* 2 (rfx-rain/rain-rate (rw/get-time state)))
                                   0))
                   hp         (rp/player-hp state)
                   max-hp     (rp/player-max-hp state)
@@ -3820,7 +3845,7 @@
                            \Q          [identity               :quests          false]
                            \M          [toggle-mount           :normal          false]
                            \P          [next-party-member      :normal          false]
-                           \C          [identity               :recipes         true]
+                           \C          [transition-recipes     rw/current-state false]
                            \v          [identity               :abilities       false]
                            \@          [identity               :player-stats    false]
                            \t          [identity               :throw-inventory false]
@@ -4013,7 +4038,7 @@
                            :escape     [identity               :recipes         false]}
                :in-progress-recipe
                           {:escape     [identity               :recipes           false]
-                           :else       [craft-in-progress-recipe rw/current-state false]}
+                           :else       [craft-in-progress-recipe rw/current-state 5]}
                :craft     {:else       [craft-select           rw/current-state false]}
                :fishing-left
                           {\.          [rai/do-fishing         rw/current-state true]
@@ -4219,7 +4244,8 @@
                                           (transition-fn state keyin)))
             command-seq (get-in state [:world :command-seq] [])
             _ (log/debug "type of npcs" (type (get-in state [:world :npcs])))
-            new-time  (inc (get-in state [:world :time]))
+            new-time  (+ (if (number? advance-time) advance-time 1)
+                         (get-in state [:world :time]))
             state     (rc/clear-ui-hint state)
             state     (transition-fn state)
             ;; some states conditionally advance time by calling (advance-time state)

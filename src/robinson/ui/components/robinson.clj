@@ -266,13 +266,13 @@
                                line))
                            cells)])))
 
-(def rain-rate (atom 0.92))
+(def rain-rate-atom (atom 0))
 (def rain-speed (atom 33))
 (def rain-state (atom (repeat 24 (repeat 80 nil))))
 (def stop-rain (atom false))
 (def rain-routine
   (go-loop []
-    (swap! rain-state rfx-rain/step-rain 80 24 @rain-rate)
+    (swap! rain-state rfx-rain/step-rain 80 24 (- 1 @rain-rate-atom))
     (async/<! (async/timeout @rain-speed))
     (when-not @stop-rain
       (recur))))
@@ -284,7 +284,7 @@
 
 (zc/def-component Ceiling
   [this]
-  (let [{:keys [cells current-time font-type]} (zc/props this)
+  (let [{:keys [cells current-time weather in-dungeon? font-type]} (zc/props this)
         visible-vxys (for [[vy line] (map-indexed vector cells)
                            [vx cell] (map-indexed vector line)
                            :when (= (:discovered cell) current-time)] [vx vy])
@@ -295,6 +295,12 @@
                  (into {}))
         tms (System/currentTimeMillis)
         t (mod (/ tms 4000) 10000)]
+    (reset! rain-rate-atom (if in-dungeon?
+                             0
+                             (case weather
+                               :clear 0
+                               :rain (rfx-rain/rain-rate current-time)
+                               0)))
     (zc/csx [:img {:width 80 :height 23}
                    (map (fn [y line rain-line]
                              (map (fn [x cell rain-cell]
@@ -1347,7 +1353,11 @@
                  :vy vy
                  :fx (rfx/fx game-state)}]]]
           [:layer {:id :ceiling} [
-              [Ceiling {:cells cells :current-time current-time :font-type font-type}]]]
+              [Ceiling {:cells cells
+                        :current-time current-time
+                        :weather (get-in game-state [:world :weather] :clear)
+                        :in-dungeon? (rw/in-dungeon? game-state)
+                        :font-type font-type}]]]
           [:layer {:id :shading} [
             [:view {:style {:top 0 :left 0}} [
               [ShadeImg {:cells cells :current-time current-time

@@ -109,6 +109,7 @@
 (defn apply-match
   "Light something on fire, creating chaos."
   [state hotkey direction]
+  (log/info "dec-item-count" hotkey)
   (-> state
     (ri/dec-item-count hotkey)
     (start-fire direction)))
@@ -396,7 +397,7 @@
                                        state)
       [:fishing-pole    trans->dir?] (apply-fishing-pole state (translate-directions keyin))
       [:match           trans->dir?] (-> state
-                                       (apply-match keyin (translate-directions keyin))
+                                       (apply-match (get item :hotkey) (translate-directions keyin))
                                        (rw/assoc-current-state :normal))
       [:fire-plough     trans->dir?] (-> state
                                        (apply-fire-plough (translate-directions keyin))

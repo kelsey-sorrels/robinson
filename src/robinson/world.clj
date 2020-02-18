@@ -89,6 +89,10 @@
   [state]
   (-> state :world :current-place))
 
+(defn in-dungeon?
+  [state]
+  (string? (current-place-id state)))
+
 (defn assoc-current-place-id
   [state place-id]
   (assoc-in state [:world :current-place] place-id))
@@ -306,6 +310,13 @@
   [state x y items]
   (log/info "Adding" items "to cell @" x y)
   (assoc-cell state x y :items items))
+
+
+(defn current-cell-items
+  [state]
+  (let [[px py] (rp/player-xy state)
+        place-id (rv/xy->place-id state px py)]
+    (get-in state [:world :places place-id :cells py px :items])))
 
 (defn conj-current-cell-items
   "Adds an item to the player's cell's items."

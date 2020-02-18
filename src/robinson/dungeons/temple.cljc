@@ -543,13 +543,17 @@
       (or (and (contains? #{:corridor :moss-corridor :white-corridor} cell1-type)
                (contains? #{:horizontal-wall :horizontal-wall-alt :vertical-wall :vertical-wall-alt :close-door :open-door
                             :moss-horizontal-wall :moss-horizontal-wall-alt :moss-vertical-wall :moss-vertical-wall-alt
-                            :white-horizontal-wall :white-horizontal-wall-alt :white-vertical-wall :white-vertical-wall-alt}
+                            :white-horizontal-wall :white-horizontal-wall-alt :white-vertical-wall :white-vertical-wall-alt
+                            :upper-left-1 :upper-right-1 :bottom-left-1 :bottom-right-1
+                            :upper-left-2 :upper-right-2 :bottom-left-2 :bottom-right-2 }
                           cell2-type))
           (and (contains? #{:corridor :moss-corridor :white-corridor} cell2-type)
                (contains? #{:horizontal-wall :horizontal-wall-alt :vertical-wall :vertical-wall-alt :close-door :open-door
                             :moss-horizontal-wall :moss-horizontal-wall-alt :moss-vertical-wall :moss-vertical-wall-alt
-                            :white-horizontal-wall :white-horizontal-wall-alt :white-vertical-wall :white-vertical-wall-altr}
-                          cell2-type)))
+                            :white-horizontal-wall :white-horizontal-wall-alt :white-vertical-wall :white-vertical-wall-altr
+                            :upper-left-1 :upper-right-1 :bottom-left-1 :bottom-right-1
+                            :upper-left-2 :upper-right-2 :bottom-left-2 :bottom-right-2 }
+                          cell1-type)))
         (rr/rand-nth [:close-door :open-door :corridor :moss-corridor :white-corridor])
       (every? #{:corridor :moss-corridor :white-corridor} [cell1-type cell2-type])
         cell1-type

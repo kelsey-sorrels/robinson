@@ -12,6 +12,7 @@
     [robinson.npc :as rnpc :refer []]
     [robinson.player :as rp :refer [player-xy]]
     [robinson.macros :as rm]
+    [taoensso.timbre :as log]
     clojure.string))
 
 (defn format [s & args]

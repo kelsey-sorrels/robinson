@@ -10,6 +10,7 @@
             [robinson.log :as rlog]
             [zaffre.terminal :as zat]
             [robinson.describe :as rdesc]
+            [robinson.dreams :as rdreams]
             [robinson.traps :as rt]
             [robinson.dialog :as rdiag]
             [robinson.actors :as ractors]
@@ -1859,6 +1860,9 @@
   [state keyin]
   (let [d (rlos/sight-distance state)
         item-ids (->> state rw/player-cellxy first :items (map :item/id) set)
+        ; FIXME set sleep-start time when crafting
+        sleep-start-time (get-in state [:world :sleep-start-time] 0)
+        {:keys [hours mins min-rem]} (rc/turns-to-time (- (rw/get-time state) sleep-start-time))
         player-under-tarp? (contains? item-ids :tarp-hung)
         player-on-bedroll? (contains? item-ids :bedroll)]
     (if (> d 4)
@@ -1870,10 +1874,10 @@
             (fn [will-to-live] (rp/player-max-wtl state))))
         (update-in [:world :dream]
           assoc
-          :hours 8
+          :hours hours
           :player-on-bedroll? player-on-bedroll?
           :player-under-tarp? player-under-tarp?
-          :description "you dreamt")
+          :description (rdreams/description))
         (rw/assoc-current-state :dream))
       (do-rest state))))
 
@@ -3941,7 +3945,7 @@
                :eat       {:escape     [identity               :normal          false]
                            :else       [eat                    rw/current-state true]}
                :quaff-adj-or-inv
-                          {\i          [identity               :quaff-inv       false]
+                          {\i          [identity               :quaff-inventory false]
                            :left       [quaff-left             rw/current-state true]
                            :down       [quaff-down             rw/current-state true]
                            :up         [quaff-up               rw/current-state true]
@@ -4226,6 +4230,7 @@
                           (add-mods keymods))
                         keyin)
         keyin (get {\space :space} keyin keyin)]
+    (log/info "current-state" current-state)
     (log/info "keyin" keyin)
     (log/info "keyin" (type keyin))
     (log/info "keyin" (contains? #{\space} keyin))

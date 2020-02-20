@@ -346,7 +346,6 @@
     :upper-right-2
     :bottom-left-2
     :bottom-right-2
-    :vine
     :moss-vertical-wall 
     :moss-horizontal-wall
     :moss-vertical-wall-alt
@@ -382,17 +381,19 @@
 
 (defn sight-distance
   [state]
-  (if-let [atmo   (get-in state [:data :atmo])]
-    (let [frames (count atmo)
-          t      (mod (get-in state [:world :time]) frames)
-          frame  (nth atmo t)
-          values (flatten frame)
-          item   (ri/inventory-id->item state :lantern)
-          on     (and item (= (get item :state) :on))
-          #_#__      (log/info "sight-distance. lantern:" item "state:" on)
-          values (map (fn [v] (if on (max v 100) v)) values)]
-    (max 3.5 (+ 2.5 (* 18 (/ (reduce + values) (* 255 (count values)))))))
-    5))
+  (if (= (-> state rw/player-cellxy first :type) :vine)
+    2.1
+    (if-let [atmo   (get-in state [:data :atmo])]
+      (let [frames (count atmo)
+            t      (mod (get-in state [:world :time]) frames)
+            frame  (nth atmo t)
+            values (flatten frame)
+            item   (ri/inventory-id->item state :lantern)
+            on     (and item (= (get item :state) :on))
+            #_#__      (log/info "sight-distance. lantern:" item "state:" on)
+            values (map (fn [v] (if on (max v 100) v)) values)]
+      (max 3.5 (+ 2.5 (* 18 (/ (reduce + values) (* 255 (count values)))))))
+      5)))
 
 (defn target->cellsxy
   [state target-x target-y]

@@ -159,6 +159,7 @@
                       :description ["You're not going anywhere stuck like this and it doesn't look like it's coming back up anytime soon. You'll have to start over."]
                       :event/choices [continue-choice]}
                      {:event/id "SinksLoseItem"
+                      ; FIXME
                       ;(set: _parts to  (find: where its value &gt; 0, ...(dataentries: $materials)))
                       ;(set: _part to (either: ..._parts))
                       ;(set: _partname to _part&#39;s name)

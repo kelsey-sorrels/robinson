@@ -109,7 +109,6 @@
 (defn apply-match
   "Light something on fire, creating chaos."
   [state hotkey direction]
-  (log/info "dec-item-count" hotkey)
   (-> state
     (ri/dec-item-count hotkey)
     (start-fire direction)))

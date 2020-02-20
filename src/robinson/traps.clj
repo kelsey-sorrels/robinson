@@ -333,6 +333,8 @@
 
 (defn trigger-if-trap
   [state [x y]]
+  (log/info "x y" x y)
+
   (let [cell (rw/get-cell state x y)]
     (case (get cell :type)
       :crushing-wall-trigger

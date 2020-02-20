@@ -883,14 +883,18 @@
                         :right
                         :left)
         description   (rdesc/describe-cell-at-xy game-state (+ x cursor-x) (+ y cursor-y))
-        cursor-x      (if (= position :left)
+        desc-x      (if (= position :left)
                         (dec (- cursor-x (count description)))
                         (inc cursor-x))]
+  (log/info "description" description cursor-x position)
   (zc/csx [:view {:style {:position :absolute
                           :top cursor-y
-                          :left cursor-x
-                          :max-height 2}} [
-            [:text {:style {:height 1 :background-color (zcolor/with-alpha (rcolor/color->rgb :black) 246)}} [description]]
+                          :left (if (neg? desc-x) (- cursor-x (/ (count description) 2) 1) desc-x)
+                          :max-height 3}} [
+            [:text {:style {:height (if (neg? desc-x) 3 1)
+                            :width (if (neg? desc-x) (/ (count description) 2)(count description))
+                            :background-color (zcolor/with-alpha (rcolor/color->rgb :black) 246)}}
+              [description]]
             (when (get-in game-state [:world :dev-mode])
               (zc/csx [:text {:style {:background-color (zcolor/with-alpha (rcolor/color->rgb :black) 246)}} [
                         (str (get-cell game-state (+ x cursor-x) (+ y cursor-y)))]]))]])))
@@ -1025,9 +1029,9 @@
                 description
                 player-on-bedroll?
                 player-under-tarp?]} (get-in game-state [:world :dream])]
-    (zc/csx [ContinuePopover {} [
-      [:text {} [(format "You sleep for %d hours." hours)]]
-      [:text {} [description]]
+    (zc/csx [ContinuePopover {:style {:width 40}} [
+      [:text {:style {:padding-bottom 1}} [(format "You sleep for %d hours." hours)]]
+      [:text {:style {:padding-top 1 :width 30}} [description]]
       (when player-on-bedroll?
         (zc/csx [:text {} ["You slept on a bedroll and feel great."]]))
       (when player-under-tarp?
@@ -1450,13 +1454,18 @@
                                      :color (if (= (double (Math/round height)) bar-height) (rcolor/color->rgb :black) bg)
                                      :background-color (rcolor/color->rgb :black)}} [
                        [:text {} ["\u2584"]]]]
-                     [:view {:style {:width 1 :height (dec bar-height)
-                                           :background-color bg}} []]]])]))]
+                     [:view {:style {:width 1
+                                     :height (dec bar-height)
+                                     :background-color bg}} []]]])]))]
         ; caret
         [:view {:style {:position :absolute
                         :width 1 :height 1
                         :top height :left (inc caret-x)
-                        :color (rcolor/color->rgb :highlight)}} [[:text {} ["^"]]]]]])))
+                        :color (rcolor/color->rgb :highlight)}} [[:text {} ["^"]]]]
+        ; number
+        [:view {:style {:position :absolute
+                        :width 10 :height 1
+                        :top (inc height) :left (inc caret-x)}} [[:text {} [(str value)]]]]]])))
 
 (defn rockpick->render-map
   [layers]
@@ -1898,7 +1907,8 @@
 (zc/def-component ShareScore
   [this]
   (let [{:keys [game-state]} (zc/props this)
-        score      (get game-state :last-score)
+        player-score (get game-state :points 0)
+        player-name (get-in game-state [:world :player :name])
         top-scores (get game-state :top-scores [])
         top-10-scores (take 10 (concat top-scores (repeat nil)))]
     (zc/csx
@@ -1924,13 +1934,21 @@
                                                                          :highlight
                                                                          :white))]
                                              {:s (format "*%2d %-20s (%5d points)" (inc index) player-name points)
-                                              :fg fg
+                                              :fg (rcolor/color->rgb (if (= score player-score) :highlight :white))
                                               :bg (rcolor/color->rgb :black)})
                                              {:s "..."
                                               :fg (rcolor/color->rgb :white)
                                               :bg (rcolor/color->rgb :black)
                                               :style nil}))
                                        top-10-scores)}]
+
+                   (if (< player-score (reduce min (map (fn [score] (get score "points" 0)) top-10-scores)))
+                      (zc/csx 
+                     [:view {} [
+                       [:text {} ["..."]]
+                       [:text {:style {:color (rcolor/color->rgb :highlight)}} [
+                         (format "*   %-20s (%5d points)" player-name player-score)]]]])
+                     (zc/csx [:view {} []]))
                    [:view {:style {:top 1 :left 0}} [
                      [:text {} [[:text {} ["Play again? ["]]
                                 [ruicommon/Highlight {} ["y"]]
@@ -1947,11 +1965,11 @@
                      [Histogram {:title "Turns"
                                  :value     (rw/get-time game-state)
                                  :histogram (get game-state :time-data)}]]]
-                   [:view {:style {:position :absolute :top 11 :left 0}} [
+                   [:view {:style {:position :absolute :top 13 :left 0}} [
                      [Histogram {:title "Kills"
                                  :value     (reduce + 0 (map second (get-in game-state [:world :player :stats :num-animals-killed])))
                                  :histogram (get game-state :kills-data)}]]]
-                   [:view {:style {:position :absolute :top 11 :left 15}} [
+                   [:view {:style {:position :absolute :top 13 :left 15}} [
                      [Histogram {:title "Items Crafted"
                                  :value     (reduce + 0 (map second (get-in game-state [:world :player :stats :num-items-crafted])))
                                  :histogram (get game-state :crafted-data)}]]]

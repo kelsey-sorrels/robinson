@@ -1,4 +1,4 @@
-;; Functions for rendering state to screen
+;; Functions for rendering state to screen)
 (ns robinson.ui.components.robinson
   (:require 
             [taoensso.timbre :as log]
@@ -1710,6 +1710,13 @@
     (async/<! (async/timeout (rand-nth [1200 600])))
     (recur (update tidbit-freqs n inc))))
 
+(def spinner-chars (atom (cycle ["/" "-" "\\" "|"])))
+(def spinner-routine
+  (go-loop []
+    (swap! spinner-chars rest)
+    (async/<! (async/timeout 100))
+    (recur)))
+
 (zc/def-component Loading
   [this]
   (let [{:keys [state]} (zc/props this)]
@@ -1727,7 +1734,7 @@
                 [:text {} [""]]
                 [:text {:style {:left -6}} [(format "Generating %s..." (nth loading-tidbits @tidbit-index))]]
                 [:text {} [""]]
-                [:text {:style {:left 3}} [(nth ["/" "-" "\\" "|"] (mod (swap! loading-index inc) 4))]]]]]]]]]]]])))
+                [:text {:style {:left 3}} [(first @spinner-chars)]]]]]]]]]]]])))
 
 (zc/def-component Connecting
   [this]
@@ -1739,8 +1746,12 @@
             [:view {:style {:width "100%" :height "100%" :background-color (rcolor/color->rgb :black)}} [
               [:view {:style {:position :absolute
                               :top 10
-                              :left 36}} [
-                [:text {} ["Connecting..."]]]]]]]]]]]])))
+                              :left 36
+                              :width 80
+                              :height 24}} [
+                [:text {} ["Connecting..."]]
+                [:text {} [""]]
+                [:text {:style {:left 5}} [(first @spinner-chars)]]]]]]]]]]]])))
 
 (zc/def-component ConnectionFailed
   [this]

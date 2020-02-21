@@ -902,22 +902,24 @@
   [state]
   (close-door state :down))
 
-(defn fixup-tarp
+(defn fixup-shelter
   [items]
   (map (fn [item]
     (log/info "fixing up" item)
-    (if (= (item :item/id) :tarp-hung)
+    (if (contains? #{:tarp-hung :sail-hung} (item :item/id))
       ; merge so that id, name, name-plural are all copied
-      (merge item (ig/id->item :tarp))
+      (merge item (ig/id->item (case (item :item/id)
+                                 :tarp-hung :tarp
+                                 :sail-hung :sail)))
       item))
     items))
 
-(defn remove-tarpmates
-  [state tarp-item]
+(defn remove-sheltermates
+  [state shelter-item]
   (reduce (fn [state [x y]]
-    (rw/dec-cell-item-count state x y :tarp-hung))
+    (rw/dec-cell-item-count state x y (get shelter-item :item/id)))
     state
-    (tarp-item :sibling-xys)))
+    (shelter-item :sibling-xys)))
 
 (defn pick-up
   "Move the items identified by `:selected-hotkeys`,
@@ -955,7 +957,7 @@
                                ;; if just one item, then auto select it and not-selected is empty
                                []
                                (vec (divided-items :not-selected)))
-          selected-tarp      (first (filter (fn [item] (= (item :item/id) :tarp-hung))
+          selected-shelter   (first (filter (fn [item] (contains? #{:tarp-hung :sail-hung} (item :item/id)))
                                      selected-items))
           remaining-hotkeys  (vec (remove #(some (partial = %) (map :hotkey selected-items)) remaining-hotkeys))]
       (log/info "divided-items" divided-items)
@@ -965,11 +967,11 @@
         (let [new-state (-> state
                           (rc/append-log "You pick up:")
                           ;; dup the item into inventory with hotkey
-                          (ri/add-to-inventory (fixup-tarp selected-items))
+                          (ri/add-to-inventory (fixup-shelter selected-items))
                           ;; remove the item from cell
                           (rw/assoc-cell-items x y not-selected-items)
-                          (cond-> selected-tarp
-                            (remove-tarpmates selected-tarp))
+                          (cond-> selected-shelter
+                            (remove-sheltermates selected-shelter))
                           ;; reset selected-hotkeys
                           (assoc-in [:world :selected-hotkeys] #{}))]
           (if (= (count items) 1)
@@ -1041,7 +1043,7 @@
                                                   (fn [_ hotkey] hotkey)
                                                   remaining-hotkeys
                                                   (map :hotkey items)))
-          selected-tarp      (first (filter  (fn [item] (= (item :item/id) :tarp-hung))
+          selected-shelter   (first (filter  (fn [item] (contains? #{:tarp-hung :sail-hung} (item :item/id)))
                                      selected-items))
           remaining-hotkeys  (vec (remove #(some (partial = %) (map :hotkey selected-items)) remaining-hotkeys))]
       (log/debug "selected-items" selected-items)
@@ -1049,11 +1051,11 @@
         (let [new-state (-> state
                           (rc/append-log "You pick up:")
                           ;; dup the item into inventory with hotkey
-                          (ri/add-to-inventory (fixup-tarp selected-items))
+                          (ri/add-to-inventory (fixup-shelter selected-items))
                           ;; remove the item from cell
                           (rw/assoc-cell-items x y [])
-                          (cond-> selected-tarp
-                            (remove-tarpmates selected-tarp))
+                          (cond-> selected-shelter
+                            (remove-sheltermates selected-shelter))
                           ;;;; hotkey is no longer available
                           (assoc-in [:world :remaining-hotkeys]
                               remaining-hotkeys))]
@@ -1212,9 +1214,9 @@
                 (-> state
                   (rw/assoc-current-state :apply-item-normal)
                   (rc/ui-hint "Pick a direction to use the saw."))
-              (= id :tarp)
+              (ig/is-shelter? item)
                 (-> state
-                  (rai/apply-tarp item)
+                  (rai/apply-shelter item)
                   (rw/assoc-current-state :apply-item-normal))
               (= id :log)
                 (-> state
@@ -1863,20 +1865,21 @@
         ; FIXME set sleep-start time when crafting
         sleep-start-time (get-in state [:world :sleep-start-time] 0)
         {:keys [hours mins min-rem]} (rc/turns-to-time (- (rw/get-time state) sleep-start-time))
-        player-under-tarp? (contains? item-ids :tarp-hung)
+        player-under-shelter? (some (fn [shelter-id] (contains? item-ids shelter-id))
+                                    #{:tarp-hung :sail-hung})
         player-on-bedroll? (contains? item-ids :bedroll)]
     (if (> d 4)
       (-> state
         (cond->
           (or player-on-bedroll?
-              player-under-tarp?)
+              player-under-shelter?)
           (rp/player-update-wtl
             (fn [will-to-live] (rp/player-max-wtl state))))
         (update-in [:world :dream]
           assoc
           :hours hours
           :player-on-bedroll? player-on-bedroll?
-          :player-under-tarp? player-under-tarp?
+          :player-under-shelter? player-under-shelter?
           :description (rdreams/description))
         (rw/assoc-current-state :dream))
       (do-rest state))))
@@ -2701,13 +2704,14 @@
                                   0))
                   ; raining?
                   dwtl       (+ dwtl
-                                ; raining in overworld and not under tarp?
+                                ; raining in overworld and not under shelter?
                                 (if (and (not (rw/in-dungeon? state))
-                                         (not (contains? (->> state
+                                         (not (some #{:tarp-hung
+                                                      :sail-hung}
+                                                (->> state
                                                 rw/current-cell-items
                                                 (map :item/id)
-                                                set)
-                                                :tarp-hung))
+                                                set)))
                                          (= (get-in state [:world :weather]) :rain))
                                   (* 2 (rfx-rain/rain-rate (rw/get-time state)))
                                   0))

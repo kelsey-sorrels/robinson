@@ -327,34 +327,45 @@
 (defn apply-locator-beacon [state item] state)
 (defn apply-signal-mirror [state item] state)
 
-(defn apply-tarp [state item]
-  (let [xys (cons
+(defn shelter-id
+  [id]
+  (keyword (str (name id) "-hung")))
+
+(defn shelter-ids
+  "Turn item id into array of shelter ids"
+  [id]
+      (map (fn [suffix] (keyword (str (name id) suffix)))
+        ["-hung-mid"
+         "-hung"
+         "-hung"
+         "-hung-mid"
+         "-hung-mid"
+         "-hung-corner"
+         "-hung-corner"
+         "-hung-corner"
+         "-hung-corner"]))
+
+(defn apply-shelter [state item]
+  (let [item-id (get item :item/id)
+        xys (cons
               (rp/player-xy state)
               (rw/adjacent-xys-ext (rp/player-pos state)))]
-  (if (every? (fn [[x y]]
-                (not (rw/collide? state x y {:collide-player? false
-                                             :include-npcs? false})))
-              xys)
-    (reduce (fn [state [[x y] item-type]]
-              (rw/conj-cell-items
-                state x y
-                (assoc 
-                  (ig/id->item :tarp-hung)
-                  :tarp-type item-type
-                  :sibling-xys xys)))
-      (ri/dec-item-count state (get item :hotkey))
-      (map vector
-        xys
-        [:tarp-hung-mid
-         :tarp-hung
-         :tarp-hung
-         :tarp-hung-mid
-         :tarp-hung-mid
-         :tarp-hung-corner
-         :tarp-hung-corner
-         :tarp-hung-corner
-         :tarp-hung-corner]))
-    (rc/ui-hint state "You need more open space to set up the tarp."))))
+    (if (every? (fn [[x y]]
+                  (not (rw/collide? state x y {:collide-player? false
+                                               :include-npcs? false})))
+                xys)
+      (reduce (fn [state [[x y] item-type]]
+                (rw/conj-cell-items
+                  state x y
+                  (assoc 
+                    (ig/id->item (shelter-id item-id))
+                    :type item-type
+                    :sibling-xys xys)))
+        (ri/dec-item-count state (get item :hotkey))
+        (map vector
+          xys
+          (shelter-ids item-id)))
+      (rc/ui-hint state "You need more open space to set up the shelter"))))
 
 (defn apply-log [state item]
   (let [[x y] (rp/player-xy state)]
@@ -450,8 +461,8 @@
                                        (apply-fruit-to-tongue item)
                                        (rw/assoc-current-state :normal))
 
-      [:tarp            :*         ] (-> state
-                                       (apply-tarp item)
+      [ig/is-shelter?   :*         ] (-> state
+                                       (apply-shelter item)
                                        (rw/assoc-current-state :normal)) 
       [:bamboo          :*         ] (-> state
                                        (apply-log item)

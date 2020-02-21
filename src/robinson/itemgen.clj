@@ -160,6 +160,10 @@
   [id]
   (contains? #{:yellow-fruit :tarp} id))
 
+(defn is-shelter?
+  [item]
+  (contains? #{:tarp :sail} (get item :item/id)))
+
 (def ^:private item-data [
        {:item/id  :stick                   :name  "stick"                      :name-plural "sticks"
         :fuel 100 :utility 100 :weight 0.5 :properties #{:stick-like :handled} :item/materials #{:wood}}
@@ -355,6 +359,7 @@
        {:item/id  :oil                     :name "oil"                         :name-plural "oil"}
        {:item/id  :sail                    :name "sail"                        :name-plural "sails"
         :properties #{:flexible :planar}}
+       {:item/id  :sail-hung               :name  "sail (hung)"                :name-plural "sail (hung)"}
        {:item/id  :plank                   :name "plank"                       :name-plural "planks"
         :item/materials #{:wood}}
        {:item/id  :dice                    :name "dice"                        :name-plural "dice"}

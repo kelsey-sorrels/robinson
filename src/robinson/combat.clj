@@ -182,6 +182,7 @@
               [:*     :human   :clamp         :*        :hit]  (format "The %s clamps down on your flesh crushing it." attacker-name)
               [:*     :human   :spike         :*        :hit]  (format "The %s's spikes drive into your body." attacker-name)
               [:*     :human   :poisonous-gas :*        :hit]  "The noxious gas enters your body."
+              [:*     :human   :blowdart      :*        :hit]  "The blowdart pierces you with a sharp sting."
               [:trap  :*       :poisonous-gas :*        :dead] (format "The poisonous gas suffocates the %s killing it." defender-name)
               [:trap  :*       :poisonous-gas :*        :miss] (format "The poisonous gas waffs over the %s." defender-name)
               [:trap  :*       :poisonous-gas :*        :hit] (format "The fire engulfs the the %s" defender-name)

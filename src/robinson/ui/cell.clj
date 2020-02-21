@@ -116,6 +116,7 @@
                                  :moss-upper-left-2 \◙
                                  :white-horizontal-wall \═
                                  :tarp-shelter \#
+                                 :sail-shelter \#
                                  :vertical-wall \║
                                  :moss-bottom-right-1 \╝
                                  :white-bottom-left-2 \◙
@@ -248,6 +249,7 @@
      :palisade        :brown
      :ramada          :beige
      :tarp-shelter    :blue
+     :sail-shelter    :white
      :lean-to         :light-green
      :bamboo-water-collector
                       (if (< 10 (get cell :water 0))
@@ -349,28 +351,32 @@
 
 (defn ceiling-item?
   [item]
-  (contains? #{:tarp-hung} (:item/id item)))
+  (contains? #{:tarp-hung :sail-hung} (:item/id item)))
 
 (defn translate-item-id
   [item]
-  (let [item-id (item :item/id)
-        translated-item-id (case item-id
-                             :tarp-hung
-                               (let [t (item :tarp-type)]
-                                 (if (= t :tarp-hung-corner)
-                                   :tarp-corner
-                                   t))
-                             item-id)]
-  (assoc item :item/id translated-item-id)))
+  (let [item-id (item :item/id)]
+    (case item-id
+      (:tarp-hung :sail-hung)
+        (let [t (item :type)]
+          (cond
+            (= t :tarp-hung-corner)
+              (assoc item :type :tarp-corner)
+            (= t :sail-hung-corner)
+              (assoc item :type :sail-corner)
+            :else
+               item))
+      item)))
 
 (defn translate-ceiling-item-id
   [item]
   (let [item-id (item :item/id)
         translated-item-id (case item-id
-                             :tarp-hung
-                               (item :tarp-type)
+                             (:tarp-hung :sail-hung)
+                               (item :type)
                              item-id)]
-    (assoc item :item/id translated-item-id)))
+    (assoc item :item/id translated-item-id
+                :type translated-item-id)))
 
 (defn render-cell [cell wx wy t current-time font-type]
   {:post [(fn [c] (log/info c) (char? (:c c)))
@@ -391,7 +397,9 @@
                         (some (fn [item] (= (:item/id item) :raft)) cell-items)
                           :raft
                         (and (some ceiling-item? cell-items)
-                             (not (some (fn [item] (= (:tarp-type item) :tarp-hung-corner)) cell-items)))
+                             (not (some (fn [item] (contains? #{:tarp-hung-corner
+                                                                :sail-hung-corner}
+                                                              (:type item))) cell-items)))
                           :default
                         :default
                           :item)

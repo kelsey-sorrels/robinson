@@ -89,6 +89,7 @@
 (defn player-attack-strength
   [state attack-type]
   (+ (attribute-after-weapon-effects state attack-type :strength)
+     (- 0.5 (or (some-> state get-player wielded-item (get :roundness 0.5)) 0.5))
      (if (buff-active? state :strength)
        0.1
        0)))

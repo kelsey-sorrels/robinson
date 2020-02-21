@@ -344,7 +344,9 @@
         cell-type (get cell :type)
         cell-type-name (rdesc/describe-cell-type cell)
         drop-item? (or (get cell :harvestable)
-                       (rr/rand-bool 0.50))
+                       (rr/rand-bool (case cell-type
+                                       :tall-grass 0.95
+                                       0.70)))
         drop-item (ig/id->item
                     (case cell-type
                       :tree :log
@@ -1246,6 +1248,10 @@
                 (-> state
                   (rw/assoc-current-state :apply-item-inventory)
                   (rc/ui-hint "Pick an item to bash with the rock."))
+              (= id :plant-fiber)
+                (-> state
+                  (rai/apply-plant-fiber item)
+                  (rw/assoc-current-state :normal))
               (ig/is-sharp? item)
                 (-> state
                   (rw/assoc-current-state :apply-item-inventory)

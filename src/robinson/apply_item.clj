@@ -392,6 +392,13 @@
       (ri/dec-item-count (get item :hotkey))
       (rw/conj-cell-items x y item))))
 
+(defn apply-plant-fiber
+  [state item]
+  (-> state
+    (ri/dec-item-count (get item :hotkey))
+    (ri/add-to-inventory [(ig/id->item :rope)])
+    (rc/ui-hint "You work the plant fiber into a short rope.")))
+
 (defn apply-item [state translate-directions keyin]
   {:pre  [(not (nil? state))]
    :post [(not (nil? %))]}
@@ -475,6 +482,9 @@
                                        (rw/assoc-current-state :normal)) 
       [:bedroll         :*         ] (-> state
                                        (apply-bedroll item)
+                                       (rw/assoc-current-state :normal)) 
+      [:plant-fiber     :*         ] (-> state
+                                       (apply-plant-fiber item)
                                        (rw/assoc-current-state :normal)) 
       [#{:red-frog-corpse
          :orange-frog-corpse

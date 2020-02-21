@@ -1763,7 +1763,9 @@
             [:view {:style {:width "100%" :height "100%" :background-color (rcolor/color->rgb :black)}} [
               [:view {:style {:position :absolute
                               :top 10
-                              :left 36}} [
+                              :left 34
+                              :width 80
+                              :height 24}} [
                 [:text {} ["Connection Failed."]]
                 [:text {} [""]]
                 [:text {} [[:text {} ["Play again? ["]]

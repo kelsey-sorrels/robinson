@@ -28,10 +28,6 @@
        (catch Throwable t
          (do
            (re/log-exception state t)
-           (log/error "Caught exception" t)
-           (.printStackTrace t)
-           (st/print-stack-trace t)
-           (st/print-cause-trace t)
            last-dom)))))
 
 

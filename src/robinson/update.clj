@@ -45,6 +45,7 @@
             [clojure.data.json :as json]
             [clojure.java.io :as io]
             [taoensso.timbre :as log]
+            [taoensso.nippy :as nippy]
             [dk.salza.liq.editor :as le]
             [dk.salza.liq.adapters.ghostadapter :as lag]
             clj-tiny-astar.path
@@ -52,7 +53,9 @@
             [clojure.stacktrace :as st]
             clojure.inspector
             clojure.string)
-  (:import zaffre.terminal.Terminal))
+  (:import [zaffre.terminal Terminal]
+           [java.io DataInputStream DataOutputStream]))
+
 
 (defn format [s & args]
   (apply clojure.core/format s args))
@@ -60,6 +63,13 @@
 (defn- pass-state
   [state & more]
   state)
+
+(defn start
+  [state]
+  (if (.exists (rfs/cwd-file "save/world.edn"))
+    (with-open [o (io/input-stream (rfs/cwd-path "save/world.edn"))]
+      (assoc state :world (nippy/thaw-from-in! (DataInputStream. o))))
+    (rw/assoc-current-state state :enter-name)))
 
 (defn delete-save-game []
   ;; delete the save game on player death
@@ -3039,7 +3049,7 @@
 (defn save-score
   [state]
   (rs/persist-state-score! state)
-  (assoc state :points (rs/state->points state)))
+  (assoc-in state [:world :points] (rs/state->points state)))
 
 
 (defn transition-privacy
@@ -3738,7 +3748,7 @@
         userid  (get state :user-id)
         url     (format "https://aaron-santos.com/saves/%s" userid)
         cur-state      (rw/current-state state)
-        points         (get state :points)
+        points         (get-in state [:world :points])
         turns-survived  (rw/get-time state)
         turns-per-day   (count (get-in state [:data :atmo]))
         days-survived   (int (/ turns-survived turns-per-day))
@@ -3776,12 +3786,12 @@
         
         (-> state
           (assoc :top-scores     top-scores
-                 :points         points
                  :point-data     point-data
                  :time-data      time-data
                  :kills-data     kills-data
                  :harvested-data harvested-data
                  :crafted-data   crafted-data)
+          (assoc-in [:world :points] points)
           (rw/assoc-current-state :share-score)))
       (catch Exception e
         (log/error "Caught exception while swapping scores" e)
@@ -3796,7 +3806,8 @@
 (def state-transition-table
   ;;         starting      transition  transition             new              advance
   ;;         state         symbol      fn                     state            time?
-  (let [table {:start     {:space      [identity               :enter-name      false]
+  (let [table {:start     {:space      [start                  rw/current-state false]
+                           \n          [identity               :enter-name      false]
                            \c          [identity               :configure       false]
                            \q          [identity               :quit            false]
                            :else       [pass-state             rw/current-state false]}
@@ -4156,7 +4167,7 @@
                :share-score
                           {\y          [identity               :start-inventory false]
                            \n          [identity               :start           false]}
-               :quit?     {\y          [identity               :start           false]
+               :quit?     {\y          [(fn [state] (assoc :continue true)) :start false]
                            :else       [pass-state             :normal          false]}}
         expander-fn (fn [table] table)]
     (expander-fn table)))

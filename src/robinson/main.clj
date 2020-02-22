@@ -77,7 +77,19 @@
       (recur))))
 
 (defn save-state [state]
-  (async/put! save-chan state))
+  ; Don't save main menu updates
+  (when-not (contains? #{:start
+                         :configure
+                         :configure-font
+                         :create-font
+                         :create-font-name
+                         :connecting
+                         :connection-failed
+                         :loading
+                         :share-score
+                         :quit?}
+                       (rw/current-state state))
+    (async/put! save-chan state)))
   
 (defn render-state [state]
   (async/>!! render-chan state))
@@ -164,13 +176,11 @@
           _                    (when (get data :seed)
                                  (rr/set-rnd! (rr/create-random (get data :seed))))
           world                (update
-                                    (if (.exists (rfs/cwd-file "save/world.edn"))
-                                      (with-open [o (io/input-stream (rfs/cwd-path "save/world.edn"))]
-                                        (nippy/thaw-from-in! (DataInputStream. o)))
                                       {:current-state :start
                                        :time 0
+                                       :continue (.exists (rfs/cwd-file "save/world.edn"))
                                        :player {
-                                         :name ""}})
+                                         :name ""}}
                                     :current-state
                                     (fn [cur-state]
                                       (if (= cur-state :share-score)

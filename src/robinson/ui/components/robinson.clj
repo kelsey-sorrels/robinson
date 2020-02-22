@@ -1316,7 +1316,6 @@
                                                       (= (get lantern :state :off) :on))
         font                                        (rfont/current-font game-state)
         font-type                                   (or (get font :charset) (get font :type :ttf))]
-    (log/info (rfont/current-font game-state))
     (zc/csx
 	  [:terminal {} [
 		[:group {:id :app} [
@@ -1493,26 +1492,36 @@
 
 (zc/def-component Start
   [this]
-  (zc/csx
-    [:terminal {} [
-      [:group {:id :app} [
-        [:layer {:id :map} [
-          [zcui/Image {:src (rfs/cwd-path "images/background-0a.png")}]]]
-        [:layer {:id :ui} [
-          [:view {:style {:position :absolute
-                          :width 21
-                          :height 6
-                          :top 18
-                          :left 30
-                          :border 1
-                          :background-color [0 0 0 218]}} [
-            [:view {:style {:display :flex
-                            :flex-direction :row}} [
-              [:text {} ["Press "]]
-              [ruicommon/HotkeyLabel {:hotkey :space :sep " " :label "to play"}]]]
-            [:text {} [""]]
-            [ruicommon/HotkeyLabel {:hotkey \c :label "configure"}]
-            [ruicommon/HotkeyLabel {:hotkey \q :label "quit"}]]]]]]]]]))
+  (let [{:keys [continue]} (zc/props this)]
+    (zc/csx
+      [:terminal {} [
+        [:group {:id :app} [
+          [:layer {:id :map} [
+            [zcui/Image {:src (rfs/cwd-path "images/background-0a.png")}]]]
+          [:layer {:id :ui} [
+            [:view {:style {:position :absolute
+                            :width 26
+                            :height 7
+                            :top 16
+                            :left 27
+                            :border 1
+                            :background-color [0 0 0 218]}} [
+              (if continue
+                (zc/csx
+                  [:view {} [
+                    [:view {:style {:display :flex
+                                    :flex-direction :row}} [
+                      [:text {} ["Press "]]
+                      [ruicommon/HotkeyLabel {:hotkey :space :sep " " :label "to continue"}]]]
+                    [ruicommon/HotkeyLabel {:hotkey \n :label "new game"}]]])
+                (zc/csx
+                  [:view {:style {:display :flex
+                                  :flex-direction :row}} [
+                    [:text {} ["Press "]]
+                    [ruicommon/HotkeyLabel {:hotkey :space :sep " " :label "to play"}]]]))
+              [:text {} [""]]
+              [ruicommon/HotkeyLabel {:hotkey \c :label "configure"}]
+              [ruicommon/HotkeyLabel {:hotkey \q :label "quit"}]]]]]]]]])))
 
 (zc/def-component Configure
   [this]
@@ -1924,7 +1933,7 @@
 (zc/def-component ShareScore
   [this]
   (let [{:keys [game-state]} (zc/props this)
-        player-score (get game-state :points 0)
+        player-score (get-in game-state [:world :points] 0)
         player-name (get-in game-state [:world :player :name])
         top-scores (get game-state :top-scores [])
         top-10-scores (take 10 (concat top-scores (repeat nil)))]
@@ -1959,12 +1968,14 @@
                                               :style nil}))
                                        top-10-scores)}]
 
-                   (if (< player-score (reduce min (map (fn [score] (get score "points" 0)) top-10-scores)))
-                      (zc/csx 
-                     [:view {} [
-                       [:text {} ["..."]]
-                       [:text {:style {:color (rcolor/color->rgb :highlight)}} [
-                         (format "*   %-20s (%5d points)" player-name player-score)]]]])
+                   (if (< player-score (->> (or top-10-scores [])
+                                         (map (fn [score] (get score "points" 0)))
+                                         (reduce min 0)))
+                     (zc/csx 
+                       [:view {} [
+                         [:text {} ["..."]]
+                         [:text {:style {:color (rcolor/color->rgb :highlight)}} [
+                           (format "*   %-20s (%5d points)" player-name player-score)]]]])
                      (zc/csx [:view {} []]))
                    [:view {:style {:top 1 :left 0}} [
                      [:text {} [[:text {} ["Play again? ["]]
@@ -1976,7 +1987,7 @@
                    [:text {} ["Performance"]]
                    [:view {:style {:position :absolute :top 3 :left 0}} [
                      [Histogram {:title "Points"
-                                 :value     (get game-state :points)
+                                 :value     player-score
                                  :histogram (get game-state :point-data)}]]]
                    [:view {:style {:position :absolute :top 3 :left 15}} [
                      [Histogram {:title "Turns"
@@ -2048,7 +2059,7 @@
     (log/debug "render current-state" (current-state game-state))
     (cond
       (= (current-state game-state) :start)
-        (zc/csx [Start {}])
+        (zc/csx [Start {:continue (get-in game-state [:world :continue])}])
       (= (current-state game-state) :configure)
         (zc/csx [Configure {:game-state game-state}])
       (= (current-state game-state) :configure-font)

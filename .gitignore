@@ -17,6 +17,12 @@ save/*
 # Intermediate data
 frames/*
 *.log
+log/*
 
 # Build data
 jvms/
+
+# Fonts and font-config
+fonts/*.ttf
+config/fonts/*.ttf.edn
+

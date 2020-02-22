@@ -465,6 +465,112 @@
           state
           (apply rw/adjacent-xys (rp/player-xy state))))
 
+(defn pickup-directions
+  [state]
+  (map second
+       (filter (fn [[cell direction]]
+                 (-> (get cell :items [])
+                     count
+                     pos?))
+               (map (fn [direction]
+                      [(rw/player-adjacent-cell state direction) direction])
+                    rc/directions-ext))))
+
+(defn harvestable-directions
+  [state]
+  (->> rc/directions-ext
+    (map (fn [direction]
+           [(rw/player-adjacent-cell state direction) direction]))
+    (filter (fn [[cell direction]]
+              (get cell :harvestable)))
+    (map second)))
+
+(defn openable-directions
+  [state]
+  (map second
+       (filter (fn [[cell direction]]
+                 (contains? #{:close-door} (get cell :type)))
+               (map (fn [direction]
+                      [(rw/player-adjacent-cell state direction) direction])
+                    rc/directions-ext))))
+
+(defn closeable-directions
+  [state]
+  (map second
+       (filter (fn [[cell direction]]
+                 (contains? #{:open-door} (get cell :type)))
+               (map (fn [direction]
+                      [(rw/player-adjacent-cell state direction) direction])
+                    rc/directions-ext))))
+
+(defn quaff-directions
+  [state]
+  (->> rc/directions-ext
+     (map (fn [direction]
+            [(rw/player-adjacent-cell state direction) direction]))
+     (filter (fn [[cell direction]]
+               (rw/type->water? (get cell :type))))
+    (map second)))
+
+(defn stairs-directions
+  [state]
+  (if (rw/player-on-stairs? state) [:center] []))
+
+(defn directions-to-actions
+  [state]
+  (let [pickup-directions (pickup-directions state)
+        _ (log/info "pickup directions" (vec pickup-directions))
+        harvest-directions (harvestable-directions state)
+        _ (log/info "harvest-directions" (vec harvest-directions))
+        open-directions (openable-directions state)
+        _ (log/info "open-directions" (vec open-directions))
+        close-directions (closeable-directions state)
+        _ (log/info "close-directions" (vec close-directions))
+        quaff-directions (quaff-directions state)
+        _ (log/info "quaff-directions" (vec quaff-directions))
+        stairs-directions (stairs-directions state)
+        _ (log/info "player-on-stairs?" stairs-directions)
+        actions (as-> [] actions
+                  (if (seq pickup-directions)
+                    (conj actions {:state-id :pickup
+                                   :name "Pickup"})
+                    actions)
+                  (if (seq harvest-directions)
+                    (conj actions {:state-id :harvest
+                                   :name "Harvest"})
+                    actions)
+                  (if (seq open-directions)
+                    (conj actions {:state-id :open
+                                   :name "Open"})
+                    actions)
+                  (if (seq close-directions)
+                    (conj actions {:state-id :close
+                                   :name "Close"})
+                    actions)
+                  (if (seq quaff-directions)
+                    (conj actions {:state-id :quaff
+                                   :name "Quaff"}
+                    actions))
+                  (if stairs-directions
+                    (conj actions {:state-id :stairs
+                                   :name "Stairs"})
+                    actions))
+        ;; direction->#{set of actions}
+        directions (reduce-kv (fn [directions action action-directions]
+                             (merge-with clojure.set/union directions (zipmap action-directions (repeat #{action}))))
+                           {}
+                           {:pickup  pickup-directions
+                            :harvest harvest-directions
+                            :open    open-directions
+                            :close   close-directions
+                            :quaff   quaff-directions
+                            :stairs  stairs-directions})]
+      (log/info "num pickup-directions" (count pickup-directions)
+                "num harvest-directions" (count harvest-directions)
+                "num open-directions" (count open-directions)
+                "num close-directions" (count close-directions))
+    directions))
+
 (defn move
   "Move the player one space provided her/she is able. Else do combat. Else swap positions
    with party member. Else hack something down."
@@ -478,6 +584,7 @@
         [target-x
          target-y] (rw/player-adjacent-xy state direction)
         target-cell (rw/get-cell state target-x target-y)]
+
     (log/info "moving to" target-x target-y "type:" (get target-cell :type))
     (log/info "inside-safe-zone?" (rv/xy-in-safe-zone? state target-x target-y) target-x target-y)
     (log/info "not collide?" (not (rw/collide? state target-x target-y {:include-npcs? false})))
@@ -508,6 +615,16 @@
                 (rw/assoc-current-state state :normal))
               (assoc-in state [:world :player :pos :x] target-x)
               (assoc-in state [:world :player :pos :y] target-y)
+              (cond-> state
+                (seq (directions-to-actions state))
+                  (rc/ui-hint (str (->> state
+                                     directions-to-actions 
+                                     (mapcat second)
+                                     set
+                                     (map name)
+                                     (clojure.string/join ", ")
+                                     clojure.string/capitalize)
+                                     " (space).")))
               ; clear bloody status when moving into water
               (if (rw/type->water? (get target-cell :type))
                 (rp/assoc-bloodied state false)
@@ -981,17 +1098,6 @@
             new-state))
         state)))
 
-(defn pickup-directions
-  [state]
-  (map second
-       (filter (fn [[cell direction]]
-                 (-> (get cell :items [])
-                     count
-                     pos?))
-               (map (fn [direction]
-                      [(rw/player-adjacent-cell state direction) direction])
-                    rc/directions-ext))))
-
 (defn assoc-pickup-target
   [state direction]
   {:pre  [(contains? rc/directions-ext direction)]}
@@ -1420,15 +1526,6 @@
       :else
         (rw/assoc-current-state state :pickup))))
 
-(defn harvestable-directions
-  [state]
-  (map second
-       (filter (fn [[cell direction]]
-                 (get cell :harvestable))
-               (map (fn [direction]
-                      [(rw/player-adjacent-cell state direction) direction])
-                    rc/directions-ext))))
-
 (defn smart-harvest
   [state]
   ;; If there is just one adjacent thing to harvest, just harvest it. Otherwise enter a harvest mode.
@@ -1445,14 +1542,6 @@
       :else
         (rw/assoc-current-state state :harvest))))
 
-(defn openable-directions
-  [state]
-  (map second
-       (filter (fn [[cell direction]]
-                 (contains? #{:close-door} (get cell :type)))
-               (map (fn [direction]
-                      [(rw/player-adjacent-cell state direction) direction])
-                    rc/directions-ext))))
 (defn smart-open
   [state]
   ;; If there is just one adjacent thing to open, just open it. Otherwise enter open mode.
@@ -1470,24 +1559,6 @@
       :else
         (rw/assoc-current-state state :open))))
 
-(defn closeable-directions
-  [state]
-  (map second
-       (filter (fn [[cell direction]]
-                 (contains? #{:open-door} (get cell :type)))
-               (map (fn [direction]
-                      [(rw/player-adjacent-cell state direction) direction])
-                    rc/directions-ext))))
-
-(defn quaff-directions
-  [state]
-  (->> rc/directions-ext
-     (map (fn [direction]
-            [(rw/player-adjacent-cell state direction) direction]))
-     (filter (fn [[cell direction]]
-               (rw/type->water? (get cell :type))))
-    (map second)))
-
 (defn smart-close
   [state]
   ;; If there is just one adjacent thing to close, just close it. Otherwise enter close mode.
@@ -1503,61 +1574,6 @@
           (rw/assoc-current-state :normal))
       :else
         (rw/assoc-current-state state :close))))
-
-(defn directions-to-actions
-  [state]
-  (let [pickup-directions (pickup-directions state)
-        _ (log/info "pickup directions" (vec pickup-directions))
-        harvest-directions (harvestable-directions state)
-        _ (log/info "harvest-directions" (vec harvest-directions))
-        open-directions (openable-directions state)
-        _ (log/info "open-directions" (vec open-directions))
-        close-directions (closeable-directions state)
-        _ (log/info "close-directions" (vec close-directions))
-        quaff-directions (quaff-directions state)
-        _ (log/info "quaff-directions" (vec quaff-directions))
-        stairs-directions (if (rw/player-on-stairs? state) [:center] [])
-        _ (log/info "player-on-stairs?" stairs-directions)
-        actions (as-> [] actions
-                  (if (seq pickup-directions)
-                    (conj actions {:state-id :pickup
-                                   :name "Pickup"})
-                    actions)
-                  (if (seq harvest-directions)
-                    (conj actions {:state-id :harvest
-                                   :name "Harvest"})
-                    actions)
-                  (if (seq open-directions)
-                    (conj actions {:state-id :open
-                                   :name "Open"})
-                    actions)
-                  (if (seq close-directions)
-                    (conj actions {:state-id :close
-                                   :name "Close"})
-                    actions)
-                  (if (seq quaff-directions)
-                    (conj actions {:state-id :quaff
-                                   :name "Quaff"}
-                    actions))
-                  (if stairs-directions
-                    (conj actions {:state-id :stairs
-                                   :name "Stairs"})
-                    actions))
-        ;; direction->#{set of actions}
-        directions (reduce-kv (fn [directions action action-directions]
-                             (merge-with clojure.set/union directions (zipmap action-directions (repeat #{action}))))
-                           {}
-                           {:pickup  pickup-directions
-                            :harvest harvest-directions
-                            :open    open-directions
-                            :close   close-directions
-                            :quaff   quaff-directions
-                            :stairs  stairs-directions})]
-      (log/info "num pickup-directions" (count pickup-directions)
-                "num harvest-directions" (count harvest-directions)
-                "num open-directions" (count open-directions)
-                "num close-directions" (count close-directions))
-    directions))
 
 (defn direction->unicode-char
   [direction]

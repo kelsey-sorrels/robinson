@@ -85,6 +85,19 @@
                                                       #(assoc %1 :hotkey %2)
                                                       remaining-hotkeys
                                                       inventory))
+        inventory               (->> inventory
+                                  (reduce (fn [inventory item]
+                                    (log/info item (set items))
+                                    (conj
+                                      inventory
+                                      (if (some (set items) #{item (dissoc item :hotkey)})
+                                        (do (log/info item)
+                                          (assoc item :added-time (get-in state [:world :time])))
+                                        item)))
+                                    [])
+                                   (sort-by :added-time)
+                                   reverse
+                                   vec)
         _                       (log/info "new inventory with hotkeys" inventory)
         ;; find all the free hotkeys after filling in missing hotkeys into the newly added inventory items
         remaining-hotkeys       (vec (sort (vec (clojure.set/difference (set remaining-hotkeys) (set (map :hotkey inventory))))))
@@ -99,6 +112,7 @@
                                                (rc/append-log state (format "%s-%c" (get item :name) (get item :hotkey)))))
                            state
                            items))))))
+
 (defn inventory-hotkey->item
   [state hotkey]
   (first (filter (fn [item] (= hotkey (get item :hotkey))) (player-inventory state))))

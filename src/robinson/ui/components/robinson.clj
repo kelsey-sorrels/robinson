@@ -1736,7 +1736,9 @@
                 [:text {} [""]]
                 [:text {:style {:left -6}} [(format "Generating %s..." (nth loading-tidbits @tidbit-index))]]
                 [:text {} [""]]
-                [:text {:style {:left 3}} [(first @spinner-chars)]]]]]]]]]]]])))
+                [:text {:style {:left 3}} [(first @spinner-chars)]]
+                [:text {:style {:padding-top 3}} [""]]
+                [:text {:style {:left -20}} ["Hint: You can use the ? key to view help during the game"]]]]]]]]]]]])))
 
 (zc/def-component Connecting
   [this]

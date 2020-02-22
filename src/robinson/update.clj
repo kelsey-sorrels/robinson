@@ -279,7 +279,8 @@
    from fresh or after the player has died."
   [state]
   (let [selected-hotkeys (get-in state [:world :selected-hotkeys])
-        player-name      (rp/get-player-attribute state :name)]
+        player-name      (rp/get-player-attribute state :name)
+        start-time       (System/currentTimeMillis)]
     ;; remove any previously generated chunks
     (delete-save-game)
     (loop []
@@ -300,14 +301,18 @@
           (do
             (log/warn "Scrapping world due to invalid starting cell type" cell-type)
             (recur))
-          (->  state
-            (add-starting-inventory selected-hotkeys)
-            (rp/assoc-player-attribute :name player-name)
-            (update-visibility)
-            (as-> state
-              (reduce (fn [state _] (rnpc/add-npcs state))
-                      state
-                      (range 5)))))))))
+          (let [state (->  state
+                        (add-starting-inventory selected-hotkeys)
+                        (rp/assoc-player-attribute :name player-name)
+                        (update-visibility)
+                        (as-> state
+                          (reduce (fn [state _] (rnpc/add-npcs state))
+                                  state
+                                  (range 5))))
+               end-time (System/currentTimeMillis)
+               duration (- end-time start-time)]
+            (Thread/sleep (max 0 (- 4000 duration)))
+            state))))))
 
 (defn select-starting-inventory
   [state keyin]

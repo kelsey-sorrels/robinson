@@ -1314,7 +1314,9 @@
         [vx vy]                                     (rc/pos->xy viewport-pos)
         lantern-on                                  (when-let [lantern (ri/inventory-id->item game-state :lantern)]
                                                       (= (get lantern :state :off) :on))
-        font-type                                   (get (rfont/current-font game-state) :type :ttf)]
+        font                                        (rfont/current-font game-state)
+        font-type                                   (or (get font :charset) (get font :type :ttf))]
+    (log/info (rfont/current-font game-state))
     (zc/csx
 	  [:terminal {} [
 		[:group {:id :app} [

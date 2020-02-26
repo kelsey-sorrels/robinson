@@ -3249,13 +3249,15 @@
                                    npc-can-move-in-water
                                      water-traversable?
                                    npc-can-move-on-land
-                                     land-traversable?)
+                                     land-traversable?
+                                   :else
+                                     (fn [_] false))
           ;; TODO: calc new-pos based on adj-navigable space (8-dir) that is farthest away from player
           ;_                      (log/debug "path to target" path)
-          new-pos                (first
-                                   (sort-by (fn [[x y]] (rc/distance (rc/xy->pos npc-x npc-y) (rc/xy->pos x y)))
-                                            (filter traversable?
-                                                    (rw/adjacent-xys-ext npc-x npc-y))))
+          new-pos                (->> (rw/adjacent-xys-ext npc-x npc-y)
+                                   (filter traversable?)
+                                   (sort-by (fn [[x y]] (rc/distance (rc/xy->pos npc-x npc-y) (rc/xy->pos x y))))
+                                   (first))
           new-pos                (or new-pos
                                      [npc-x npc-y])
 

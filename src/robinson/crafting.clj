@@ -549,7 +549,7 @@
            [?e :recipe/example-item-requirements ?v]]
           recipe-db
           rules
-          (fn [msg x] (log/info msg x) true)
+          (fn [msg x] (log/trace msg x) true)
           seq
           first
           rest
@@ -579,7 +579,7 @@
            [?e :recipe/example-item-properties ?v]]
           recipe-db
           rules
-          (fn info [x] (log/info x) true)
+          (fn info [x] (log/trace x) true)
           seq
           first
           rest
@@ -591,7 +591,7 @@
 
 (defn item-satisfies-requirement-clause?
   [item clause]
-  (log/info "item-satisfies-requirement-clause?" item clause)
+  (log/debug "item-satisfies-requirement-clause?" item clause)
   (cond
     (fn? clause)
       (clause item)
@@ -616,8 +616,8 @@
 
 (defn item-satisfies-any-clause?
   [item recipe]
-  (log/info "item-satisfies-any-clause?" item)
-  (log/info "item-satisfies-any-clause?" (get recipe :recipe/requirements))
+  (log/debug "item-satisfies-any-clause?" item)
+  (log/debug "item-satisfies-any-clause?" (get recipe :recipe/requirements))
   (some
     (partial item-satisfies-requirement-clause? item)
     (-> recipe :recipe/requirements rest)))
@@ -658,7 +658,7 @@
                                (remove empty?)
                                (mapcat combo/permutations))]
     (do
-    (log/info "testing" (count item-permutations) " item combos " (count recipes) " recipes")
+    (log/debug "testing" (count item-permutations) " item combos " (count recipes) " recipes")
     (or
       (set
         (for [recipe recipes
@@ -679,7 +679,7 @@
   [state hotkeys]
   (reduce (fn [state hotkey]
             (do 
-              (log/info "removing" hotkey)
+              (log/trace "removing" hotkey)
               (ri/dec-item-count state hotkey)))
           state
           hotkeys))
@@ -696,16 +696,16 @@
 
 (defn- place-inventory
   [state id effects name]
-  (log/info "placing item with id" id "in inventory")
+  (log/debug "placing item with id" id "in inventory")
   (let [item (ig/id->item id)
-        _ (log/info item)
+        _ (log/trace item)
         updated-item (reduce (fn [item effect]
                                (if (satisfies? rcmp/ModItemOnCreate effect)
                                  (rcmp/item-on-create effect item)
                                  item))
                              (assoc item :name name)
                              (get item :effects))]
-    (log/info "add-to-inventory" updated-item)
+    (log/debug "add-to-inventory" updated-item)
     (ri/add-to-inventory state [updated-item])))
 
 (defn- add-by-ids
@@ -810,7 +810,7 @@
   ([recipe show-progress]
     {:post [string?]}
     (let [types (get recipe :recipe/types)]
-      (log/info "recipe-name" (count types) (get recipe :recipe/id) (get recipe :type) types (and show-progress (in-progress? recipe)))
+      (log/debug "recipe-name" (count types) (get recipe :recipe/id) (get recipe :type) types (and show-progress (in-progress? recipe)))
       (str
         (if (and show-progress (in-progress? recipe))
           "In progress " 
@@ -842,8 +842,8 @@
     (craft-recipe state recipe true))
   ([state recipe exhaust]
     {:pre [(some? recipe)]}
-    (log/info "crafting recipe" (get recipe :recipe/id))
-    (log/info recipe)
+    (log/debug "crafting recipe" (get recipe :recipe/id))
+    (log/trace recipe)
     (let [exhaust-hotkeys (->> (get recipe :recipe/requirements)
                             ; remove 'each-of
                             rest
@@ -855,7 +855,7 @@
                             (map (fn [[slot _]] (get (slot->item state slot) :hotkey))))
           add          (get recipe :recipe/add)
           effects      (get recipe :effects [])
-          _ (log/info "add" add)
+          _ (log/trace "add" add)
           state (as-> state state
                     (add-by-ids state add effects (get recipe :place :inventory) (get recipe :recipe/name))
                     ; exhaust non-tool slot items
@@ -873,13 +873,13 @@
   "Returns a requirements where one of the clauses has been replaced with a specific item requirement based
    on the dominate item in the recipe."
   [item requirements]
-  (log/info "requirements-based-on-dominate-item" item requirements)
-  (log/info (->> requirements
+  (log/debug "requirements-based-on-dominate-item" item requirements)
+  (log/debug (->> requirements
               ; add index
               (map-indexed vector)
               vec))
              
-  (log/info (->> requirements
+  (log/debug (->> requirements
               ; add index
               (map-indexed vector)
               rest
@@ -900,7 +900,7 @@
                   rand-nth
                   ; extract index of clause to replace
                   first)]
-        (log/info "idx" idx)
+        (log/trace "idx" idx)
         ; replace clause with
         (assoc requirements idx [:item/id (get item :item/id)]))
       ; if not clauses - don't update requirements
@@ -909,13 +909,13 @@
 (defn save-recipe
   [state]
   {:post [(not (nil? %))]}
-  (log/info "Saving recipe")
-  (log/info (type (get-in state [:world :recipes])))
+  (log/debug "Saving recipe")
+  (log/debug (type (get-in state [:world :recipes])))
   #_(log/info (vec (get-in state [:world :recipes])))
   (let [recipe (current-recipe state)
         _ (assert (some? recipe))
         selected-recipe-hotkey (get-in state [:world :selected-recipe-hotkey])
-        _ (log/info "dominate-item" (get recipe :recipe/dominate-item))
+        _ (log/trace "dominate-item" (get recipe :recipe/dominate-item))
         #_ (log/info recipe)
         recipe-blueprint (-> recipe
                            :recipe/types
@@ -928,7 +928,7 @@
                         (update :recipe/requirements
                                 (partial requirements-based-on-dominate-item
                                          (get recipe :recipe/dominate-item))))]
-    (log/info (dissoc merged-recipe :recipe/events))
+    (log/debug (dissoc merged-recipe :recipe/events))
     (-> state
       (update-in [:world :recipes] assoc
         selected-recipe-hotkey merged-recipe)
@@ -937,14 +937,14 @@
 
 (defn fill-event
   [event recipe]
-  (letfn [(invoke-fn [f] (log/info "invoke-fn" f recipe) (f recipe))]
-    (log/info "fill-event" event)
-    (log/info "seq?" (sequential? (get event :description)))
+  (letfn [(invoke-fn [f] (log/trace "invoke-fn" f recipe) (f recipe))]
+    (log/debug "fill-event" event)
+    (log/trace "seq?" (sequential? (get event :description)))
     (-> event
       (cond-> (sequential? (get event :description))
         (update :description rand-nth))
       (update :event/choices (fn [choices]
-        (log/info "Updating choices" (count choices) choices)
+        (log/debug "Updating choices" (count choices) choices)
         (case (count choices)
           ; no choices, add (space - continue)
           0 [{:name "continue" :hotkey :space :source :fill-event1}]
@@ -964,7 +964,7 @@
   [recipe-ns val-in-result val-in-latter]
   (if-let [merge-sym (-> val-in-latter meta :merge)]
     (let [f (ns-resolve recipe-ns merge-sym)]
-      (log/info f)
+      (log/trace f)
       (f val-in-result val-in-latter))
     (into val-in-result val-in-latter)))
 
@@ -1005,9 +1005,9 @@
 
 (defn rand-event
   [state recipe-ns recipe]
-  (log/info "rand-event" (-> recipe :events))
-  (log/info "rand-event" (-> recipe :events last))
-  (log/info "rand-event" (keys recipe))
+  (log/debug "rand-event" (-> recipe :events))
+  (log/debug "rand-event" (-> recipe :events last))
+  (log/debug "rand-event" (keys recipe))
   (let [num-events (count (get recipe :events []))
         next-node-type (rand-nth
                          (cond 
@@ -1064,8 +1064,8 @@
   (let [current-stage (get recipe :current-stage)]
     ; find selected choice
 
-    (log/info "choices" (vec (->> (get current-stage :event/choices))))
-    (log/info "choice" (->> (get current-stage :event/choices)
+    (log/debug "choices" (vec (->> (get current-stage :event/choices))))
+    (log/debug "choice" (->> (get current-stage :event/choices)
                       (filter #(= (get % :hotkey) keyin))
                       first))
     (if-let [choice (->> (get current-stage :event/choices)
@@ -1094,11 +1094,11 @@
                                                                 :done
                                                                 :choice/id])
                                            (select-keys current-stage [:gen]))))
-              _ (log/info "results" results)
+              _ (log/debug "results" results)
               choice-variables (->> choice
                                  (filter (fn [[k v]] (= "$" (namespace k))))
                                  (map (fn [[k v]] (let [f (eval-in-ns v recipe-ns)]
-                                                    (log/info "evaluating" v "into" f "arg" (get recipe k))
+                                                    (log/trace "evaluating" v "into" f "arg" (get recipe k))
                                                     [k (f (get recipe k))])))
                                  (into {}))
               ; merge results into current recipe
@@ -1115,7 +1115,7 @@
                                    (update-current-recipe
                                      update :events conj (get recipe :current-stage)))]
           (assert (not (nil? state-with-results)))
-          (log/info "next-state" (rw/current-state state-with-results))
+          (log/trace "next-state" (rw/current-state state-with-results))
           ; done with recipe?
           (cond
             (contains? choice :done)
@@ -1127,7 +1127,7 @@
               (if (not-empty (get choice :choice/events))
                 ; find next event
                 (let [next-event (rand-nth (get choice :choice/events))]
-                  (log/info "next-event" next-event)
+                  (log/trace "next-event" next-event)
                   (assoc-current-recipe
                     state-with-results
                     :current-stage
@@ -1135,7 +1135,7 @@
                     (fill-event 
                       (if (keyword? next-event)
                         (let [event-fn (ns-resolve recipe-ns (-> next-event name symbol))]
-                          (log/info "resolved" recipe-ns next-event "to" event-fn)
+                          (log/trace "resolved" recipe-ns next-event "to" event-fn)
                           (event-fn state recipe))
                         next-event)
                       recipe)))
@@ -1162,8 +1162,8 @@
   {:pre [(not (nil? state))]
    :post [(not (nil? %))]}
   (let [gen-random (ns-resolve recipe-ns 'gen-random)]
-  (log/info "gen-random" gen-random)
-  (log/info "recipe init" recipe)
+  (log/trace "gen-random" gen-random)
+  (log/trace "recipe init" recipe)
   (assoc-current-recipe
       state
       :name (recipe-name recipe)

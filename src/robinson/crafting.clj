@@ -887,20 +887,24 @@
               (filter (comp (partial item-satisfies-requirement-clause? item) second))
               vec))
              
-  (let [idx (->> requirements
-              ; add index
-              (map-indexed vector)
-              ; remove the 'each symbol at the head
-              rest
-              ; filter where item satisfies the clause (keeping [index clause] strucuture
-              (filter (comp (partial item-satisfies-requirement-clause? item) second))
-              ; random [index clause]
-              rand-nth
-              ; extract index of clause to replace
-              first)]
-    (log/info "idx" idx)
-    ; replace clause with
-    (assoc requirements idx [:item/id (get item :item/id)])))
+  (let [index-clauses (->> requirements
+                        ; add index
+                        (map-indexed vector)
+                        ; remove the 'each symbol at the head
+                        rest
+                        ; filter where item satisfies the clause (keeping [index clause] strucuture
+                        (filter (comp (partial item-satisfies-requirement-clause? item) second)))]
+    (if (seq index-clauses)
+      (let [idx (-> index-clauses
+                  ; random [index clause]
+                  rand-nth
+                  ; extract index of clause to replace
+                  first)]
+        (log/info "idx" idx)
+        ; replace clause with
+        (assoc requirements idx [:item/id (get item :item/id)]))
+      ; if not clauses - don't update requirements
+      requirements)))
                  
 (defn save-recipe
   [state]

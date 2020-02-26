@@ -9,6 +9,10 @@
   [state]
   (get-in state [:world :player :inventory]))
 
+(defn inventory-hotkeys
+  [state]
+  (map :hotkey (player-inventory state)))
+
 (defn merge-items
   [item1 item2]
   (log/info "merging" item1 item2)

@@ -430,11 +430,18 @@
         ;; calculate place-id and viewport position using minimal state information
         
         starting-pos           (find-starting-pos seed max-x max-y)
+        [sx sy]                (rc/pos->xy starting-pos)
         _                      (log/info "starting-pos" starting-pos)
         volcano-xy             [x y]
-        lava-terminal-pos      (find-lava-terminal-pos seed starting-pos max-x max-y)
-        _                      (log/info "volcano-xy" volcano-xy "lava-terminal-pos" lava-terminal-pos)
-        lava-segments          (partition 2 (apply line-segments [(first volcano-xy) (second volcano-xy) (get lava-terminal-pos :x) (get lava-terminal-pos :y)]))
+        lava-segments          (loop [seed seed]
+                                 ; loop through lava segment generation until all points are father than 10 away from the player
+                                 (let [lava-terminal-pos      (find-lava-terminal-pos seed starting-pos max-x max-y)
+                                       segments (line-segments (first volcano-xy) (second volcano-xy) (get lava-terminal-pos :x) (get lava-terminal-pos :y))]
+                                   (log/info "volcano-xy" volcano-xy "lava-terminal-pos" lava-terminal-pos)
+                                   (log/info (vec segments))
+                                   (if (every? (fn [[x y]] (rc/farther-than? x y sx sy 10)) segments)
+                                     (partition 2 segments)
+                                     (recur (inc seed)))))
         lava-points            (map first lava-segments)
         _                      (log/info "lava-points" lava-points)
         min-state              {:world {:time 25
@@ -443,7 +450,6 @@
                                         :volcano-pos (apply rc/xy->pos volcano-xy)
                                         :lava-points lava-points}}
         place-id               (apply rv/xy->place-id min-state (rc/pos->xy starting-pos))
-        [sx sy]                (rc/pos->xy starting-pos)
         [ax ay]                (rv/place-id->anchor-xy min-state (rv/xy->place-id min-state sx sy))
         [vx vy]                [(int (- sx (/ width 2))) (int (- sy (/ height 2)))]
         place-0                (init-island min-state ax ay width height)

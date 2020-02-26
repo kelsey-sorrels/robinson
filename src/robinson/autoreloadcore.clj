@@ -4,6 +4,7 @@
   (:require [robinson.main :as main]
             [robinson.ui.mouse :as mouse]
             [robinson.world :as rw]
+            [robinson.autoplay :as rap]
             [zaffre.terminal :as zt]
             [zaffre.glterminal :as zgl]
             [zaffre.components :as zc]
@@ -21,6 +22,7 @@
             [robinson.fx.blip :as rfxblip]
             [robinson.fx.whip-item :as rfxwhip]
             [robinson.fx.boomerang-item :as rfxboomerang]
+            [robinson.fx.lightning :as rfxlightning]
             [clojure.core.async :as async :refer [go go-loop]]
             #_[clojure.tools.nrepl.server :as nreplserver]
             #_[clj-async-profiler.core :as prof]
@@ -37,12 +39,14 @@
 (defn default-render-fn [state last-dom] (println "default render fn"))
 (defn default-click-fn [col row last-dom] (println "default click fn"))
 (defn default-move-fn [col row last-col last-row last-dom] (println "default move fn"))
+(defn default-auto-input-fn [state] (println "default auto-input fn"))
 
 (def setup-fn (atom default-setup-fn))
 (def tick-fn (atom default-tick-fn))
 (def render-fn (atom default-render-fn))
 (def click-fn (atom default-click-fn))
 (def move-fn (atom default-move-fn))
+(def auto-input-fn (atom default-auto-input-fn))
 
 (def track (ns-tracker ["src/robinson"]))
 (defn check-namespace-changes []
@@ -63,6 +67,7 @@
         (reset! tick-fn (resolve 'robinson.main/tick))
         (reset! click-fn (resolve 'robinson.ui.mouse/handle-click))
         (reset! move-fn (resolve 'robinson.ui.mouse/handle-mouse-move))
+        (reset! auto-input-fn (resolve 'robinson.autoplay.auto-input))
         (log/info "Done.")))
     (catch Throwable e (log/error e))))
 
@@ -111,6 +116,28 @@
       (Thread/sleep 20)
       (le/handle-input i))))
 
+(defn process-keypress
+  [terminal state keyin mods show-frames]
+  (try
+    (when (= keyin :exit)
+      (System/exit 0))
+    (when keyin
+      (log/info "Core current-state" (rw/current-state state))
+      (log/info "Core got key" keyin)
+      (let [new-state (@tick-fn (assoc @state-ref :screen terminal) keyin @mods)
+            state-stream (revents/stream new-state)]
+        (reset! show-frames true)
+        (doseq [state (revents/chan-seq state-stream)]
+          (log/info "got new state from stream")
+          (reset! state-ref state))
+        (log/info "got new state from stream")
+        (log/info "End of game loop")))
+     (catch Throwable ex
+       (log/error ex)
+       (print-stack-trace ex)
+       (reset! show-frames false)
+       state)))
+
 (defn -main
   "Entry default point to application.
 
@@ -132,6 +159,7 @@
     (reset! tick-fn (resolve 'robinson.main/tick))
     (reset! click-fn (resolve 'robinson.ui.mouse/handle-click))
     (reset! move-fn (resolve 'robinson.ui.mouse/handle-mouse-move))
+    (reset! auto-input-fn (resolve 'robinson.autoplay/auto-input))
     (start-nstracker)
     (init-editor)
     (@setup-fn
@@ -147,11 +175,19 @@
                           character-width
                           character-height]} (get groups :app)
                           fps-fn (atat/every 1000
-								   #(do
+                            	   #(do
                                      (when  @show-frames
-									   (log/info "frames " @frames))
-									 (reset! frames 0))
-								   zc/*pool*)]
+                            		   (log/info "frames " @frames))
+                            		 (reset! frames 0))
+                                   zc/*pool*)
+                  auto-play-loop (go-loop []
+                                   (let [state @state-ref]
+                                     (when (get state :autoplay)
+                                       (let [keyin (rap/auto-input state)]
+                                         (log/info "sending auto key" keyin)
+                                         (process-keypress terminal state keyin mods show-frames))))
+                                   (recur))]
+            
               (log/info "Terminal groups" groups)
               (zt/set-window-size! terminal
                                    {:width (* columns character-width)
@@ -178,26 +214,8 @@
                   (assert (zc/element? ui)))))
             (zevents/add-event-listener terminal :keypress (fn [keyin]
               ; tick the old state through the tick-fn to get the new state
-              (try
-                (when (= keyin :exit)
-                  (System/exit 0))
-                (when keyin
-                  (log/info "Core current-state" (rw/current-state state))
-                  (log/info "Core got key" keyin)
-                  (let [new-state (@tick-fn (assoc @state-ref :screen terminal) keyin @mods)
-                        state-stream (revents/stream new-state)]
-                    (reset! show-frames true)
-                    (doseq [state (revents/chan-seq state-stream)]
-                      (log/info "got new state from stream")
-                      (reset! state-ref state))
-                    (log/info "got new state from stream")
-                    (log/info "End of game loop")))
-                 (catch Throwable ex
-                   (log/error ex)
-                   (print-stack-trace ex)
-                   (reset! show-frames false)
-                   state))))
-			  (zevents/add-event-listener terminal :keydown
+              (process-keypress terminal state keyin mods show-frames)))
+            (zevents/add-event-listener terminal :keydown
 				(fn [new-key]
 				  (println "keydown" new-key)
 				  (when (contains? #{:lshift :rshift} new-key)

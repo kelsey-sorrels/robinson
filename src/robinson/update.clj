@@ -2,6 +2,7 @@
 (ns robinson.update
   (:require 
             [robinson.common :as rc]
+            [robinson.error :as re]
             [robinson.random :as rr]
             [robinson.scores :as rs]
             [robinson.world :as rw]
@@ -319,9 +320,11 @@
                           (reduce (fn [state _] (rnpc/add-npcs state))
                                   state
                                   (range 5))))
+               ; FIXME change back to 4000
+               min-duration 40
                end-time (System/currentTimeMillis)
                duration (- end-time start-time)]
-            (Thread/sleep (max 0 (- 4000 duration)))
+            (Thread/sleep (max 0 (- min-duration duration)))
             state))))))
 
 (defn select-starting-inventory
@@ -1928,43 +1931,48 @@
   (log/info "poisoned fruit" (get-in state [:world :fruit :poisonous]))
   (log/info (rw/inventory-and-player-cell-hotkey->item state keyin))
   (if-let [item (rw/inventory-and-player-cell-hotkey->item state keyin)]
-    (let [[x y] (rp/player-xy state)
-          unknown-fruit (and (ig/is-fruit? item)
-                             (not (contains? (get-in state [:world :fruit :identified]) (get item :item/id))))]
-      (-> state
-        (rc/append-log (format "The %s tastes %s." (lower-case (get item :name))
-                                                (rr/rand-nth ["great" "foul" "greasy" "delicious" "burnt" "sweet" "salty"])))
-        (rp/update-eaten item)
-        ;; reduce hunger
-        (update-in [:world :player :hunger]
-          (fn [hunger]
-            (let [new-hunger (- hunger (item :hunger))]
-              (max 0 new-hunger))))
-        (as-> state
-          (if (contains? (set (map :hotkey (ri/player-inventory state))) keyin)
-            ;; remove the item from inventory
-            (ri/dec-item-count state keyin)
-            ;; remove the item from the current-cell
-            (rw/dec-cell-item-count state (get item :item/id)))
-          (if (= (get item :item/id) :coconut-empty)
-            (ri/add-to-inventory state [(ig/gen-item :coconut-shell)])
-            state))
-        (cond-> unknown-fruit
-            (rpop/show-popover "You decide to eat the unknown fruit. Good luck."))
-        ;; if the item was a poisonous fruit, set a poisoned timebomb
-        (as-> state
-          (if (and (ig/is-fruit? item)
-                   (contains? (set (get-in state [:world :fruit :poisonous])) (get item :item/id)))
-            (do
-              (log/info "Ate poisoned fruit." item)
-              (assoc-in state
-                        [:world :player :poisoned-time]
-                        (apply min (remove nil?
-                                           [(get-in state [:world :player :poisoned-time])
-                                            (+ (rw/get-time state) (rr/uniform-int 100 200))]))))
-            state))
-        (cond-> (not unknown-fruit)
-          (rw/assoc-current-state :normal))))
+    (if (get item :hunger)
+      (let [[x y] (rp/player-xy state)
+            unknown-fruit (and (ig/is-fruit? item)
+                               (not (contains? (get-in state [:world :fruit :identified]) (get item :item/id))))]
+        (-> state
+          (rc/append-log (format "The %s tastes %s." (lower-case (get item :name))
+                                                  (rr/rand-nth ["great" "foul" "greasy" "delicious" "burnt" "sweet" "salty"])))
+          (rp/update-eaten item)
+          ;; reduce hunger
+          (update-in [:world :player :hunger]
+            (fn [hunger]
+              (let [item-hunger (get item :hunger 0)
+                    new-hunger (- hunger item-hunger)]
+                (when-not item-hunger
+                  (re/log-exception (Exception. (str "Item has not hunger" item)) state keyin))
+                (max 0 new-hunger))))
+          (as-> state
+            (if (contains? (set (map :hotkey (ri/player-inventory state))) keyin)
+              ;; remove the item from inventory
+              (ri/dec-item-count state keyin)
+              ;; remove the item from the current-cell
+              (rw/dec-cell-item-count state (get item :item/id)))
+            (if (= (get item :item/id) :coconut-empty)
+              (ri/add-to-inventory state [(ig/gen-item :coconut-shell)])
+              state))
+          (cond-> unknown-fruit
+              (rpop/show-popover "You decide to eat the unknown fruit. Good luck."))
+          ;; if the item was a poisonous fruit, set a poisoned timebomb
+          (as-> state
+            (if (and (ig/is-fruit? item)
+                     (contains? (set (get-in state [:world :fruit :poisonous])) (get item :item/id)))
+              (do
+                (log/info "Ate poisoned fruit." item)
+                (assoc-in state
+                          [:world :player :poisoned-time]
+                          (apply min (remove nil?
+                                             [(get-in state [:world :player :poisoned-time])
+                                              (+ (rw/get-time state) (rr/uniform-int 100 200))]))))
+              state))
+          (cond-> (not unknown-fruit)
+            (rw/assoc-current-state :normal))))
+       state)
     state))
 
 (defn init-cursor
@@ -3006,6 +3014,10 @@
     (log/info "repeating commands" command-seq)
     (reduce update-state state command-seq)))
 
+(defn enable-autoplay
+  [state]
+  (assoc state :autoplay true))
+
 (defn toggle-mount
   "Mount or unmount at the current cell."
   [state]
@@ -3572,6 +3584,33 @@
         (log/info "recurring over" (count remaining-npcs) "npcs i" (dec i))
         (recur state remaining-npcs (dec i)))))))
 
+(defn update-rain
+  "Process rain effects each turn. Includes lightning generation."
+  [state]
+  ; Lightning rate is proportional to rain rate
+  (let [weather (get-in state [:world :weather] :clear)
+        rain-rate  (if (and (= weather :rain)
+                            (not (rw/in-dungeon? state)))
+                     0.0
+                     (rfx-rain/rain-rate (rw/get-time state)))
+        do-lightning (rr/rand-bool (- 1.0 rain-rate))
+        player-pos (rp/player-pos state)
+        target-candidates (filter (fn [[_ y]] (< (- (get player-pos :y) 5) y (+ (get player-pos :y) 5)))
+                            (rv/viewport-xys state))]
+    (log/info "weather" weather)
+    (if (seq target-candidates)
+      (let [target-pos (apply rc/xy->pos
+                         (rand-nth
+                           (filter (fn [[_ y]] (< (- (get player-pos :y) 5) y (+ (get player-pos :y) 5)))
+                             (rv/viewport-xys state))))]
+        (log/info "lightning-strike")
+        (cond-> state
+          do-lightning
+          (rfx/conj-effect
+            :lightning
+            target-pos)))
+      state)))
+
 (defn update-cells
   "Fill holes with a small amount of water. Drop fruit. Drop harvest items."
   [state]
@@ -3662,29 +3701,33 @@
                 ;(contains? fire-xys [x y])
                 (as-> xy-fns xy-fns
                   (conj xy-fns [[wx wy] (fn [cell] (update-in cell [:fuel] dec))])
-                  ;; chance of fire spreading
-                  (if (= 0 (rr/uniform-int 0 10))
-                    ;; make the fire spread and find an adjacent free cell to spread it into
-                    (let [cell-at-xy-flammable? (fn [[x y]]
-                                                  (rw/type->flammable?
-                                                    (get (rw/get-cell state x y) :type)))
-                          adj-xys (filter cell-at-xy-flammable?
-                                         (rw/adjacent-xys-ext wx wy))]
-                      (log/info "spreading fire at [" sx sy "]" adj-xys)
-                      (if (seq adj-xys)
-                        ;; spread fire into the cell
-                        (conj xy-fns [(rr/rand-nth adj-xys)
-                          (fn spread-fire [cell] (assoc cell :type :fire :fuel (rr/uniform-int 10 50)))])
-                        xy-fns))
-                     xy-fns)
-                  (if (neg? (get cell :fuel 0))
+                  ;; chance of fire stopping if raining
+                  (if (and (rfx-rain/rain-rate (rw/get-time state))
+                           (rr/rand-bool 0.8))
                     ;; extinguish the fire
-                    (conj xy-fns [[wx wy]
-                      (fn extinguish-fire [cell]
-                        (-> cell
-                          (assoc :type :dirt)
-                          (dissoc :fuel)))])
-                    xy-fns))
+                    (conj xy-fns [[wx wy] (fn [cell] (assoc cell :fuel 0))])
+                    ;; chance of fire spreading
+                    (if (rr/rand-bool 0.9)
+                      ;; make the fire spread and find an adjacent free cell to spread it into
+                      (let [cell-at-xy-flammable? (fn [[x y]]
+                                                    (rw/type->flammable?
+                                                      (get (rw/get-cell state x y) :type)))
+                            adj-xys (filter cell-at-xy-flammable?
+                                           (rw/adjacent-xys-ext wx wy))]
+                        (log/info "spreading fire at [" sx sy "]" adj-xys)
+                        (if (seq adj-xys)
+                          ;; spread fire into the cell
+                          (conj xy-fns [(rr/rand-nth adj-xys)
+                            (fn spread-fire [cell] (assoc cell :type :fire :fuel (rr/uniform-int 10 50)))])
+                          xy-fns))
+                      (if (neg? (get cell :fuel 0))
+                        ;; extinguish the fire
+                        (conj xy-fns [[wx wy]
+                          (fn extinguish-fire [cell]
+                            (-> cell
+                              (assoc :type :dirt)
+                              (dissoc :fuel)))])
+                        xy-fns))))
                  :else
                  xy-fns)
             ;; rot fruit
@@ -3902,6 +3945,7 @@
                            \*          [scroll-log-down        :normal          false]
                            \R          [repeat-commands        rw/current-state false]
                           :f9          [identity :debug-eval false]
+                          :f10         [enable-autoplay        rw/current-state false]
                           :f12         [(fn [state]
                                           (rf/send-report state)
                                           state)
@@ -4209,6 +4253,7 @@
         (if-near-too-much-fire-get-hurt)
         (update-npcs)
         (decrease-will-to-live)
+        (update-rain)
         (update-cells)
         (as-> state
           (do

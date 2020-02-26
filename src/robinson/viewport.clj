@@ -150,6 +150,7 @@
        [(inc px) (inc py)]]))))
 
 (defn viewport-xy
+  "The [x y] coordinates of the upper-left cell in the viewport."
   [state]
   (let [place-id (get-in state [:world :current-place])
         movement (get-in state [:world :places place-id :movement])]

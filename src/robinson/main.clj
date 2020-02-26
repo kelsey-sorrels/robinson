@@ -120,7 +120,7 @@
           new-state))
          (catch Exception e
            (do
-             (re/log-exception state e)
+             (re/log-exception state e keyin)
              (log/error "Caught exception" e)
              (.printStackTrace e)
              (st/print-stack-trace e)

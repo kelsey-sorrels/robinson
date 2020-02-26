@@ -403,7 +403,8 @@
   {:pre  [(not (nil? state))]
    :post [(not (nil? %))]}
   (let [item (get-apply-item state)
-        trans->dir? (comp rc/is-direction-ext? translate-directions)]
+        trans->dir? (comp rc/is-direction? translate-directions)
+        trans->dir-ext? (comp rc/is-direction-ext? translate-directions)]
     (log/info "apply-item" [item keyin])
     (log/info "is-direction?" ((comp rc/is-direction-ext? translate-directions) keyin))
     (rm/first-vec-match [(get item :item/id) keyin]
@@ -413,16 +414,16 @@
                                          (rw/assoc-current-state  :normal))
                                        state)
       [:fishing-pole    trans->dir?] (apply-fishing-pole state (translate-directions keyin))
-      [:match           trans->dir?] (-> state
+      [:match           trans->dir-ext?] (-> state
                                        (apply-match (get item :hotkey) (translate-directions keyin))
                                        (rw/assoc-current-state :normal))
-      [:fire-plough     trans->dir?] (-> state
+      [:fire-plough     trans->dir-ext?] (-> state
                                        (apply-fire-plough (translate-directions keyin))
                                        (rw/assoc-current-state :normal))
-      [:hand-drill      trans->dir?] (-> state
+      [:hand-drill      trans->dir-ext?] (-> state
                                        (apply-hand-drill (translate-directions keyin))
                                        (rw/assoc-current-state :normal))
-      [:bow-drill       trans->dir?] (-> state
+      [:bow-drill       trans->dir-ext?] (-> state
                                        (apply-bow-drill (translate-directions keyin))
                                        (rw/assoc-current-state :normal))
       [:plant-guide     :*         ] (if-let [item (ri/inventory-hotkey->item state keyin)]
@@ -431,13 +432,13 @@
       [:stick           \>         ] (-> state
                                        (dig-hole)
                                        (rw/assoc-current-state :normal))
-      [:flint-axe       trans->dir?] (-> state
+      [:flint-axe       trans->dir-ext?] (-> state
                                        (saw (translate-directions keyin) keyin)
                                        (rw/assoc-current-state :normal))
-      [:obsidian-axe    trans->dir?] (-> state
+      [:obsidian-axe    trans->dir-ext?] (-> state
                                        (saw (translate-directions keyin) keyin)
                                        (rw/assoc-current-state :normal))
-      [:saw             trans->dir?] (-> state
+      [:saw             trans->dir-ext?] (-> state
                                        (saw (translate-directions keyin) keyin)
                                        (rw/assoc-current-state :normal))
       [:flint           :*         ] (if-let [item (ri/inventory-hotkey->item state keyin)]
@@ -448,7 +449,7 @@
                                          (apply-rock keyin item)
                                          (rw/assoc-current-state :normal))
                                        state)
-      [:flint-and-steel trans->dir?] (-> state
+      [:flint-and-steel trans->dir-ext?] (-> state
                                        (start-fire (translate-directions keyin))
                                        (rw/assoc-current-state :normal))
       [:pen             :*         ] (apply-pen state item)

@@ -150,11 +150,12 @@
   [recipe ns]
   (let [id (keyword ns "id")]
     (log/info "rand-unused-item" (get recipe :items) (get recipe id))
-    (-> recipe
-      :items
-      (->>
-        (remove (fn [{id :item/id}] (contains? (get recipe id #{}) id))))
-      rand-nth)))
+    (let [unused-items (-> recipe
+                        :items
+                        (->>
+                          (remove (fn [{id :item/id}] (contains? (get recipe id #{}) id)))))]
+      (when (seq unused-items)
+        (rand-nth unused-items)))))
 
 ;; :requirements is a set of any
 ;;  :event/id
@@ -764,15 +765,17 @@
     (log/info "remedies debuffs" debuffs)
     ; slowdown
     ; push through
-    (if-let [debuff (rand-nth debuffs)]
-      [{:title "Remedy"
-        :description "You think you can fix a problem with this item." 
-        :event/choices [
-          {:hotkey \a
-           :name (str "fix " (rcmp/full-name debuff))
-           :choice/one-of [(rce/mod-remove-effect debuff)]}
-          {:name "skip"
-           :hotkey :space}]}]
+    (if (seq debuffs)
+      (if-let [debuff (when (seq debuffs) (rand-nth debuffs))]
+        [{:title "Remedy"
+          :description "You think you can fix a problem with this item." 
+          :event/choices [
+            {:hotkey \a
+             :name (str "fix " (rcmp/full-name debuff))
+             :choice/one-of [(rce/mod-remove-effect debuff)]}
+            {:name "skip"
+             :hotkey :space}]}]
+        [])
       [])))
 
 (defn gen-remedy [state recipe]

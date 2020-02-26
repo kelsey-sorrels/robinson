@@ -4211,7 +4211,7 @@
                :share-score
                           {\y          [identity               :start-inventory false]
                            \n          [identity               :start           false]}
-               :quit?     {\y          [(fn [state] (assoc :continue true)) :start false]
+               :quit?     {\y          [(fn [state] (assoc state :continue true)) :start false]
                            :else       [pass-state             :normal          false]}}
         expander-fn (fn [table] table)]
     (expander-fn table)))

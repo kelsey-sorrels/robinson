@@ -2,6 +2,7 @@
 (ns robinson.fx.airborn-item
   (:require 
             [robinson.common :as rc]
+            [robinson.error :as re]
             [robinson.renderutil :as rutil]
             [robinson.math :as rmath]
             [robinson.color :as rcolor]
@@ -122,7 +123,7 @@
                                             (dissoc :attacker)
                                             (assoc :count 1))))
                     cleanup
-                    (rc/append-log (format "Schwaff! Thump! The dart hits %s." (rdesc/describe-cell-type next-cell)))))
+                    (rc/append-log (format "Schwaff! Thump! The %s hits %s." (get item :name) (rdesc/describe-cell-type next-cell)))))
                 ; Nothing happened, advance item one step
                 (on-move state)))
             ; Nothing happened, advance item one step
@@ -134,7 +135,7 @@
     (try
       (handle-recieve this state item persist-item xy-path ch-cycle ttl fx-ks)
       (catch Throwable t
-        (log/error t)
+        (re/log-exception t state)
         state))))
               
 

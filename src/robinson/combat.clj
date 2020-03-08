@@ -1,6 +1,7 @@
 ;; Functions that manipulate state to do what the user commands.))
 (ns robinson.combat
   (:require [robinson.common :as rc]
+            [robinson.error :as re]
             [robinson.random :as rr]
             [robinson.world :as rw]
             [robinson.player :as rp]
@@ -580,9 +581,9 @@
           attack-item
           thrown-item
           ranged-weapon))
-      (catch Exception ex
+      (catch Throwable ex
         (log/error "Caught exception while doing combat" ex)
-        (print-stack-trace ex))
+        (re/log-exception ex state))
       (finally
         (log/info "End of attack")))))
 

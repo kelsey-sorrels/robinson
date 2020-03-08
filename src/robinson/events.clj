@@ -27,7 +27,7 @@
                    (try
                      (rupdate/update-advance-time state)
                      (catch Exception e
-                       (re/log-exception state e)))) state-chan))
+                       (re/log-exception e state)))) state-chan))
             (do
               ; stop streaming
               (log/info "closing  state-chan")

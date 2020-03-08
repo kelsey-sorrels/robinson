@@ -1,9 +1,12 @@
 (ns robinson.crafting.boat-gen
   (:require [robinson.common :as rc]
+            [robinson.error :as re]
+            [robinson.specs :as rspec]
             [robinson.random :as rr]
             [robinson.world :as rw]
             [robinson.player :as rp]
             [robinson.inventory :as ri]
+            [robinson.storylet :as rs]
             [robinson.crafting :as rcrafting]
             [robinson.crafting.effects :as rce]
             [robinson.crafting.mod-protocol :as rcmp]
@@ -98,8 +101,8 @@
                     (ri/inventory-id->count state :rope)
                     (ri/inventory-id->count state :stick))})
 
-(defn headache
-  [state recipe]
+(rs/def-storylet headache
+  #{:any}
   {:event/id :headache
    :description ["It all feels like too much. Your temples begin to throb as a headache rolls through your skull."]
    :event/choices [
@@ -128,7 +131,7 @@
              :hotkey :space
              :effects [(rce/mod-dec-inventory-by-item-id :herb)]
              :choice/events [
-               {:event/id "HeadacheMedicine2"
+               {:event/id :headache-medicine2
                 :description ["It works quickly and you go back to work."]
                 :event/choices [continue-choice]}]}]}]}
      {:name "Ignore"
@@ -138,8 +141,8 @@
          :effects [(rce/mod-hp -5 -1)]
          :event/choices [continue-choice]}]}]})
 
-(defn sinks
-  [state recipe]
+(rs/def-storylet sinks
+  #{:after-log}
   {:event/id :sinks
     :description ["A wave crashes into you and your boat begins to bob under the water. It's sinking."]
     :event/choices [
@@ -154,11 +157,11 @@
                 :description ["Glurp! You sink up to your knees in the mud."]
                 :event/choices [
                   {:name "Continue"
-                   :choice/events [   
-                     {:event/id "SinksImmobile"
+                   :choice/events [
+                     {:event/id :sinks-immobile
                       :description ["You're not going anywhere stuck like this and it doesn't look like it's coming back up anytime soon. You'll have to start over."]
                       :event/choices [continue-choice]}
-                     {:event/id "SinksLoseItem"
+                     {:event/id :sinks-lose-item
                       ; FIXME
                       ;(set: _parts to  (find: where its value &gt; 0, ...(dataentries: $materials)))
                       ;(set: _part to (either: ..._parts))
@@ -166,26 +169,26 @@
                       ;(set: $materials&#39;s _partname to it - 1)
                       :description ["You thrash about so you don't get sucked under with the boat. You lose a _partname in the process."]
                       :event/choices [continue-choice]}
-                     {:event/id "SinksSharpRock"
+                     {:event/id :sinks-sharp-rock
                       :description ["In the struggle to free yourself you step on a jagged rock. You've hurt your foot and can see blood staining the water. It looks bad."]
                       :event/choices [continue-choice]}
-                     {:event/id "SinksStrainBack"
+                     {:event/id :sinks-strain-back
                       :description ["It's stuck in the mud but you manage to yank it free."]
                       :event/choices [
                         {:name "Pull hard"
                          :effects [(rce/mod-hp -10 -5)]
                          :choice/events [
-                          {:event/id "SinksStrainsBack2"
+                          {:event/id :sinks-strains-back2
                           :description ["You pull hard but immediately realize you've hurt yourself. You can barely stand up as a deep pain radiates through your back."]
                           :event/choices [continue-choice]}]}]}]}]}]}]}]}
        {:name "Salvage"
         :choice/events [
-          {:event/id "SinksSalvage"
+          {:event/id :sinks-salvage
            :description ["You grab what you can before the waves wash it away. You'll have to start over."]
            :event/choices [continue-choice]}]}]})
 
-(defn insect
-  [state recipe]
+(rs/def-storylet insect
+  #{:after-log :stick}
   (let [bug (rand-nth [:spider :centipede :tarantula])
         bugs (get {:spider "spiders" :centipede "centipedes" :tarantula "tarantulas"} bug)]
     {:event/id :insect
@@ -193,7 +196,7 @@
       :event/choices [
         {:name "fight"
          :choice/events [
-           {:event/id "InsectFight"
+           {:event/id :insect-fight
             :description [(str "You're not abandoning your raft because of some " bugs ". You stand your ground.")]
             :event/choices [
               {:name "fight"
@@ -202,46 +205,46 @@
                :choice/events [:next-item]}]}]}
         {:name "shake them off"
          :choice/events [
-           {:event/id "InsectShake"
+           {:event/id :insect-shake
             :description ["You freak out and shake them off but end up damaging the log."]
             :event/choices [continue-choice]}]}
         {:name "wait them out"
          :choice/events [:break-bungry :break-thirsty]}]}))
 
-(defn rope-breaks
-  [state recipe]
+(rs/def-storylet rope-breaks
+  #{:after-rope}
   (let [exclaimation (rand-nth ["SNAP" "THWAP"])]
   {:event/id :rope-breaks
    :description [(str exclaimation "! Your rope breaks in two!")]
    :event/choices [
      {:name "Fix it with a knot"
       :choice/events [
-        {:event/id "RopeBreaksKnot"
+        {:event/id :rope-breaks-knot
          :description [" You attempt to knot the two lengths of rope together and salavge your work."]
          :event/choices [
            {:name "continue"
             :hotkey :space
             :choice/events [
               :rope-burn
-              {:event/id "RopeBreaksKnotSuccess"
+              {:event/id :rope-breaks-knot-success
                :description ["It works! You tie the two pieces together and have enough material to continue on."]
                :event/choices [continue-choice]}]}]}]}
      {:name "Replace it"
       :choice/events [
-        {:event/id "RopeBreaksReplace"
+        {:event/id :sope-breaks-replace
          :description ["You'll have to use some more rope to fix the broken part."]
          :event/choices [
            {:name "use rope"
             :choice/events [:use-rope]}]}]}]}))
 
-(defn tired
-  [state recipe]
+(rs/def-storylet tired
+  #{:any}
   {:event/id :tired
    :description ["Your eyes are heavy and you fumble with the materials. You're feeling much too tired to think straight."]
     :event/choices [
       {:name "Sleep"
         :choice/events [
-        {:event/id "TiredSleep"
+        {:event/id :tired-sleep
          :description [" You rest, better safe than sorry."]
          :event/choices [
            {:name "sleep"
@@ -254,8 +257,8 @@
           :description ["You press on, ignoring the pain for now."]
           :event/choices [continue-choice]}]}]})
 
-(defn rope-burn
-  [state recipe]
+(rs/def-storylet rope-burn
+  #{:after-rope}
   (let [exclaimation(rand-nth ["Swish" " Zip" " Zing" "Ouch"])
         bodypart (rand-nth ["hand" "wrist" "arm" "leg"])]
     {:event/id :rope-burn
@@ -265,7 +268,7 @@
        {:name "use bandage"
         :effects [(rce/mod-hp -10 -5)]
         :choice/events [
-          {:event/id "RopeBurnBandage"
+          {:event/id :rope-burn-bandage
            :description ["You pull out a bandage and wrap it as well as you can. You have to keep moving."]
            :event/choices [continue-choice]}]}
        {:name "apply ointment"
@@ -273,7 +276,7 @@
         :effects [(rce/mod-hp -10 -5)
                   (rce/mod-dec-inventory-by-item-id :ointment)]
         :choice/events [
-          {:event/id "RopeBurnOintment"
+          {:event/id :rope-burn-ointment
            :description ["You apply some ointment to the burn and push on."]
            :event/choices [continue-choice]}]}
        {:name "slow down"
@@ -286,8 +289,8 @@
            :description ["It's hard but you try to push through the pain."]
            :event/choices [continue-choice]}]}]}))
 
-(defn fungus
-  [state recipe]
+(rs/def-storylet fungus
+  #{:after-log :after-stick}
   (let [break (rand-nth ["splinter" "crack" "shatter"])
         quality (rand-nth ["completely rotted" "covered in fungus" "rotten to the core" "dry-rotted"])]
     {:event/id :fungus
@@ -295,10 +298,10 @@
      :event/choices [
        {:name "cut it out"
         :choice/events [
-          {:event/id "FungusCutOut1"
+          {:event/id :fungus-cut-out1
            :description ["Carefully, you work your way around the damaged area and remove the fungus."]
            :event/choices [continue-choice]}
-          {:event/id "FungusCutOut2"
+          {:event/id :fungus-cut-out2
            :description ["There was just too much damaged area. You had to remove so much wood that the raft is unstable."]
            :event/choices [
              {:name "replace the part"
@@ -336,13 +339,13 @@
        {:name "try and take it out"
         :effects [(rce/mod-hp -10 -5)]
         :choice/events [
-          {:event/id "SpinterTakeOut"
+          {:event/id :spinter-take-out
            :description [(str "You frantically rip open your " bodypart " trying to get it out. It hurts so bad and you think you might have made it worse.")]
            :event/choices [continue-choice]}]}
        {:name "apply a bandage"
         :effects [(rce/mod-hp -10 -5)]
         :choice/events [
-          {:event/id "SplinterBandage"
+          {:event/id :splinter-bandage
            :description [(str "You apply a bandage to your " bodypart " and hope for the best. Maybe it'll work itself out?")]
            :event/choices [continue-choice]}]}
        {:name "ignore"
@@ -391,7 +394,7 @@
        {:name "Find something to cover up"
         :effects [(rce/mod-hp -10 -5)]
         :choice/events [
-        {:event/id "SunburnCover"
+        {:event/id :sunburn-cover
           :description ["What would you like to use to cover yourself?"]
           :event/choices
              (conj (vec (clothes-choices state))
@@ -404,7 +407,7 @@
         :name "Ignore"
         :effects [(rce/mod-hp -10 -5)]
         :choice/events [
-          {:event/id "SunburnIgnore"
+          {:event/id :sunburn-ignore
            :description ["You can't stop now! You decide to ignore the burn and continue working."]
            :event/choices [continue-choice]}]}]}))
 
@@ -416,7 +419,7 @@
      {:name "Continue"
       :effects [(rce/mod-hunger -10 -5)]
       :choice/events [
-        {:event/id "BreakHungry2"
+        {:event/id :break-hungry2
          :description ["Rumble rumble. Your stomach starts to churn. You get hungry after some time."]
          :event/choices [continue-choice]}]}]})
 
@@ -428,15 +431,16 @@
      {:name "continue"
       :effects [(rce/mod-thirst -10 -5)]
       :choice/events [
-        {:event/id "BreakThirst2"
+        {:event/id :break-thirst2
          :description ["You're getting thirsty waiting around."]
          :event/choices [continue-choice]}]}]})
 
-(defn tired-ignore
-  [state recipe]
+(rs/def-storylet tired-ignore
+  #{:tired}
   (let [material (rand-nth (get recipe :$/items))
         quality (rand-nth ["forgot to" "didn't"])
         travel (rand-nth ["float" "drift"])]
+    (log/info "material" material)
     {:event/id :tired-ignore-2
      :description [(str "Shoot! You scramble when you realize you " quality " secure the raft parts well enough. You see a " material " " travel " away.")]
      :event/choices [
@@ -447,8 +451,8 @@
            {:description ["It's too far away to get!"]
             :event/choices [continue-choice]}]}]}))
 
-(defn rope-burn-ignore-cont
-  [state recipe]
+(rs/def-storylet rope-burn-ignore-cont
+  #{:rope-burn :once}
   {:event/id :rope-burn-ignore-cont
    :description "On second thought maybe you shouldn't have ignored the rope burn."
    :event/choices [
@@ -457,12 +461,12 @@
       :effects [(rce/mod-hp -15 -10)
                 (rce/mod-infected)]
       :choice/events [
-        {:event/id "RopeBurnIgnore3"
+        {:event/id :rope-burn-ignore3
          :description ["That rope burn looks bad. You hope it doesn't get infected."]
          :event/choices [continue-choice]}]}]})
 
-(defn splinter-ignore-cont
-  [state recipe]
+(rs/def-storylet splinter-ignore-cont
+  #{:splinter :once}
   {:event/id :splinter-ignore-cont
    :description ["Your $bodypart is throbbing. Its starting to look infected."]
    :event/choices [
@@ -471,7 +475,7 @@
       :effects [(rce/mod-hp -15 -10)
                 (rce/mod-infected)]
       :choice/events [
-        {:event/id "SplinterIgnore3"
+        {:event/id :splinter-ignore3
          :description ["That splinter looks bad. You hope it doesn't get infected."]
          :event/choices [continue-choice]}]}]})
 
@@ -508,7 +512,8 @@
             :choice/events [
             {:description ["sdfsf"]
              :event/choices [
-               {:done true}]}]}]}]}]}))
+               {:name "finish"
+                :done true}]}]}]}]}]}))
 
 (defn any-in?
   [s1 s2]
@@ -528,40 +533,16 @@
     (log/info "raft-complete?" r items blueprint)
     r))
 
+(def boat-gen-ns *ns*)
+
 (defn next-event
   [state recipe after]
+  {:pre [(re/validate ::rspec/state state)
+         (keyword? after)]}
   ((if (raft-complete? recipe)
     finished
-    (let [storylets [[headache  #{:any}]
-                     [sinks #{:after-log}]
-                     [insect #{:after-log :stick}]
-                     [rope-breaks #{:after-rope}]
-                     [tired #{:any}]
-                     [rope-burn #{:after-rope}]
-                     [fungus #{:after-log :after-stick}]
-                     [splinter #{:after-log :after-stick}]
-                     [sunburn #{:any :once}]
-                     [tired-ignore #{:any}]
-                     [rope-burn-ignore-cont #{:rope-burn :once}]
-                     [splinter-ignore-cont #{:splinter :once}]]
-          last-event-id (-> recipe :events last :event/id)
-          past-event-ids (->> recipe :events (map :event/id))
-          after (clojure.set/union #{after :any}
-                                   (get recipe :event/id #{})
-                                   (get recipe :choice/id #{}))
-          storylet (->> storylets
-                     ; check reqs match any state
-                     (filter (fn [[_ reqs]] (any-in? reqs after)))
-                     ; discard reqs by keeping storylet
-                     (map first)
-                     rand-nth)]
-      (log/info "after" after)
-      (log/info "storylets" (count storylets))
-      (log/info "storylets filtered" 
-        (vec (filter (fn [[_ reqs]] (any-in? reqs after)) storylets)))
-      (log/info "next-event" storylet)
-      (log/info storylet)
-      storylet)) state recipe))
+    (rs/rand-storylet state recipe (rs/ns-storylets boat-gen-ns) after))
+   state recipe))
 
 (defn next-choice
   [state recipe after]

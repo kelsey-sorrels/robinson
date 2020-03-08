@@ -1,6 +1,7 @@
 ;; Utility functions and functions for manipulating state
 (ns robinson.random
-  (:require [clojure.string])
+  (:require [robinson.error :as re]
+            clojure.string)
   (:refer-clojure :exclude [mask rand-nth]))
 
 
@@ -154,7 +155,10 @@
        (-> m first second)
      :else
        (let [[wm a]     (reduce (fn [[m a] [weight v]]
-                                  [(conj m [a v]) (+ weight a)])
+                                  ; remove zero weights
+                                  (if (zero? weight)
+                                    [m a]
+                                    [(conj m [a v]) (+ weight a)]))
                                 [[] 0] m)
              n          (uniform-double rnd 0 a)]
          (second (last (remove (fn [[wn _]] (> wn n)) wm)))))))
@@ -170,5 +174,5 @@
          (map (fn [_] (inc (rand-nth (range d)))))
          (reduce +)))
      (catch Throwable t
-       nil))))
+       (re/log-exception t nil)))))
    

@@ -48,6 +48,7 @@
                  [clatrix "0.5.0"]
                  [mogenslund/liquid "1.1.3"]
                  [aysylu/loom "1.0.2"]
+                 [expound "0.8.4"]
                  #_[incanter "1.9.3"]
                  ;dev
                  [com.clojure-goes-fast/clj-async-profiler "0.4.0"]
@@ -70,7 +71,7 @@
   ;:auto-clean false
 
   :profiles {
-    :dev {:dependencies [[org.clojure/test.check "0.10.0"]]
+    :dev {:dependencies [[org.clojure/test.check "1.0.0"]]
           :jvm-opts ["-Xdebug"]}
     :test {:dependencies [[mvxcvi/puget "1.1.2"]
                           [quil "3.1.0"]
@@ -113,6 +114,7 @@
   :launch4j-install-dir "/home/santos/bin/launch4j"
   :launch4j-config-file "dev-resources/config.xml"
   :jvm-opts [
+             "-client"
              "-Djdk.attach.allowAttachSelf"
              "-XX:+UnlockExperimentalVMOptions"
              "-XX:+UnlockDiagnosticVMOptions"

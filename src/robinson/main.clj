@@ -57,10 +57,12 @@
     (if-not (contains? #{:quit} (rw/current-state state))
       (do
         (log/info "World saved at time" (get-in state [:world :time]) tmp-file target-file)
+        ;(log/info (get state :world))
         (try
           (with-open [o (io/output-stream tmp-file)]
             (nippy/freeze-to-out! (DataOutputStream. o) (get state :world)))
-          (catch Throwable e (log/error "Error saving" e)))
+          (catch Throwable t
+            (re/log-exception t state)))
 
         ;; copy tmp file to permenent store atomically
         (java.nio.file.Files/move (.toPath tmp-file)
@@ -118,14 +120,13 @@
             (save-state new-state))
           ;(async/thread (spit "save/world.edn" (with-out-str (pprint (new-state :world)))))
           new-state))
-         (catch Exception e
-           (do
-             (re/log-exception state e keyin)
-             (log/error "Caught exception" e)
-             (.printStackTrace e)
-             (st/print-stack-trace e)
-             (st/print-cause-trace e)
-             state))))
+         (catch Throwable t
+           (re/log-exception t state keyin)
+           (log/error "Caught exception" t)
+           (.printStackTrace t)
+           (st/print-stack-trace t)
+           (st/print-cause-trace t)
+           state)))
 
 ;; Example setup and tick fns
 (defn setup

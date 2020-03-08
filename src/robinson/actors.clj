@@ -2,6 +2,7 @@
 (ns robinson.actors
   (:require 
             [robinson.common :as rc]
+            [robinson.error :as re]
             [robinson.actor-protocol :as rap]
             [taoensso.timbre :as log]
             [clojure.core.async :as async :refer [go go-loop]]))
@@ -39,10 +40,8 @@
               (try
                 (log/trace "ticking actor" actor-id actor)
                 (rap/receive actor state)
-                (catch Exception e
-                  (log/error "Error ticking actors" e)
-                  (log/error actor-id)
-                  (log/error actor)
+                (catch Throwable t
+                  (re/log-exception t state)
                   state)))
             state
             (get state ::actors)))

@@ -14,7 +14,7 @@
 
 (defn render [terminal state last-dom]
   (binding [zc/*updater* ruu/updater
-            zcr/*on-error* (partial re/log-exception state)]
+            zcr/*on-error* (fn [e] (re/log-exception e state))]
     (try
       (let [ui (zc/csx [ruic/Robinson {:game-state state}])
             dom (zcr/render-into-container
@@ -26,9 +26,8 @@
         (zc/update-state! zc/*updater*)
         dom)
        (catch Throwable t
-         (do
-           (re/log-exception state t)
-           last-dom)))))
+         (re/log-exception t state)
+         last-dom))))
 
 
 

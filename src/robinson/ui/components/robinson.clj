@@ -697,7 +697,8 @@
   (let [{:keys [ch color background-color start-pos end-pos]} (zc/props this)
         [start-x start-y] (rc/pos->xy start-pos)
         [end-x end-y] (rc/pos->xy end-pos)]
-            ;(put-string screen :ui sx sy "\u25CF" :green :black))))
+    ;(log/info [start-x start-y end-x end-y])
+    (assert (not-any? nil? [start-x start-y end-x end-y]) [start-x start-y end-x end-y])
     (zc/csx [:view {}
       (map (fn [[x y]]
                ;(log/info x y)
@@ -1872,7 +1873,7 @@
                                                           (format "%dx " (get item :count))
                                                           "")
                                                         (item :name))]]))
-                    (get player :inventory))]]]
+                    (take 12 (get player :inventory)))]]]
                 [:text {} [""]]
                 [:view {:style {:left 10}} [
                   [:text {} [[:text {} ["Play again? ["]]

@@ -157,6 +157,12 @@
       (when (seq unused-items)
         (rand-nth unused-items)))))
 
+(def continue-choice
+  {:name "add next item"
+   :hotkey :space
+   :source :weapon-gen-continue-choice
+   :choice/events [:gen-material]})
+
 ;; :requirements is a set of any
 ;;  :event/id
 ;;  :choice/id
@@ -186,29 +192,49 @@
           :event.complication.item/id (get item :item/id)
           :choice/events [
             {:description "You give up after spending hours looking for the right materials."
-              :choice/one-of [(rce/mod-thirst -10 -5)
-                              (rce/mod-hunger -10 -5)
-                              (rce/mod-wtl -10 -5)]}
+             :event/chocies [{
+               :kotkey :space
+               :name "continue"
+               :choice/one-of [(rce/mod-thirst -10 -5)
+                               (rce/mod-hunger -10 -5)
+                               (rce/mod-wtl -10 -5)]
+               :choice/events [:gen-material]}]}
             {:description "You spend hours looking for the right material."
-             :choice/one-of [(rce/mod-wtl 5 7)
-                             (rce/mod-thirst -10 -5)
-                             (rce/mod-hunger -10 -5)]}
+             :event/chocies [{
+               :kotkey :space
+               :name "continue"
+               :choice/one-of [(rce/mod-wtl 5 7)
+                               (rce/mod-thirst -10 -5)
+                               (rce/mod-hunger -10 -5)]
+               :choice/events [:gen-material]}]}
             {:description "After hours of searching, you find the right material."
-             :choice/one-of [(rce/mod-wtl 5 7)
-                             (rce/mod-thirst -10 -5)
-                             (rce/mod-hunger -10 -5)]}]}
+             :event/chocies [{
+               :kotkey :space
+               :name "continue"
+               :choice/one-of [(rce/mod-wtl 5 7)
+                               (rce/mod-thirst -10 -5)
+                               (rce/mod-hunger -10 -5)]
+               :choice/events [:gen-material]}]}]}
          {:hotkey \b
           :name "Give up"
           :event.complication.item/id (get item :item/id)
           :choice/events [
             {:description "You learn to make do without the right parts."
-             :choice/one-of [
-               (rce/mod-durability -3 -1)
-               (rce/mod-wtl -10 -5)]}
+             :event/choices [{
+               :hotkey :space
+               :name "continue"
+               :choice/one-of [
+                 (rce/mod-durability -3 -1)
+                 (rce/mod-wtl -10 -5)]
+               :choice/events [:gen-material]}]}
             {:description "You stop and take a break. After a few minutes inspiration strikes."
-             :choice/one-of [
-               (rce/mod-durability 1 3)
-               (rce/mod-wtl 1 5)]}]}]}
+             :event/choices [{
+               :hotkey :space
+               :name "continue"
+               :choice/one-of [
+                 (rce/mod-durability 1 3)
+                 (rce/mod-wtl 1 5)]
+               :choice/events [:gen-material]}]}]}]}
 
       ; Bodily Limit
       #_{:event/id :body-constraint
@@ -217,7 +243,8 @@
          :hotkey :space
          :name "continue"
          :choice/one-of [
-           (rce/mod-thirst 11 21)]}]}
+           (rce/mod-thirst 11 21)]
+             :choice/events [:gen-material]}]}
 
       ; Edged
       #_{:event/id :edged
@@ -229,7 +256,8 @@
          :hotkey :space
          :name "continue"
          :choice/one-of [
-           (rce/mod-damage -7 -3)]}]}
+           (rce/mod-damage -7 -3)]
+         :choice/events [:gen-material]}]}
 
       ; Too much or too little in size, shape, weight
       #_{:event/id :physical-property
@@ -243,7 +271,8 @@
          :hotkey :space
          :name "continue"
          :choice/one-of [
-           (rce/mod-thirst 11 21)]}]}
+           (rce/mod-thirst 11 21)]
+         :choice/events [:gen-material]}]}
 
       ; Handled weapon complications
       #_{:event/id :handle
@@ -253,7 +282,8 @@
          :hotkey :space
          :name "continue"
          :choice/one-of [
-           (rce/mod-thirst 11 21)]}]}
+           (rce/mod-thirst 11 21)]
+         :choice/events [:gen-material]}]}
 
       ; Flexible weapon complications
       #_{:event/id :flexibe
@@ -263,7 +293,8 @@
          :hotkey :space
          :name "continue"
          :choice/one-of [
-           (rce/mod-thirst 11 21)]}]}
+           (rce/mod-thirst 11 21)]
+         :choice/events [:gen-material]}]}
 
       ; Wooden
       {:event/id :event.id/wooden
@@ -288,14 +319,17 @@
              :choice/id :choice.id/wooden-find-replacement
              :hotkey \a
              :name "find replacement"
+             :choice/events [:gen-material]
             }{
              :choice/id :choice.id/wooden-change-design
              :hotkey \b
              :name "change design"
+             :choice/events [:gen-material]
             }{
              :choice/id :choice.id/wooden-use-anyway
              :hotkey \c
-             :name "use anyway"}]}]}]}
+             :name "use anyway"
+             :choice/events [:gen-material]}]}]}]}
 
       ; Wooden - find replacement - complication
       {:event/id :event.id/wooden-find-replacement-complication
@@ -307,6 +341,7 @@
          :choice/one-of [
            (rce/mod-hunger -10 -5)
            (rce/mod-thirst -10 -5)]
+         :choice/events [:gen-material]
         }]}
 
       ; Dimensional
@@ -331,14 +366,17 @@
              :choice/id :choice.id/dimensional-find-replacement
              :hotkey \a
              :name "find replacement"
+             :choice/events [:gen-material]
             }{
              :choice/id :choice.id/dimensional-change-design
              :hotkey \b
              :name "change design"
+             :choice/events [:gen-material]
             }{
              :choice/id :choice.id/dimensional-use-anyway
              :hotkey \c
-             :name "use anyway"}]}]}]}
+             :name "use anyway"
+             :choice/events [:gen-material]}]}]}]}
 
       ; Dimensional - find replacement - complication
       {:event/id :event.id/dimensional-find-replacement-complication
@@ -350,6 +388,7 @@
          :choice/one-of [
            (rce/mod-hunger -10 -5)
            (rce/mod-thirst -10 -5)]
+         :choice/events [:gen-material]
         }]}
 
       ; Edged
@@ -368,14 +407,17 @@
              :choice/id :choice.id/edged-find-replacement
              :hotkey \a
              :name "find replacement"
+             :choice/events [:gen-material]
             }{
              :choice/id :choice.id/edged-change-design
              :hotkey \b
              :name "change design"
+             :choice/events [:gen-material]
             }{
              :choice/id :choice.id/edged-use-anyway
              :hotkey \c
-             :name "use anyway"}]}]}]}
+             :name "use anyway"
+             :choice/events [:gen-material]}]}]}]}
 
       ; Edged - find replacement - complication
       {:event/id :event.id/edged-find-replacement-complication
@@ -387,6 +429,7 @@
          :choice/one-of [
            (rce/mod-hunger -10 -5)
            (rce/mod-thirst -10 -5)]
+         :choice/events [:gen-material]
         }]}
 
       ; Flexible
@@ -405,14 +448,17 @@
              :choice/id :choice.id/flexible-find-replacement
              :hotkey \a
              :name "find replacement"
+             :choice/events [:gen-material]
             }{
              :choice/id :choice.id/flexible-change-design
              :hotkey \b
              :name "change design"
+             :choice/events [:gen-material]
             }{
              :choice/id :choice.id/flexible-use-anyway
              :hotkey \c
-             :name "use anyway"}]}]}]}
+             :name "use anyway"
+             :choice/events [:gen-material]}]}]}]}
 
       ; Flexible - find replacement - complication
       {:event/id :event.id/flexible-find-replacement-complication
@@ -424,6 +470,7 @@
          :choice/one-of [
            (rce/mod-hunger -10 -5)
            (rce/mod-thirst -10 -5)]
+         :choice/events [:gen-material]
         }]}
 
       ; Handled
@@ -442,14 +489,17 @@
              :choice/id :choice.id/handled-find-replacement
              :hotkey \a
              :name "find replacement"
+             :choice/events [:gen-material]
             }{
              :choice/id :choice.id/handled-change-design
              :hotkey \b
              :name "change design"
+             :choice/events [:gen-material]
             }{
              :choice/id :choice.id/handled-use-anyway
              :hotkey \c
-             :name "use anyway"}]}]}]}
+             :name "use anyway"
+             :choice/events [:gen-material]}]}]}]}
 
       ; Handled - find replacement - complication
       {:event/id :event.id/handled-find-replacement-complication
@@ -461,6 +511,7 @@
          :choice/one-of [
            (rce/mod-hunger -10 -5)
            (rce/mod-thirst -10 -5)]
+         :choice/events [:gen-material]
         }]}
 
       ; Ranged
@@ -479,14 +530,17 @@
              :choice/id :choice.id/ranged-find-replacement
              :hotkey \a
              :name "find replacement"
+             :choice/events [:gen-material]
             }{
              :choice/id :choice.id/ranged-change-design
              :hotkey \b
              :name "change design"
+             :choice/events [:gen-material]
             }{
              :choice/id :choice.id/ranged-use-anyway
              :hotkey \c
-             :name "use anyway"}]}]}]}
+             :name "use anyway"
+             :choice/events [:gen-material]}]}]}]}
 
       ; Ranged - find replacement - complication
       {:event/id :event.id/ranged-find-replacement-complication
@@ -498,6 +552,7 @@
          :choice/one-of [
            (rce/mod-hunger -10 -5)
            (rce/mod-thirst -10 -5)]
+         :choice/events [:gen-material]
         }]}
 
       ; Change Type
@@ -528,7 +583,8 @@
          :hotkey :space
          :name "continue"
          :choice/one-of [
-           (rce/mod-thirst 11 21)]}]}
+           (rce/mod-thirst 11 21)]
+         :choice/events [:gen-material]}]}
 
       ; Special Boomerange Complications
       #_{:event/id :boomerang
@@ -538,7 +594,8 @@
          :hotkey :space
          :name "continue"
          :choice/one-of [
-           (rce/mod-thirst 11 21)]}]}
+           (rce/mod-thirst 11 21)]
+         :choice/events [:gen-material]}]}
 
       ; Splinter
       #_{:event/id :splinter
@@ -549,7 +606,8 @@
          :hotkey :space
          :name "continue"
          :choice/one-of [
-           (rce/mod-thirst 11 21)]}]}
+           (rce/mod-thirst 11 21)]
+         :choice/events [:gen-material]}]}
 
       ; Wooden joints
       #_{:event/id :weak-joinery
@@ -559,7 +617,8 @@
          :hotkey :space
          :name "continue"
          :choice/one-of [
-           (rce/mod-thirst 11 21)]}]}
+           (rce/mod-thirst 11 21)]
+         :choice/events [:gen-material]}]}
 
       ; Poisonous material
       #_{:event/id :allergic
@@ -570,7 +629,8 @@
          :hotkey :space
          :name "continue"
          :choice/one-of [
-           (rce/mod-thirst 11 21)]}]}
+           (rce/mod-thirst 11 21)]
+         :choice/events [:gen-material]}]}
 
       ; Hunger
       {:event/id :hunger
@@ -581,7 +641,8 @@
          :hotkey :space
          :name "continue"
          :choice/one-of [
-           (rce/mod-wtl -10 -5)]}]}
+           (rce/mod-wtl -10 -5)]
+         :choice/events [:gen-material]}]}
 
       ; Thirst
       #_{:event/id :thirst
@@ -590,7 +651,8 @@
          :hotkey :space
          :name "continue"
          :choice/one-of [
-           (rce/mod-thirst 11 21)]}]}
+           (rce/mod-thirst 11 21)]
+         :choice/events [:gen-material]}]}
 
       ; Low light
       #_{:event/id :low-light
@@ -599,7 +661,8 @@
          :hotkey :space
          :name "continue"
          :choice/one-of [
-           (rce/mod-thirst 11 21)]}]}
+           (rce/mod-thirst 11 21)]
+         :choice/events [:gen-material]}]}
 
       ; Sound
       #_{:event/id :sound
@@ -609,7 +672,8 @@
          :hotkey :space
          :name "continue"
          :choice/one-of [
-           (rce/mod-thirst 11 21)]}]}
+           (rce/mod-thirst 11 21)]
+         :choice/events [:gen-material]}]}
 
       ; Empty prototype -----------------
       #_{:title ""
@@ -618,7 +682,8 @@
          :hotkey :space
          :name "continue"
          :choice/one-of [
-           (rce/mod-thirst 11 21)]}]}
+           (rce/mod-thirst 11 21)]
+         :choice/events [:gen-material]}]}
 
       ; Spider
       #_{:event/id :spider
@@ -633,9 +698,11 @@
                 :name "attack"
                 :choice/events [
                   {:description "You hit the spider and your thigh."
-                   :choice/one-of [(rce/mod-hp 5 7)]}]}]}
+                   :choice/one-of [(rce/mod-hp 5 7)]
+                   :choice/events [:gen-material]}]}]}
              {:description "Before you can hit it the spider sinks its fangs into your leg."
-              :choice/one-of [(rce/mod-hp 5 7)]}
+              :choice/one-of [(rce/mod-hp 5 7)]
+              :choice/events [:gen-material]}
              {:description "You slap the spider. There is not enough meat to eat."}]}
          {:hotkey \b
           :name "brush it off"
@@ -645,12 +712,15 @@
              :event/choices [
                {:hotkey \a
                 :name "just give up and die"
-                :choice/one-of [(rce/mod-hp 10 50)]}
+                :choice/one-of [(rce/mod-hp 10 50)]
+                :choice/events [:gen-material]}
                {:hotkey \b
                 :name "slap all of them"
-                :choice/one-of [(rce/mod-hp 5 7)]}
+                :choice/one-of [(rce/mod-hp 5 7)]
+                :choice/events [:gen-material]}
                {:hotkey \c
-                :name "roll on the ground"}]}]}]}]
+                :name "roll on the ground"
+                :choice/events [:gen-material]}]}]}]}]
     []))
 
 
@@ -668,7 +738,7 @@
                                 components
                                 example-item-properties]
                   recipe-id :recipe/id
-                  past-event-ids :past-event-ids
+                  past-event-ids :event/id
                   choice-id :choice/id
                   :as recipe}
                  event-type
@@ -710,6 +780,7 @@
                     (f (rcrafting/current-recipe state)))
         blueprint (rr/rand-weighted-nth (map (fn [event] [(inc (count (get event :requirements #{}))) event])
                                                  events))
+        _ (log/info "blueprint" blueprint)
         _ (log/info "desc1" (-> blueprint
                                             :description))
 
@@ -731,13 +802,10 @@
                                                    :effects [effect]))
                                                 choice)))))]
     (log/info "gen-event next-stage" next-stage)
-    (when-not (get next-stage :title)
+    ; TODO: remove?
+    #_(when-not (get next-stage :title)
       (log/error next-stage "missing title"))
-    (rcrafting/assoc-current-recipe state
-       :current-stage next-stage
-       :past-event-ids (if-let [next-event-id (get next-stage :event/id)]
-                         (conj (or past-event-ids #{}) next-event-id)
-                         past-event-ids))))
+    next-stage))
 
 (defn gen-complication [state recipe]
     (gen-event state recipe
@@ -749,19 +817,23 @@
   (and (rcmp/normative? effect)
        (neg? (rcmp/utility effect))))
 
+(defn debuffs 
+  [recipe]
+  (->> recipe
+    :effects
+    (filter negative-effect?)
+    (remove
+      (fn [effect]
+        (and
+          (satisfies? rcmp/ModCause effect)
+          (contains?
+            (-> recipe :event.complication.item/id)
+            (-> effect rcmp/cause :item/id)))))))
+
 (defn remedies
   [state recipe]
   ; Find debuffs which have not been remedied
-  (let [debuffs (->> recipe
-                  :effects
-                  (filter negative-effect?)
-                  (remove
-                    (fn [effect]
-                      (and
-                        (satisfies? rcmp/ModCause effect)
-                        (contains?
-                          (-> recipe :event.complication.item/id)
-                          (-> effect rcmp/cause :item/id))))))]
+  (let [debuffs (debuffs recipe)]
     (log/info "remedies debuffs" debuffs)
     ; slowdown
     ; push through
@@ -837,7 +909,11 @@
                                       :recipe/types (get valid-recipe :recipe/types)
                                       :recipe/dominate-item dominate-item
                                       :choice/events [{
-                                        :description (str "You wrap up the " recipe-name ".")}]}))
+                                        :description (str "You wrap up the " recipe-name ".")
+                                         :event/choices [
+                                           {:name "finish"
+                                            :hotkey :space
+                                            :done true}]}]}))
                                    valid-recipes
                                    [\a \b \c \d \e \f \g])
                             (if (< (->> recipe
@@ -846,9 +922,10 @@
                                      (filter (partial = :event-type/material))
                                      count) 6)
                               [{:name "keep working"
-                                :hotkey :space}]
+                                :hotkey :space
+                                :choice/events [:next-event]}]
                               []))}])
-                    choice)))
+                    (assoc choice :choice/events [:next-event]))))
                 (rcrafting/inventory-crafting-components state))
         events (if (empty? choices)
                  [{:description "You seem to have run out of items. Try again with more different items next time."
@@ -860,9 +937,9 @@
                    :event/choices
                     (concat
                       choices
-                      [{:name "no item - skip"
+                      [#_{:name "no item - skip"
                         :hotkey :space}])}])]
-        events       (gen-event state recipe :event-type/material events)))
+    (gen-event state recipe :event-type/material events)))
 
 (defn enhancements
   [state recipe]
@@ -881,10 +958,11 @@
            :hotkey :space
            :name "continue"
            :event.complication.item/id (get item :item/id)
-           :choice/one-of [(rce/mod-accuracy 1 2)]}]}
+           :choice/one-of [(rce/mod-accuracy 1 2)]
+           :choice/events [:gen-material]}]}
 
           {:title "Increased Damage"
-           :description [(format "The %s you %s was %s. This weapon is going to do a lot more damage."
+           :description [(format "The %s you %s was %s. Thi weapon is going to do a lot more damage."
                            (:name item)
                            (rand-nth ["found" "used"])
                            (rand-nth ["great" "perfect" "amazing" "awesome"]))]
@@ -892,7 +970,8 @@
              :hotkey :space
              :name "continue"
              :event.complication.item/id (get item :item/id)
-             :choice/one-of [(rce/mod-damage 1 2)]}]}
+             :choice/one-of [(rce/mod-damage 1 2)]
+             :choice/events [:gen-material]}]}
 
         ; wooden - find replacement
         {:description "In a flash of insight, you decide you can cannibalize another item for parts."
@@ -917,7 +996,8 @@
              (if (empty? choices)
                [{:name "no items - skip"
                  :hotkey :space
-                 :effects [debuff-mod]}]
+                 :effects [debuff-mod]
+                 :choice/events [:gen-material]}]
                choices))}
 
         ; wooden - find-replacement 
@@ -927,10 +1007,12 @@
              {:name "Use fire"
               :hotkey :enter
               :requirements {:adjacent-to-fire true}
-              :effects [(rce/mod-firehardened)]}
+              :effects [(rce/mod-firehardened)]
+              :choice/events [:gen-material]}
              {:name "skip"
               :hotkey :space
-              :effects [debuff-mod]}]}
+              :effects [debuff-mod]
+              :choice/events [:gen-material]}]}
 
         ; wooden - change design
         {:description "You mull the design in your mind."
@@ -943,7 +1025,8 @@
                 :event/choices [{
                   :name "continue"
                   :hotkey :space
-                  :effects [(rce/mod-piercing 0.1 0.3)]}]}]}]}
+                  :effects [(rce/mod-piercing 0.1 0.3)]
+                  :choice/events [:gen-material]}]}]}]}
 
         ; dimensional - find-replacement 
         #_{:description "You can use parts from another item to fix this."
@@ -959,15 +1042,18 @@
                                    :event/choices (let [choices (map (fn [effect hotkey]
                                                                        {:hotkey hotkey
                                                                         :name (rcmp/full-name effect)
-                                                                        :choice/one-of [effect]})
+                                                                        :choice/one-of [effect]
+                                                                        :choice/events [:gen-material]})
                                                                    (get item :effects))]
                                                     (concat choices [{:name "no buffs - skip"
-                                                                      :hotkey :space}]))}]})
+                                                                      :hotkey :space
+                                                                      :choice/events [:gen-material]}]))}]})
                               inventory)]
              (if (empty? choices)
                [{:name "no applicable items - skip"
                  :hotkey :space
-                 :effects [debuff-mod]}]
+                 :effects [debuff-mod]
+                 :choice/events [:gen-material]}]
                choices))}
 
         ; dimensional - change design
@@ -981,7 +1067,8 @@
                 :event/choices [{
                   :name "continue"
                   :hotkey :space
-                  :effects [(rce/mod-durability 5 10)]}]}]}]}
+                  :effects [(rce/mod-durability 5 10)]
+                  :choice/events [:gen-material]}]}]}]}
 
         ; edged - find-replacement - cannibalize
         #_{:description "You can use parts from another edged item to fix this."
@@ -997,15 +1084,18 @@
                                    :event/choices (let [choices (map (fn [effect hotkey]
                                                                        {:hotkey hotkey
                                                                         :name (rcmp/full-name effect)
-                                                                        :choice/one-of [effect]})
+                                                                        :choice/one-of [effect]
+                                                                        :choice/events [:gen-material]})
                                                                    (get item :effects))]
                                                     (concat choices [{:name "no buffs - skip"
-                                                                      :hotkey :space}]))}]})
+                                                                      :hotkey :space
+                                                                      :choice/events [:gen-material]}]))}]})
                               inventory)]
              (if (empty? choices)
                [{:name "no applicable items - skip"
                  :hotkey :space
-                 :effects [debuff-mod]}]
+                 :effects [debuff-mod]
+                 :choice/events [:gen-material]}]
                choices))}
 
         ; edged - change design - dismembering
@@ -1019,7 +1109,8 @@
                 :event/choices [{
                   :name "continue"
                   :hotkey :space
-                  :effects [(rce/mod-dismembering 0.1 0.5)]}]}]}]}
+                  :effects [(rce/mod-dismembering 0.1 0.5)]
+                  :choice/events [:gen-material]}]}]}]}
 
         ; flexible - find-replacement - cannibalize
         #_{:description "You can use parts from another flexible item to fix this."
@@ -1035,15 +1126,18 @@
                                    :event/choices (let [choices (map (fn [effect hotkey]
                                                                        {:hotkey hotkey
                                                                         :name (rcmp/full-name effect)
-                                                                        :choice/one-of [effect]})
+                                                                        :choice/one-of [effect]
+                                                                        :choice/events [:gen-material]})
                                                                    (get item :effects))]
                                                     (concat choices [{:name "no buffs - skip"
-                                                                      :hotkey :space}]))}]})
+                                                                      :hotkey :space
+                                                                      :choice/events [:gen-material]}]))}]})
                               inventory)]
              (if (empty? choices)
                [{:name "no applicable items - skip"
                  :hotkey :space
-                 :effects [debuff-mod]}]
+                 :effects [debuff-mod]
+                 :choice/events [:gen-material]}]
                choices))}
 
         ; flexible - change design - stunning
@@ -1057,7 +1151,8 @@
                 :event/choices [{
                   :name "continue"
                   :hotkey :space
-                  :effects [(rce/mod-stunning 0.1 0.5)]}]}]}]}
+                  :effects [(rce/mod-stunning 0.1 0.5)]
+                  :choice/events [:gen-material]}]}]}]}
 
         ; handled - find-replacement - cannibalize
         #_{:description "You can use parts from another handled item to fix this."
@@ -1073,15 +1168,18 @@
                                    :event/choices (let [choices (map (fn [effect hotkey]
                                                                        {:hotkey hotkey
                                                                         :name (rcmp/full-name effect)
-                                                                        :choice/one-of [effect]})
+                                                                        :choice/one-of [effect]
+                                                                        :choice/events [:gen-material]})
                                                                    (get item :effects))]
                                                     (concat choices [{:name "no buffs - skip"
-                                                                      :hotkey :space}]))}]})
+                                                                      :hotkey :space
+                                                                      :choice/events [:gen-material]}]))}]})
                               inventory)]
              (if (empty? choices)
                [{:name "no applicable items - skip"
                  :hotkey :space
-                 :effects [debuff-mod]}]
+                 :effects [debuff-mod]
+                 :choice/events [:gen-material]}]
                choices))}
 
         ; handled - change design - knockback
@@ -1095,7 +1193,8 @@
                 :event/choices [{
                   :name "continue"
                   :hotkey :space
-                  :effects [(rce/mod-knockback 0.1 0.5)]}]}]}]}
+                  :effects [(rce/mod-knockback 0.1 0.5)]
+                  :choice/events [:gen-material]}]}]}]}
 
         ; mental - perseverence
         {:description "You think about how to much you've struggeled so far and how far you have come."
@@ -1108,7 +1207,8 @@
                 :event/choices [{
                   :name "continue"
                   :hotkey :space
-                  :effects [(rce/mod-wtl 1 5)]}]}]}]}]
+                  :effects [(rce/mod-wtl 1 5)]
+                  :choice/events [:gen-material]}]}]}]}]
        [])))
 
 (defn gen-enhancement [state recipe]
@@ -1136,14 +1236,17 @@
            :choice/id :choice.id/mental-persevere
            :hotkey \a
            :name "persevere"
+           :choice/events [:gen-material]
           }{
            :choice/id :choice.id/mental-optimism
            :hotkey \b
            :name "be optimistic"
+           :choice/events [:gen-material]
           }{
            :choice/id :choice.id/mental-self-control
            :hotkey \c
-           :name "practice self control"}]}]}]}
+           :name "practice self control"
+           :choice/events [:gen-material]}]}]}]}
 
     ; Mental - persevere - complication
     {:event/id :event.id/mental-perseverecomplication
@@ -1153,8 +1256,8 @@
        :hotkey :space
        :name "continue"
        :choice/one-of [
-         (rce/mod-wtl -10 -5)
-      ]}]}
+         (rce/mod-wtl -10 -5)]
+       :choice/events [:gen-material]}]}
 
     ; Mental - optimism - complication
     {:event/id :event.id/mental-optimism-complication
@@ -1164,8 +1267,8 @@
        :hotkey :space
        :name "continue"
        :choice/one-of [
-         (rce/mod-wtl -10 -5)
-      ]}]}
+         (rce/mod-wtl -10 -5)]
+       :choice/events [:gen-material]}]}
 
     ; Mental - self-control - complication
     {:event/id :event.id/mental-self-control-complication
@@ -1175,8 +1278,8 @@
        :hotkey :space
        :name "continue"
        :choice/one-of [
-         (rce/mod-thirst -10 -5)
-      ]}]}
+         (rce/mod-thirst -10 -5)]
+       :choice/events [:gen-material]}]}
 
     ; Mental - persevere - complication
     {:event/id :event.id/mental-perseverecomplication
@@ -1186,24 +1289,35 @@
        :hotkey :space
        :name "continue"
        :choice/one-of [
-         (rce/mod-wtl -10 -5)
-      ]}]}]]
+         (rce/mod-wtl -10 -5)]
+       :choice/events [:gen-material]}]}]]
   (gen-event state recipe
     :event-type/player
     player-events)))
 
+(defn start
+  [state recipe]
+  {
+    :description (str "You begin crafting a " (name (get recipe :recipe/type)) ". You'll need to start with an item.")
+    :event/choices [{
+      :hotkey :space
+      :name "continue"
+      :choice/events [:gen-material]}]})
+
+(defn next-event
+  [state recipe]
+  {:event/id :next-event
+   :description ["You continue working on the weapon."]
+   :event/choices
+     [{:name "continue"
+       :choice/events [((rand-nth (cond-> [gen-complication
+                                           gen-material
+                                           gen-enhancement
+                                           gen-player]
+                                  (seq (debuffs recipe))
+                                    (conj gen-remedy)))
+                        state recipe)]}]})
+
 (defn gen-random [state recipe]
   ; first event? Do start event
-  (if (empty? (get recipe :events))
-    {
-      :description (str "You begin crafting a " (name (get recipe :type)) ". You'll need to start with an item.")
-      :event/choices [{
-        :hotkey :space
-        :name "continue"
-        :choice/events [:gen-material]}]}
-    ((rand-nth [gen-complication
-                gen-material
-                gen-remedy
-                gen-enhancement
-                gen-player])
-      state recipe)))
+  (start state recipe))

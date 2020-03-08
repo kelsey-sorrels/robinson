@@ -185,7 +185,12 @@
                                      (when (get state :autoplay)
                                        (let [keyin (rap/auto-input state)]
                                          (log/info "sending auto key" keyin)
-                                         (process-keypress terminal state keyin mods show-frames))))
+                                         (process-keypress
+                                           terminal
+                                           state
+                                           keyin
+                                           (rand-nth [mods mods (atom {:shift true})])
+                                           show-frames))))
                                    (recur))]
             
               (log/info "Terminal groups" groups)

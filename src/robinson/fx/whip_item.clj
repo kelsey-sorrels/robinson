@@ -2,6 +2,7 @@
 (ns robinson.fx.whip-item
   (:require 
             [robinson.common :as rc]
+            [robinson.error :as re]
             [robinson.catmull-rom :as rcr]
             [robinson.renderutil :as rutil]
             [robinson.math :as rmath]
@@ -130,7 +131,7 @@
       (handle-recieve this state item hit-npc chains ttl fx-ks)
       (catch Throwable t
         (try
-          (log/error t)
+          (re/log-exception t state)
           (catch Throwable t
             (log/error "Error logging error" t)))
         (ractors/remove-actor state this)))))

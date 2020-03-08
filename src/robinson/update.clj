@@ -1,8 +1,9 @@
-;; Functions that manipulate state to do what the user commands.
+; Functions that manipulate state to do what the user commands.
 (ns robinson.update
   (:require 
             [robinson.common :as rc]
             [robinson.error :as re]
+            [robinson.specs :as rspec]
             [robinson.random :as rr]
             [robinson.scores :as rs]
             [robinson.world :as rw]
@@ -67,6 +68,8 @@
 
 (defn start
   [state]
+  {:pre [(re/validate ::rspec/state state)]
+   :post [(re/validate ::rspec/state %)]}
   (if (.exists (rfs/cwd-file "save/world.edn"))
     (with-open [o (io/input-stream (rfs/cwd-path "save/world.edn"))]
       (assoc state :world (nippy/thaw-from-in! (DataInputStream. o))))
@@ -94,6 +97,8 @@
 
 (defn next-font
   [state]
+  {:pre [(re/validate ::rspec/state state)]
+   :post [(re/validate ::rspec/state %)]}
   (let [fonts           (sort-by :name (get state :fonts))
         current-font    (get state :new-font (get (rc/get-settings state) :font))
         remaining-fonts (rest (second (split-with (fn [[k v]] (not= k current-font))
@@ -104,6 +109,8 @@
 
 (defn previous-font
   [state]
+  {:pre [(re/validate ::rspec/state state)]
+   :post [(re/validate ::rspec/state %)]}
   (let [fonts          (sort-by :name (get state :fonts))
         current-font   (get state :new-font (get (rc/get-settings state) :font))
         previous-fonts (first (split-with (fn [[k v]] (not= k current-font))
@@ -114,6 +121,8 @@
 
 (defn save-and-apply-font
   [state]
+  {:pre [(re/validate ::rspec/state state)]
+   :post [(re/validate ::rspec/state %)]}
   (let [fonts        (sort-by :name (get state :fonts))
         new-font     (get state :new-font (get (rc/get-settings state) :font))
         font         (get-in state [:fonts new-font])
@@ -132,6 +141,8 @@
 
 (defn create-new-font
   [state]
+  {:pre [(re/validate ::rspec/state state)]
+   :post [(re/validate ::rspec/state %)]}
   (assoc state
     :create-font-name ""
     :create-font-size 1
@@ -140,6 +151,8 @@
 
 (defn backspace-create-font-name
   [state]
+  {:pre [(re/validate ::rspec/state state)]
+   :post [(re/validate ::rspec/state %)]}
   (update-in
     state
     [:create-font-name]
@@ -148,14 +161,20 @@
 
 (defn inc-create-font-size
   [state]
+  {:pre [(re/validate ::rspec/state state)]
+   :post [(re/validate ::rspec/state %)]}
   (update state :create-font-size inc))
 
 (defn dec-create-font-size
   [state]
+  {:pre [(re/validate ::rspec/state state)]
+   :post [(re/validate ::rspec/state %)]}
   (update state :create-font-size (comp (partial max 1) dec)))
 
 (defn accept-drop-create-font
   [state key-in]
+  {:pre [(re/validate ::rspec/state state)]
+   :post [(re/validate ::rspec/state %)]}
   (log/info key-in)
   (let [{:keys [drag-and-drop]} key-in]
     (if (= (count drag-and-drop) 1)
@@ -166,6 +185,8 @@
 
 (defn append-create-font-name
   [state key-in]
+  {:pre [(re/validate ::rspec/state state)]
+   :post [(re/validate ::rspec/state %)]}
   (let [key-in (cond
                  (= :space key-in)
                    \ 
@@ -188,12 +209,16 @@
 
 (defn accept-input-new-font
   [state key-in]
+  {:pre [(re/validate ::rspec/state state)]
+   :post [(re/validate ::rspec/state %)]}
   (if (map? key-in)
     (accept-drop-create-font state key-in)
     (append-create-font-name state key-in)))
 
 (defn save-new-font
   [state]
+  {:pre [(re/validate ::rspec/state state)]
+   :post [(re/validate ::rspec/state %)]}
   (let [{:keys [create-font-name
                 create-font-size
                 create-font-path
@@ -214,6 +239,8 @@
 
 (defn backspace-name
   [state]
+  {:pre [(re/validate ::rspec/state state)]
+   :post [(re/validate ::rspec/state %)]}
   (update-in
     state
     [:world :player :name]
@@ -222,6 +249,8 @@
 
 (defn append-name
   [state key-in]
+  {:pre [(re/validate ::rspec/state state)]
+   :post [(re/validate ::rspec/state %)]}
   (let [key-in (cond
                  (= :space key-in)
                    \ 
@@ -244,6 +273,8 @@
 (defn toggle-hotkey
   "Toggle mark `keyin` as a selected hotkey, or not if it already is."
   [state keyin]
+  {:pre [(re/validate ::rspec/state state)]
+   :post [(re/validate ::rspec/state %)]}
   (log/debug "toggle-hotkey" keyin)
   (update-in state [:world :selected-hotkeys]
              (fn [hotkeys] (if (contains? hotkeys keyin)
@@ -253,8 +284,8 @@
 ;; update visibility
 (defn update-visibility
   [state]
-  {:pre [(not (nil? state))]
-   :post [(not (nil? %))]}
+  {:pre [(re/validate ::rspec/state state)]
+   :post [(re/validate ::rspec/state %)]}
   (let [{px :x
          py :y :as pos} (rp/player-pos state)
         sight-distance   (float (rlos/sight-distance state))
@@ -277,8 +308,8 @@
 
 (defn add-starting-inventory
   [state selected-hotkeys]
-  {:pre  [(not (nil? state))]
-   :post [(not (nil? %))]}
+  {:pre [(re/validate ::rspec/state state)]
+   :post [(re/validate ::rspec/state %)]}
   (let [_                  (log/info "selected-hotkeys" selected-hotkeys)
         start-inventory    (filter #(contains? (set selected-hotkeys) (get % :hotkey)) (sg/start-inventory))
         _                  (log/info "Adding to starting inventory:" start-inventory)
@@ -289,6 +320,8 @@
   "Re-initialize the value of `:world` within `state`. Used when starting a new game
    from fresh or after the player has died."
   [state]
+  {:pre [(re/validate ::rspec/state state)]
+   :post [(re/validate ::rspec/state %)]}
   (let [selected-hotkeys (get-in state [:world :selected-hotkeys])
         player-name      (rp/get-player-attribute state :name)
         start-time       (System/currentTimeMillis)]
@@ -299,8 +332,8 @@
                     (assoc :world (loop []
                                     (if-let [w (try
                                                  (rworldgen/init-world (rc/system-time-millis))
-                                                 (catch Throwable e
-                                                   (log/error e)
+                                                 (catch Throwable t
+                                                   (re/log-exception t state)
                                                    nil))]
                                         w
                                       (recur))))
@@ -329,8 +362,8 @@
 
 (defn select-starting-inventory
   [state keyin]
-  {:pre  [(not (nil? state))]
-   :post [(not (nil? %))]}
+  {:pre [(re/validate ::rspec/state state)]
+   :post [(re/validate ::rspec/state %)]}
   (if (and (char? keyin)
            (<= (int \a) (int keyin) (int \k)))
     (let [new-state (toggle-hotkey state keyin)
@@ -344,8 +377,8 @@
 (defn destroy-cell
   "Destroy the cell at xy, changing its type. This is when the player bumps into things like palisades."
   [state x y]
-  {:pre  [(not (nil? state))]
-   :post [(not (nil? %))]}
+  {:pre [(re/validate ::rspec/state state)]
+   :post [(re/validate ::rspec/state %)]}
   (log/info (rw/get-cell-type state x y))
   (let [wielded-item (-> state
                        rp/get-player 
@@ -427,8 +460,8 @@
   "Move the player when they are near the edge of the map.
    If a pre-generated place does not exist, create a new one using the world seed."
   [state direction]
-  {:pre  [(not (nil? state))]
-   :post [(not (nil? %))]}
+  {:pre [(re/validate ::rspec/state state)]
+   :post [(re/validate ::rspec/state %)]}
   (log/info "move-outside-safe-zone")
   (let [[player-cell x y]    (rw/player-cellxy state)
         [target-x
@@ -473,6 +506,8 @@
              
 (defn sense-traps
   [state difficulty]
+  {:pre [(re/validate ::rspec/state state)]
+   :post [(re/validate ::rspec/state %)]}
   (reduce (fn [state [x y]]
             (let [trap-difficulty (get (rw/get-cell state x y) :difficulty 1)]
               (if (< trap-difficulty difficulty)
@@ -595,8 +630,9 @@
   [state direction]
   {:pre  [(contains? #{:left :right :up :down :up-left :up-right :down-left :down-right} direction)
           (not (nil? state))
-          (vector? (get-in state [:world :npcs]))]
-   :post [(vector? (get-in % [:world :npcs]))]}
+          (vector? (get-in state [:world :npcs]))
+          (re/validate ::rspec/state state)]
+   :post [(re/validate ::rspec/state %)]}
   (let [player-x (-> state :world :player :pos :x)
         player-y (-> state :world :player :pos :y)
         [target-x
@@ -797,7 +833,8 @@
 
 (defn use-stairs-island->generated
   [state dest-place-id dest-x dest-y]
-  {:post [(not (nil? %))]}
+  {:pre [(re/validate ::rspec/state state)]
+   :post [(re/validate ::rspec/state %)]}
     (-> state
       ;; unload old places
       (rworldgen/unload-all-places)
@@ -846,7 +883,8 @@
 
 (defn use-stairs-generated->island
   [state dest-x dest-y]
-  {:post [(not (nil? %))]}
+  {:pre [(re/validate ::rspec/state state)]
+   :post [(re/validate ::rspec/state %)]}
   (-> state
     ;; move the player to [dest-place-id dest-x dest-y]
     (rp/assoc-player-pos (rc/xy->pos dest-x dest-y))
@@ -858,7 +896,8 @@
     
 (defn use-stairs-generated->generated
   [state dest-place-id dest-x dest-y]
-  {:post [(not (nil? %))]}
+  {:pre [(re/validate ::rspec/state state)]
+   :post [(re/validate ::rspec/state %)]}
   (log/info "use-stairs-generated->generated" dest-place-id dest-x dest-y)
   (-> state
     (rworldgen/unload-all-places)
@@ -872,7 +911,8 @@
 
 (defn use-stairs-generated->ungenerated
   [state src-place-id src-x src-y dest-type gen-args]
-  {:post [(not (nil? %))]}
+  {:pre [(re/validate ::rspec/state state)]
+   :post [(re/validate ::rspec/state %)]}
   (let [; insert the new place into the world
         [state
          dest-place-id] (rworldgen/load-place state nil dest-type gen-args)
@@ -904,7 +944,8 @@
 
 (defn use-stairs
   [state]
-  {:post [(not (nil? %))]}
+  {:pre [(re/validate ::rspec/state state)]
+   :post [(re/validate ::rspec/state %)]}
   (let [[player-cell x y] (rw/player-cellxy state)
         src-place-id     (rw/current-place-id state)]
     (if (rw/player-on-stairs? state)
@@ -958,6 +999,8 @@
 (defn open-door
   "Open the door one space in the direction relative to the player's position."
   [state direction]
+  {:pre [(re/validate ::rspec/state state)]
+   :post [(re/validate ::rspec/state %)]}
   (let [[target-x
          target-y] (rw/player-adjacent-xy state direction)]
     (log/debug "open-door")
@@ -997,6 +1040,8 @@
 (defn close-door
   "Close the door one space in the direction relative to the player's position."
   [state direction]
+  {:pre [(re/validate ::rspec/state state)]
+   :post [(re/validate ::rspec/state %)]}
   (let [[target-x
          target-y] (rw/player-adjacent-xy state direction)]
     (log/debug "close-door")
@@ -1053,6 +1098,8 @@
 
 (defn remove-sheltermates
   [state shelter-item]
+  {:pre [(re/validate ::rspec/state state)]
+   :post [(re/validate ::rspec/state %)]}
   (reduce (fn [state [x y]]
     (rw/dec-cell-item-count state x y (get shelter-item :item/id)))
     state
@@ -1064,8 +1111,8 @@
    the player's inventory. Add to them the hotkeys with
    which they were selected."
   [state]
-  {:pre  [(not (nil? state))]
-   :post [(not (nil? %))]}
+  {:pre [(re/validate ::rspec/state state)]
+   :post [(re/validate ::rspec/state %)]}
     ;; find all the items in the current cell
     ;; divide them into selected and not-selected piles using the selected-hotkeys
     ;; add the selected pile to the player's inventory
@@ -1158,43 +1205,45 @@
 
 (defn pick-up-all
   [state]
-    (let [direction (get-in state [:world :pickup-direction])
-          {x :x y :y}        (rw/player-adjacent-pos state direction)
-          cell               (rw/get-cell state x y)
-          items              (vec (get cell :items))
-          remaining-hotkeys  (-> state :world :remaining-hotkeys)
-          selected-items     (map #(assoc %1 :hotkey %2)
-                                  items
-                                  (rc/fill-missing not
-                                                  (fn [_ hotkey] hotkey)
-                                                  remaining-hotkeys
-                                                  (map :hotkey items)))
-          selected-shelter   (first (filter  (fn [item] (contains? #{:tarp-hung :sail-hung} (item :item/id)))
-                                     selected-items))
-          remaining-hotkeys  (vec (remove #(some (partial = %) (map :hotkey selected-items)) remaining-hotkeys))]
-      (log/debug "selected-items" selected-items)
-      (if (seq selected-items)
-        (let [new-state (-> state
-                          (rc/append-log "You pick up:")
-                          ;; dup the item into inventory with hotkey
-                          (ri/add-to-inventory (fixup-shelter selected-items))
-                          ;; remove the item from cell
-                          (rw/assoc-cell-items x y [])
-                          (cond-> selected-shelter
-                            (remove-sheltermates selected-shelter))
-                          ;;;; hotkey is no longer available
-                          (assoc-in [:world :remaining-hotkeys]
-                              remaining-hotkeys))]
-          new-state)
-        state)))
+  {:pre [(re/validate ::rspec/state state)]
+   :post [(re/validate ::rspec/state %)]}
+  (let [direction (get-in state [:world :pickup-direction])
+        {x :x y :y}        (rw/player-adjacent-pos state direction)
+        cell               (rw/get-cell state x y)
+        items              (vec (get cell :items))
+        remaining-hotkeys  (-> state :world :remaining-hotkeys)
+        selected-items     (map #(assoc %1 :hotkey %2)
+                                items
+                                (rc/fill-missing not
+                                                (fn [_ hotkey] hotkey)
+                                                remaining-hotkeys
+                                                (map :hotkey items)))
+        selected-shelter   (first (filter  (fn [item] (contains? #{:tarp-hung :sail-hung} (item :item/id)))
+                                   selected-items))
+        remaining-hotkeys  (vec (remove #(some (partial = %) (map :hotkey selected-items)) remaining-hotkeys))]
+    (log/debug "selected-items" selected-items)
+    (if (seq selected-items)
+      (let [new-state (-> state
+                        (rc/append-log "You pick up:")
+                        ;; dup the item into inventory with hotkey
+                        (ri/add-to-inventory (fixup-shelter selected-items))
+                        ;; remove the item from cell
+                        (rw/assoc-cell-items x y [])
+                        (cond-> selected-shelter
+                          (remove-sheltermates selected-shelter))
+                        ;;;; hotkey is no longer available
+                        (assoc-in [:world :remaining-hotkeys]
+                            remaining-hotkeys))]
+        new-state)
+      state)))
 
 
 (defn drop-item
   "Drop the item from the player's inventory whose hotkey matches `keyin`.
    Put the item in the player's current cell."
   [state keyin]
-  {:pre  [(not (nil? state))]
-   :post [(not (nil? %))]}
+  {:pre [(re/validate ::rspec/state state)]
+   :post [(re/validate ::rspec/state %)]}
   (let [[player-cell x y] (rw/player-cellxy state)
         items (-> state :world :player :inventory)
         inventory-hotkeys (map #(% :hotkey) items)
@@ -1230,8 +1279,8 @@
 
 (defn apply-bandage
   [state hotkey]
-  {:pre  [(not (nil? state))]
-   :post [(not (nil? %))]}
+  {:pre [(re/validate ::rspec/state state)]
+   :post [(re/validate ::rspec/state %)]}
   (-> state
     (ri/dec-item-count hotkey)
     (assoc-in [:world :player :hp] (get-in state [:world :player :max-hp]))
@@ -1240,8 +1289,8 @@
 
 (defn apply-lantern
   [state]
-  {:pre  [(not (nil? state))]
-   :post [(not (nil? %))]}
+  {:pre [(re/validate ::rspec/state state)]
+   :post [(re/validate ::rspec/state %)]}
   (let [item         (ri/inventory-id->item state :lantern)
         item-state   (get item :state :off)]
     (case item-state
@@ -1269,6 +1318,8 @@
 
 (defn wear-clothes
   [state selected-item]
+  {:pre [(re/validate ::rspec/state state)]
+   :post [(re/validate ::rspec/state %)]}
   (-> state
     (rc/append-log (format "You wear the %s." (lower-case (get selected-item :name))))
     ;; remove :worn from all items
@@ -1282,8 +1333,8 @@
 (defn select-apply-item
   "Apply the item from the player's inventory whose hotkey matches `keyin`."
   [state keyin]
-  {:pre  [(not (nil? state))]
-   :post [(not (nil? %))]}
+  {:pre [(re/validate ::rspec/state state)]
+   :post [(re/validate ::rspec/state %)]}
   (let [item (ri/inventory-hotkey->item state keyin)]
     (if item
       (let [id (get item :item/id)]
@@ -1529,6 +1580,8 @@
 
 (defn smart-pickup
   [state]
+  {:pre [(re/validate ::rspec/state state)]
+   :post [(re/validate ::rspec/state %)]}
   ;; If there is just one adjacent thing to pickup, just pick it up. Otherwise enter a pickup mode.
   (let [directions (pickup-directions state)]
     (log/info "smart-pickup directions" (vec directions))
@@ -1546,6 +1599,8 @@
 
 (defn smart-harvest
   [state]
+  {:pre [(re/validate ::rspec/state state)]
+   :post [(re/validate ::rspec/state %)]}
   ;; If there is just one adjacent thing to harvest, just harvest it. Otherwise enter a harvest mode.
   (let [directions (harvestable-directions state)]
     (cond
@@ -1562,6 +1617,8 @@
 
 (defn smart-open
   [state]
+  {:pre [(re/validate ::rspec/state state)]
+   :post [(re/validate ::rspec/state %)]}
   ;; If there is just one adjacent thing to open, just open it. Otherwise enter open mode.
   (let [directions (openable-directions state)]
     (cond
@@ -1579,6 +1636,8 @@
 
 (defn smart-close
   [state]
+  {:pre [(re/validate ::rspec/state state)]
+   :post [(re/validate ::rspec/state %)]}
   ;; If there is just one adjacent thing to close, just close it. Otherwise enter close mode.
   (let [directions (closeable-directions state)]
     (cond
@@ -1622,21 +1681,23 @@
                 (rw/player-adjacent-xys-ext state))]
     (log/info "player-adj-xys" (rw/player-adjacent-xys state))
     (-> state
-      (update-in [:world :player :thirst] (fn [thirst] (min 0 (- thirst water))))
+      (update-in [:world :player :thirst] (fn [thirst] (rc/bound 0 (- thirst water) (rp/player-max-thirst state))))
       (rc/append-log "You drink deeply from the water."))))
   
 (defn quaff-cell-at-pos
   ([state]
   (-> state
-    (update-in [:world :player :thirst] (fn [thirst] (min 0 (- thirst 10))))
+    (update-in [:world :player :thirst] (fn [thirst] (rc/bound 0 (- thirst 10) (rp/player-max-thirst state))))
     (rp/player-update-hp (fn [hp] (max (- hp 1) 0)))
     (rw/assoc-current-state :normal)))
   ([state {x :x y :y}]
+  {:pre [(re/validate ::rspec/state state)]
+   :post [(re/validate ::rspec/state %)]}
   (if-let [water (get (rw/get-cell state x y) :water)]
     (do (log/info "Drinking potable water")
     (-> state
       (rw/assoc-cell state x y :water 0)
-      (update-in [:world :player :thirst] (fn [thirst] (min 0 (- thirst water))))
+      (update-in [:world :player :thirst] (fn [thirst] (rc/bound 0 (- thirst water) (rp/player-max-thirst state))))
       (rw/assoc-current-state :normal)))
     (do (log/info "Drinking nonpotable water")
     (-> state
@@ -1662,6 +1723,8 @@
 
 (defn quaff-inventory
   [state keyin]
+  {:pre [(re/validate ::rspec/state state)]
+   :post [(re/validate ::rspec/state %)]}
   (log/info "remaining-hotkeys" (get-in state [:world :remaining-hotkeys]))
 
   (if-let [item (ri/inventory-hotkey->item state keyin)]
@@ -1684,6 +1747,8 @@
 (defn quaff-select
   "Select the next state depending on what quaffable items are available."
   [state]
+  {:pre [(re/validate ::rspec/state state)]
+   :post [(re/validate ::rspec/state %)]}
   (let [num-adjacent-quaffable-cells (count
                                        (filter (fn [cell] (and (not (nil? cell))
                                                                (contains? #{:freshwater-hole :saltwater-hole :spring} (get cell :type))
@@ -1728,6 +1793,8 @@
 
 (defn action-select
   [state]
+  {:pre [(re/validate ::rspec/state state)]
+   :post [(re/validate ::rspec/state %)]}
   (let [directions (directions-to-actions state)]
     (log/info directions)
     (cond
@@ -1789,7 +1856,7 @@
         (try
           (lag/send-input i)
           (catch Throwable t
-            (log/error t)))
+            (re/log-exception t nil)))
         (reset! ctrl false)))
     (recur (async/<! ed-chan))))
   
@@ -1928,6 +1995,8 @@
   "Remove the item whose `:hotkey` equals `keyin` and subtract from the player's
    hunger the item's `:hunger` value."
   [state keyin]
+  {:pre [(re/validate ::rspec/state state)]
+   :post [(re/validate ::rspec/state %)]}
   (log/info "poisoned fruit" (get-in state [:world :fruit :poisonous]))
   (log/info (rw/inventory-and-player-cell-hotkey->item state keyin))
   (if-let [item (rw/inventory-and-player-cell-hotkey->item state keyin)]
@@ -2440,7 +2509,7 @@
                         #_#_:food rc-food-gen)
             _ (log/info "recipe-ns" recipe-ns)
             _ (assert (some? recipe-ns))
-            recipe {:type recipe-type}
+            recipe {:recipe/type recipe-type}
             new-state (-> state
                         (assoc-in [:world :recipes (get-in state [:world :selected-recipe-hotkey])] recipe)
                         (rcrafting/init recipe-ns recipe))]
@@ -2474,8 +2543,10 @@
 (defn craft-in-progress-recipe
   "Take a step in crafting a recipe."
   [state keyin]
+  {:pre [(re/validate ::rspec/state state)]
+   :post [(re/validate ::rspec/state %)]}
   (let [recipe (rcrafting/current-recipe state)
-        recipe-type (get recipe :type)
+        recipe-type (get recipe :recipe/type)
         _ (log/info "Recipe type" recipe-type)
         #_ (log/info "Recipe"  recipe)
         recipe-ns (case recipe-type
@@ -2561,7 +2632,8 @@
     (-> state
       (rc/ui-hint "Select target.")
       (assoc-throw-item item)
-      (init-cursor))
+      (init-cursor)
+      (rw/assoc-current-state :select-throw-target))
     state))
 
 (defn throw-selected-inventory
@@ -2573,12 +2645,17 @@
         [target-x
          target-y]     (rv/get-cursor-world-xy state)
         path           (rest (rlos/line-segment (rp/player-xy state) [target-x target-y]))]
-    (-> state
-      (free-cursor)
-      ; remove the item from inventory
-      (ri/dec-item-count (get item :hotkey))
-      ; Add airborn item effect
-      (rfx/conj-effect :airborn-item item true path 5))))
+
+    (if (seq path)
+      (-> state
+        (free-cursor)
+        ; remove the item from inventory
+        (ri/dec-item-count (get item :hotkey))
+        ; Add airborn item effect
+        (rfx/conj-effect :airborn-item item true path 5))
+      (-> state
+        (free-cursor)
+        (rc/append-log "You can't throw it at yourself.")))))
 
 (defn scroll-log-up
   [state]
@@ -3016,7 +3093,7 @@
 
 (defn enable-autoplay
   [state]
-  (assoc state :autoplay true))
+  (update state :autoplay (fn [autoplay] (not (or autoplay false)))))
 
 (defn toggle-mount
   "Mount or unmount at the current cell."
@@ -3175,9 +3252,9 @@
           path                   (try
                                    (log/debug "a* params" bounds traversable? npc-pos-vec (rc/pos->xy target))
                                    (clj-tiny-astar.path/a* bounds traversable? npc-pos-vec (rc/pos->xy target))
-                                   (catch Exception e
+                                   (catch Throwable e
                                      (log/error "Caught exception during a* traversal." npc-pos-vec [(target :x) (target :y)] e)
-                                     (st/print-cause-trace e)
+                                     (re/log-exception e state)
                                      nil))
           _                      (log/debug "path to target" (str (type path)) (str path))
           new-pos                (if (and (not (nil? path))
@@ -3933,9 +4010,9 @@
                            \s          [(comp find-traps
                                               rdesc/search)    :normal          true]
                            ;\S          [rdesc/extended-search  :normal          true]
-                           \Q          [identity               :quests          false]
+                           ;\Q          [identity               :quests          false]
                            \M          [toggle-mount           :normal          false]
-                           \P          [next-party-member      :normal          false]
+                           ;\P          [next-party-member      :normal          false]
                            \C          [transition-recipes     rw/current-state false]
                            \v          [identity               :abilities       false]
                            \@          [identity               :player-stats    false]
@@ -4085,7 +4162,7 @@
                                                                :normal          true]}
                :throw-inventory
                           {:escape     [identity               :normal          false]
-                           :else       [throw-select-inventory :select-throw-target
+                           :else       [throw-select-inventory rw/current-state
                                                                                 false]}
                :select-throw-target
                           {:escape     [free-cursor            :normal          false]
@@ -4311,6 +4388,8 @@
   
    * Increment the current time"
   [state keyin keymods]
+  {:pre [(re/validate ::rspec/state state)]
+   :post [(re/validate ::rspec/state %)]}
   (let [current-state (get-in state [:world :current-state])
         table         (get state-transition-table current-state)
         keyin         (if (contains? translate-direction-states current-state)
@@ -4328,6 +4407,9 @@
     (if (and (or (contains? table keyin) (contains? table :else))
              (not (contains? modifier-keys keyin)))
       (let [[transition-fn new-state advance-time] (if (contains? table keyin) (get table keyin) (get table :else))
+            _ (assert transition-fn)
+            _ (assert new-state)
+            _ (assert (some? advance-time))
             ;; if the table contains keyin, then pass through transition-fn assuming arity-1 [state]
             ;; else the transition-fn takes [state keyin]. Bind keying so that it becomes arity-1 [state]
             _ (log/info "current-state" (get-in state [:world :current-state]))
@@ -4342,6 +4424,8 @@
                          (get-in state [:world :time]))
             state     (rc/clear-ui-hint state)
             state     (transition-fn state)
+            _ (assert (re/validate ::rspec/state state))
+            _ (assert (not (nil? state)))
             ;; some states conditionally advance time by calling (advance-time state)
             ;; check to see if this has occurred if advance-time was not set in the state transition entry
             advance-time (if-not advance-time
@@ -4351,14 +4435,18 @@
             state        (if advance-time
                            (assoc-in state [:world :time] new-time)
                            state)
+            _ (assert (re/validate ::rspec/state state))
+            _ (assert (not (nil? state)))
             _ (log/info "advance-time" advance-time)
             ;; clear inc-time flag if set
             state        (if (rc/inc-time? state)
                            (rc/clear-inc-time state)
                            state)
-            _ (log/debug "current-state" (get-in state [:world :current-state]))
-            _ (log/debug "new-state" new-state)
-            _ (log/debug "type of npcs" (type (get-in state [:world :npcs])))
+            _ (assert (re/validate ::rspec/state state))
+            _ (assert (not (nil? state)))
+            _ (log/info "current-state" (get-in state [:world :current-state]))
+            _ (log/info "new-state" new-state)
+            _ (log/info "type of npcs" (type (get-in state [:world :npcs])))
             new-state (if (keyword? new-state)
                         new-state
                         (new-state state))
@@ -4383,6 +4471,7 @@
             (cond-> advance-time update-visibility)
             coalesce-logs
             update-quests
+            #_((fn [state] (assoc state :autoplay false)))
             (as-> state
               (if (contains? (-> state :world :player :status) :dead)
                 (do

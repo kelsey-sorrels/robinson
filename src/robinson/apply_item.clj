@@ -38,7 +38,7 @@
 
 (defn apply-fishing-line-and-hook
   [state item]
-  (if (rcrafting/stick-like item)
+  (if (rcrafting/stick-like? item)
     (let [fishing-pole-item (ig/id->item :fishing-pole)]
       (-> state
         (ri/dec-item-count (get item :hotkey))

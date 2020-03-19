@@ -76,49 +76,49 @@
   #_#_:recipe/components {:db/cardinality :db.cardinality/many}
   :recipe/types {:db/cardinality :db.cardinality/many}})
 
-(defn low-weight [item]
+(defn low-weight? [item]
   (< (get item :weight 0) 1))
 
-(defn medium-weight [item]
+(defn medium-weight? [item]
   (< 1 (get item :weight 0) 10))
 
-(defn high-weight [item]
+(defn high-weight? [item]
   (< 10 (get item :weight 0)))
 
-(defn stick-like [item]
+(defn stick-like? [item]
   (contains? (get item :properties) :stick-like))
 
-(defn rock [item]
+(defn rock? [item]
   (= (get item :item/id) :rock))
 
-(defn feather [item]
+(defn feather? [item]
   (= (get item :item/id) :feather))
 
-(defn flexible [item]
+(defn flexible? [item]
   (contains? (get item :properties) :flexible))
 
-(defn tensile [item]
+(defn tensile? [item]
   (< 1 (get item :tensile-strength 0)))
 
-(defn planar [item]
+(defn planar? [item]
   (contains? (get item :properties) :planar))
 
-(defn pointed [item]
+(defn pointed? [item]
   (< (get item :roundness 1) 0.2))
 
-(defn sharp [item]
+(defn sharp? [item]
   (< 1 (get item :sharpness 0)))
 
-(defn edged [item]
+(defn edged? [item]
   (contains? (get item :properties) :edged))
 
-(defn round [item]
+(defn round? [item]
   (< 0.5 (get item :roundness 1)))
 
-(defn wooden [item]
+(defn wooden? [item]
   (contains? (get item :item/materials) :wood))
 
-(defn tube-like [item]
+(defn tube-like? [item]
   (contains? (get item :properties) :tube-like))
 
 (defn handled? [item]
@@ -126,21 +126,21 @@
 
 (defn extreme-word
   [item]
-  (let [m {low-weight ["heavy"]
-           medium-weight ["light" "heavy"]
-           high-weight ["light"]
-           stick-like ["thin" "thick" "brittle" "curved"]
-           rock ["rough"]
-           feather ["downy"]
-           flexible ["stiff" "springy" "elastic"]
-           tensile ["brittle" "stiff" "springy" "elastic"]
-           planar ["thick" "thin"]
-           pointed ["dull" "jagged"]
-           sharp ["dull" "jagged" "rough"]
-           edged ["dull" "rough"]
-           round ["rough" "asymmetrical"]
-           wooden ["rotted"]
-           tube-like ["bent" "obstructed"]
+  (let [m {low-weight? ["heavy"]
+           medium-weight? ["light" "heavy"]
+           high-weight? ["light"]
+           stick-like? ["thin" "thick" "brittle" "curved"]
+           rock? ["rough"]
+           feather? ["downy"]
+           flexible? ["stiff" "springy" "elastic"]
+           tensile? ["brittle" "stiff" "springy" "elastic"]
+           planar? ["thick" "thin"]
+           pointed? ["dull" "jagged"]
+           sharp? ["dull" "jagged" "rough"]
+           edged? ["dull" "rough"]
+           round? ["rough" "asymmetrical"]
+           wooden? ["rotted"]
+           tube-like? ["bent" "obstructed"]
            handled? ["loose"]}]
     (or
       (->> m
@@ -152,21 +152,21 @@
 (defn property-match?
   [item1 item2]
   (letfn [(property-vec [item]
-            (juxt [low-weight
-                   medium-weight
-                   high-weight
-                   stick-like
-                   rock
-                   feather
-                   flexible
-                   tensile
-                   planar
-                   pointed
-                   sharp
-                   edged
-                   round
-                   wooden
-                   tube-like
+            (juxt [low-weight?
+                   medium-weight?
+                   high-weight?
+                   stick-like?
+                   rock?
+                   feather?
+                   flexible?
+                   tensile?
+                   planar?
+                   pointed?
+                   sharp?
+                   edged?
+                   round?
+                   wooden?
+                   tube-like?
                    handled?] item))]
     (some identity
       (map #(and %1 %2)
@@ -174,37 +174,37 @@
         (property-vec item2)))))
 
 (def recipe-pred->str {
-  low-weight "low weight"
-  stick-like "sticklike"
-  rock "rock"
-  flexible "flexible"
-  tensile "tensile"
-  planar "flat"
-  pointed "pointed"
-  sharp "sharp"
-  edged "edged"
-  round "round"
+  low-weight? "low weight"
+  stick-like? "sticklike"
+  rock? "rock"
+  flexible? "flexible"
+  tensile? "tensile"
+  planar? "flat"
+  pointed? "pointed"
+  sharp? "sharp"
+  edged? "edged"
+  round? "round"
 })
 
 (defn add-example-item-properties
   "Takes recipe example items and runs them through item properties associating the result to :recipe/example-item-properties"
   [recipe]
   (let [flag-fns (into {} (map (fn [fn-sym] [(keyword fn-sym) (ns-resolve 'robinson.crafting fn-sym)])
-                               ['low-weight
-                                'medium-weight
-                                'high-weight
-                                'stick-like
-                                'rock
-                                'feather
-                                'flexible
-                                'tensile
-                                'planar
-                                'pointed
-                                'sharp
-                                'edged
-                                'round
-                                'wooden
-                                'tube-like]))]
+                               ['low-weight?
+                                'medium-weight?
+                                'high-weight?
+                                'stick-like?
+                                'rock?
+                                'feather?
+                                'flexible?
+                                'tensile?
+                                'planar?
+                                'pointed?
+                                'sharp?
+                                'edged?
+                                'round?
+                                'wooden?
+                                'tube-like?]))]
   (assoc recipe
     :recipe/example-item-properties
     (->> recipe
@@ -231,9 +231,9 @@
       :recipe/add [:club]
       :recipe/requirements '[each-of
                               [and
-                                low-weight
-                                wooden
-                                stick-like]]}
+                                low-weight?
+                                wooden?
+                                stick-like?]]}
      {:recipe/id :throwing-hammer
       :recipe/category :weapon
       :recipe/types #{:blunt :thrown}
@@ -241,11 +241,11 @@
       :recipe/components #{:recipe.component/handle :recipe.component/head}
       :recipe/add [:throwing-hammer]
       :recipe/requirements '[each-of
-                              stick-like
+                              stick-like?
                               [and
-                                low-weight
-                                rock]
-                              flexible]}
+                                low-weight?
+                                rock?]
+                              flexible?]}
      {:recipe/id :sling
       :recipe/category :weapon
       :recipe/types #{:blunt :ranged}
@@ -253,10 +253,10 @@
       :recipe/components #{:recipe.component/cord :recipe.component/pocket}
       :recipe/add [:sling]
       :recipe/requirements '[each-of
-                              flexible
-                              [and tensile
-                                   flexible
-                                   planar]]}
+                              flexible?
+                              [and tensile?
+                                   flexible?
+                                   planar?]]}
      ; edged
      {:recipe/id  :dagger
       :recipe/category :weapon
@@ -265,9 +265,9 @@
       :recipe/components #{:recipe.component/handle :recipe.component/blade :recipe.component/binder}
       :recipe/add [:dagger]
       :recipe/requirements '[each-of
-                              edged
-                              [and low-weight
-                                   stick-like]]}
+                              edged?
+                              [and low-weight?
+                                   stick-like?]]}
      {:recipe/id  :throwing-axe
       :recipe/category :weapon
       :recipe/types #{:edged :thrown}
@@ -275,10 +275,10 @@
       :recipe/components #{:recipe.component/handle :recipe.component/blade :recipe.component/binder}
       :recipe/add [:throwing-axe]
       :recipe/requirements '[each-of
-                              edged
-                              [and low-weight
-                                   stick-like]
-                              flexible]}
+                              edged?
+                              [and low-weight?
+                                   stick-like?]
+                              flexible?]}
       {:recipe/id  :boomerang
       :recipe/category :weapon
       :recipe/types #{:edged :ranged}
@@ -287,10 +287,10 @@
       :recipe/add [:boomerang]
       :recipe/requirements '[each-of
                               [and
-                                wooden
-                                [or medium-weight
-                                    high-weight]]
-                              [tool edged]]}
+                                wooden?
+                                [or medium-weight?
+                                    high-weight?]]
+                              [tool? edged?]]}
      ; piercing
      {:recipe/id  :spear
       :recipe/category :weapon
@@ -299,9 +299,9 @@
       :recipe/components #{:recipe.component/shaft :recipe.component/point}
       :recipe/add [:spear]
       :recipe/requirements '[each-of
-                              pointed
-                              [and low-weight
-                                   stick-like]]}
+                              pointed?
+                              [and low-weight?
+                                   stick-like?]]}
      {:recipe/id  :throwing-spear
       :recipe/category :weapon
       :recipe/types #{:piercing :thrown}
@@ -309,9 +309,9 @@
       :recipe/components #{:recipe.component/shaft :recipe.component/point}
       :recipe/add [:throwing-spear]
       :recipe/requirements '[each-of
-                              sharp
-                              [and low-weight
-                                   stick-like]]}
+                              sharp?
+                              [and low-weight?
+                                   stick-like?]]}
      {:recipe/id  :bow
       :recipe/category :weapon
       :recipe/types #{:piercing :ranged}
@@ -320,9 +320,9 @@
       :recipe/add [:bow]
       :recipe/add-recipe #{:arrow}
       :recipe/requirements '[each-of
-                              flexible
-                              [and low-weight
-                                   stick-like]]}
+                              flexible?
+                              [and low-weight?
+                                   stick-like?]]}
      {:recipe/id  :blowgun
       :recipe/category :weapon
       :recipe/types #{:piercing :ranged}
@@ -331,8 +331,8 @@
       :recipe/add [:blowgun]
       :recipe/add-recipe #{:blowdart}
       :recipe/requirements '[each-of
-                              [and tube-like
-                                low-weight]]}
+                              [and tube-like?
+                                low-weight?]]}
       ; flexible
      {:recipe/id  :garrote
       :recipe/category :weapon
@@ -341,8 +341,9 @@
       :recipe/components #{:recipe.component/string :recipe.component/grip}
       :recipe/add [:garrote]
       :recipe/requirements '[each-of
-                              flexible
-                              [and low-weight stick-like]]}
+                              flexible?
+                              [and low-weight?
+                                   stick-like?]]}
      {:recipe/id  :bolas
       :recipe/category :weapon
       :recipe/types #{:flexible :thrown}
@@ -350,8 +351,9 @@
       :recipe/components #{:recipe.component/string :recipe.component/ball}
       :recipe/add [:bolas]
       :recipe/requirements '[each-of
-                              flexible
-                              [count 3 [and round low-weight]]]}
+                              flexible?
+                              [count 3 [and round?
+                                            low-weight?]]]}
                              
      {:recipe/id  :whip
       :recipe/category :weapon
@@ -360,18 +362,18 @@
       :recipe/components #{:recipe.component/handle :recipe.component/thong}
       :recipe/add [:whip]
       :recipe/requirements '[each-of
-                              flexible]}
+                              flexible?]}
      ; Ammunition
      {:recipe/id  :arrow
       :recipe/category :ammunition
       :recipe/types #{}
       :recipe/add [:arrow]
       :recipe/requirements '[each-of
-                              [and low-weight
-                                   pointed]
-                              [and low-weight
-                                   stick-like]
-                              feather]}
+                              [and low-weight?
+                                   pointed?]
+                              [and low-weight?
+                                   stick-like?]
+                              feather?]}
      {:recipe/id  :blowdart
       :name "blowdart"
       :recipe/type :weapon
@@ -380,7 +382,7 @@
       :recipe/example-item-requirements #{:bamboo :stick}
       :recipe/add [:blowdart]
       :recipe/requirements '[each-of
-                              [and low-weight stick-like]]}
+                              [and low-weight? stick-like?]]}
     ;;; Survival
     ;; Tools
      {:recipe/id  :saw
@@ -389,28 +391,28 @@
       :recipe/example-item-requirements #{:stick :rope :rock}
       :recipe/add [:saw]
       :recipe/requirements '[each-of
-                             flexible]}
+                             flexible?]}
      {:recipe/id  :hammer
       :recipe/category :survival
       :recipe/types #{:tool}
       :recipe/example-item-requirements #{:stick :rope :rock}
       :recipe/add [:hammer]
       :recipe/requirements '[each-of
-                             flexible]}
+                             flexible?]}
      {:recipe/id  :ruler
       :recipe/category :survival
       :recipe/types #{:tool}
       :recipe/example-item-requirements #{:stick :rope :rock}
       :recipe/add [:ruler]
       :recipe/requirements '[each-of
-                             flexible]}
+                             flexible?]}
      {:recipe/id  :fire-starter
       :recipe/category :survival
       :recipe/types #{:tool}
       :recipe/example-item-requirements #{:stick :rope :rock}
       :recipe/add [:fire-starter]
       :recipe/requirements '[each-of
-                              flexible]}
+                              flexible?]}
      ;; Rafts
      {:recipe/id  :reed-raft
       :recipe/category :survival
@@ -418,21 +420,21 @@
       :recipe/example-item-requirements #{:stick :rope :rock}
       :recipe/add [:reed-raft]
       :recipe/requirements '[each-of
-                             flexible]}
+                             flexible?]}
      {:recipe/id  :cannoe
       :recipe/category :survival
       :recipe/types #{:raft}
       :recipe/example-item-requirements #{:stick :rope :rock}
       :recipe/add [:cannoe]
       :recipe/requirements '[each-of
-                             flexible]}
+                             flexible?]}
      {:recipe/id  :kayak
       :recipe/category :survival
       :recipe/types #{:raft}
       :recipe/example-item-requirements #{:stick :rope :rock}
       :recipe/add [:kayak]
       :recipe/requirements '[each-of
-                              flexible]}
+                              flexible?]}
      {:recipe/id  :log-raft
       :recipe/category :survival
       :recipe/types #{:rafts}
@@ -441,9 +443,9 @@
       :recipe/add [:raft]
       :place :drop
       :recipe/requirements '[each-of
-                              [count 2 [and high-weight wooden]]
-                              [count 1 [and flexible tensile]]
-                              [count 1 stick-like]]}]))
+                              [count 2 [and high-weight? wooden?]]
+                              [count 1 [and flexible? tensile?]]
+                              [count 1 stick-like?]]}]))
 
 (comment :weapons  [
      {:name "bow"                    :hotkey \g :hunger 10 :thirst 20 :recipe {:exhaust [:stick :rope] :add [:bow]}}
@@ -615,6 +617,7 @@
       (clause item)
     (symbol? clause)
       (let [f (ns-resolve 'robinson.crafting clause)]
+        (log/info item clause)
         (f item))
     (= (first clause) 'and)
       (every? (partial item-satisfies-requirement-clause? item) (rest clause))
@@ -962,25 +965,29 @@
   {:pre [(re/validate ::rspec/recipe recipe)]
    :post [(re/validate ::rspec/event %)]}
   (letfn [(invoke-fn [f] (log/trace "invoke-fn" f recipe) (f recipe))]
-    (log/debug "fill-event" event)
+    (log/info "fill-event" event)
     (log/trace "seq?" (sequential? (get event :description)))
     (-> event
       (cond-> (sequential? (get event :description))
         (update :description rand-nth))
       (update :event/choices (fn [choices]
         (log/debug "Updating choices" (count choices) choices)
-        (rc/fill-missing #(not (contains? % :hotkey))
-                         #(assoc %1 :hotkey %2)
-                         (map char (range (int \a) (int \z)))
-                         choices)
-        #_(case (count choices)
-          ; no choices, add (space - continue)
-          0 [{:name "continue" :hotkey :space :source :fill-event1}]
-          ; add (space - continue) to choice if not present and there is only one choice
-          1 (map (fn [choice] (merge {:name "continue" :hotkey :space :source :fill-event2} choice)) choices)
-          ; otherwise add letter hotkeys if missing
-          (map (fn [choice hotkey] (merge {:hotkey (char hotkey)} choice)) choices (range (int \a) (int \z)))))))))
-
+        (cond->> choices
+          ;; fill missing hotkeys
+          true
+          (rc/fill-missing #(not (contains? % :hotkey))
+                           #(assoc %1 :hotkey %2)
+                           ; if single choice, fill :space
+                           (if (= 1 (count choices))
+                             [:space]
+                             ; else fill a-z
+                             (map char (range (int \a) (int \z)))))
+          ;; fill missing names
+          (= 1 (count choices))
+          (rc/fill-missing #(not (contains? % :name))
+                           #(assoc %1 :name %2)
+                           ; if single choice, fill "continue"
+                           ["continue"])))))))
  
 (defn meta-or-into
   [recipe-ns val-in-result val-in-latter]
@@ -1031,6 +1038,7 @@
     (binding [*ns* *ns*]
       (try
         (in-ns ns)
+        (log/info "evaluating" form "in" ns)
         (eval form)
         (finally
           (in-ns cur))))))
@@ -1108,7 +1116,10 @@
               (if (not-empty (get choice :choice/events))
                 ; find next event
                 (let [next-event (rand-nth (get choice :choice/events))
-                      next-event (if (keyword? next-event)
+                      _ (log/info "next-event" next-event (type next-event))
+                      next-event (if
+                                   (or (keyword? next-event)
+                                       (symbol? next-event))
                                      (let [event-fn (ns-resolve recipe-ns (-> next-event name symbol))]
                                        (log/info "resolved" recipe-ns next-event "to" event-fn)
                                        (event-fn state recipe))

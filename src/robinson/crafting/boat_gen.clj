@@ -23,13 +23,8 @@
 
 (def continue-choice
   {:name "add next item"
-   :hotkey :space
    :source :boat-gen-continue-choice
    :choice/events [:next-item]})
-
-(defmacro ns-bind
-  [sym]
-  `(symbol (var ~sym)))
 
 (defn pred-use-log
   [state]
@@ -55,19 +50,20 @@
   [show-all num-logs num-ropes num-sticks]
   (let [log-choice {:name (str "use log (" num-logs ")")
                     :hotkey \a
-                    :pred (ns-bind pred-use-log)
+                    ; FIXME just use ` instead of ns bind?
+                    :pred (rs/ns-bind pred-use-log)
                     :effects [(rce/mod-dec-inventory-by-item-id :log)]
                     :$/items '(fn [items] (merge-with + (or items {}) {(rig/id->item :log) 1}))
                     :choice/events [:use-log]}
         rope-choice {:name (str "use rope (" num-ropes ")")
                      :hotkey \b
-                     :pred (ns-bind pred-use-rope)
+                     :pred (rs/ns-bind pred-use-rope)
                      :effects [(rce/mod-dec-inventory-by-item-id :rope)]
                      :$/items '(fn [items] (merge-with + (or items {}) {(rig/id->item :rope) 1}))
                      :choice/events [:use-rope]}
         stick-choice {:name (str "use stick (" num-sticks ")")
                       :hotkey \c
-                      :pred (ns-bind pred-use-stick)
+                      :pred (rs/ns-bind pred-use-stick)
                       :effects [(rce/mod-dec-inventory-by-item-id :stick)]
                       :$/items '(fn [items] (merge-with + (or items {}) {(rig/id->item :stick) 1}))
                       :choice/events [:use-stick]}]
@@ -102,7 +98,7 @@
                     (ri/inventory-id->count state :stick))})
 
 (rs/def-storylet headache
-  #{:any}
+  rs/any
   {:event/id :headache
    :description ["It all feels like too much. Your temples begin to throb as a headache rolls through your skull."]
    :event/choices [
@@ -112,7 +108,6 @@
          :description "You pause for a moment."
          :event/choices [
            {:name "take a breath"
-            :hotkey :space
             :choice/events [
               :break-hungry
               :break-thirsty]}]}]}
@@ -122,14 +117,12 @@
          :description ["You take a drink of fresh water. It feels cooler in your head and you start to feel better."]
          :event/choices [continue-choice]}]}
      {:name "Take herbs"
-      :pred (ns-bind pred-use-herbs)
+      :pred (rs/ns-bind pred-use-herbs)
       :choice/events [
          {:event/id :headache-medicine
           :description [" You search your items for some herbs"]
           :event/choices [
-            {:name "continue"
-             :hotkey :space
-             :effects [(rce/mod-dec-inventory-by-item-id :herb)]
+            {:effects [(rce/mod-dec-inventory-by-item-id :herb)]
              :choice/events [
                {:event/id :headache-medicine2
                 :description ["It works quickly and you go back to work."]
@@ -142,7 +135,7 @@
          :event/choices [continue-choice]}]}]})
 
 (rs/def-storylet sinks
-  #{:after-log}
+  (rs/after? :log)
   {:event/id :sinks
     :description ["A wave crashes into you and your boat begins to bob under the water. It's sinking."]
     :event/choices [
@@ -188,7 +181,8 @@
            :event/choices [continue-choice]}]}]})
 
 (rs/def-storylet insect
-  #{:after-log :stick}
+  (rs/or (rs/after? :log)
+         (rs/in-history? :stick))
   (let [bug (rand-nth [:spider :centipede :tarantula])
         bugs (get {:spider "spiders" :centipede "centipedes" :tarantula "tarantulas"} bug)]
     {:event/id :insect
@@ -212,7 +206,7 @@
          :choice/events [:break-bungry :break-thirsty]}]}))
 
 (rs/def-storylet rope-breaks
-  #{:after-rope}
+  (rs/after? :rope)
   (let [exclaimation (rand-nth ["SNAP" "THWAP"])]
   {:event/id :rope-breaks
    :description [(str exclaimation "! Your rope breaks in two!")]
@@ -222,9 +216,7 @@
         {:event/id :rope-breaks-knot
          :description [" You attempt to knot the two lengths of rope together and salavge your work."]
          :event/choices [
-           {:name "continue"
-            :hotkey :space
-            :choice/events [
+           {:choice/events [
               :rope-burn
               {:event/id :rope-breaks-knot-success
                :description ["It works! You tie the two pieces together and have enough material to continue on."]
@@ -238,7 +230,7 @@
             :choice/events [:use-rope]}]}]}]}))
 
 (rs/def-storylet tired
-  #{:any}
+  rs/any
   {:event/id :tired
    :description ["Your eyes are heavy and you fumble with the materials. You're feeling much too tired to think straight."]
     :event/choices [
@@ -258,7 +250,7 @@
           :event/choices [continue-choice]}]}]})
 
 (rs/def-storylet rope-burn
-  #{:after-rope}
+  (rs/after? :rope)
   (let [exclaimation(rand-nth ["Swish" " Zip" " Zing" "Ouch"])
         bodypart (rand-nth ["hand" "wrist" "arm" "leg"])]
     {:event/id :rope-burn
@@ -272,7 +264,7 @@
            :description ["You pull out a bandage and wrap it as well as you can. You have to keep moving."]
            :event/choices [continue-choice]}]}
        {:name "apply ointment"
-        :pred (ns-bind pred-use-ointment)
+        :pred (rs/ns-bind pred-use-ointment)
         :effects [(rce/mod-hp -10 -5)
                   (rce/mod-dec-inventory-by-item-id :ointment)]
         :choice/events [
@@ -290,7 +282,8 @@
            :event/choices [continue-choice]}]}]}))
 
 (rs/def-storylet fungus
-  #{:after-log :after-stick}
+  (rs/or (rs/after? :log)
+         (rs/after? :stick))
   (let [break (rand-nth ["splinter" "crack" "shatter"])
         quality (rand-nth ["completely rotted" "covered in fungus" "rotten to the core" "dry-rotted"])]
     {:event/id :fungus
@@ -316,18 +309,14 @@
   {:event/id :fungus-replacement
    :description ["You replace it with some other wood. Hopefully this piece is better."]
    :event/choices [
-     {:name "continue"
-      :hotkey :space
-      :choice/events [:use-log :use-stick]}]})
+     {:choice/events [:use-log :use-stick]}]})
 
 (defn fungus-reinforce
   [state recipe]
   {:event/id :fungus-reinforce
    :description ["You don't have time to find something else or start over. You try to reinforce it with extra rope. That's going to have to do."]
    :event/choices [
-     {:name "continue"
-      :hotkey :space
-      :choice/events [:use-rope]}]})
+     {:choice/events [:use-rope]}]})
 
 (defn splinter
   [state recipe]
@@ -436,7 +425,7 @@
          :event/choices [continue-choice]}]}]})
 
 (rs/def-storylet tired-ignore
-  #{:tired}
+  (rs/in-history? :tired)
   (let [material (rand-nth (get recipe :$/items))
         quality (rand-nth ["forgot to" "didn't"])
         travel (rand-nth ["float" "drift"])]
@@ -452,13 +441,12 @@
             :event/choices [continue-choice]}]}]}))
 
 (rs/def-storylet rope-burn-ignore-cont
-  #{:rope-burn :once}
+  (rs/and (rs/in-history? :rope-burn)
+          rs/once)
   {:event/id :rope-burn-ignore-cont
    :description "On second thought maybe you shouldn't have ignored the rope burn."
    :event/choices [
-     {:name "continue"
-      :hotkey :space
-      :effects [(rce/mod-hp -15 -10)
+     {:effects [(rce/mod-hp -15 -10)
                 (rce/mod-infected)]
       :choice/events [
         {:event/id :rope-burn-ignore3
@@ -466,13 +454,12 @@
          :event/choices [continue-choice]}]}]})
 
 (rs/def-storylet splinter-ignore-cont
-  #{:splinter :once}
+  (rs/and (rs/in-history? :splinter)
+          rs/once)
   {:event/id :splinter-ignore-cont
    :description ["Your $bodypart is throbbing. Its starting to look infected."]
    :event/choices [
-     {:name "continue"
-      :hotkey :space
-      :effects [(rce/mod-hp -15 -10)
+     {:effects [(rce/mod-hp -15 -10)
                 (rce/mod-infected)]
       :choice/events [
         {:event/id :splinter-ignore3
@@ -499,13 +486,10 @@
     {:event/id :finished
      :description ["The raft is shaping up nicely."]
      :event/choices [
-       {:name "continue"
-        :hotkey :space
-        :choice/events [
+       {:choice/events [
          {:description ["It looks properly seaworthly."]
          :event/choices [
            {:name "finish"
-            :hotkey :space
             :recipe/name recipe-name
             :recipe/types (get valid-recipe :recipe/types)
             :recipe/dominate-item dominate-item
@@ -546,9 +530,7 @@
 
 (defn next-choice
   [state recipe after]
-  {:name "continue"
-   :hotkey :space
-   :choice/events [(next-event state recipe after)]})
+  {:choice/events [(next-event state recipe after)]})
 
 (defn use-rope
   [state recipe]

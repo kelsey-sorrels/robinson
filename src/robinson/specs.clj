@@ -77,6 +77,7 @@
 (s/def :choice/id keyword?)
 (s/def :recipe/id keyword?)
 (s/def ::done boolean?)
+(s/def ::abort boolean?)
 
 (s/def ::description (s/or :string string?
                            :strings (s/coll-of string?)))
@@ -90,18 +91,24 @@
           :opt [:choice/id]
           :opt-un [::hotkey]))
 
-(s/def ::intersitial-choice
-  (s/keys :req [:choice/events]
-          :req-un [::name]
+(s/def ::abort-choice
+  (s/keys :req-un [::name ::abort]
           :opt [:choice/id]
           :opt-un [::hotkey]))
 
+(s/def ::intersitial-choice
+  (s/keys :req [:choice/events]
+          :opt [:choice/id]
+          :opt-un [::name ::hotkey]))
+
 (s/def :event/choices
   (s/coll-of (s/or :intersitial-choice ::intersitial-choice
+                   :abort-choice ::abort-choice
                    :terminal-choice ::terminal-choice)))
 
 (s/def ::event
   (s/or :event-ref keyword?
+        :event-sym symbol?
         :event-literal (s/keys :req [:event/choices]
                                :req-un [::description]
                                :opt [:event/id])))
@@ -116,6 +123,7 @@
   (s/keys :req [:recipe/type]
           :opt-un [::name
                    ::events
+                   ::items
                    ::current-stage]))
 
 (s/def ::selected-recipe-hotkey char?)

@@ -23,19 +23,23 @@
     (zc/csx
       [:view {:style {:width 20}} [
         [ruicommon/TitledList {:title "Type:" :names (or (get recipe :recipe/name)
-                                                         (str (get recipe :type))
-                                                         (get recipe :name))}]
+                                                         ;(str (get recipe :type))
+                                                         ;(get recipe :name)
+                                                         "Unknown")}]
         [:text {} [""]]
         [ruicommon/TitledList {:title "Attributes:" :names (let [effects (get recipe :effects)]
                                                              (if (not-empty effects)
                                                                (map rcrafting/full-name effects)
                                                                ["None"]))}]
-        (when (= (get recipe :type) :boat)
+        (when (or true (= (get recipe :type) :boat))
           ;(log/info (get recipe :$/items))
           (zc/csx [:view {} [ 
             [:text {} [""]]
-            [ruicommon/TitledList {:title "Materials:" :names (map (fn [[item n]] (str (get item :name) " (" n ")"))
-                                                                   (get recipe :$/items))}]]]))]])))
+            [ruicommon/TitledList {:title "Items Used:"
+                                   :names (->> (get recipe :$/items)
+                                               (map :name)
+                                               frequencies
+                                               (map (fn [[item-name n]] (str item-name "(" n ")"))))}]]]))]])))
 
 (zc/def-component VScrollBar
   [this]

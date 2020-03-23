@@ -29,6 +29,21 @@
       [:text {:style (merge style {:color (rcolor/color->rgb :black)
                                    :background-color [229 155 8 255]})} children])))
 
+(zc/def-component GradientText
+  [this]
+  (let [{:keys [fg-start fg-end bg-start bg-end style children]} (zc/props this)]
+    (assert (< 0 (count (first children))) (str "GradientText zero length string" (first children) this))
+    (zc/csx
+      [:view {:style {:flex-direction :row}} (map (fn [c fg bg]
+                  (zc/csx [:text {:style {:color fg :background-color bg}} [(str c)]]))
+                 (first children)
+                 (rcolor/gradient (or fg-start (rcolor/color->rgb :white))
+                                  (or fg-end (rcolor/color->rgb :white))
+                                  (count (first children)))
+                 (rcolor/gradient (or bg-start (rcolor/color->rgb :black))
+                                  (or bg-end (rcolor/color->rgb :black))
+                                  (count (first children))))])))
+
 (defn hotkey->str [hotkey]
   (cond
     (= hotkey :escape)
@@ -242,7 +257,8 @@
                           :align-items :flex-start}} [
             (when count-str
               (zc/csx [:text {} [count-str]]))
-            [:text {} [(or (str name) "unknown")]]
+            (when (< 0 (clojure.core/count (str name)))
+              (zc/csx [GradientText (select-keys props [:fg-start :fg-end :bg-start :bg-end]) [(or (str name) "unknown")]]))
             (when utility
               (zc/csx [:text {:style {:margin-left 1}} [(format "(%d%%)" (int utility))]]))
             [:text {} [(cond

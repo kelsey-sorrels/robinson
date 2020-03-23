@@ -33,6 +33,7 @@
                  [servant "0.1.5"]
                  [rockpick "0.1.0"]
                  [aaron-santos/tinter "0.1.1"]
+                 [thi.ng/color "1.4.0"]
                  [aaron-santos/clj-tiny-astar "0.1.1"]
                  [zaffre "0.4.0-b10"]
                  [alandipert/enduro "1.2.0"]

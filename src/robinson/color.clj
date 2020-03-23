@@ -1,6 +1,8 @@
 (ns robinson.color
   (:require [zaffre.color :as zcolor]
-            [tinter.core :as tinter]))
+            [tinter.core :as tinter]
+            [thi.ng.color.core :as col]
+            [thi.ng.math.core :as m]))
 
 ;; RBG color definitions.
 ;; It's easier to use names than numbers.
@@ -11,6 +13,7 @@
    :ship-light-brown  (zcolor/color 131 88 32)
    :ship-dark-brown   (zcolor/color 33 25 15)
    ;;:black           (zcolor/color 0 0 0]
+   :blackest          (zcolor/color 0 0 0)
    :black             (zcolor/color 6 6 19)
    :white             (zcolor/color 255 255 255)
    :gray              (zcolor/color 128 128 128)
@@ -162,4 +165,11 @@
   (if bloodied?
     :dark-red
     fg))
+
+(defn gradient [start stop steps]
+  ;(println start stop steps (range 0 1 (/ 1 (dec steps))))
+  (let [ci (col/int32 start)
+        cf (col/int32 stop)]
+    (map (fn [m] (:col (m/mix ci cf m)))
+         (concat (range 0 1 (/ 1 steps)) [1]))))
 

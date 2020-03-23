@@ -162,7 +162,7 @@
                    ; map to [score storylet]
                    (map (fn [[[_ score] storylet]] [score storylet])))]
                    ; pick one based on score
-     (assert (seq candidate-storylets) candidate-storylets)
+     (assert (seq candidate-storylets) (vec candidate-storylets))
      (log/info "after" after)
      (log/info "storylets" (count storylets))
      (log/info "candidate-storylets" (count candidate-storylets) (mapv first candidate-storylets))

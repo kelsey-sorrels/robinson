@@ -1082,6 +1082,21 @@
   (let [{:keys [game-state]} (zc/props this)]
     nil))
 
+(def sleep-chars (atom (cycle ["z   " "zz  " "zzz " "zzzz"])))
+(def sleep-routine
+  (go-loop []
+    (swap! sleep-chars rest)
+    (async/<! (async/timeout 200))
+    (recur)))
+
+(zc/def-component Sleep
+  [this]
+  (zc/csx [zcui/Popup {:style {:top -6}} [
+            [:view {:style {:display :flex
+                            :flex-direction :row}} [
+              [:text {} ["Sleeping "]]
+              [:text {} [(first @sleep-chars)]]]]]]))
+
 (zc/def-component DebugEval
   [this]
   (let [{:keys [game-state]} (zc/props this)
@@ -1184,6 +1199,7 @@
       :rescued              (zc/csx [RescuedPopover {:game-state game-state}])
       :quit?                (zc/csx [QuitPrompt {:game-state game-state}])
       :harvest              (zc/csx [Harvest {:game-state game-state}])
+      :sleep                (zc/csx [Sleep {}])
       :debug-eval           (zc/csx [DebugEval {:game-state game-state}])
       (zc/csx [:view nil []]))))
 

@@ -972,22 +972,24 @@
         (update :description rand-nth))
       (update :event/choices (fn [choices]
         (log/debug "Updating choices" (count choices) choices)
-        (cond->> choices
-          ;; fill missing hotkeys
-          true
-          (rc/fill-missing #(not (contains? % :hotkey))
-                           #(assoc %1 :hotkey %2)
-                           ; if single choice, fill :space
-                           (if (= 1 (count choices))
-                             [:space]
-                             ; else fill a-z
-                             (map char (range (int \a) (int \z)))))
-          ;; fill missing names
-          (= 1 (count choices))
-          (rc/fill-missing #(not (contains? % :name))
-                           #(assoc %1 :name %2)
+        (reduce (fn [choices-acc [choice hotkey]]
+                  (conj choices-acc
+                    (cond-> choice
+                      ; fill missing hotkeys
+                      (not (contains? choice :hotkey))
+                        (assoc :hotkey hotkey)
+                      ;; fill missing names
+                      (and (not (contains? choice :name))
+                           (= 1 (count choices)))
                            ; if single choice, fill "continue"
-                           ["continue"])))))))
+                        (assoc :name "continue"))))
+                 []
+                 (map vector
+                   choices
+                   ; fill a-z
+                   (->> (range (int \a) (int \z))
+                     (map char)
+                     (filter (fn [hotkey] (not (contains? (set (map :hotkey choices)) hotkey))))))))))))
  
 (defn meta-or-into
   [recipe-ns val-in-result val-in-latter]

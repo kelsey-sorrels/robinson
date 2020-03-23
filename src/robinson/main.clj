@@ -183,6 +183,7 @@
                                        :player {
                                          :name ""}}
                                     :current-state
+                                    ; Don't load share-score from saves - redirect to start
                                     (fn [cur-state]
                                       (if (= cur-state :share-score)
                                         :start

@@ -70,7 +70,8 @@
   [state]
   {:pre [(re/validate ::rspec/state state)]
    :post [(re/validate ::rspec/state %)]}
-  (if (.exists (rfs/cwd-file "save/world.edn"))
+  (if (and (get-in state [:world :continue])
+           (.exists (rfs/cwd-file "save/world.edn")))
     (with-open [o (io/input-stream (rfs/cwd-path "save/world.edn"))]
       (assoc state :world (nippy/thaw-from-in! (DataInputStream. o))))
     (rw/assoc-current-state state :enter-name)))
@@ -3670,8 +3671,8 @@
   (let [weather (get-in state [:world :weather] :clear)
         rain-rate  (if (and (= weather :rain)
                             (not (rw/in-dungeon? state)))
-                     0.0
-                     (rfx-rain/rain-rate (rw/get-time state)))
+                     (rfx-rain/rain-rate (rw/get-time state))
+                     0.0)
         do-lightning (rr/rand-bool (- 1.0 rain-rate))
         player-pos (rp/player-pos state)
         target-candidates (filter (fn [[_ y]] (< (- (get player-pos :y) 5) y (+ (get player-pos :y) 5)))
@@ -4290,7 +4291,15 @@
                :share-score
                           {\y          [identity               :start-inventory false]
                            \n          [identity               :start           false]}
-               :quit?     {\y          [(fn [state] (assoc state :continue true)) :start false]
+               :quit?     {\y          [(fn [state]
+                                          (log/info "Replacing world")
+                                          (assoc state :world
+                                            {:current-state :start
+                                             :time 0
+                                             :continue false
+                                             :player {
+                                               :name ""}}))
+                                                               :start           false]
                            :else       [pass-state             :normal          false]}}
         expander-fn (fn [table] table)]
     (expander-fn table)))

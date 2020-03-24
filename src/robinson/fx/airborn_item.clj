@@ -21,6 +21,7 @@
 
 (defn handle-recieve
   [this state item persist-item xy-path ch-cycle ttl fx-ks]
+  (log/info "AirbornItemActor handle-receive")
   (let [ttl-zero (or (zero? ttl) (not (seq xy-path)))]
     (letfn [(cleanup [state]
               (-> state
@@ -142,9 +143,10 @@
 (defmethod rfx/conj-effect :airborn-item [state fx-type & [item persist-item xy-path ttl & [ch-cycle]]]
   (if (seq xy-path)
     (let [fx-id (rfx/fx-id)
-          ch-cycle (if ch-cycle (cycle ch-cycle) (repeat \*))
+          ch-cycle (if ch-cycle ch-cycle (repeat \*))
+          ch-cycle (take (count xy-path) (cycle ch-cycle))
           actor (->AirbornItemActor item persist-item xy-path ch-cycle ttl (rfx/fx-ks fx-id))]
-      (log/debug "created AirbornItemActor " item (vec xy-path) (take 10 ch-cycle) ttl (rfx/fx-ks fx-id))
+      (log/info "created AirbornItemActor " item (vec xy-path) (take 10 ch-cycle) ttl (rfx/fx-ks fx-id))
       (-> state
         ; create a character fx
         (rfx/conj-fx (rfx/character-fx (first ch-cycle) (apply rc/xy->pos (first xy-path))) fx-id)

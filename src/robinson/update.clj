@@ -2446,11 +2446,16 @@
 
 (defn transition-recipes
   [state]
-  (let [npcs-in-range    (rnpc/visible-npcs state)]
+  (let [npcs-in-range (rnpc/visible-npcs state)
+        recipes (rcrafting/player-recipes state)]
     (if (not-empty npcs-in-range)
       (rc/ui-hint state "Cannot craft when creatures are nearby.")
-      (rw/assoc-current-state state :recipes))))
-  
+      ; If every recipe is empty, jump straight to picking recipe type
+      (if (every? :empty recipes)
+        (-> state
+          (assoc-in [:world :selected-recipe-hotkey] \a)
+          (rw/assoc-current-state :select-recipe-type))
+        (rw/assoc-current-state state :recipes)))))
 
 (defn select-recipe [keyin state]
   (assoc-in state [:world :selected-recipe-hotkey] keyin))
@@ -2485,7 +2490,6 @@
         (transition-select-recipe-type state)
         state)))
 
-
 (defn replace-recipe [state]
   (let [selected-recipe-hotkey (get-in state [:world :selected-recipe-hotkey])]
     (if (and (contains? #{\a \b \c} selected-recipe-hotkey)
@@ -2503,6 +2507,7 @@
     (if (and false current-recipe)
       state
       (let [_ (log/info "Generating recipe")
+            hotkey (get-in state [:world :selected-recipe-hotkey])
             recipe-ns (case recipe-type
                         :weapon 'robinson.crafting.weapon-gen
                         :boat 'robinson.crafting.boat-gen
@@ -2511,8 +2516,9 @@
             _ (log/info "recipe-ns" recipe-ns)
             _ (assert (some? recipe-ns))
             recipe {:recipe/type recipe-type}
+            _ (assert recipe)
             new-state (-> state
-                        (assoc-in [:world :recipes (get-in state [:world :selected-recipe-hotkey])] recipe)
+                        (assoc-in [:world :recipes hotkey] recipe)
                         (rcrafting/init recipe-ns recipe))]
         (log/info "done with in-progress-recipes")
         new-state))))

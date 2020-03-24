@@ -73,71 +73,36 @@
       (= :failure))))
 
 ;; Items which have yet to be used for complications
-(defn unused-items
-  [state]
-  (let [recipe (rcrafting/current-recipe state)]
-    (->> recipe
-      :$/items
-      ; remove items where item is already in :$/complication-items
-      (remove (partial contains? (get recipe :$/complication-items))))))
-
-(defn rand-unused-item
-  [state]
-  (let [unused-items (unused-items state)]
-    (when (seq unused-items)
-      (rand-nth unused-items))))
-
-(defn unused-item?
-  [state]
-  (seq (unused-items state)))
-
-(defn wooden-unused-items
+(defn last-item
   [state]
   (->> state
-    unused-items
-    (filter rcrafting/wooden?)))
+    rcrafting/current-recipe 
+    :$/items
+    last))
 
-(defn wooden-unused-item?
+(defn after-wooden?
   [state]
   (->> state
-    wooden-unused-items
-    not-empty))
+    last-item
+    rcrafting/wooden?))
 
-(defn edged-unused-items
+(defn after-edged?
   [state]
   (->> state
-    unused-items
-    (filter rcrafting/edged?)))
+    last-item
+    rcrafting/edged?))
 
-(defn edged-unused-item?
+(defn after-flexible?
   [state]
   (->> state
-    edged-unused-items
-    not-empty))
+    last-item
+    rcrafting/flexible?))
 
-(defn flexible-unused-items
+(defn after-handled?
   [state]
   (->> state
-    unused-items
-    (filter rcrafting/flexible?)))
-
-(defn flexible-unused-item?
-  [state]
-  (->> state
-    flexible-unused-items
-    not-empty))
-
-(defn handled-unused-items
-  [state]
-  (->> state
-    unused-items
-    (filter rcrafting/handled?)))
-
-(defn handled-unused-item?
-  [state]
-  (->> state
-    handled-unused-items
-    not-empty))
+    last-item
+    rcrafting/handled?))
 
 ;; Complication events which have yet to be used for remedies
 (defn unused-complications
@@ -243,19 +208,22 @@
      :bg-end (rcolor/color->rgb :blackest)})))
 
 (defn passive-check
-  [title description skill-id skill-name at-least success-event failure-event]
+  [title description choices skill-id skill-name at-least success-event failure-event]
   (let [difficulty (difficulty-name at-least)
         roll (+ (inc (rand-int 6)) (inc (rand-int 6)))
-        outcome (<= at-least roll)]
+        outcome (<= at-least roll)
+        [first-choice & rest-choices] choices]
     {:title title
      :description description
-     :event/choices [
-       (merge
-         (skill-grad skill-id)
-         {:choice/events [
-            {:description [(i/<< "~{skill-name} [~{difficulty}: ~(if outcome \"Success\" \"Failure\")]")]
-             :event/choices [
-               {:choice/events [(if outcome success-event failure-event)]}]}]})]}))
+     :event/choices (cons
+                      (merge
+                        first-choice
+                        (skill-grad skill-id)
+                        {:choice/events [
+                           {:description [(i/<< "~{skill-name} [~{difficulty}: ~(if outcome \"Success\" \"Failure\")]")]
+                            :event/choices [
+                              {:choice/events [(if outcome success-event failure-event)]}]}]})
+                      rest-choices)}))
 
 (defn active-check
   [choice skill-id skill-name at-least success-event fail-event]
@@ -269,55 +237,41 @@
 (defn material-event
   [state recipe]
   (log/info (get recipe :recipe/types))
-  (let [example-items (rcrafting/get-example-items-by-types (get recipe :recipe/types))
-        _ (log/info "example-items" (vec example-items))
-        items (take 2 (shuffle example-items))
-        item-id (or (first items) :stick)
-        amount (+ 1 (rand-int 4))
-        item-name (or (if (< 1 amount)
-                        (rig/id->name-plural item-id)
-                        (rig/id->name item-id))
-                      "unknown")
-        _ (log/info "items:" items "item-id:" item-id "item-name:" item-name)
-        choices (map (fn [item]
+  (let [choices (map (fn [item]
                        {:hotkey (get item :hotkey)
                         :name (get item :name)
-                        :choice/events [{
-                          :title "Weapon Recipe"
-                          :description [(i/<< "You take the ~(get item :name). Add this to the weapon?")]
-                          :event/choices [
-                            {:name "add it"
-                             :effects [(rce/mod-dec-inventory (get item :hotkey))]
-                             :$/items `(fn [items#] (conj (or items# []) ~item))
-                             :choice/events [(let [[skill-id skill-name] (rand-skill-id-name)
-                                                   action-word (case skill-id
-                                                                 :skill.id/ingenuity "consider how to use the"
-                                                                 :skill.id/cunning "think about how to use the"
-                                                                 :skill.id/awareness "examine the")]
-                                               (passive-check
-                                                 (get item :name)
-                                                 (i/<< "You ~{action-word} the ~(get item :name). Add this to the weapon?") 
-                                                 skill-id
-                                                 skill-name
-                                                 5
-                                                 (rs/rand-storylet
-                                                   (rcrafting/assoc-current-recipe
-                                                     state
-                                                     :check :success
-                                                     skill-id :success)
-                                                   recipe
-                                                   (rs/ns-storylets weapon-gen-ns)
-                                                   :none)
-                                                 (rs/rand-storylet
-                                                   (rcrafting/assoc-current-recipe
-                                                     state
-                                                     :check :failure
-                                                     skill-id :failure)
-                                                   recipe
-                                                   (rs/ns-storylets weapon-gen-ns)
-                                                   :none)))]}
-                            {:name "back"
-                             :choice/events [:material-event]}]}]})
+                        :choice/events [(let [[skill-id skill-name] (rand-skill-id-name)
+                                              action-word (case skill-id
+                                                            :skill.id/ingenuity "consider how to use the"
+                                                            :skill.id/cunning "think about how to use the"
+                                                            :skill.id/awareness "examine the")]
+                                          (passive-check
+                                            (i/<< "Item - ~(get item :name)")
+                                            (i/<< "You ~{action-word} the ~(get item :name). Add this to the weapon?") 
+                                            [{:name "add it"
+                                             :effects [(rce/mod-dec-inventory (get item :hotkey))]
+                                             :$/items `(fn [items#] (conj (or items# []) ~item))}
+                                             {:name "back"
+                                              :choice/events [:material-event]}]
+                                            skill-id
+                                            skill-name
+                                            7
+                                            (rs/rand-storylet
+                                              (rcrafting/assoc-current-recipe
+                                                state
+                                                :check :success
+                                                skill-id :success)
+                                              recipe
+                                              (rs/ns-storylets weapon-gen-ns)
+                                              :none)
+                                            (rs/rand-storylet
+                                              (rcrafting/assoc-current-recipe
+                                                state
+                                                :check :failure
+                                                skill-id :failure)
+                                              recipe
+                                              (rs/ns-storylets weapon-gen-ns)
+                                              :none)))]})
                   (rcrafting/inventory-crafting-components state))]
     (if (empty? choices)
       {:title "Weapon Recipe"
@@ -342,9 +296,8 @@
 
 ;; Complications
 (rs/def-storylet complication-material
-  (rs/and unused-item?
-          after-any-failure?)
-  (let [item (rand-unused-item state)]
+  after-any-failure?
+  (let [item (last-item state)]
       ; Material complications
       {:event/id :material
        :title (get item :name)
@@ -455,9 +408,9 @@
          :choice/events [:check-done]}]}
 
 (rs/def-storylet wooden-item-complication
-  (rs/and wooden-unused-item?
+  (rs/and after-wooden?
           after-any-failure?)
-  (let [item (-> state wooden-unused-items rand-nth)]
+  (let [item (last-item state)]
     {:event/id :event.id/wooden
      :title (get item :name)
      :description [(i/<< "The wood making up the ~(get item :name) is bent. It's just not going to work.")
@@ -504,9 +457,9 @@
     }]})
 
 (rs/def-storylet wooden-dimension-complication
-  (rs/and wooden-unused-item?
+  (rs/and after-wooden?
           after-any-failure?)
-  (let [item (rand-nth (wooden-unused-items state))]
+  (let [item (last-item state)]
     ; Dimensional
     {:event/id :event.id/dimensional
      :description [(format "The %s you have is too big. You can't get it to work without finding something smaller."
@@ -551,7 +504,7 @@
     }]})
 
 (rs/def-storylet edged-complication
-  (rs/and edged-unused-item?
+  (rs/and after-edged?
           after-any-failure?)
   ; Edged
   {:event/id :event.id/edged
@@ -592,9 +545,9 @@
         }]})
 
 (rs/def-storylet flexible-complication
-  (rs/and flexible-unused-item?
+  (rs/and after-flexible?
           after-any-failure?)
-  (let [item (rand-nth (flexible-unused-items state))]
+  (let [item (last-item state)]
     {:event/id :event.id/flexible
      :title (get item :name)
      :description [(i/<< "The ~(get item :name) you are working with is too rigid You need a more supple part to move on.")
@@ -641,10 +594,10 @@
         }]})
 
 (rs/def-storylet handled-complication
-  (rs/and handled-unused-item?
+  (rs/and after-handled?
           after-any-failure?
           rs/once)
-  (let [item (rand-nth (handled-unused-items state))]
+  (let [item (last-item state)]
     {:event/id :event.id/handled
      :title (get item :name)
      :description ["The handle you are designing keeps coming off. You need to find a way to secure it."
@@ -684,7 +637,7 @@
     }]})
 
 #_(rs/def-storylet ranged-complication
-  (rs/and ranged-unused-item?
+  (rs/and after-ranged?
           after-any-failure?
           rs/once)
   (let [item (rand-nth (ranged-unused-items state))]
@@ -980,9 +933,8 @@
 
 ;; Enhancements
 (rs/def-storylet accuracy-enhancement
-  (rs/and unused-item?
-          after-any-success?)
-  (let [item (rand-nth (unused-items state))]
+  after-any-success?
+  (let [item (last-item state)]
     {:title (get item :name)
      :description [(let [verb (rand-nth ["found" "used"])
                          adj  (rand-nth ["great" "perfect" "amazing" "awesome"])]
@@ -996,9 +948,8 @@
            :choice/events [:check-done]}]}]}]}))
 
 (rs/def-storylet damage-enhancement
-  (rs/and unused-item?
-          after-any-success?)
-  (let [item (rand-nth (unused-items state))]
+  after-any-success?
+  (let [item (last-item state)]
     {:title (get item :name)
      :description [(format "The %s you %s was %s. The weapon is going to do a lot more damage."
                      (:name item)
@@ -1103,14 +1054,13 @@
        choices))}
 
 (rs/def-storylet change-design
-  (rs/and unused-item?
-          after-any-success?
+  (rs/and after-any-success?
           rs/once)
   (let [debuff-mod (rand-nth [
                      (rce/mod-accuracy -5 -1)
                      (rce/mod-damage -6 -2)
                      (rce/mod-durability -6 -2)])
-        item (rand-nth (unused-items state))]
+        item (last-item state)]
     ; dimensional - change design
     {:description "You mull the design in your mind. Examining shapes and interconnections."
      :requirements #{:choice.id/dimensional-change-design}
@@ -1151,7 +1101,7 @@
   (rs/and (rs/in-history? :choice.id/edged-change-design)
           after-any-success?
           rs/once)
-  (let [item (rand-nth (unused-items state))]
+  (let [item (last-item state)]
         ; edged - change design - dismembering
         {:description "You think about how to make the edge sharper."
          :event/choices [

@@ -127,7 +127,7 @@
         start-pos (apply rc/xy->pos (first xy-path))
         target-pos (apply rc/xy->pos (last xy-path))
         xy-path (boomerang-path start-pos target-pos)
-        ch-cycle (mapcat identity (repeat [\> \^ \< \v]))
+        ch-cycle (take (count xy-path) (cycle [\> \^ \< \v]))
         actor (->BoomerangItemActor item xy-path ch-cycle (count xy-path) (rfx/fx-ks fx-id))]
     (-> state
       ; create a character fx

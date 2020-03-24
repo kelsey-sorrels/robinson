@@ -14,6 +14,10 @@
             [datascript.core :as d]
             [clojure.math.combinatorics :as combo]))
 
+(defn player-recipes
+  [state]
+  (get-in state [:world :recipes]))
+
 (defn current-recipe [state]
   (let [selected-recipe-hotkey (get-in state [:world :selected-recipe-hotkey])]
     (get-in state [:world :recipes selected-recipe-hotkey])))

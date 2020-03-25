@@ -12,10 +12,15 @@
   ([state message]
     (show-popover state message :normal))
   ([state message next-state]
-  (-> state
-    (rw/assoc-current-state :popover)
-    (assoc-in [:world :popover-message] message)
-    (assoc-in [:world :next-state] next-state))))
+    (show-popover state message :normal nil))
+  ([state message next-state tag]
+    (-> state
+      (rw/assoc-current-state :popover)
+      (assoc-in [:world :popover-message] message)
+      (assoc-in [:world :next-state] next-state)
+      (cond->
+        tag
+        (assoc-in [:world tag] true)))))
 
 (defn clear-popover
   [state]

@@ -2214,7 +2214,7 @@
     (log/info "target-ranged-pos-coll" (get-in state [:world :target-ranged-pos-coll]))
     (log/info "npc" npc)
     (log/info "ranged-weapon-item" ranged-weapon-item)
-    (log/info "path" path)
+    (log/info "path" (vec path))
     ;; the weapon requires reloading?
     (if (ig/requires-reload? ranged-weapon-item)
       (if (< 0 (-> ranged-weapon-item
@@ -4482,8 +4482,14 @@
             ; this gets used in revents/stream in order to toggle calling
             ; update/update-advance-time
             (assoc :advance-time advance-time)
-            ;; update visibility
-            (cond-> advance-time update-visibility)
+            (cond->
+              ; update visibility
+              advance-time update-visibility
+              ; sleep hint
+              (and (< 238 (rw/get-time state))
+                   (= (rw/current-state state) :normal)
+                   (not (contains? (get state :world) :sleep-hint-done)))
+                (rpop/show-popover "It's dark. You can use S to sleep." :normal :sleep-hint-done))
             coalesce-logs
             update-quests
             #_((fn [state] (assoc state :autoplay false)))

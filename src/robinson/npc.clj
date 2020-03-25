@@ -264,15 +264,19 @@
 (defn add-npcs-random
   "Randomly add monsters inside the viewport."
   [state]
+  ; num of curent npcs
   (let [num-npcs (reduce + (vals (npc-freqs-in-player-place state)))]
-    ;; higher random number = less npcs
-    (if (and (< (rr/uniform-int 210)
-                (if (rw/is-night? state)
-                   (/ 180 (inc num-npcs))
-                   (/ 80 (inc num-npcs))))
-             (< (count (get-npcs state))
-               60))
-      (add-npcs state)
+    ;; add no more than 10 npcs per place
+    (if (< num-npcs 10)
+      ;; higher random number = fewer npcs
+      (if (and (< (rr/uniform-int 210)
+                  (if (rw/is-night? state)
+                     (/ 180 (inc num-npcs))
+                     (/ 80 (inc num-npcs))))
+               (< (count (get-npcs state))
+                 60))
+        (add-npcs state)
+        state)
       state)))
 
 (defn has-status?

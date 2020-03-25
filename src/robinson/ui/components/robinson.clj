@@ -162,7 +162,7 @@
         root (int (* width (min p1 p2)))
         padding (int (* width (- 1 (max p1 p2))))
         diff (- width root padding)
-        black-color (rcolor/color->rgb :black)]
+        black-color (rcolor/color->rgb :blackest)]
           (zc/csx
               [:view {:style (merge {:height 1
                                      :display :flex
